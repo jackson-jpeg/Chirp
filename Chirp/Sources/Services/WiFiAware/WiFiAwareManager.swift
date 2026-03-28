@@ -7,9 +7,8 @@ import WiFiAware
 @Observable
 final class WiFiAwareManager: @unchecked Sendable {
 
-    private let logger = Logger(subsystem: "com.chirp.ptt", category: "WiFiAwareManager")
+    private let logger = Logger(subsystem: "com.chirp.app", category: "WiFiAwareManager")
 
-    // Use Any to avoid compile errors when WAPairedDevice is unavailable
     private(set) var pairedDevices: [Any] = []
     private(set) var isSupported: Bool = false
 
@@ -32,13 +31,8 @@ final class WiFiAwareManager: @unchecked Sendable {
 
     #if canImport(WiFiAware)
     private func checkSupport() {
-        Task {
-            do {
-                let capabilities = await WACapabilities.current
-                isSupported = capabilities.isSupported
-                logger.info("Wi-Fi Aware supported: \(self.isSupported)")
-            }
-        }
+        isSupported = WACapabilities.supportedFeatures.contains(.wifiAware)
+        logger.info("Wi-Fi Aware supported: \(self.isSupported)")
     }
     #endif
 
@@ -56,10 +50,10 @@ final class WiFiAwareManager: @unchecked Sendable {
         observationTask = Task { [weak self] in
             guard let self else { return }
             do {
-                for await devices in WAPairedDevice.allDevices() {
+                for try await devicesDict in WAPairedDevice.allDevices {
                     guard !Task.isCancelled else { break }
-                    self.pairedDevices = devices
-                    self.logger.debug("Paired devices updated: \(devices.count) device(s)")
+                    self.pairedDevices = Array(devicesDict.values)
+                    self.logger.debug("Paired devices updated: \(devicesDict.count) device(s)")
                 }
             } catch {
                 self.logger.error("Paired device observation failed: \(error.localizedDescription)")

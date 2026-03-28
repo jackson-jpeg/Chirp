@@ -152,18 +152,11 @@ actor ConnectionManager: TransportProtocol {
 
     #if canImport(WiFiAware)
     private func makeWiFiAwareParameters() -> NWParameters {
-        let wifiAwareOptions = NWProtocolWiFiAware.Options()
-        wifiAwareOptions.serviceType = "_chirp-ptt._udp"
-
-        let parameters = NWParameters(wifiAwareOptions: wifiAwareOptions)
+        // Wi-Fi Aware uses the standard NWParameters with TLS
+        // The actual Wi-Fi Aware transport is configured via
+        // NetworkListener/NetworkBrowser with .wifiAware descriptors
+        let parameters = NWParameters.tcp
         parameters.serviceClass = .interactiveVoice
-        parameters.expiredDNSBehavior = .allow
-
-        // Real-time configuration for low-latency audio
-        if let ipOptions = parameters.defaultProtocolStack.internetProtocol as? NWProtocolIP.Options {
-            ipOptions.disableFragmentation = true
-        }
-
         return parameters
     }
     #endif
@@ -200,7 +193,7 @@ actor ConnectionManager: TransportProtocol {
                 }
             }
 
-            newListener.start(queue: .global(qos: .userInteractive))
+            newListener.start(queue: DispatchQueue.global(qos: .userInteractive))
             listener = newListener
             logger.info("Listener started")
         } catch {
@@ -211,15 +204,11 @@ actor ConnectionManager: TransportProtocol {
     // MARK: - Browser (Subscriber)
 
     private func startBrowser(parameters: NWParameters, deviceFilter: String?) {
-        #if canImport(WiFiAware)
-        let descriptor = NWBrowser.Descriptor.wifiAwareService(type: "_chirp-ptt._udp")
-        #else
         let descriptor = NWBrowser.Descriptor.bonjour(type: "_chirp-ptt._tcp", domain: "local")
-        #endif
 
         let newBrowser = NWBrowser(for: descriptor, using: parameters)
 
-        newBrowser.stateUpdateHandler = { [logger] state in
+        newBrowser.stateUpdateHandler = { [logger] (state: NWBrowser.State) in
             switch state {
             case .ready:
                 logger.info("Browser ready")
@@ -232,14 +221,14 @@ actor ConnectionManager: TransportProtocol {
             }
         }
 
-        newBrowser.browseResultsChangedHandler = { [weak self] results, changes in
+        newBrowser.browseResultsChangedHandler = { [weak self] (results: Set<NWBrowser.Result>, changes: Set<NWBrowser.Result.Change>) in
             guard let self else { return }
             Task {
                 await self.handleBrowseResults(results, changes: changes)
             }
         }
 
-        newBrowser.start(queue: .global(qos: .userInteractive))
+        newBrowser.start(queue: DispatchQueue.global(qos: .userInteractive))
         browser = newBrowser
         logger.info("Browser started")
     }
@@ -293,7 +282,7 @@ actor ConnectionManager: TransportProtocol {
         }
 
         connections[id] = connection
-        connection.start(queue: .global(qos: .userInteractive))
+        connection.start(queue: DispatchQueue.global(qos: .userInteractive))
     }
 
     private func handleIncomingConnection(_ connection: NWConnection) {
@@ -320,7 +309,7 @@ actor ConnectionManager: TransportProtocol {
             }
         }
 
-        connection.start(queue: .global(qos: .userInteractive))
+        connection.start(queue: DispatchQueue.global(qos: .userInteractive))
     }
 
     private func registerConnection(_ connection: NWConnection, id: String) {

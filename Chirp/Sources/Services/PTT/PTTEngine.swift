@@ -82,8 +82,8 @@ final class PTTEngine: @unchecked Sendable {
     // MARK: - Lifecycle
 
     /// Full startup sequence: configure audio, wire callbacks, start receive loops.
-    func start() async {
-        audioEngine.setup()
+    func start() async throws {
+        try audioEngine.setup()
         setupCallbacks()
         await startReceiving()
         logger.info("PTTEngine started")
@@ -142,7 +142,7 @@ final class PTTEngine: @unchecked Sendable {
             let stream = await self.connectionManager.audioPackets
             for await data in stream {
                 guard !Task.isCancelled else { break }
-                guard let packet = AudioPacket.deserialize(from: data) else {
+                guard let packet = AudioPacket.deserialize(data) else {
                     Logger.audio.warning("Failed to deserialize audio packet (\(data.count) bytes)")
                     continue
                 }

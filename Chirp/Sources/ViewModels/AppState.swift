@@ -59,15 +59,10 @@ final class AppState {
         self.localPeerName = UIDevice.current.name
 
         // Create subsystems.
-        let codec = OpusCodec()
-        let jitterBuffer = JitterBuffer()
-        let audioEngine = AudioEngine(codec: codec, jitterBuffer: jitterBuffer)
+        let audioEngine = AudioEngine()
         let peerTracker = PeerTracker()
         let wifiAwareManager = WiFiAwareManager()
-        let connectionManager = ConnectionManager(
-            wifiAwareManager: wifiAwareManager,
-            peerTracker: peerTracker
-        )
+        let connectionManager = ConnectionManager()
         let floorController = FloorController(
             localPeerID: peerID,
             localPeerName: self.localPeerName
@@ -94,7 +89,7 @@ final class AppState {
 
     /// Call once from the app's root view `.task` modifier.
     func start() async {
-        await pttEngine.start()
+        try? await pttEngine.start()
         await peerTracker.startHealthCheck()
 
         // Create a default channel if none exist.

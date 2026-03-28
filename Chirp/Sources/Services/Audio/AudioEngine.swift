@@ -178,12 +178,13 @@ final class AudioEngine {
             ) else { return }
 
             var error: NSError?
-            var hasData = true
+            nonisolated(unsafe) var hasData = true
+            nonisolated(unsafe) let inputBuffer = buffer
             let inputBlock: AVAudioConverterInputBlock = { _, outStatus in
                 if hasData {
                     outStatus.pointee = .haveData
                     hasData = false
-                    return buffer
+                    return inputBuffer
                 }
                 outStatus.pointee = .noDataNow
                 return nil

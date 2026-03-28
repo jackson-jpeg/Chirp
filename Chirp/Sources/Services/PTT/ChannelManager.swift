@@ -41,8 +41,8 @@ final class ChannelManager: @unchecked Sendable {
             leaveChannel()
         }
 
-        activeChannel = channels[index]
-        logger.info("Joined channel '\(channels[index].name)' (\(id))")
+        activeChannel = self.channels[index]
+        logger.info("Joined channel '\(self.channels[index].name)' (\(id))")
     }
 
     /// Leave the currently active channel.
@@ -71,9 +71,9 @@ final class ChannelManager: @unchecked Sendable {
             return
         }
 
-        channels[index].peers.append(peer)
+        self.channels[index].peers.append(peer)
         syncActiveChannel(channelID: channelID, at: index)
-        logger.info("Added peer '\(peer.name)' to channel '\(channels[index].name)'")
+        logger.info("Added peer '\(peer.name)' to channel '\(self.channels[index].name)'")
     }
 
     /// Remove a peer from a specific channel.
@@ -83,9 +83,9 @@ final class ChannelManager: @unchecked Sendable {
             return
         }
 
-        channels[index].peers.removeAll { $0.id == peerID }
+        self.channels[index].peers.removeAll { $0.id == peerID }
         syncActiveChannel(channelID: channelID, at: index)
-        logger.info("Removed peer \(peerID) from channel '\(channels[index].name)'")
+        logger.info("Removed peer \(peerID) from channel '\(self.channels[index].name)'")
     }
 
     // MARK: - Queries

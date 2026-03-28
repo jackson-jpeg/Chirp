@@ -1,65 +1,47 @@
 import AVFoundation
-import Opus
+@preconcurrency import Opus
 import OSLog
 
-final class OpusCodec: Sendable {
+final class OpusCodec: @unchecked Sendable {
     private let encoder: Opus.Encoder
     private let decoder: Opus.Decoder
-    private let sampleRate: Int32
-    private let channels: Int32
     private let samplesPerFrame: Int
 
+    let format: AVAudioFormat
+
     init() throws {
-        self.sampleRate = Int32(Constants.Opus.sampleRate)
-        self.channels = Int32(Constants.Opus.channels)
         self.samplesPerFrame = Constants.Opus.samplesPerFrame
 
-        let format = AVAudioFormat(
+        let fmt = AVAudioFormat(
             commonFormat: .pcmFormatInt16,
             sampleRate: Constants.Opus.sampleRate,
-            channels: AVAudioChannelCount(channels),
+            channels: AVAudioChannelCount(Constants.Opus.channels),
             interleaved: true
         )!
+        self.format = fmt
 
-        self.encoder = try Opus.Encoder(format: format, application: .voip)
-        try self.encoder.configureBitrate(Constants.Opus.bitrate)
+        self.encoder = try Opus.Encoder(format: fmt, application: .voip)
+        self.decoder = try Opus.Decoder(format: fmt, application: .voip)
 
-        self.decoder = try Opus.Decoder(format: format)
-
-        Logger.audio.info("OpusCodec initialized: \(self.sampleRate)Hz, \(self.channels)ch, \(self.samplesPerFrame) samples/frame")
+        Logger.audio.info("OpusCodec initialized: \(Constants.Opus.sampleRate)Hz, \(Constants.Opus.channels)ch")
     }
 
+    /// Encode a PCM buffer into Opus data
     func encode(_ pcmBuffer: AVAudioPCMBuffer) throws -> Data {
-        return try encoder.encode(pcmBuffer)
+        // swift-opus encode API: encode(buffer, to: &data) -> Int
+        var output = Data(count: 4000) // max opus packet size
+        let encodedBytes = try encoder.encode(pcmBuffer, to: &output)
+        return Data(output.prefix(encodedBytes))
     }
 
+    /// Decode Opus data into a PCM buffer
     func decode(_ opusData: Data) throws -> AVAudioPCMBuffer {
-        let format = AVAudioFormat(
-            commonFormat: .pcmFormatInt16,
-            sampleRate: Double(sampleRate),
-            channels: AVAudioChannelCount(channels),
-            interleaved: true
-        )!
-
-        guard let outputBuffer = AVAudioPCMBuffer(
-            pcmFormat: format,
-            frameCapacity: AVAudioFrameCount(samplesPerFrame)
-        ) else {
-            throw OpusCodecError.bufferAllocationFailed
-        }
-
-        try decoder.decode(opusData, to: outputBuffer)
-        return outputBuffer
+        // swift-opus decode API: decode(Data) -> AVAudioPCMBuffer
+        return try decoder.decode(opusData)
     }
 
+    /// Generate a PLC (packet loss concealment) frame
     func decodePLC() throws -> AVAudioPCMBuffer {
-        let format = AVAudioFormat(
-            commonFormat: .pcmFormatInt16,
-            sampleRate: Double(sampleRate),
-            channels: AVAudioChannelCount(channels),
-            interleaved: true
-        )!
-
         guard let outputBuffer = AVAudioPCMBuffer(
             pcmFormat: format,
             frameCapacity: AVAudioFrameCount(samplesPerFrame)
@@ -67,8 +49,9 @@ final class OpusCodec: Sendable {
             throw OpusCodecError.bufferAllocationFailed
         }
 
-        // PLC: pass nil data to decoder to generate concealment frame
-        try decoder.decode(nil, to: outputBuffer)
+        // Pass empty data to trigger PLC
+        let emptyInput = UnsafeBufferPointer<UInt8>(start: nil, count: 0)
+        try decoder.decode(emptyInput, to: outputBuffer)
         return outputBuffer
     }
 }

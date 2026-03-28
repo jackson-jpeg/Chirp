@@ -21,8 +21,6 @@ final class FloorController: @unchecked Sendable {
     // MARK: - Private
 
     private let logger = Logger.ptt
-
-    /// Timestamp of the local floor request used for collision resolution.
     private var localRequestTimestamp: Date?
 
     // MARK: - Init
@@ -34,13 +32,12 @@ final class FloorController: @unchecked Sendable {
 
     // MARK: - Local Actions
 
-    /// Attempt to take the floor. Optimistically transitions to `.transmitting`
-    /// if idle, otherwise sets `.denied`.
+    /// Attempt to take the floor. Optimistically transitions to .transmitting
+    /// if idle, otherwise sets .denied.
     func requestFloor() {
         guard state == .idle else {
             logger.info("Floor request denied — state is \(String(describing: self.state))")
             state = .denied
-            // Auto-clear denied after a short delay so UI can react then reset.
             Task { @MainActor [weak self] in
                 try? await Task.sleep(for: .milliseconds(600))
                 guard let self, self.state == .denied else { return }
@@ -51,119 +48,76 @@ final class FloorController: @unchecked Sendable {
 
         let now = Date()
         localRequestTimestamp = now
-
-        // Optimistic grant — assume we get the floor.
         currentSpeaker = (id: localPeerID, name: localPeerName)
         state = .transmitting
         logger.info("Floor requested (optimistic grant)")
 
-        sendToAllPeers?(.requestFloor(peerID: localPeerID, timestamp: now))
+        sendToAllPeers?(.floorRequest(senderID: localPeerID, senderName: localPeerName, timestamp: now))
     }
 
     /// Release the floor and broadcast to peers.
     func releaseFloor() {
-        guard state == .transmitting else {
-            logger.debug("releaseFloor called but not transmitting — ignoring")
-            return
-        }
-
-        let now = Date()
+        guard state == .transmitting else { return }
         clearSpeaker()
         logger.info("Floor released locally")
-
-        sendToAllPeers?(.releaseFloor(peerID: localPeerID, timestamp: now))
+        sendToAllPeers?(.floorRelease(senderID: localPeerID))
     }
 
     // MARK: - Remote Message Handling
 
     func handleMessage(_ message: FloorControlMessage) {
         switch message {
+        case .floorRequest(let senderID, let senderName, let timestamp):
+            handleRemoteFloorRequest(peerID: senderID, peerName: senderName, timestamp: timestamp)
 
-        case .requestFloor(let peerID, let remoteTimestamp):
-            handleRemoteFloorRequest(peerID: peerID, timestamp: remoteTimestamp)
+        case .floorGranted:
+            break // Confirmation — no-op in first-come-first-served
 
-        case .grantFloor(let peerID, _):
-            // A peer told us our request was granted. If we already optimistically
-            // took the floor this is a no-op confirmation.
-            if peerID == localPeerID && state != .transmitting {
-                currentSpeaker = (id: localPeerID, name: localPeerName)
-                state = .transmitting
-                logger.info("Floor grant confirmed by remote peer")
-            }
-
-        case .releaseFloor(let peerID, _):
-            guard currentSpeaker?.id == peerID else { return }
+        case .floorRelease(let senderID):
+            guard currentSpeaker?.id == senderID else { return }
             clearSpeaker()
-            logger.info("Remote peer \(peerID) released the floor")
+            logger.info("Remote peer \(senderID) released the floor")
 
-        case .denyFloor(let peerID, let reason):
-            if peerID == localPeerID {
-                // We lost a collision — revert optimistic state.
-                if state == .transmitting && currentSpeaker?.id == localPeerID {
-                    clearSpeaker()
-                    state = .denied
-                    logger.info("Floor denied by remote: \(reason)")
-                    Task { @MainActor [weak self] in
-                        try? await Task.sleep(for: .milliseconds(600))
-                        guard let self, self.state == .denied else { return }
-                        self.state = .idle
-                    }
-                }
-            }
+        case .peerJoin:
+            break // Informational
 
-        case .heartbeat:
-            // Heartbeats are handled by PeerTracker, not floor control.
-            break
-
-        case .peerJoined:
-            // Informational — no floor action needed.
-            break
-
-        case .peerLeft(let peerID):
-            // If the speaking peer left, release the floor automatically.
+        case .peerLeave(let peerID):
             if currentSpeaker?.id == peerID {
                 clearSpeaker()
                 logger.info("Speaker \(peerID) left — floor released")
             }
+
+        case .heartbeat:
+            break // Handled by PeerTracker
         }
     }
 
-    // MARK: - Private Helpers
+    // MARK: - Private
 
-    private func handleRemoteFloorRequest(peerID: String, timestamp: Date) {
+    private func handleRemoteFloorRequest(peerID: String, peerName: String, timestamp: Date) {
         guard peerID != localPeerID else { return }
 
         switch state {
         case .idle:
-            // Grant floor to the requesting peer.
-            currentSpeaker = (id: peerID, name: peerID) // name resolved by PeerTracker elsewhere
-            state = .receiving(speakerName: peerID, speakerID: peerID)
-            logger.info("Floor granted to remote peer \(peerID)")
-
-            sendToAllPeers?(.grantFloor(peerID: peerID, timestamp: Date()))
+            currentSpeaker = (id: peerID, name: peerName)
+            state = .receiving(speakerName: peerName, speakerID: peerID)
+            logger.info("Floor granted to \(peerName)")
+            sendToAllPeers?(.floorGranted(speakerID: peerID))
 
         case .transmitting:
-            // Collision: we are already transmitting. First-come wins — compare timestamps.
+            // Collision: compare timestamps, earliest wins
             if let localTS = localRequestTimestamp, localTS <= timestamp {
-                // We requested first (or simultaneously) — we keep the floor. Deny remote.
-                logger.info("Floor collision — local wins (earlier timestamp)")
-                sendToAllPeers?(.denyFloor(peerID: peerID, reason: "collision — earlier request wins"))
+                logger.info("Floor collision — local wins")
             } else {
-                // Remote requested first — we must yield.
-                logger.info("Floor collision — remote wins (earlier timestamp)")
+                logger.info("Floor collision — remote wins")
                 clearSpeaker()
-                currentSpeaker = (id: peerID, name: peerID)
-                state = .receiving(speakerName: peerID, speakerID: peerID)
-                sendToAllPeers?(.grantFloor(peerID: peerID, timestamp: Date()))
+                currentSpeaker = (id: peerID, name: peerName)
+                state = .receiving(speakerName: peerName, speakerID: peerID)
+                sendToAllPeers?(.floorGranted(speakerID: peerID))
             }
 
-        case .receiving:
-            // Already receiving from someone else — deny this new request.
-            sendToAllPeers?(.denyFloor(peerID: peerID, reason: "floor occupied"))
-
-        case .denied:
-            // Transient state — deny.
-            sendToAllPeers?(.denyFloor(peerID: peerID, reason: "floor occupied"))
+        case .receiving, .denied:
+            break // Floor occupied, ignore
         }
     }
 

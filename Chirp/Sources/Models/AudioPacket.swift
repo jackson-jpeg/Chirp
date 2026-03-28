@@ -38,7 +38,7 @@ struct AudioPacket: Sendable {
         let tsBytes = data[data.startIndex + 5 ..< data.startIndex + 13]
         let timestamp = tsBytes.withUnsafeBytes { $0.load(as: UInt64.self).bigEndian }
 
-        let opusData = data[data.startIndex + headerSize...]
+        let opusData = data[(data.startIndex + headerSize)...]
         return AudioPacket(
             sequenceNumber: sequenceNumber,
             timestamp: timestamp,

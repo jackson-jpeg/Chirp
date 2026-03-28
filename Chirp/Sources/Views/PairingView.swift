@@ -2,6 +2,9 @@ import SwiftUI
 #if canImport(WiFiAware)
 import WiFiAware
 #endif
+#if canImport(DeviceDiscoveryUI)
+import DeviceDiscoveryUI
+#endif
 
 struct PairingView: View {
     @Environment(AppState.self) private var appState
@@ -115,11 +118,19 @@ struct PairingView: View {
             }
         }
 
-        #if canImport(WiFiAware)
+        #if canImport(DeviceDiscoveryUI) && canImport(WiFiAware)
         // Device picker for Wi-Fi Aware pairing
-        DevicePairingView()
-            .frame(height: 200)
-            .padding(.horizontal, 16)
+        DevicePairingView(
+            .wifiAware(.connecting(to: .chirpPTT, from: .selected([])))
+        ) {
+            Text("Waiting for nearby devices...")
+                .foregroundStyle(.secondary)
+        } fallback: {
+            Text("Wi-Fi Aware pairing not supported on this device.")
+                .foregroundStyle(.secondary)
+        }
+        .frame(height: 200)
+        .padding(.horizontal, 16)
         #endif
 
         Spacer()
