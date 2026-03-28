@@ -104,13 +104,6 @@ struct ChannelView: View {
                 appState.updateLiveActivity()
             }
         }
-        .onAppear {
-            // Start live activity for this channel
-            appState.liveActivityManager.startActivity(channelName: channel.name)
-        }
-        .onDisappear {
-            appState.liveActivityManager.endActivity()
-        }
     }
 
     // MARK: - Channel Header

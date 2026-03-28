@@ -29,8 +29,6 @@ targets:
       - path: Chirp/Resources
     dependencies:
       - package: Opus
-      - target: ChirpLiveActivity
-        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirp

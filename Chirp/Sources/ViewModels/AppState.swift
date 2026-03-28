@@ -100,10 +100,10 @@ final class AppState {
             channelManager.joinChannel(id: defaultChannel.id)
         }
 
-        // Start Live Activity for the active channel.
-        if let channel = channelManager.activeChannel {
-            liveActivityManager.startActivity(channelName: channel.name)
-        }
+        // Live Activity disabled until widget extension signing is resolved
+        // if let channel = channelManager.activeChannel {
+        //     liveActivityManager.startActivity(channelName: channel.name)
+        // }
 
         logger.info("AppState started")
     }
