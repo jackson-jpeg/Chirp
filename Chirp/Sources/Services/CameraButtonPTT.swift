@@ -86,7 +86,7 @@ final class CameraButtonPTT: ObservableObject {
         uname(&systemInfo)
         return withUnsafePointer(to: &systemInfo.machine) {
             $0.withMemoryRebound(to: CChar.self, capacity: 1) {
-                String(validatingUTF8: $0) ?? "Unknown"
+                String(validatingCString: $0) ?? "Unknown"
             }
         }
     }
