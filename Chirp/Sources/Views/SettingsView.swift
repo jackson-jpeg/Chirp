@@ -13,6 +13,7 @@ struct SettingsView: View {
     @State private var debugExpanded = false
     @State private var howItWorksExpanded = false
     @State private var copiedID = false
+    @State private var showActionButtonSetup = false
 
     var body: some View {
         List {
@@ -88,6 +89,35 @@ struct SettingsView: View {
                 .listRowBackground(Color.white.opacity(0.05))
             } header: {
                 Label("Your Device", systemImage: "person.crop.circle")
+            }
+
+            // MARK: - Action Button
+
+            Section {
+                Button {
+                    showActionButtonSetup = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "button.horizontal.top.press.fill")
+                            .foregroundStyle(Color(hex: 0xFFB800))
+                            .frame(width: 24)
+
+                        Text("Set Up Action Button")
+                            .foregroundStyle(.white)
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .listRowBackground(Color.white.opacity(0.05))
+            } header: {
+                Label("Quick Access", systemImage: "bolt.fill")
+            } footer: {
+                Text("Assign ChirpChirp to your Action Button for instant push-to-talk. Also works with Siri: \"Hey Siri, push to talk with ChirpChirp\"")
             }
 
             // MARK: - Audio
@@ -381,6 +411,9 @@ struct SettingsView: View {
         .background(Color.black)
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showActionButtonSetup) {
+            ActionButtonSetupView()
+        }
     }
 
     // MARK: - Computed Properties
