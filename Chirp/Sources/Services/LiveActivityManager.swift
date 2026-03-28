@@ -3,7 +3,7 @@ import Foundation
 import OSLog
 
 @MainActor
-final class LiveActivityManager: Sendable {
+final class LiveActivityManager {
 
     // MARK: - Private State
 
