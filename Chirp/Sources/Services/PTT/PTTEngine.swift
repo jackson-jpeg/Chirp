@@ -128,6 +128,7 @@ final class PTTEngine: @unchecked Sendable {
         }
 
         sequenceNumber = 0
+        audioEngine.resetJitterBuffer()
         audioEngine.startCapture()
         syncState()
         logger.info("Transmitting — audio capture started")

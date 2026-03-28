@@ -167,12 +167,17 @@ final class AudioEngine {
 
         // Set flag FIRST so the tap callback exits quickly
         isCapturing = false
-        // Clear converter BEFORE removing tap to avoid deadlock
+        // Clear converter to prevent further processing
         converter = nil
-        engine.inputNode.removeTap(onBus: 0)
         captureAccumulator.removeAll()
+        // Remove tap — isCapturing=false ensures callback exits immediately
+        engine.inputNode.removeTap(onBus: 0)
 
         Logger.audio.info("Capture stopped")
+    }
+
+    func resetJitterBuffer() {
+        jitterBuffer?.reset()
     }
 
     func receiveAudioPacket(_ opusData: Data, sequenceNumber: UInt32) {
