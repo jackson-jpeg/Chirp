@@ -113,13 +113,15 @@ final class AudioEngine {
             [weak self] buffer, _ in
             guard let self else { return }
 
-            // Lazily create converter on first buffer with real format info
-            if self.converter == nil {
-                let bufFormat = buffer.format
-                if bufFormat.sampleRate != Constants.Opus.sampleRate || bufFormat.channelCount != 1 {
-                    self.converter = AVAudioConverter(from: bufFormat, to: target)
-                    Logger.audio.info("Converter: \(bufFormat.sampleRate)Hz/\(bufFormat.channelCount)ch -> 16000Hz/1ch")
-                }
+            let bufFormat = buffer.format
+
+            // Skip invalid buffers (0Hz can happen on first few callbacks)
+            guard bufFormat.sampleRate > 0, buffer.frameLength > 0 else { return }
+
+            // Lazily create converter on first valid buffer
+            if self.converter == nil && (bufFormat.sampleRate != Constants.Opus.sampleRate || bufFormat.channelCount != 1) {
+                self.converter = AVAudioConverter(from: bufFormat, to: target)
+                Logger.audio.info("Converter: \(bufFormat.sampleRate)Hz/\(bufFormat.channelCount)ch -> 16000Hz/1ch")
             }
             self.processInputBuffer(buffer)
         }

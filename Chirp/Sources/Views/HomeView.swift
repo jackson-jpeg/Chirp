@@ -195,9 +195,20 @@ struct HomeView: View {
                     .font(.system(.body, weight: .semibold))
                     .foregroundStyle(.white)
 
-                Text("\(channel.activePeerCount) active \u{00B7} \(channel.peers.count) peers")
-                    .font(.system(.caption, weight: .medium))
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    if appState.channelManager.activeChannel?.id == channel.id {
+                        Circle()
+                            .fill(Color(hex: 0x30D158))
+                            .frame(width: 6, height: 6)
+                        Text("Joined")
+                            .font(.system(.caption, weight: .semibold))
+                            .foregroundStyle(Color(hex: 0x30D158))
+                    } else {
+                        Text("\(channel.peers.count) peers")
+                            .font(.system(.caption, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
 
             Spacer()
