@@ -95,9 +95,21 @@ struct ChannelView: View {
             withAnimation(.easeInOut(duration: 0.15)) {
                 pttState = newValue
             }
+            appState.updateLiveActivity()
         }
         .onChange(of: appState.inputLevel) { _, newValue in
             inputLevel = newValue
+            // Throttle live activity updates to avoid excessive calls
+            if pttState == .transmitting || isReceiving {
+                appState.updateLiveActivity()
+            }
+        }
+        .onAppear {
+            // Start live activity for this channel
+            appState.liveActivityManager.startActivity(channelName: channel.name)
+        }
+        .onDisappear {
+            appState.liveActivityManager.endActivity()
         }
     }
 

@@ -5,6 +5,7 @@ struct WaveformView: View {
     var pttState: PTTState
 
     @State private var animationOffsets: [CGFloat] = Array(repeating: 0, count: 7)
+    @State private var timer: Timer?
 
     private let barCount = 7
     private let maxBarHeight: CGFloat = 50
@@ -34,27 +35,22 @@ struct WaveformView: View {
             }
         }
         .frame(height: maxBarHeight)
-        .onAppear {
-            startAnimating()
-        }
+        .onAppear { startAnimating() }
+        .onDisappear { stopAnimating() }
     }
 
     private func barHeight(for index: Int) -> CGFloat {
         let level = CGFloat(max(0.05, min(1.0, inputLevel)))
-
-        // Create a wave pattern: center bars taller, edges shorter
         let center = CGFloat(barCount - 1) / 2.0
         let distanceFromCenter = abs(CGFloat(index) - center) / center
         let baseMultiplier = 1.0 - (distanceFromCenter * 0.5)
-
         let randomOffset = animationOffsets[index]
         let height = maxBarHeight * level * baseMultiplier + randomOffset
-
         return max(4, min(maxBarHeight, height))
     }
 
     private func startAnimating() {
-        Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { _ in
             Task { @MainActor in
                 withAnimation(.easeInOut(duration: 0.08)) {
                     for i in 0..<barCount {
@@ -64,5 +60,10 @@ struct WaveformView: View {
                 }
             }
         }
+    }
+
+    private func stopAnimating() {
+        timer?.invalidate()
+        timer = nil
     }
 }
