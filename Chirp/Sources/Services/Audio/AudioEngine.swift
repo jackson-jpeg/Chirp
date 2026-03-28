@@ -98,20 +98,32 @@ final class AudioEngine {
         sequenceNumber = 0
 
         let inputNode = engine.inputNode
-        let inputFormat = inputNode.outputFormat(forBus: 0)
 
-        // Set up converter if input sample rate differs from target
-        if inputFormat.sampleRate != Constants.Opus.sampleRate || inputFormat.channelCount != 1 {
-            converter = AVAudioConverter(from: inputFormat, to: targetFormat)
+        // Install tap with nil format — lets the system provide buffers in
+        // whatever format the hardware uses. We convert in processInputBuffer.
+        let hwFormat = inputNode.outputFormat(forBus: 0)
+        Logger.audio.info("Input node format: \(hwFormat.sampleRate)Hz/\(hwFormat.channelCount)ch")
+
+        // Use the hardware format if valid, otherwise nil (system default)
+        let tapFormat: AVAudioFormat? = hwFormat.sampleRate > 0 ? hwFormat : nil
+
+        // Set up converter from hardware format to our target 16kHz mono
+        if let tapFormat, (tapFormat.sampleRate != Constants.Opus.sampleRate || tapFormat.channelCount != 1) {
+            converter = AVAudioConverter(from: tapFormat, to: targetFormat)
             Logger.audio.info(
-                "Converter created: \(inputFormat.sampleRate)Hz/\(inputFormat.channelCount)ch -> \(Constants.Opus.sampleRate)Hz/1ch"
+                "Converter created: \(tapFormat.sampleRate)Hz/\(tapFormat.channelCount)ch -> \(Constants.Opus.sampleRate)Hz/1ch"
             )
         } else {
             converter = nil
         }
 
-        inputNode.installTap(onBus: 0, bufferSize: AVAudioFrameCount(samplesPerFrame), format: inputFormat) {
+        inputNode.installTap(onBus: 0, bufferSize: AVAudioFrameCount(samplesPerFrame), format: tapFormat) {
             [weak self] buffer, _ in
+            // If we didn't have a valid format at tap install time, create converter now
+            if self?.converter == nil && (buffer.format.sampleRate != Constants.Opus.sampleRate || buffer.format.channelCount != 1) {
+                self?.converter = AVAudioConverter(from: buffer.format, to: self!.targetFormat)
+                Logger.audio.info("Late converter: \(buffer.format.sampleRate)Hz/\(buffer.format.channelCount)ch -> 16000Hz/1ch")
+            }
             self?.processInputBuffer(buffer)
         }
 
