@@ -1,0 +1,49 @@
+name: Chirp
+options:
+  bundleIdPrefix: com.chirp
+  deploymentTarget:
+    iOS: "26.0"
+  xcodeVersion: "26.0"
+
+packages:
+  Opus:
+    url: https://github.com/alta/swift-opus
+    from: "0.0.1"
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    INFOPLIST_FILE: Chirp/Info.plist
+    CODE_SIGN_ENTITLEMENTS: Chirp/Chirp.entitlements
+    TARGETED_DEVICE_FAMILY: "1"
+    SUPPORTED_PLATFORMS: iphoneos iphonesimulator
+
+targets:
+  Chirp:
+    type: application
+    platform: iOS
+    sources:
+      - path: Chirp/Sources
+      - path: Chirp/Resources
+    dependencies:
+      - package: Opus
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.chirp.app
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: false
+    info:
+      path: Chirp/Info.plist
+
+  ChirpTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: ChirpTests
+    dependencies:
+      - target: Chirp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.chirp.app.tests
