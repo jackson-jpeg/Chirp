@@ -108,6 +108,11 @@ final class AudioEngine {
         let mainMixer = engine.mainMixerNode
         engine.connect(node, to: mainMixer, format: playbackFormat)
 
+        // CRITICAL: Access inputNode BEFORE engine.start() to force the audio
+        // graph to include the input. Without this, inputNode.outputFormat
+        // returns 0Hz on real devices.
+        let _ = engine.inputNode
+
         engine.prepare()
         try engine.start()
 
@@ -124,29 +129,48 @@ final class AudioEngine {
 
         let inputNode = engine.inputNode
 
-        // Use nil format — iOS delivers in hardware native format.
-        // We convert lazily in the callback when the first valid buffer arrives.
-        // This avoids crashes when the hardware can't satisfy a specific format request.
-        converter = nil
+        // Get the input node's REAL hardware format AFTER engine is running.
+        // We accessed inputNode during setup() to force initialization.
+        let hwFormat = inputNode.outputFormat(forBus: 0)
+        Logger.audio.info("Input hw format: \(hwFormat.sampleRate)Hz/\(hwFormat.channelCount)ch/\(hwFormat.commonFormat.rawValue)")
 
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: nil) {
+        // Determine tap format: use hardware format if valid, otherwise
+        // create a format using the audio session's actual sample rate.
+        let tapFormat: AVAudioFormat
+        if hwFormat.sampleRate > 0 {
+            tapFormat = hwFormat
+        } else {
+            // Fallback: use the audio session's sample rate (always valid)
+            let sessionRate = AVAudioSession.sharedInstance().sampleRate
+            tapFormat = AVAudioFormat(
+                commonFormat: .pcmFormatFloat32,
+                sampleRate: sessionRate > 0 ? sessionRate : 48000,
+                channels: 1,
+                interleaved: false
+            )!
+            Logger.audio.info("Using session rate fallback: \(tapFormat.sampleRate)Hz")
+        }
+
+        // Create converter from tap format to our 16kHz mono Int16 target
+        if tapFormat.sampleRate != Constants.Opus.sampleRate
+            || tapFormat.channelCount != 1
+            || tapFormat.commonFormat != .pcmFormatInt16 {
+            converter = AVAudioConverter(from: tapFormat, to: targetFormat)
+            Logger.audio.info("Converter: \(tapFormat.sampleRate)Hz/\(tapFormat.channelCount)ch -> 16000Hz/1ch/Int16")
+        } else {
+            converter = nil
+        }
+
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: tapFormat) {
             [weak self] buffer, _ in
             guard let self else { return }
+            guard buffer.frameLength > 0 else { return }
 
             self.updateInputLevelFromRawBuffer(buffer)
-
-            let bufFormat = buffer.format
-            guard bufFormat.sampleRate > 0, buffer.frameLength > 0 else { return }
-
-            // Create converter lazily on first valid buffer
-            if self.converter == nil && (bufFormat.sampleRate != Constants.Opus.sampleRate || bufFormat.channelCount != 1 || bufFormat.commonFormat != .pcmFormatInt16) {
-                self.converter = AVAudioConverter(from: bufFormat, to: self.targetFormat)
-                Logger.audio.info("Converter: \(bufFormat.sampleRate)Hz/\(bufFormat.channelCount)ch -> 16000Hz/1ch/Int16")
-            }
             self.processInputBuffer(buffer)
         }
 
-        Logger.audio.info("Capture started")
+        Logger.audio.info("Capture started — tap: \(tapFormat.sampleRate)Hz/\(tapFormat.channelCount)ch")
     }
 
     func stopCapture() {

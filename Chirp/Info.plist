@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>Chirp</string>
+    <string>ChirpChirp</string>
     <key>CFBundleDisplayName</key>
-    <string>Chirp</string>
+    <string>ChirpChirp</string>
     <key>CFBundleIdentifier</key>
     <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
     <key>CFBundleVersion</key>
