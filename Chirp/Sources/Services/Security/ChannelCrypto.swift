@@ -6,7 +6,7 @@ import OSLog
 /// Each channel has its own symmetric key derived from a shared secret.
 struct ChannelCrypto: Sendable {
     private let key: SymmetricKey
-    private static let logger = Logger(subsystem: "com.chirp.app", category: "ChannelCrypto")
+    private static let logger = Logger(subsystem: "com.chirpchirp.app", category: "ChannelCrypto")
 
     /// Create crypto for a channel with a specific key
     init(key: SymmetricKey) {

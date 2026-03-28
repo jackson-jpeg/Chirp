@@ -7,7 +7,7 @@ final class LiveActivityManager {
 
     // MARK: - Private State
 
-    private let logger = Logger(subsystem: "com.chirp.app", category: "LiveActivity")
+    private let logger = Logger(subsystem: "com.chirpchirp.app", category: "LiveActivity")
     private var currentActivity: Activity<ChirpActivityAttributes>?
 
     // MARK: - Public API

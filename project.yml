@@ -1,6 +1,6 @@
-name: Chirp
+name: ChirpChirp
 options:
-  bundleIdPrefix: com.chirp
+  bundleIdPrefix: com.chirpchirp
   deploymentTarget:
     iOS: "26.0"
   xcodeVersion: "26.0"
@@ -31,7 +31,7 @@ targets:
       - package: Opus
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirp
+        PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: false
@@ -61,7 +61,7 @@ targets:
     dependencies: []
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirp.live-activity
+        PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp.live-activity
         INFOPLIST_FILE: ChirpLiveActivity/Info.plist
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
@@ -80,4 +80,4 @@ targets:
       - target: Chirp
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirp.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp.tests

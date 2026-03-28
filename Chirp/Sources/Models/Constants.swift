@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum Constants {
-    static let subsystem = "com.chirp.app"
+    static let subsystem = "com.chirpchirp.app"
     static let serviceName = "_chirp-ptt._udp"
 
     enum Opus {

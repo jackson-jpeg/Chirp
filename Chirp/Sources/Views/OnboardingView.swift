@@ -238,13 +238,13 @@ struct OnboardingView: View {
                 // Title with glow
                 ZStack {
                     // Glow behind text
-                    Text("Chirp")
+                    Text("ChirpChirp")
                         .font(.system(size: 56, weight: .bold, design: .rounded))
                         .foregroundStyle(Color(hex: 0xFFB800))
                         .blur(radius: 20)
                         .opacity(0.5)
 
-                    Text("Chirp")
+                    Text("ChirpChirp")
                         .font(.system(size: 56, weight: .bold, design: .rounded))
                         .foregroundStyle(Color(hex: 0xFFB800))
                 }

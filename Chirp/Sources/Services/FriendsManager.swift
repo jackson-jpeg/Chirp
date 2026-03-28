@@ -14,8 +14,8 @@ final class FriendsManager {
         friends.filter(\.isOnline)
     }
 
-    private let logger = Logger(subsystem: "com.chirp.app", category: "FriendsManager")
-    private let storageKey = "com.chirp.friends"
+    private let logger = Logger(subsystem: "com.chirpchirp.app", category: "FriendsManager")
+    private let storageKey = "com.chirpchirp.friends"
 
     // MARK: - Init
 

@@ -8,8 +8,8 @@ import OSLog
 actor PeerIdentity {
     static let shared = PeerIdentity()
 
-    private let logger = Logger(subsystem: "com.chirp.app", category: "PeerIdentity")
-    private let keychainService = "com.chirp.peerIdentity"
+    private let logger = Logger(subsystem: "com.chirpchirp.app", category: "PeerIdentity")
+    private let keychainService = "com.chirpchirp.peerIdentity"
     private let keychainAccount = "ed25519-private-key"
 
     private var _privateKey: Curve25519.Signing.PrivateKey?

@@ -30,12 +30,12 @@ final class AppState {
 
     // MARK: - Persisted State
 
-    var isOnboardingComplete: Bool = UserDefaults.standard.bool(forKey: "com.chirp.onboardingComplete") {
+    var isOnboardingComplete: Bool = UserDefaults.standard.bool(forKey: "com.chirpchirp.onboardingComplete") {
         didSet { UserDefaults.standard.set(isOnboardingComplete, forKey: Keys.onboardingComplete) }
     }
 
-    var callsign: String = UserDefaults.standard.string(forKey: "com.chirp.callsign") ?? UIDevice.current.name {
-        didSet { UserDefaults.standard.set(callsign, forKey: "com.chirp.callsign") }
+    var callsign: String = UserDefaults.standard.string(forKey: "com.chirpchirp.callsign") ?? UIDevice.current.name {
+        didSet { UserDefaults.standard.set(callsign, forKey: "com.chirpchirp.callsign") }
     }
 
     // MARK: - Permissions
@@ -68,8 +68,8 @@ final class AppState {
     private let logger = Logger.ptt
 
     private enum Keys {
-        static let peerID = "com.chirp.localPeerID"
-        static let onboardingComplete = "com.chirp.onboardingComplete"
+        static let peerID = "com.chirpchirp.localPeerID"
+        static let onboardingComplete = "com.chirpchirp.onboardingComplete"
     }
 
     // MARK: - Init
@@ -112,7 +112,7 @@ final class AppState {
         self.channelManager = channelManager
         self.liveActivityManager = LiveActivityManager()
 
-        let displayName = UserDefaults.standard.string(forKey: "com.chirp.callsign") ?? UIDevice.current.name
+        let displayName = UserDefaults.standard.string(forKey: "com.chirpchirp.callsign") ?? UIDevice.current.name
         let transport = MultipeerTransport(displayName: displayName)
         self.multipeerTransport = transport
         self.friendsManager = FriendsManager()
@@ -215,7 +215,7 @@ final class AppState {
         let channel = channelManager.activeChannel
         liveActivityManager.updateActivity(
             state: pttState,
-            channelName: channel?.name ?? "Chirp",
+            channelName: channel?.name ?? "ChirpChirp",
             peerCount: channel?.activePeerCount ?? 0,
             inputLevel: Double(inputLevel)
         )

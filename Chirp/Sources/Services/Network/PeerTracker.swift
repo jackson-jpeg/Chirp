@@ -2,7 +2,7 @@ import Foundation
 import os
 
 actor PeerTracker {
-    private let logger = Logger(subsystem: "com.chirp.ptt", category: "PeerTracker")
+    private let logger = Logger(subsystem: "com.chirpchirp.ptt", category: "PeerTracker")
     private var peers: [String: ChirpPeer] = [:]
     private var healthCheckTask: Task<Void, Never>?
 

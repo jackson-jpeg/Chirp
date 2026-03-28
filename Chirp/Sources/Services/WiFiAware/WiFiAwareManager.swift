@@ -7,7 +7,7 @@ import WiFiAware
 @Observable
 final class WiFiAwareManager: @unchecked Sendable {
 
-    private let logger = Logger(subsystem: "com.chirp.app", category: "WiFiAwareManager")
+    private let logger = Logger(subsystem: "com.chirpchirp.app", category: "WiFiAwareManager")
 
     private(set) var pairedDevices: [Any] = []
     private(set) var isSupported: Bool = false

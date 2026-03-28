@@ -198,7 +198,7 @@ struct HomeView: View {
                     channelListView
                 }
             }
-            .navigationTitle("Chirp")
+            .navigationTitle("ChirpChirp")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

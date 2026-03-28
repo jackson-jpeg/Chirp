@@ -9,7 +9,7 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
 
     // MARK: - Properties
 
-    private let logger = Logger(subsystem: "com.chirp.app", category: "Multipeer")
+    private let logger = Logger(subsystem: "com.chirpchirp.app", category: "Multipeer")
     private let serviceType = "chirp-ptt" // max 15 chars, lowercase + hyphens
     private let myPeerID: MCPeerID
     private var session: MCSession!

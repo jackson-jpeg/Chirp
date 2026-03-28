@@ -18,7 +18,7 @@ actor ConnectionManager: TransportProtocol {
 
     // MARK: - Properties
 
-    private let logger = Logger(subsystem: "com.chirp.ptt", category: "ConnectionManager")
+    private let logger = Logger(subsystem: "com.chirpchirp.ptt", category: "ConnectionManager")
     private let peerTracker = PeerTracker()
 
     private var connections: [String: NWConnection] = [:]

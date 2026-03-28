@@ -14,8 +14,8 @@ final class ChannelManager: @unchecked Sendable {
     // MARK: - Private
 
     private let logger = Logger.ptt
-    private let storageKey = "com.chirp.savedChannels"
-    private let activeChannelKey = "com.chirp.activeChannelID"
+    private let storageKey = "com.chirpchirp.savedChannels"
+    private let activeChannelKey = "com.chirpchirp.activeChannelID"
     private var channelCryptoCache: [String: ChannelCrypto] = [:]
 
     // MARK: - Init
