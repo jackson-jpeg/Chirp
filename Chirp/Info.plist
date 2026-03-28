@@ -28,7 +28,6 @@
         <string>UIInterfaceOrientationPortraitUpsideDown</string>
     </array>
 
-    <!-- Wi-Fi Aware Service Declaration (requires entitlement from Apple)
     <key>WiFiAwareServices</key>
     <dict>
         <key>_chirp-ptt._udp</key>
@@ -39,7 +38,6 @@
             <dict/>
         </dict>
     </dict>
-    -->
 
     <!-- Required Privacy Descriptions -->
     <key>NSMicrophoneUsageDescription</key>

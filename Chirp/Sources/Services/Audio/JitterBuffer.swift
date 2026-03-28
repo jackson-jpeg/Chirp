@@ -21,6 +21,12 @@ final class JitterBuffer: @unchecked Sendable {
     private(set) var packetsLost: UInt64 = 0
     private(set) var packetsDroppedLate: UInt64 = 0
 
+    var bufferedCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return buffer.count
+    }
+
     init(
         initialDepthMs: Int = Constants.JitterBuffer.initialDepthMs,
         maxDepthMs: Int = Constants.JitterBuffer.maxDepthMs

@@ -187,11 +187,17 @@ final class AudioEngine {
     }
 
     func receiveAudioPacket(_ opusData: Data, sequenceNumber: UInt32) {
-        guard let codec, let jitterBuffer else { return }
+        guard let codec, let jitterBuffer else {
+            Logger.audio.warning("receiveAudioPacket: codec or jitterBuffer nil")
+            return
+        }
 
         do {
             let pcmBuffer = try codec.decode(opusData)
             jitterBuffer.push(pcmBuffer: pcmBuffer, sequenceNumber: sequenceNumber)
+            if sequenceNumber % 50 == 0 {
+                Logger.audio.info("Audio flowing: seq=\(sequenceNumber), decoded \(pcmBuffer.frameLength) frames, jb=\(jitterBuffer.bufferedCount) buffered")
+            }
         } catch {
             Logger.audio.error("Failed to decode audio packet seq=\(sequenceNumber): \(error.localizedDescription)")
             // Attempt PLC
