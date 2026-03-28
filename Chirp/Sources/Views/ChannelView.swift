@@ -371,11 +371,20 @@ struct ChannelView: View {
             PTTButtonView(
                 pttState: $pttState,
                 onPressDown: {
+                    guard appState.micPermissionGranted else {
+                        HapticsManager.shared.denied()
+                        toast = ToastItem(
+                            message: "Microphone access required. Enable in Settings.",
+                            type: .error
+                        )
+                        return
+                    }
                     HapticsManager.shared.pttDown()
                     SoundEffects.shared.playChirpBegin()
                     appState.pttEngine.startTransmitting()
                 },
                 onPressUp: {
+                    guard appState.micPermissionGranted else { return }
                     HapticsManager.shared.pttUp()
                     SoundEffects.shared.playChirpEnd()
                     appState.pttEngine.stopTransmitting()

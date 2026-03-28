@@ -175,21 +175,13 @@ final class SoundEffects {
 
     // MARK: - Playback
 
-    /// Plays a PCM buffer using a dedicated AVAudioEngine with .ambient category
-    /// so it mixes over the main .playAndRecord session without conflict.
+    /// Plays a PCM buffer. Uses the EXISTING audio session — does NOT switch
+    /// categories, which would kill the main AudioEngine during capture.
+    /// Instead, plays through the current .playAndRecord session which supports output.
     private func playBuffer(_ buffer: AVAudioPCMBuffer) {
-        // Configure audio session as ambient + mix so we don't steal the main session
-        let session = AVAudioSession.sharedInstance()
-        let previousCategory = session.category
-        let previousOptions = session.categoryOptions
+        // Stop any previous playback
+        toneEngine?.stop()
 
-        do {
-            try session.setCategory(.ambient, options: .mixWithOthers)
-        } catch {
-            // If we can't set ambient, play anyway — worst case it's a brief glitch
-        }
-
-        // Create a fresh engine each time to avoid state issues
         let engine = AVAudioEngine()
         let playerNode = AVAudioPlayerNode()
 
@@ -197,28 +189,23 @@ final class SoundEffects {
         engine.connect(playerNode, to: engine.mainMixerNode, format: buffer.format)
 
         do {
+            // Don't touch the audio session — play through whatever is active.
+            // .playAndRecord supports output, so our tones will play.
             try engine.start()
         } catch {
-            restoreAudioSession(category: previousCategory, options: previousOptions)
             return
         }
 
-        // Schedule buffer and restore session when done
-        playerNode.scheduleBuffer(buffer) {
+        self.toneEngine = engine
+        self.tonePlayerNode = playerNode
+
+        playerNode.scheduleBuffer(buffer) { [weak self] in
             Task { @MainActor in
-                engine.stop()
-                self.restoreAudioSession(category: previousCategory, options: previousOptions)
+                self?.toneEngine?.stop()
+                self?.toneEngine = nil
+                self?.tonePlayerNode = nil
             }
         }
         playerNode.play()
-    }
-
-    /// Restores the audio session to its previous category after tone playback.
-    private func restoreAudioSession(category: AVAudioSession.Category, options: AVAudioSession.CategoryOptions) {
-        do {
-            try AVAudioSession.sharedInstance().setCategory(category, options: options)
-        } catch {
-            // Best effort — the main audio engine will reconfigure on next use
-        }
     }
 }
