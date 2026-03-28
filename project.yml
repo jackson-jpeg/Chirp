@@ -44,6 +44,13 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
           - UIInterfaceOrientationPortraitUpsideDown
+        NSMicrophoneUsageDescription: "Chirp needs microphone access to transmit your voice to nearby devices."
+        NSLocalNetworkUsageDescription: "Chirp uses your local network to discover and connect to nearby devices for walkie-talkie communication."
+        NSBonjourServices:
+          - "_chirp-ptt._udp."
+        NSSupportsLiveActivities: true
+        UIBackgroundModes:
+          - audio
 
   ChirpLiveActivity:
     type: app-extension
