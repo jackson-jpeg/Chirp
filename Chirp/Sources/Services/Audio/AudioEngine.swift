@@ -113,6 +113,10 @@ final class AudioEngine {
             [weak self] buffer, _ in
             guard let self else { return }
 
+            // Always update input level from raw buffer for waveform feedback,
+            // even before converter is ready
+            self.updateInputLevelFromRawBuffer(buffer)
+
             let bufFormat = buffer.format
 
             // Skip invalid buffers (0Hz can happen on first few callbacks)
@@ -261,6 +265,39 @@ final class AudioEngine {
         }
         let rms = sqrt(sumOfSquares / Float(samples.count))
         // Amplify for better visual feedback (raw RMS is usually 0.01-0.1)
+        let amplified = min(1.0, rms * 5.0)
+        inputLevel = amplified
+    }
+
+    /// Update input level directly from a raw AVAudioPCMBuffer in any format.
+    /// Works before the converter is created — ensures waveform always responds.
+    private func updateInputLevelFromRawBuffer(_ buffer: AVAudioPCMBuffer) {
+        let frameLength = Int(buffer.frameLength)
+        guard frameLength > 0 else { return }
+
+        var rms: Float = 0
+
+        if let floatData = buffer.floatChannelData {
+            // Float32 format
+            let samples = floatData[0]
+            var sumOfSquares: Float = 0
+            for i in 0..<frameLength {
+                sumOfSquares += samples[i] * samples[i]
+            }
+            rms = sqrt(sumOfSquares / Float(frameLength))
+        } else if let int16Data = buffer.int16ChannelData {
+            // Int16 format
+            let samples = int16Data[0]
+            var sumOfSquares: Float = 0
+            for i in 0..<frameLength {
+                let normalized = Float(samples[i]) / Float(Int16.max)
+                sumOfSquares += normalized * normalized
+            }
+            rms = sqrt(sumOfSquares / Float(frameLength))
+        } else {
+            return
+        }
+
         let amplified = min(1.0, rms * 5.0)
         inputLevel = amplified
     }
