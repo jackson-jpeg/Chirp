@@ -1,23 +1,49 @@
 import SwiftUI
 
 struct SignalStrengthIndicator: View {
-    var level: Int // 0-3
+    var level: Int // 0-4
+
+    @State private var animatedLevel: Int = 0
 
     private let barCount = 4
-    private let barSpacing: CGFloat = 2
-    private let barWidth: CGFloat = 4
+    private let barSpacing: CGFloat = 1.5
+    private let barWidth: CGFloat = 3.5
+    private let maxBarHeight: CGFloat = 14
+
+    private let activeColor = Color(hex: 0xFFB800)   // Amber
+    private let inactiveColor = Color.white.opacity(0.15)
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: barSpacing) {
-            ForEach(0..<barCount, id: \.self) { index in
-                let barHeight: CGFloat = CGFloat(index + 1) * 4
-                let isFilled = index < level
+        VStack(spacing: 2) {
+            HStack(alignment: .bottom, spacing: barSpacing) {
+                ForEach(0..<barCount, id: \.self) { index in
+                    let fraction = CGFloat(index + 1) / CGFloat(barCount)
+                    let barHeight = maxBarHeight * fraction
+                    let isFilled = index < animatedLevel
 
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(isFilled ? Color(hex: 0x30D158) : Color.gray.opacity(0.3))
-                    .frame(width: barWidth, height: barHeight)
+                    RoundedRectangle(cornerRadius: 1.5)
+                        .fill(isFilled ? activeColor : inactiveColor)
+                        .frame(width: barWidth, height: barHeight)
+                        .animation(.spring(response: 0.35, dampingFraction: 0.7).delay(Double(index) * 0.05), value: animatedLevel)
+                }
+            }
+            .frame(height: maxBarHeight, alignment: .bottom)
+        }
+        .onAppear {
+            animatedLevel = level.clamped(to: 0...barCount)
+        }
+        .onChange(of: level) { _, newLevel in
+            withAnimation {
+                animatedLevel = newLevel.clamped(to: 0...barCount)
             }
         }
-        .frame(height: CGFloat(barCount) * 4)
+    }
+}
+
+// MARK: - Clamped helper
+
+private extension Int {
+    func clamped(to range: ClosedRange<Int>) -> Int {
+        Swift.min(Swift.max(self, range.lowerBound), range.upperBound)
     }
 }

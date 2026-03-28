@@ -8,11 +8,22 @@ enum ConnectionStatus {
     var text: String {
         switch self {
         case .connected(let count):
-            return count == 1 ? "Connected to 1 peer" : "Connected to \(count) peers"
+            return count == 1 ? "1 peer" : "\(count) peers"
         case .searching:
-            return "Searching for devices..."
+            return "Searching..."
         case .disconnected:
-            return "No devices paired"
+            return "No peers"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .connected:
+            return "antenna.radiowaves.left.and.right"
+        case .searching:
+            return "magnifyingglass"
+        case .disconnected:
+            return "antenna.radiowaves.left.and.right.slash"
         }
     }
 
@@ -31,50 +42,85 @@ enum ConnectionStatus {
 struct StatusPillView: View {
     var status: ConnectionStatus
 
+    @State private var pulseScale: CGFloat = 1.0
     @State private var pulseOpacity: Double = 1.0
+    @State private var previousStatus: String = ""
 
     var body: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(status.dotColor)
-                .frame(width: 8, height: 8)
-                .opacity(pulseOpacity)
+        HStack(spacing: 6) {
+            // Animated status dot
+            ZStack {
+                // Pulse ring behind dot (searching only)
+                if case .searching = status {
+                    Circle()
+                        .fill(status.dotColor.opacity(0.3))
+                        .frame(width: 8, height: 8)
+                        .scaleEffect(pulseScale)
+                        .opacity(pulseOpacity)
+                }
+
+                Circle()
+                    .fill(status.dotColor)
+                    .frame(width: 6, height: 6)
+                    .shadow(color: status.dotColor.opacity(0.5), radius: 3)
+            }
+            .frame(width: 12, height: 12)
 
             Text(status.text)
-                .font(.system(.caption, design: .default, weight: .medium))
+                .font(.system(size: 12, weight: .medium, design: .rounded))
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .contentTransition(.numericText())
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
         .background(
             Capsule()
                 .fill(.ultraThinMaterial)
                 .overlay(
                     Capsule()
-                        .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.15),
+                                    Color.white.opacity(0.05)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ),
+                            lineWidth: 0.5
+                        )
                 )
+                .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
         )
+        .animation(.easeInOut(duration: 0.3), value: statusKey)
         .onAppear {
-            if case .searching = status {
-                withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
-                    pulseOpacity = 0.3
-                }
-            }
+            startPulseIfNeeded()
         }
-        .onChange(of: statusKey) { _, _ in
-            pulseOpacity = 1.0
-            if case .searching = status {
-                withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
-                    pulseOpacity = 0.3
-                }
-            }
+        .onChange(of: statusKey) { _, newKey in
+            resetPulse()
+            startPulseIfNeeded()
         }
     }
 
-    // Simple key to detect status type changes
+    // MARK: - Pulse Animation
+
+    private func startPulseIfNeeded() {
+        guard case .searching = status else { return }
+        withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
+            pulseScale = 2.2
+            pulseOpacity = 0.0
+        }
+    }
+
+    private func resetPulse() {
+        pulseScale = 1.0
+        pulseOpacity = 1.0
+    }
+
     private var statusKey: String {
         switch status {
-        case .connected: return "connected"
+        case .connected(let count): return "connected-\(count)"
         case .searching: return "searching"
         case .disconnected: return "disconnected"
         }

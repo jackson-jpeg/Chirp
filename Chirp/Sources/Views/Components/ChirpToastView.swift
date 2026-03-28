@@ -9,7 +9,7 @@ enum ToastType {
     var color: Color {
         switch self {
         case .info:
-            return Color(hex: 0xFFB800)
+            return Color(hex: 0x0A84FF)
         case .success:
             return Color(hex: 0x30D158)
         case .warning:
@@ -36,53 +36,142 @@ enum ToastType {
 struct ChirpToastView: View {
     let message: String
     let type: ToastType
+    let duration: TimeInterval
     var onDismiss: () -> Void = {}
 
     @State private var isVisible = false
+    @State private var dragOffset: CGFloat = 0
+    @State private var progress: CGFloat = 0.0
+
+    init(message: String, type: ToastType, duration: TimeInterval = 3.0, onDismiss: @escaping () -> Void = {}) {
+        self.message = message
+        self.type = type
+        self.duration = duration
+        self.onDismiss = onDismiss
+    }
 
     var body: some View {
         VStack {
             if isVisible {
-                HStack(spacing: 10) {
-                    Image(systemName: type.icon)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(type.color)
-
-                    Text(message)
-                        .font(.system(.subheadline, weight: .medium))
-                        .foregroundStyle(.white)
-
-                    Spacer()
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(.ultraThinMaterial)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(type.color.opacity(0.3), lineWidth: 0.5)
-                        )
-                )
-                .padding(.horizontal, 16)
-                .transition(.move(edge: .top).combined(with: .opacity))
+                toastContent
+                    .offset(y: dragOffset)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                if value.translation.height < 0 {
+                                    dragOffset = value.translation.height
+                                }
+                            }
+                            .onEnded { value in
+                                if value.translation.height < -30 {
+                                    dismiss()
+                                } else {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        dragOffset = 0
+                                    }
+                                }
+                            }
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
 
             Spacer()
         }
         .onAppear {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) {
                 isVisible = true
             }
 
-            Task {
-                try? await Task.sleep(for: .seconds(3))
-                withAnimation(.easeOut(duration: 0.3)) {
-                    isVisible = false
-                }
-                try? await Task.sleep(for: .seconds(0.3))
-                onDismiss()
+            // Start progress bar animation
+            withAnimation(.linear(duration: duration)) {
+                progress = 1.0
             }
+
+            // Auto-dismiss
+            Task {
+                try? await Task.sleep(for: .seconds(duration))
+                dismiss()
+            }
+        }
+    }
+
+    // MARK: - Toast Content
+
+    private var toastContent: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                // Icon with color
+                Image(systemName: type.icon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(type.color)
+                    .shadow(color: type.color.opacity(0.4), radius: 4)
+
+                // Message
+                Text(message)
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+
+                Spacer(minLength: 4)
+
+                // Close button
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.5))
+                        .frame(width: 22, height: 22)
+                        .background(Circle().fill(Color.white.opacity(0.1)))
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+
+            // Progress bar at bottom
+            GeometryReader { geometry in
+                Rectangle()
+                    .fill(type.color.opacity(0.5))
+                    .frame(
+                        width: geometry.size.width * (1.0 - progress),
+                        height: 2
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(height: 2)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    type.color.opacity(0.3),
+                                    Color.white.opacity(0.08)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.5
+                        )
+                )
+                .shadow(color: .black.opacity(0.3), radius: 12, y: 6)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: - Dismiss
+
+    private func dismiss() {
+        withAnimation(.easeOut(duration: 0.25)) {
+            isVisible = false
+        }
+        Task {
+            try? await Task.sleep(for: .seconds(0.25))
+            onDismiss()
         }
     }
 }

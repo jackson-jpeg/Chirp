@@ -6,23 +6,49 @@ struct PTTButtonView: View {
     var onPressUp: () -> Void
 
     @State private var isPressed = false
-    @State private var pulseScale: CGFloat = 1.0
-    @State private var waveOpacity: Double = 0.0
+
+    // Transmit ring animations
+    @State private var ring1Scale: CGFloat = 1.0
+    @State private var ring1Opacity: Double = 0.0
+    @State private var ring2Scale: CGFloat = 1.0
+    @State private var ring2Opacity: Double = 0.0
+    @State private var ring3Scale: CGFloat = 1.0
+    @State private var ring3Opacity: Double = 0.0
+
+    // Receiving ring animations (contract inward)
+    @State private var rxRing1Scale: CGFloat = 1.6
+    @State private var rxRing1Opacity: Double = 0.0
+    @State private var rxRing2Scale: CGFloat = 1.6
+    @State private var rxRing2Opacity: Double = 0.0
+    @State private var rxRing3Scale: CGFloat = 1.6
+    @State private var rxRing3Opacity: Double = 0.0
+
+    // Idle breathing glow
+    @State private var breatheScale: CGFloat = 1.0
+    @State private var breatheOpacity: Double = 0.3
+
+    // Denied state
     @State private var shakeOffset: CGFloat = 0.0
     @State private var deniedFlash = false
 
-    private let buttonSize: CGFloat = 120
+    // Progress ring for transmit duration
+    @State private var transmitProgress: CGFloat = 0.0
+    @State private var transmitTimer: Timer?
+
+    private let buttonSize: CGFloat = 140
+
+    // MARK: - Computed Properties
 
     private var primaryColor: Color {
         switch pttState {
         case .idle:
-            return Color(hex: 0xFFB800)
+            return Color(hex: 0xFFB800) // Amber
         case .transmitting:
-            return Color(hex: 0xFF3B30)
+            return Color(hex: 0xFF3B30) // Red
         case .receiving:
-            return Color(hex: 0x30D158)
+            return Color(hex: 0x30D158) // Green
         case .denied:
-            return Color(hex: 0xFF3B30)
+            return Color(hex: 0xFF3B30) // Red
         }
     }
 
@@ -44,161 +70,428 @@ struct PTTButtonView: View {
         }
     }
 
+    private var isIdle: Bool {
+        if case .idle = pttState { return true }
+        return false
+    }
+
+    private var isTransmitting: Bool {
+        if case .transmitting = pttState { return true }
+        return false
+    }
+
+    private var isReceiving: Bool {
+        if case .receiving = pttState { return true }
+        return false
+    }
+
+    private var isDenied: Bool {
+        if case .denied = pttState { return true }
+        return false
+    }
+
+    // MARK: - Body
+
     var body: some View {
-        ZStack {
-            // Outer pulse ring (transmitting)
-            if pttState == .transmitting {
-                Circle()
-                    .stroke(primaryColor.opacity(0.3), lineWidth: 2)
-                    .frame(width: buttonSize + 40, height: buttonSize + 40)
-                    .scaleEffect(pulseScale)
-                    .opacity(2.0 - Double(pulseScale))
+        VStack(spacing: 16) {
+            ZStack {
+                // --- Idle breathing glow ---
+                if isIdle {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    Color(hex: 0xFFB800).opacity(breatheOpacity * 0.5),
+                                    Color(hex: 0xFFB800).opacity(0)
+                                ],
+                                center: .center,
+                                startRadius: buttonSize / 3,
+                                endRadius: buttonSize * 0.55
+                            )
+                        )
+                        .frame(width: buttonSize + 60, height: buttonSize + 60)
+                        .scaleEffect(breatheScale)
+                }
 
-                Circle()
-                    .stroke(primaryColor.opacity(0.2), lineWidth: 1.5)
-                    .frame(width: buttonSize + 70, height: buttonSize + 70)
-                    .scaleEffect(pulseScale * 0.9)
-                    .opacity(2.0 - Double(pulseScale))
-            }
+                // --- Transmit: expanding radio wave rings ---
+                if isTransmitting {
+                    transmitRing(scale: ring1Scale, opacity: ring1Opacity, lineWidth: 3)
+                    transmitRing(scale: ring2Scale, opacity: ring2Opacity, lineWidth: 2.5)
+                    transmitRing(scale: ring3Scale, opacity: ring3Opacity, lineWidth: 2)
+                }
 
-            // Receiving glow
-            if case .receiving = pttState {
+                // --- Receiving: contracting wave rings ---
+                if isReceiving {
+                    receiveRing(scale: rxRing1Scale, opacity: rxRing1Opacity, lineWidth: 3)
+                    receiveRing(scale: rxRing2Scale, opacity: rxRing2Opacity, lineWidth: 2.5)
+                    receiveRing(scale: rxRing3Scale, opacity: rxRing3Opacity, lineWidth: 2)
+                }
+
+                // --- Progress ring (transmit live indicator) ---
+                if isTransmitting {
+                    Circle()
+                        .trim(from: 0, to: transmitProgress)
+                        .stroke(
+                            primaryColor.opacity(0.9),
+                            style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                        )
+                        .frame(width: buttonSize + 18, height: buttonSize + 18)
+                        .rotationEffect(.degrees(-90))
+                }
+
+                // --- Thin ring indicator (always visible) ---
+                Circle()
+                    .stroke(
+                        primaryColor.opacity(isTransmitting ? 0.6 : 0.25),
+                        lineWidth: isTransmitting ? 2 : 1.5
+                    )
+                    .frame(width: buttonSize + 18, height: buttonSize + 18)
+
+                // --- Outer shadow for depth ---
                 Circle()
                     .fill(primaryColor.opacity(0.15))
-                    .frame(width: buttonSize + 50, height: buttonSize + 50)
-                    .blur(radius: 20)
-                    .scaleEffect(pulseScale)
-            }
+                    .frame(width: buttonSize + 10, height: buttonSize + 10)
+                    .blur(radius: 16)
 
-            // Shadow base
-            Circle()
-                .fill(primaryColor.opacity(0.2))
-                .frame(width: buttonSize + 8, height: buttonSize + 8)
-                .blur(radius: 12)
-
-            // Main button
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            primaryColor.opacity(isPressed ? 0.9 : 0.7),
-                            primaryColor.opacity(isPressed ? 0.7 : 0.4),
-                            primaryColor.opacity(0.15)
-                        ],
-                        center: .center,
-                        startRadius: 5,
-                        endRadius: buttonSize / 2
-                    )
-                )
-                .frame(width: buttonSize, height: buttonSize)
-                .overlay(
+                // --- Main button body: CHUNKY INDUSTRIAL ---
+                ZStack {
+                    // Base layer — dark ring for depth
                     Circle()
-                        .stroke(primaryColor, lineWidth: isPressed ? 3 : 2)
-                )
-                .overlay(
+                        .fill(Color.black.opacity(0.5))
+                        .frame(width: buttonSize + 4, height: buttonSize + 4)
+
+                    // Button face
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    primaryColor.opacity(isPressed ? 0.85 : 0.65),
+                                    primaryColor.opacity(isPressed ? 0.6 : 0.35),
+                                    primaryColor.opacity(0.12)
+                                ],
+                                center: .init(x: 0.45, y: 0.4), // Slight off-center for realism
+                                startRadius: 5,
+                                endRadius: buttonSize / 2
+                            )
+                        )
+                        .frame(width: buttonSize, height: buttonSize)
+
+                    // Outer border — thick industrial ring
+                    Circle()
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    primaryColor.opacity(0.9),
+                                    primaryColor.opacity(0.4),
+                                    primaryColor.opacity(0.7)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: isPressed ? 4 : 3
+                        )
+                        .frame(width: buttonSize, height: buttonSize)
+
+                    // Inner shadow for depth (dark ring inside)
+                    Circle()
+                        .stroke(
+                            RadialGradient(
+                                colors: [
+                                    Color.black.opacity(0.4),
+                                    Color.clear
+                                ],
+                                center: .center,
+                                startRadius: buttonSize / 2 - 15,
+                                endRadius: buttonSize / 2
+                            ),
+                            lineWidth: 12
+                        )
+                        .frame(width: buttonSize - 10, height: buttonSize - 10)
+
+                    // Top highlight — convex look
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    primaryColor.opacity(isPressed ? 0.1 : 0.3),
+                                    Color.clear
+                                ],
+                                startPoint: .top,
+                                endPoint: .center
+                            )
+                        )
+                        .frame(width: buttonSize - 20, height: buttonSize - 20)
+
                     // Denied flash overlay
-                    Circle()
-                        .fill(Color.red.opacity(deniedFlash ? 0.5 : 0))
-                )
-
-            // Icon
-            Image(systemName: iconName)
-                .font(.system(size: 36, weight: .bold))
-                .foregroundStyle(primaryColor)
-                .shadow(color: primaryColor.opacity(0.5), radius: 8)
-
-            // Radio wave lines (transmitting)
-            if pttState == .transmitting {
-                ForEach(0..<3, id: \.self) { i in
-                    RadioWaveArc(index: i)
-                        .stroke(primaryColor.opacity(waveOpacity - Double(i) * 0.2), lineWidth: 2)
-                        .frame(width: buttonSize + CGFloat(i + 1) * 20,
-                               height: buttonSize + CGFloat(i + 1) * 20)
+                    if deniedFlash {
+                        Circle()
+                            .fill(Color.red.opacity(0.7))
+                            .frame(width: buttonSize, height: buttonSize)
+                    }
                 }
+
+                // --- Icon ---
+                Image(systemName: iconName)
+                    .font(.system(size: 40, weight: .heavy))
+                    .foregroundStyle(primaryColor)
+                    .shadow(color: primaryColor.opacity(0.6), radius: 10)
+                    .shadow(color: primaryColor.opacity(0.3), radius: 4)
+            }
+            .frame(width: buttonSize + 80, height: buttonSize + 80)
+            .scaleEffect(isPressed ? 0.90 : 1.0)
+            .offset(x: shakeOffset)
+            .animation(.spring(response: 0.15, dampingFraction: 0.55), value: isPressed)
+            .allowsHitTesting(canInteract)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        guard canInteract, !isPressed else { return }
+                        isPressed = true
+                        onPressDown()
+                    }
+                    .onEnded { _ in
+                        guard isPressed else { return }
+                        isPressed = false
+                        onPressUp()
+                    }
+            )
+
+            // --- "HOLD TO TALK" label ---
+            if isIdle {
+                Text("HOLD TO TALK")
+                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .tracking(3)
+                    .foregroundStyle(Color(hex: 0xFFB800).opacity(0.5))
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+            } else if isTransmitting {
+                Text("LIVE")
+                    .font(.system(size: 13, weight: .heavy, design: .monospaced))
+                    .tracking(4)
+                    .foregroundStyle(Color(hex: 0xFF3B30).opacity(0.8))
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+            } else if isReceiving {
+                Text("RECEIVING")
+                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .tracking(3)
+                    .foregroundStyle(Color(hex: 0x30D158).opacity(0.7))
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
         }
-        .scaleEffect(isPressed ? 0.92 : 1.0)
-        .offset(x: shakeOffset)
-        .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)
-        .allowsHitTesting(canInteract)
-        .gesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    guard canInteract, !isPressed else { return }
-                    isPressed = true
-                    onPressDown()
-                }
-                .onEnded { _ in
-                    guard isPressed else { return }
-                    isPressed = false
-                    onPressUp()
-                }
-        )
+        .animation(.easeInOut(duration: 0.2), value: pttState)
         .onChange(of: pttState) { _, newValue in
-            switch newValue {
-            case .transmitting:
-                withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
-                    pulseScale = 1.3
-                    waveOpacity = 0.8
-                }
-            case .receiving:
-                withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
-                    pulseScale = 1.15
-                }
-            case .denied:
-                triggerDenied()
-            case .idle:
-                withAnimation(.easeOut(duration: 0.3)) {
-                    pulseScale = 1.0
-                    waveOpacity = 0.0
+            handleStateChange(newValue)
+        }
+        .onAppear {
+            startIdleBreathing()
+        }
+    }
+
+    // MARK: - Ring Subviews
+
+    @ViewBuilder
+    private func transmitRing(scale: CGFloat, opacity: Double, lineWidth: CGFloat) -> some View {
+        Circle()
+            .stroke(primaryColor.opacity(opacity), lineWidth: lineWidth)
+            .frame(width: buttonSize + 20, height: buttonSize + 20)
+            .scaleEffect(scale)
+    }
+
+    @ViewBuilder
+    private func receiveRing(scale: CGFloat, opacity: Double, lineWidth: CGFloat) -> some View {
+        Circle()
+            .stroke(primaryColor.opacity(opacity), lineWidth: lineWidth)
+            .frame(width: buttonSize + 20, height: buttonSize + 20)
+            .scaleEffect(scale)
+    }
+
+    // MARK: - State Change Handler
+
+    private func handleStateChange(_ newState: PTTState) {
+        switch newState {
+        case .idle:
+            stopTransmitAnimations()
+            stopReceiveAnimations()
+            startIdleBreathing()
+
+        case .transmitting:
+            stopIdleBreathing()
+            stopReceiveAnimations()
+            startTransmitAnimations()
+            startTransmitProgress()
+
+        case .receiving:
+            stopIdleBreathing()
+            stopTransmitAnimations()
+            startReceiveAnimations()
+
+        case .denied:
+            stopIdleBreathing()
+            stopTransmitAnimations()
+            triggerDenied()
+        }
+    }
+
+    // MARK: - Idle Breathing
+
+    private func startIdleBreathing() {
+        breatheScale = 1.0
+        breatheOpacity = 0.3
+        withAnimation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true)) {
+            breatheScale = 1.08
+            breatheOpacity = 0.6
+        }
+    }
+
+    private func stopIdleBreathing() {
+        withAnimation(.easeOut(duration: 0.2)) {
+            breatheScale = 1.0
+            breatheOpacity = 0.0
+        }
+    }
+
+    // MARK: - Transmit Expanding Rings
+
+    private func startTransmitAnimations() {
+        // Reset
+        ring1Scale = 1.0; ring1Opacity = 0.0
+        ring2Scale = 1.0; ring2Opacity = 0.0
+        ring3Scale = 1.0; ring3Opacity = 0.0
+
+        // Ring 1 — immediate
+        withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) {
+            ring1Scale = 2.0
+            ring1Opacity = 0.0
+        }
+        withAnimation(.easeIn(duration: 0.15)) {
+            ring1Opacity = 0.7
+        }
+
+        // Ring 2 — 0.35s delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) {
+                ring2Scale = 2.0
+                ring2Opacity = 0.0
+            }
+            withAnimation(.easeIn(duration: 0.15)) {
+                ring2Opacity = 0.6
+            }
+        }
+
+        // Ring 3 — 0.7s delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+            withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) {
+                ring3Scale = 2.0
+                ring3Opacity = 0.0
+            }
+            withAnimation(.easeIn(duration: 0.15)) {
+                ring3Opacity = 0.5
+            }
+        }
+    }
+
+    private func stopTransmitAnimations() {
+        withAnimation(.easeOut(duration: 0.2)) {
+            ring1Scale = 1.0; ring1Opacity = 0.0
+            ring2Scale = 1.0; ring2Opacity = 0.0
+            ring3Scale = 1.0; ring3Opacity = 0.0
+            transmitProgress = 0.0
+        }
+        transmitTimer?.invalidate()
+        transmitTimer = nil
+    }
+
+    // MARK: - Transmit Progress Ring
+
+    private func startTransmitProgress() {
+        transmitProgress = 0.0
+        // Fill the ring over ~30 seconds (arbitrary max transmit time visual)
+        transmitTimer?.invalidate()
+        transmitTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            Task { @MainActor in
+                let increment: CGFloat = 0.1 / 30.0 // Full ring in 30s
+                if transmitProgress < 1.0 {
+                    withAnimation(.linear(duration: 0.1)) {
+                        transmitProgress = min(transmitProgress + increment, 1.0)
+                    }
                 }
             }
         }
     }
 
+    // MARK: - Receive Contracting Rings
+
+    private func startReceiveAnimations() {
+        // Reset — start large
+        rxRing1Scale = 1.8; rxRing1Opacity = 0.0
+        rxRing2Scale = 1.8; rxRing2Opacity = 0.0
+        rxRing3Scale = 1.8; rxRing3Opacity = 0.0
+
+        // Ring 1 — contract inward
+        withAnimation(.easeIn(duration: 1.2).repeatForever(autoreverses: false)) {
+            rxRing1Scale = 1.0
+            rxRing1Opacity = 0.0
+        }
+        withAnimation(.easeIn(duration: 0.15)) {
+            rxRing1Opacity = 0.6
+        }
+
+        // Ring 2 — 0.3s delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation(.easeIn(duration: 1.2).repeatForever(autoreverses: false)) {
+                rxRing2Scale = 1.0
+                rxRing2Opacity = 0.0
+            }
+            withAnimation(.easeIn(duration: 0.15)) {
+                rxRing2Opacity = 0.5
+            }
+        }
+
+        // Ring 3 — 0.6s delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            withAnimation(.easeIn(duration: 1.2).repeatForever(autoreverses: false)) {
+                rxRing3Scale = 1.0
+                rxRing3Opacity = 0.0
+            }
+            withAnimation(.easeIn(duration: 0.15)) {
+                rxRing3Opacity = 0.4
+            }
+        }
+    }
+
+    private func stopReceiveAnimations() {
+        withAnimation(.easeOut(duration: 0.2)) {
+            rxRing1Scale = 1.6; rxRing1Opacity = 0.0
+            rxRing2Scale = 1.6; rxRing2Opacity = 0.0
+            rxRing3Scale = 1.6; rxRing3Opacity = 0.0
+        }
+    }
+
+    // MARK: - Denied Animation
+
     private func triggerDenied() {
+        // Flash red hard
         deniedFlash = true
-        withAnimation(.default) {
+        withAnimation(.easeOut(duration: 0.3)) {
             deniedFlash = false
         }
 
-        // Shake animation
-        withAnimation(.spring(response: 0.08, dampingFraction: 0.3)) {
-            shakeOffset = 10
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-            withAnimation(.spring(response: 0.08, dampingFraction: 0.3)) {
-                shakeOffset = -8
-            }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
-            withAnimation(.spring(response: 0.08, dampingFraction: 0.3)) {
-                shakeOffset = 5
-            }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.24) {
-            withAnimation(.spring(response: 0.1, dampingFraction: 0.5)) {
-                shakeOffset = 0
+        // Aggressive shake — more dramatic than before
+        let shakeSequence: [(CGFloat, Double)] = [
+            (14, 0.0),
+            (-12, 0.06),
+            (10, 0.12),
+            (-8, 0.18),
+            (5, 0.24),
+            (-3, 0.30),
+            (0, 0.36)
+        ]
+
+        for (offset, delay) in shakeSequence {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                withAnimation(.spring(response: 0.06, dampingFraction: 0.25)) {
+                    shakeOffset = offset
+                }
             }
         }
     }
 }
-
-// MARK: - Radio Wave Arc Shape
-
-private struct RadioWaveArc: Shape {
-    let index: Int
-
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        let radius = min(rect.width, rect.height) / 2
-        path.addArc(center: center,
-                     radius: radius,
-                     startAngle: .degrees(-30),
-                     endAngle: .degrees(30),
-                     clockwise: false)
-        return path
-    }
-}
-
