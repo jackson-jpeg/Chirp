@@ -10,6 +10,7 @@ struct ChannelView: View {
     @State private var toast: ToastItem?
     @State private var radarPhase: CGFloat = 0
     @State private var statusPulse: Bool = false
+    @State private var transmitStartTime: Date?
 
     private let peerGridColumns = [
         GridItem(.adaptive(minimum: 70, maximum: 90), spacing: 16)
@@ -221,17 +222,22 @@ struct ChannelView: View {
                     .foregroundStyle(Constants.Colors.amber)
 
             case .transmitting:
-                TimelineView(.animation(minimumInterval: 1.0 / 10.0)) { timeline in
+                TimelineView(.animation(minimumInterval: 0.1)) { timeline in
                     let time = timeline.date.timeIntervalSinceReferenceDate
                     let pulse = sin(time * 4.0) * 0.4 + 0.6
+                    let elapsed = transmitStartTime.map { timeline.date.timeIntervalSince($0) } ?? 0
+                    let seconds = Int(elapsed) % 60
+                    let minutes = Int(elapsed) / 60
                     HStack(spacing: 8) {
                         Circle()
                             .fill(Constants.Colors.hotRed)
                             .frame(width: 7, height: 7)
                             .opacity(pulse)
-                        Text("Transmitting...")
-                            .font(.system(.caption, weight: .heavy))
+
+                        Text(String(format: "%d:%02d", minutes, seconds))
+                            .font(.system(.caption, design: .monospaced, weight: .bold))
                             .foregroundStyle(Constants.Colors.hotRed)
+                            .contentTransition(.numericText())
 
                         Text("LIVE")
                             .font(.system(size: 9, weight: .black))
@@ -388,12 +394,14 @@ struct ChannelView: View {
                     }
                     HapticsManager.shared.pttDown()
                     SoundEffects.shared.playChirpBegin()
+                    transmitStartTime = Date()
                     appState.pttEngine.startTransmitting()
                 },
                 onPressUp: {
                     guard appState.micPermissionGranted else { return }
                     HapticsManager.shared.pttUp()
                     SoundEffects.shared.playChirpEnd()
+                    transmitStartTime = nil
                     appState.pttEngine.stopTransmitting()
                 }
             )

@@ -124,38 +124,23 @@ final class AudioEngine {
 
         let inputNode = engine.inputNode
 
-        // Force the input node to initialize by accessing it after engine start.
-        // On real devices, outputFormat can return 0Hz until the node is "touched".
-        // Using inputNode.inputFormat(forBus: 0) or installing with nil format
-        // forces initialization.
-        let hwFormat = inputNode.outputFormat(forBus: 0)
-        Logger.audio.info("Input node format: \(hwFormat.sampleRate)Hz/\(hwFormat.channelCount)ch")
+        // Install tap requesting our TARGET format directly.
+        // iOS handles hardware→target conversion internally.
+        // This avoids the 0Hz format issue when using nil format.
+        // No manual AVAudioConverter needed — buffers arrive as 16kHz mono Int16.
+        converter = nil
 
-        // Install tap with nil format — iOS delivers in hardware native format.
-        // We create the converter lazily in the first callback.
-        let target = self.targetFormat
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: nil) {
+        inputNode.installTap(onBus: 0, bufferSize: AVAudioFrameCount(samplesPerFrame), format: targetFormat) {
             [weak self] buffer, _ in
             guard let self else { return }
 
-            // Always update input level from raw buffer for waveform feedback,
-            // even before converter is ready
             self.updateInputLevelFromRawBuffer(buffer)
 
-            let bufFormat = buffer.format
-
-            // Skip invalid buffers (0Hz can happen on first few callbacks)
-            guard bufFormat.sampleRate > 0, buffer.frameLength > 0 else { return }
-
-            // Lazily create converter on first valid buffer
-            if self.converter == nil && (bufFormat.sampleRate != Constants.Opus.sampleRate || bufFormat.channelCount != 1) {
-                self.converter = AVAudioConverter(from: bufFormat, to: target)
-                Logger.audio.info("Converter: \(bufFormat.sampleRate)Hz/\(bufFormat.channelCount)ch -> 16000Hz/1ch")
-            }
+            guard buffer.frameLength > 0 else { return }
             self.processInputBuffer(buffer)
         }
 
-        Logger.audio.info("Capture started")
+        Logger.audio.info("Capture started — tap format: \(self.targetFormat.sampleRate)Hz/\(self.targetFormat.channelCount)ch")
     }
 
     func stopCapture() {
