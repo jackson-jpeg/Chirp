@@ -163,7 +163,7 @@ final class AudioEngine {
 
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: tapFormat) {
             [weak self] buffer, _ in
-            guard let self else { return }
+            guard let self, self.isCapturing else { return }
             guard buffer.frameLength > 0 else { return }
 
             self.updateInputLevelFromRawBuffer(buffer)
@@ -176,10 +176,12 @@ final class AudioEngine {
     func stopCapture() {
         guard let engine, isCapturing else { return }
 
-        engine.inputNode.removeTap(onBus: 0)
+        // Set flag FIRST so the tap callback exits quickly
         isCapturing = false
-        captureAccumulator.removeAll()
+        // Clear converter BEFORE removing tap to avoid deadlock
         converter = nil
+        engine.inputNode.removeTap(onBus: 0)
+        captureAccumulator.removeAll()
 
         Logger.audio.info("Capture stopped")
     }
@@ -223,42 +225,52 @@ final class AudioEngine {
     // MARK: - Private
 
     private func processInputBuffer(_ buffer: AVAudioPCMBuffer) {
-        let pcmBuffer: AVAudioPCMBuffer
+        guard buffer.frameLength > 0 else { return }
 
         if let converter {
-            // Downsample to target format
+            // Convert from hardware format to 16kHz mono Int16.
+            // Output capacity: input frames / sample rate ratio + padding
+            let ratio = Constants.Opus.sampleRate / buffer.format.sampleRate
+            let outputFrames = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 1
+
             guard let convertedBuffer = AVAudioPCMBuffer(
                 pcmFormat: targetFormat,
-                frameCapacity: AVAudioFrameCount(samplesPerFrame * 2)
+                frameCapacity: max(outputFrames, AVAudioFrameCount(samplesPerFrame))
             ) else { return }
 
+            // Simple convert (not the input-block version which can deadlock)
             var error: NSError?
-            nonisolated(unsafe) var hasData = true
-            nonisolated(unsafe) let inputBuffer = buffer
-            let inputBlock: AVAudioConverterInputBlock = { _, outStatus in
-                if hasData {
+            nonisolated(unsafe) var consumed = false
+            nonisolated(unsafe) let src = buffer
+            let status = converter.convert(to: convertedBuffer, error: &error) { _, outStatus in
+                if !consumed {
+                    consumed = true
                     outStatus.pointee = .haveData
-                    hasData = false
-                    return inputBuffer
+                    return src
                 }
-                outStatus.pointee = .noDataNow
+                outStatus.pointee = .endOfStream
                 return nil
             }
 
-            let status = converter.convert(to: convertedBuffer, error: &error, withInputFrom: inputBlock)
-            guard status != .error, error == nil else {
-                Logger.audio.error("Conversion failed: \(error?.localizedDescription ?? "unknown")")
+            guard status != .error, error == nil, convertedBuffer.frameLength > 0 else {
                 return
             }
-            pcmBuffer = convertedBuffer
-        } else {
-            pcmBuffer = buffer
-        }
 
-        // Extract Int16 samples
-        guard let channelData = pcmBuffer.int16ChannelData else { return }
-        let frameLength = Int(pcmBuffer.frameLength)
-        let samples = Array(UnsafeBufferPointer(start: channelData[0], count: frameLength))
+            // Extract Int16 samples from converted buffer
+            guard let channelData = convertedBuffer.int16ChannelData else { return }
+            let frameLength = Int(convertedBuffer.frameLength)
+            let samples = Array(UnsafeBufferPointer(start: channelData[0], count: frameLength))
+            accumulateAndEncode(samples)
+        } else {
+            // Already in target format
+            guard let channelData = buffer.int16ChannelData else { return }
+            let frameLength = Int(buffer.frameLength)
+            let samples = Array(UnsafeBufferPointer(start: channelData[0], count: frameLength))
+            accumulateAndEncode(samples)
+        }
+    }
+
+    private func accumulateAndEncode(_ samples: [Int16]) {
 
         // Update input level
         updateInputLevel(samples: samples)
