@@ -31,8 +31,8 @@ final class AudioEngine {
         )!
     }
 
-    func setup() throws {
-        try AudioSessionManager.configure()
+    func setup(echoCancel: Bool = false) throws {
+        try AudioSessionManager.configure(echoCancel: echoCancel)
 
         let codec = try OpusCodec()
         let jitterBuffer = JitterBuffer()
