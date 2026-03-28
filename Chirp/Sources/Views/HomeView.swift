@@ -262,7 +262,7 @@ struct HomeView: View {
                     .textCase(.uppercase)
                     .tracking(0.5)
 
-                Text(appState.localPeerName)
+                Text(appState.callsign)
                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                     .foregroundStyle(.white)
             }

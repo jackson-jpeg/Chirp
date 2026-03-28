@@ -31,7 +31,7 @@ struct SettingsView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(appState.localPeerName)
+                        Text(appState.callsign)
                             .font(.system(.body, weight: .semibold))
                             .foregroundStyle(.white)
 
@@ -65,6 +65,25 @@ struct SettingsView: View {
                             )
                     }
                     .buttonStyle(.plain)
+                }
+                .listRowBackground(Color.white.opacity(0.05))
+
+                // Editable callsign
+                HStack {
+                    Image(systemName: "pencil")
+                        .foregroundStyle(Color(hex: 0xFFB800))
+                        .frame(width: 20)
+
+                    Text("Callsign")
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    TextField("Your name", text: Bindable(appState).callsign)
+                        .multilineTextAlignment(.trailing)
+                        .foregroundStyle(.white)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.words)
                 }
                 .listRowBackground(Color.white.opacity(0.05))
             } header: {
