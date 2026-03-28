@@ -11,6 +11,7 @@ final class AudioEngine {
     private var codec: OpusCodec?
     private var jitterBuffer: JitterBuffer?
     private var sourceNode: AVAudioSourceNode?
+    private var playerNode: AVAudioPlayerNode?
 
     private var captureAccumulator: [Int16] = []
     private var sequenceNumber: UInt32 = 0
@@ -40,71 +41,31 @@ final class AudioEngine {
         self.codec = codec
         self.jitterBuffer = jitterBuffer
 
-        // Playback source node: pulls decoded PCM from jitter buffer.
-        // Uses Float32 at 16kHz mono — the engine resamples to hardware rate.
-        // Int16 source nodes can have issues with format conversion on some devices.
-        let jb = jitterBuffer
+        // Playback: use AVAudioPlayerNode with scheduled buffers.
+        // AVAudioSourceNode at 16kHz had resampling issues with the mixer.
+        // PlayerNode + scheduled buffers handles format conversion reliably.
+        let playerNode = AVAudioPlayerNode()
+        engine.attach(playerNode)
+
         let playbackFormat = AVAudioFormat(
             commonFormat: .pcmFormatFloat32,
             sampleRate: Constants.Opus.sampleRate,
             channels: 1,
             interleaved: false
         )!
+        engine.connect(playerNode, to: engine.mainMixerNode, format: playbackFormat)
 
-        // The jitter buffer stores Int16 PCM data.
-        // The source node outputs Float32 for better compatibility with the mixer.
-        let node = AVAudioSourceNode(format: playbackFormat) { _, _, frameCount, audioBufferList -> OSStatus in
-            let ablPointer = UnsafeMutableAudioBufferListPointer(audioBufferList)
-            let requestedFrames = Int(frameCount)
-
-            // Get Float32 output pointer
-            guard let outputBuffer = ablPointer.first,
-                  let outputPtr = outputBuffer.mData?.assumingMemoryBound(to: Float.self) else {
-                return noErr
-            }
-
-            var framesWritten = 0
-
-            // Pull frames from jitter buffer (returns Int16 PCM data)
-            while framesWritten < requestedFrames {
-                if let frame = jb.pull(frameCount: 1) {
-                    // Convert Int16 → Float32
-                    frame.withUnsafeBytes { rawPtr in
-                        let int16Ptr = rawPtr.bindMemory(to: Int16.self)
-                        let samplesToWrite = min(int16Ptr.count, requestedFrames - framesWritten)
-                        for i in 0..<samplesToWrite {
-                            outputPtr[framesWritten + i] = Float(int16Ptr[i]) / Float(Int16.max)
-                        }
-                        framesWritten += samplesToWrite
-                    }
-                } else {
-                    break
-                }
-            }
-
-            // Zero-fill remaining frames with silence
-            if framesWritten < requestedFrames {
-                for i in framesWritten..<requestedFrames {
-                    outputPtr[i] = 0.0
-                }
-            }
-
-            return noErr
-        }
-
-        self.sourceNode = node
-        engine.attach(node)
-
-        let mainMixer = engine.mainMixerNode
-        engine.connect(node, to: mainMixer, format: playbackFormat)
+        self.playerNode = playerNode
 
         // CRITICAL: Access inputNode BEFORE engine.start() to force the audio
-        // graph to include the input. Without this, inputNode.outputFormat
-        // returns 0Hz on real devices.
+        // graph to include the input.
         let _ = engine.inputNode
 
         engine.prepare()
         try engine.start()
+
+        // Start player node for playback
+        playerNode.play()
 
         self.engine = engine
         Logger.audio.info("AudioEngine setup complete")
@@ -176,37 +137,64 @@ final class AudioEngine {
     }
 
     func receiveAudioPacket(_ opusData: Data, sequenceNumber: UInt32) {
-        guard let codec, let jitterBuffer else {
-            Logger.audio.warning("receiveAudioPacket: codec or jitterBuffer nil")
+        guard let codec, let playerNode else {
+            Logger.audio.warning("receiveAudioPacket: codec or playerNode nil")
             return
         }
 
         do {
+            // Decode Opus → Int16 PCM
             let pcmBuffer = try codec.decode(opusData)
-            jitterBuffer.push(pcmBuffer: pcmBuffer, sequenceNumber: sequenceNumber)
+
+            // Convert Int16 → Float32 for the player node
+            let floatFormat = AVAudioFormat(
+                commonFormat: .pcmFormatFloat32,
+                sampleRate: Constants.Opus.sampleRate,
+                channels: 1,
+                interleaved: false
+            )!
+            guard let floatBuffer = AVAudioPCMBuffer(
+                pcmFormat: floatFormat,
+                frameCapacity: pcmBuffer.frameLength
+            ) else { return }
+            floatBuffer.frameLength = pcmBuffer.frameLength
+
+            if let int16Data = pcmBuffer.int16ChannelData,
+               let floatData = floatBuffer.floatChannelData {
+                for i in 0..<Int(pcmBuffer.frameLength) {
+                    floatData[0][i] = Float(int16Data[0][i]) / Float(Int16.max)
+                }
+            }
+
+            // Schedule on player node — plays immediately
+            playerNode.scheduleBuffer(floatBuffer)
+
+            // Start playing if not already
+            if !playerNode.isPlaying {
+                playerNode.play()
+            }
+
             if sequenceNumber < 5 || sequenceNumber % 50 == 0 {
-                Logger.audio.info("Audio flowing: seq=\(sequenceNumber), decoded \(pcmBuffer.frameLength) frames, jb=\(jitterBuffer.bufferedCount) buffered")
+                Logger.audio.info("Audio playing: seq=\(sequenceNumber), \(pcmBuffer.frameLength) frames")
             }
         } catch {
-            Logger.audio.error("Failed to decode audio packet seq=\(sequenceNumber): \(error.localizedDescription)")
-            // Attempt PLC
-            do {
-                let plcBuffer = try codec.decodePLC()
-                jitterBuffer.push(pcmBuffer: plcBuffer, sequenceNumber: sequenceNumber)
-            } catch {
-                Logger.audio.error("PLC failed: \(error.localizedDescription)")
-            }
+            Logger.audio.error("Decode failed seq=\(sequenceNumber): \(error.localizedDescription)")
         }
     }
 
     func teardown() {
         stopCapture()
 
+        playerNode?.stop()
         engine?.stop()
         if let node = sourceNode {
             engine?.detach(node)
         }
+        if let node = playerNode {
+            engine?.detach(node)
+        }
         sourceNode = nil
+        playerNode = nil
         engine = nil
         codec = nil
 
