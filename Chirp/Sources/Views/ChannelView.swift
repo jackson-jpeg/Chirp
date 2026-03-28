@@ -459,6 +459,25 @@ struct ChannelView: View {
                 .font(.system(.caption))
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
+
+            // Loopback indicator
+            if appState.pttEngine.loopbackMode {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 11))
+                    Text("Loopback ON — hear yourself")
+                        .font(.system(.caption2, weight: .medium))
+                }
+                .foregroundStyle(Constants.Colors.amber.opacity(0.7))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(Constants.Colors.amber.opacity(0.1))
+                        .overlay(Capsule().stroke(Constants.Colors.amber.opacity(0.2), lineWidth: 0.5))
+                )
+                .padding(.top, 8)
+            }
         }
     }
 
