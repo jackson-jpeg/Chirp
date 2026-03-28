@@ -3,6 +3,9 @@
 <plist version="1.0">
 <dict>
     <key>com.apple.developer.wifi-aware</key>
-    <true/>
+    <array>
+        <string>Publish</string>
+        <string>Subscribe</string>
+    </array>
 </dict>
 </plist>
