@@ -39,7 +39,8 @@ final class AudioEngine {
         self.codec = codec
         self.jitterBuffer = jitterBuffer
 
-        // Playback source node: pulls decoded PCM from jitter buffer
+        // Playback source node: pulls decoded PCM from jitter buffer.
+        // Runs at 16kHz mono Int16 — the engine handles resampling to hardware rate.
         let jb = jitterBuffer
         let playbackFormat = AVAudioFormat(
             commonFormat: .pcmFormatInt16,
@@ -48,30 +49,54 @@ final class AudioEngine {
             interleaved: true
         )!
 
+        // Residual buffer for partial frame reads across render callbacks
+        var residual = Data()
+        let bytesPerSample = MemoryLayout<Int16>.size
+
         let node = AVAudioSourceNode(format: playbackFormat) { _, _, frameCount, audioBufferList -> OSStatus in
             let ablPointer = UnsafeMutableAudioBufferListPointer(audioBufferList)
-            let requestedBytes = Int(frameCount) * MemoryLayout<Int16>.size
+            let requestedBytes = Int(frameCount) * bytesPerSample
+            var outputData = Data()
 
-            if let data = jb.pull(frameCount: 1) {
-                for bufferIndex in 0 ..< ablPointer.count {
-                    let buffer = ablPointer[bufferIndex]
-                    guard let dest = buffer.mData else { continue }
-                    let bytesToCopy = min(data.count, requestedBytes)
-                    data.withUnsafeBytes { src in
-                        dest.copyMemory(from: src.baseAddress!, byteCount: bytesToCopy)
+            // Drain residual from previous callback first
+            if !residual.isEmpty {
+                let take = min(residual.count, requestedBytes)
+                outputData.append(residual.prefix(take))
+                residual.removeFirst(take)
+            }
+
+            // Pull frames from jitter buffer until we have enough
+            while outputData.count < requestedBytes {
+                if let frame = jb.pull(frameCount: 1) {
+                    let needed = requestedBytes - outputData.count
+                    if frame.count <= needed {
+                        outputData.append(frame)
+                    } else {
+                        outputData.append(frame.prefix(needed))
+                        residual.append(frame.dropFirst(needed))
                     }
-                    // Zero-fill remainder if needed
-                    if bytesToCopy < requestedBytes {
-                        dest.advanced(by: bytesToCopy)
-                            .initializeMemory(as: UInt8.self, repeating: 0, count: requestedBytes - bytesToCopy)
-                    }
+                } else {
+                    break // No more data — fill remainder with silence
                 }
-            } else {
-                // Silence when no data available
-                for bufferIndex in 0 ..< ablPointer.count {
-                    let buffer = ablPointer[bufferIndex]
-                    guard let dest = buffer.mData else { continue }
-                    memset(dest, 0, requestedBytes)
+            }
+
+            // Copy to output buffers, zero-fill any shortfall
+            for bufferIndex in 0..<ablPointer.count {
+                let buf = ablPointer[bufferIndex]
+                guard let dest = buf.mData else { continue }
+                if outputData.count >= requestedBytes {
+                    outputData.withUnsafeBytes { src in
+                        dest.copyMemory(from: src.baseAddress!, byteCount: requestedBytes)
+                    }
+                } else {
+                    // Partial data + silence
+                    if !outputData.isEmpty {
+                        outputData.withUnsafeBytes { src in
+                            dest.copyMemory(from: src.baseAddress!, byteCount: outputData.count)
+                        }
+                    }
+                    let silenceStart = dest.advanced(by: outputData.count)
+                    memset(silenceStart, 0, requestedBytes - outputData.count)
                 }
             }
             return noErr
