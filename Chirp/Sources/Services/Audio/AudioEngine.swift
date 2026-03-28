@@ -124,23 +124,29 @@ final class AudioEngine {
 
         let inputNode = engine.inputNode
 
-        // Install tap requesting our TARGET format directly.
-        // iOS handles hardware→target conversion internally.
-        // This avoids the 0Hz format issue when using nil format.
-        // No manual AVAudioConverter needed — buffers arrive as 16kHz mono Int16.
+        // Use nil format — iOS delivers in hardware native format.
+        // We convert lazily in the callback when the first valid buffer arrives.
+        // This avoids crashes when the hardware can't satisfy a specific format request.
         converter = nil
 
-        inputNode.installTap(onBus: 0, bufferSize: AVAudioFrameCount(samplesPerFrame), format: targetFormat) {
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: nil) {
             [weak self] buffer, _ in
             guard let self else { return }
 
             self.updateInputLevelFromRawBuffer(buffer)
 
-            guard buffer.frameLength > 0 else { return }
+            let bufFormat = buffer.format
+            guard bufFormat.sampleRate > 0, buffer.frameLength > 0 else { return }
+
+            // Create converter lazily on first valid buffer
+            if self.converter == nil && (bufFormat.sampleRate != Constants.Opus.sampleRate || bufFormat.channelCount != 1 || bufFormat.commonFormat != .pcmFormatInt16) {
+                self.converter = AVAudioConverter(from: bufFormat, to: self.targetFormat)
+                Logger.audio.info("Converter: \(bufFormat.sampleRate)Hz/\(bufFormat.channelCount)ch -> 16000Hz/1ch/Int16")
+            }
             self.processInputBuffer(buffer)
         }
 
-        Logger.audio.info("Capture started — tap format: \(self.targetFormat.sampleRate)Hz/\(self.targetFormat.channelCount)ch")
+        Logger.audio.info("Capture started")
     }
 
     func stopCapture() {

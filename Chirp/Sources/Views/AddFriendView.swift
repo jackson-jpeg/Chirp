@@ -8,9 +8,10 @@ struct AddFriendView: View {
     @State private var friendName: String = ""
     @State private var peerFingerprint: String = ""
     @State private var showCopied = false
+    @State private var radarPhase: CGFloat = 0
 
-    private let amber = Color(hex: 0xFFB800)
-    private let green = Color(hex: 0x30D158)
+    private let amber = Constants.Colors.amber
+    private let green = Constants.Colors.electricGreen
 
     var body: some View {
         NavigationStack {
@@ -21,7 +22,7 @@ struct AddFriendView: View {
                     VStack(spacing: 28) {
                         yourCodeSection
                         addFriendSection
-                        nearbyPeopleSection
+                        nearbySection
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
@@ -33,6 +34,7 @@ struct AddFriendView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
+                        .font(.system(.body, weight: .semibold))
                         .foregroundStyle(amber)
                 }
             }
@@ -40,64 +42,98 @@ struct AddFriendView: View {
                 peerFingerprint = await PeerIdentity.shared.fingerprint
             }
         }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(24)
     }
 
     // MARK: - Your Code Section
 
     private var yourCodeSection: some View {
-        VStack(spacing: 12) {
-            Text("Your Chirp Code")
-                .font(.system(.caption, weight: .bold))
+        VStack(spacing: 14) {
+            Text("YOUR CHIRPCHIRP CODE")
+                .font(.system(.caption2, weight: .bold))
                 .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-                .tracking(0.5)
+                .tracking(1)
 
-            VStack(spacing: 10) {
+            // Large code card with amber glow
+            VStack(spacing: 16) {
                 if peerFingerprint.isEmpty {
                     ProgressView()
                         .tint(amber)
-                        .frame(height: 36)
+                        .frame(height: 44)
                 } else {
                     Text(formattedFingerprint(peerFingerprint))
-                        .font(.system(size: 22, weight: .bold, design: .monospaced))
+                        .font(.system(size: 24, weight: .bold, design: .monospaced))
                         .foregroundStyle(.white)
-                        .tracking(2)
+                        .tracking(3)
                         .textSelection(.enabled)
+                        .padding(.top, 4)
                 }
 
-                Button {
-                    UIPasteboard.general.string = peerFingerprint
-                    withAnimation { showCopied = true }
-                    Task {
-                        try? await Task.sleep(for: .seconds(2))
-                        withAnimation { showCopied = false }
+                // Copy + Share buttons
+                HStack(spacing: 16) {
+                    Button {
+                        UIPasteboard.general.string = peerFingerprint
+                        withAnimation(.easeInOut(duration: 0.2)) { showCopied = true }
+                        Task {
+                            try? await Task.sleep(for: .seconds(2))
+                            withAnimation { showCopied = false }
+                        }
+                    } label: {
+                        Label(
+                            showCopied ? "Copied!" : "Copy",
+                            systemImage: showCopied ? "checkmark.circle.fill" : "doc.on.doc"
+                        )
+                        .font(.system(.caption, weight: .semibold))
+                        .foregroundStyle(showCopied ? green : amber)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            Capsule()
+                                .fill(
+                                    showCopied
+                                        ? green.opacity(0.12)
+                                        : amber.opacity(0.12)
+                                )
+                        )
+                        .contentTransition(.symbolEffect(.replace))
                     }
-                } label: {
-                    Label(
-                        showCopied ? "Copied!" : "Copy Code",
-                        systemImage: showCopied ? "checkmark" : "doc.on.doc"
-                    )
-                    .font(.system(.caption, weight: .semibold))
-                    .foregroundStyle(showCopied ? green : amber)
+                    .disabled(peerFingerprint.isEmpty)
+
+                    if !peerFingerprint.isEmpty {
+                        ShareLink(
+                            item: "Add me on ChirpChirp! My code: \(peerFingerprint)"
+                        ) {
+                            Label("Share", systemImage: "square.and.arrow.up")
+                                .font(.system(.caption, weight: .semibold))
+                                .foregroundStyle(amber)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(
+                                    Capsule()
+                                        .fill(amber.opacity(0.12))
+                                )
+                        }
+                    }
                 }
-                .disabled(peerFingerprint.isEmpty)
             }
-            .padding(.vertical, 20)
+            .padding(.vertical, 24)
+            .padding(.horizontal, 20)
             .frame(maxWidth: .infinity)
             .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(.ultraThinMaterial)
-                    .environment(\.colorScheme, .dark)
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color.white.opacity(0.04))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(amber.opacity(0.2), lineWidth: 0.5)
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(amber.opacity(0.15), lineWidth: 1)
                     )
+                    .shadow(color: amber.opacity(0.12), radius: 24, y: 2)
             )
 
-            Text("Share this code with friends so they can add you.")
+            Text("Share this code so friends can add you.")
                 .font(.system(.caption))
                 .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
         }
     }
 
@@ -105,52 +141,55 @@ struct AddFriendView: View {
 
     private var addFriendSection: some View {
         VStack(spacing: 12) {
-            Text("Add a Friend")
-                .font(.system(.caption, weight: .bold))
+            Text("ADD A FRIEND")
+                .font(.system(.caption2, weight: .bold))
                 .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-                .tracking(0.5)
+                .tracking(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, 4)
 
-            VStack(spacing: 12) {
-                TextField("Friend's name", text: $friendName)
+            VStack(spacing: 10) {
+                TextField("Their code", text: $friendCode)
                     .textFieldStyle(.plain)
-                    .font(.system(.body))
-                    .foregroundStyle(.white)
-                    .padding(12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.white.opacity(0.06))
-                    )
-
-                TextField("Paste their Chirp code", text: $friendCode)
-                    .textFieldStyle(.plain)
-                    .font(.system(.body, design: .monospaced))
+                    .font(.system(.body, design: .monospaced, weight: .medium))
                     .foregroundStyle(.white)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
-                    .padding(12)
+                    .padding(14)
                     .background(
-                        RoundedRectangle(cornerRadius: 10)
+                        RoundedRectangle(cornerRadius: 12)
                             .fill(Color.white.opacity(0.06))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            )
+                    )
+
+                TextField("What to call them", text: $friendName)
+                    .textFieldStyle(.plain)
+                    .font(.system(.body, weight: .medium))
+                    .foregroundStyle(.white)
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.white.opacity(0.06))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            )
                     )
 
                 Button {
-                    let code = friendCode.replacingOccurrences(of: " ", with: "")
-                    let name = friendName.isEmpty ? "Friend" : friendName
-                    appState.friendsManager.addFriend(id: code, name: name)
-                    friendCode = ""
-                    friendName = ""
-                    dismiss()
+                    addFriend()
                 } label: {
                     Text("Add")
                         .font(.system(.body, weight: .bold))
-                        .foregroundStyle(.black)
+                        .foregroundStyle(canAdd ? .black : .white.opacity(0.3))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
+                        .padding(.vertical, 14)
                         .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(canAdd ? amber : amber.opacity(0.3))
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(canAdd ? amber : Color.white.opacity(0.08))
                         )
                 }
                 .disabled(!canAdd)
@@ -158,76 +197,130 @@ struct AddFriendView: View {
         }
     }
 
-    // MARK: - Nearby People Section
+    // MARK: - Nearby Section
 
-    private var nearbyPeopleSection: some View {
+    private var nearbySection: some View {
         let nearbyPeers = appState.multipeerTransport.peers.filter { peer in
             !appState.friendsManager.isFriend(peerID: peer.id)
         }
 
-        return Group {
-            if !nearbyPeers.isEmpty {
-                VStack(spacing: 12) {
-                    Text("People Nearby")
-                        .font(.system(.caption, weight: .bold))
+        return VStack(spacing: 12) {
+            HStack {
+                Text("NEARBY")
+                    .font(.system(.caption2, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .tracking(1)
+
+                Spacer()
+
+                // Pulsing radar indicator
+                ZStack {
+                    Circle()
+                        .stroke(green.opacity(0.3), lineWidth: 1.5)
+                        .frame(width: 16, height: 16)
+                        .scaleEffect(1 + radarPhase * 0.6)
+                        .opacity(1 - radarPhase)
+
+                    Circle()
+                        .fill(green)
+                        .frame(width: 6, height: 6)
+                }
+                .onAppear {
+                    withAnimation(
+                        .easeOut(duration: 1.5)
+                        .repeatForever(autoreverses: false)
+                    ) {
+                        radarPhase = 1.0
+                    }
+                }
+
+                Text("Scanning")
+                    .font(.system(.caption2, weight: .medium))
+                    .foregroundStyle(green.opacity(0.7))
+            }
+            .padding(.leading, 4)
+
+            if nearbyPeers.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "antenna.radiowaves.left.and.right")
+                        .font(.system(size: 24, weight: .light))
+                        .foregroundStyle(.secondary.opacity(0.5))
+
+                    Text("Looking for people nearby...")
+                        .font(.system(.caption))
                         .foregroundStyle(.secondary)
-                        .textCase(.uppercase)
-                        .tracking(0.5)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 28)
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(Color.white.opacity(0.03))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                        )
+                )
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(nearbyPeers) { peer in
+                        HStack(spacing: 14) {
+                            // Avatar
+                            ZStack {
+                                Circle()
+                                    .fill(green.opacity(0.12))
+                                    .frame(width: 40, height: 40)
 
-                    VStack(spacing: 0) {
-                        ForEach(nearbyPeers) { peer in
-                            Button {
-                                appState.friendsManager.addFriend(id: peer.id, name: peer.name)
-                            } label: {
-                                HStack(spacing: 12) {
-                                    ZStack {
-                                        Circle()
-                                            .fill(green.opacity(0.15))
-                                            .frame(width: 38, height: 38)
-
-                                        Text(String(peer.name.prefix(1)).uppercased())
-                                            .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                            .foregroundStyle(green)
-                                    }
-
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(peer.name)
-                                            .font(.system(.body, weight: .medium))
-                                            .foregroundStyle(.white)
-
-                                        Text("In range")
-                                            .font(.system(.caption))
-                                            .foregroundStyle(green)
-                                    }
-
-                                    Spacer()
-
-                                    Image(systemName: "person.badge.plus")
-                                        .font(.system(size: 16, weight: .medium))
-                                        .foregroundStyle(amber)
-                                }
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 12)
+                                Text(String(peer.name.prefix(1)).uppercased())
+                                    .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                    .foregroundStyle(green)
                             }
 
-                            if peer.id != nearbyPeers.last?.id {
-                                Divider()
-                                    .background(Color.white.opacity(0.06))
-                                    .padding(.leading, 64)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(peer.name)
+                                    .font(.system(.body, weight: .medium))
+                                    .foregroundStyle(.white)
+
+                                Text("In range")
+                                    .font(.system(.caption))
+                                    .foregroundStyle(green.opacity(0.8))
+                            }
+
+                            Spacer()
+
+                            Button {
+                                appState.friendsManager.addFriend(
+                                    id: peer.id,
+                                    name: peer.name
+                                )
+                            } label: {
+                                Text("Add")
+                                    .font(.system(.caption, weight: .bold))
+                                    .foregroundStyle(.black)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 7)
+                                    .background(
+                                        Capsule().fill(amber)
+                                    )
                             }
                         }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+
+                        if peer.id != nearbyPeers.last?.id {
+                            Divider()
+                                .background(Color.white.opacity(0.06))
+                                .padding(.leading, 68)
+                        }
                     }
-                    .background(
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(.ultraThinMaterial)
-                            .environment(\.colorScheme, .dark)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
-                            )
-                    )
                 }
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color.white.opacity(0.04))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                        )
+                )
             }
         }
     }
@@ -239,11 +332,20 @@ struct AddFriendView: View {
         return !code.isEmpty && code != peerFingerprint
     }
 
+    private func addFriend() {
+        let code = friendCode.replacingOccurrences(of: " ", with: "")
+        let name = friendName.isEmpty ? "Friend" : friendName
+        appState.friendsManager.addFriend(id: code, name: name)
+        friendCode = ""
+        friendName = ""
+        dismiss()
+    }
+
     private func formattedFingerprint(_ fp: String) -> String {
-        // Format as groups of 4 for readability: "abcd efgh ijkl mnop"
+        // Format as pairs: "a4 f2 1b 9c 2e 7d a0 11"
         var result = ""
         for (index, char) in fp.enumerated() {
-            if index > 0 && index % 4 == 0 {
+            if index > 0 && index % 2 == 0 {
                 result += " "
             }
             result.append(char)

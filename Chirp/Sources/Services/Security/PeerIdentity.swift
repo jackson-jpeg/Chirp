@@ -17,7 +17,7 @@ actor PeerIdentity {
     /// The local peer's public key fingerprint (first 8 bytes of SHA256, hex-encoded)
     var fingerprint: String {
         get async {
-            let key = await getOrCreatePrivateKey()
+            let key = getOrCreatePrivateKey()
             let hash = SHA256.hash(data: key.publicKey.rawRepresentation)
             return hash.prefix(8).map { String(format: "%02x", $0) }.joined()
         }
@@ -26,7 +26,7 @@ actor PeerIdentity {
     /// The local peer's public key for sharing with peers
     var publicKey: Curve25519.Signing.PublicKey {
         get async {
-            let key = await getOrCreatePrivateKey()
+            let key = getOrCreatePrivateKey()
             return key.publicKey
         }
     }
@@ -34,14 +34,14 @@ actor PeerIdentity {
     /// Export public key as Data for transmission
     var publicKeyData: Data {
         get async {
-            let key = await getOrCreatePrivateKey()
+            let key = getOrCreatePrivateKey()
             return key.publicKey.rawRepresentation
         }
     }
 
     /// Sign data with our private key
     func sign(_ data: Data) async throws -> Data {
-        let key = await getOrCreatePrivateKey()
+        let key = getOrCreatePrivateKey()
         let signature = try key.signature(for: data)
         return Data(signature)
     }

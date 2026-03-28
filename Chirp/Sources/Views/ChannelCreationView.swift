@@ -4,83 +4,129 @@ struct ChannelCreationView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
 
-    @State private var channelName = ""
-    @FocusState private var isNameFocused: Bool
+    enum Mode: String, CaseIterable {
+        case create = "Create Channel"
+        case join = "Join with Code"
+    }
 
-    private let suggestedNames = ["Squad", "Family", "Team", "Base Camp", "Road Trip", "Crew"]
+    @State private var mode: Mode = .create
+    @State private var channelName = ""
+    @State private var inviteCode = ""
+    @State private var isPrivate = false
+    @State private var joinFailed = false
+    @FocusState private var isNameFocused: Bool
+    @FocusState private var isCodeFocused: Bool
+
+    private let suggestedNames = ["Squad", "Base Camp", "Family", "Road Trip", "The Crew", "HQ"]
+    private let amber = Constants.Colors.amber
+    private let green = Constants.Colors.electricGreen
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Channel icon
-                ZStack {
-                    Circle()
-                        .fill(Color(hex: 0xFFB800).opacity(0.15))
-                        .frame(width: 72, height: 72)
-
-                    Circle()
-                        .stroke(Color(hex: 0xFFB800).opacity(0.3), lineWidth: 1)
-                        .frame(width: 72, height: 72)
-
-                    Image(systemName: "bubble.left.and.bubble.right.fill")
-                        .font(.system(size: 28, weight: .medium))
-                        .foregroundStyle(Color(hex: 0xFFB800))
+                // Segmented picker
+                Picker("Mode", selection: $mode) {
+                    ForEach(Mode.allCases, id: \.self) { m in
+                        Text(m.rawValue).tag(m)
+                    }
                 }
-                .padding(.top, 28)
-                .padding(.bottom, 16)
-
-                Text("Create a Channel")
-                    .font(.system(.title3, weight: .bold))
-                    .foregroundStyle(.white)
-
-                Text("Everyone on the same channel can talk")
-                    .font(.system(.subheadline))
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 4)
-                    .padding(.bottom, 28)
-
-                // Name input
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("CHANNEL NAME")
-                        .font(.system(.caption2, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .tracking(0.5)
-
-                    TextField("e.g. Road Trip Crew", text: $channelName)
-                        .font(.system(.body, weight: .medium))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.white.opacity(0.07))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(
-                                            isNameFocused
-                                                ? Color(hex: 0xFFB800)
-                                                : Color.white.opacity(0.1),
-                                            lineWidth: isNameFocused ? 1.5 : 1
-                                        )
-                                )
-                        )
-                        .focused($isNameFocused)
-                        .submitLabel(.done)
-                        .onSubmit {
-                            createChannel()
-                        }
-                        .autocorrectionDisabled()
-                }
+                .pickerStyle(.segmented)
                 .padding(.horizontal, 24)
+                .padding(.top, 20)
+                .padding(.bottom, 28)
 
-                // Suggested names
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("SUGGESTIONS")
-                        .font(.system(.caption2, weight: .semibold))
+                if mode == .create {
+                    createModeContent
+                } else {
+                    joinModeContent
+                }
+            }
+            .background(Color.black)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
                         .foregroundStyle(.secondary)
-                        .tracking(0.5)
+                }
+            }
+            .animation(.easeInOut(duration: 0.25), value: mode)
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(24)
+    }
 
-                    FlowLayout(spacing: 8) {
+    // MARK: - Create Mode
+
+    private var createModeContent: some View {
+        VStack(spacing: 0) {
+            // Channel name field — large centered with amber underline
+            VStack(spacing: 6) {
+                TextField("Channel Name", text: $channelName)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .autocorrectionDisabled()
+                    .focused($isNameFocused)
+                    .submitLabel(.done)
+                    .onSubmit { createChannel() }
+                    .padding(.horizontal, 24)
+
+                // Amber underline
+                Rectangle()
+                    .fill(amber.opacity(isNameFocused ? 1.0 : 0.4))
+                    .frame(height: 2)
+                    .frame(maxWidth: 200)
+                    .animation(.easeInOut(duration: 0.2), value: isNameFocused)
+            }
+            .padding(.bottom, 24)
+
+            // Private channel toggle
+            HStack(spacing: 12) {
+                Image(systemName: isPrivate ? "lock.fill" : "lock.open")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(isPrivate ? amber : .secondary)
+                    .frame(width: 24)
+                    .contentTransition(.symbolEffect(.replace))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Private Channel")
+                        .font(.system(.body, weight: .semibold))
+                        .foregroundStyle(.white)
+
+                    if isPrivate {
+                        Text("Only people with the invite code can join")
+                            .font(.system(.caption))
+                            .foregroundStyle(.secondary)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                }
+
+                Spacer()
+
+                Toggle("", isOn: $isPrivate)
+                    .tint(amber)
+                    .labelsHidden()
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color.white.opacity(0.05))
+            )
+            .padding(.horizontal, 24)
+            .animation(.easeInOut(duration: 0.2), value: isPrivate)
+
+            // Suggested name chips
+            VStack(alignment: .leading, spacing: 10) {
+                Text("SUGGESTIONS")
+                    .font(.system(.caption2, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .tracking(0.5)
+                    .padding(.leading, 4)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
                         ForEach(suggestedNames, id: \.self) { name in
                             Button {
                                 withAnimation(.easeInOut(duration: 0.15)) {
@@ -88,20 +134,18 @@ struct ChannelCreationView: View {
                                 }
                             } label: {
                                 Text(name)
-                                    .font(.system(.subheadline, weight: .medium))
+                                    .font(.system(.subheadline, weight: .semibold))
                                     .foregroundStyle(
-                                        channelName == name
-                                            ? .black
-                                            : Color(hex: 0xFFB800)
+                                        channelName == name ? .black : amber
                                     )
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 8)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 9)
                                     .background(
                                         Capsule()
                                             .fill(
                                                 channelName == name
-                                                    ? Color(hex: 0xFFB800)
-                                                    : Color(hex: 0xFFB800).opacity(0.12)
+                                                    ? amber
+                                                    : amber.opacity(0.1)
                                             )
                                     )
                                     .overlay(
@@ -109,7 +153,7 @@ struct ChannelCreationView: View {
                                             .stroke(
                                                 channelName == name
                                                     ? Color.clear
-                                                    : Color(hex: 0xFFB800).opacity(0.3),
+                                                    : amber.opacity(0.25),
                                                 lineWidth: 1
                                             )
                                     )
@@ -117,116 +161,146 @@ struct ChannelCreationView: View {
                             .buttonStyle(.plain)
                         }
                     }
+                    .padding(.horizontal, 4)
                 }
-                .padding(.horizontal, 24)
-                .padding(.top, 20)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 24)
 
-                Spacer()
+            Spacer()
 
-                // Create button
-                Button(action: createChannel) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 18, weight: .semibold))
-
-                        Text("Create Channel")
-                            .font(.system(.headline, weight: .bold))
-                    }
-                    .foregroundStyle(isValid ? .black : .white.opacity(0.3))
+            // Create button
+            Button(action: createChannel) {
+                Text("Create")
+                    .font(.system(.headline, weight: .bold))
+                    .foregroundStyle(isCreateValid ? .black : .white.opacity(0.3))
                     .frame(maxWidth: .infinity)
-                    .frame(height: 52)
+                    .frame(height: 54)
                     .background(
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(isValid ? Color(hex: 0xFFB800) : Color.white.opacity(0.08))
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(isCreateValid ? amber : Color.white.opacity(0.08))
                     )
-                }
-                .disabled(!isValid)
-                .padding(.horizontal, 24)
-                .padding(.bottom, 20)
             }
-            .background(Color.black)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                    .foregroundStyle(.secondary)
-                }
-            }
-            .onAppear {
-                isNameFocused = true
-            }
+            .disabled(!isCreateValid)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 20)
         }
-        .presentationDetents([.medium])
-        .presentationDragIndicator(.visible)
-        .presentationCornerRadius(24)
+        .onAppear { isNameFocused = true }
     }
 
-    private var isValid: Bool {
+    // MARK: - Join Mode
+
+    private var joinModeContent: some View {
+        VStack(spacing: 0) {
+            Spacer()
+                .frame(height: 20)
+
+            // Code entry
+            VStack(spacing: 16) {
+                Image(systemName: "ticket")
+                    .font(.system(size: 36, weight: .light))
+                    .foregroundStyle(amber.opacity(0.7))
+                    .padding(.bottom, 4)
+
+                TextField("Enter invite code", text: $inviteCode)
+                    .font(.system(size: 20, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.characters)
+                    .focused($isCodeFocused)
+                    .submitLabel(.go)
+                    .onSubmit { joinChannel() }
+                    .onChange(of: inviteCode) { _, newValue in
+                        inviteCode = String(newValue.uppercased().prefix(12))
+                    }
+                    .padding(.horizontal, 24)
+
+                // Amber underline
+                Rectangle()
+                    .fill(amber.opacity(isCodeFocused ? 1.0 : 0.4))
+                    .frame(height: 2)
+                    .frame(maxWidth: 240)
+
+                Text("Ask the channel owner for their invite code")
+                    .font(.system(.caption))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 4)
+
+                if joinFailed {
+                    Label("Invalid code. Check and try again.", systemImage: "exclamationmark.triangle")
+                        .font(.system(.caption, weight: .medium))
+                        .foregroundStyle(Constants.Colors.hotRed)
+                        .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                }
+            }
+            .padding(.horizontal, 24)
+
+            Spacer()
+
+            // Join button
+            Button(action: joinChannel) {
+                Text("Join")
+                    .font(.system(.headline, weight: .bold))
+                    .foregroundStyle(isJoinValid ? .black : .white.opacity(0.3))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 54)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(isJoinValid ? amber : Color.white.opacity(0.08))
+                    )
+            }
+            .disabled(!isJoinValid)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 20)
+        }
+        .onAppear { isCodeFocused = true }
+    }
+
+    // MARK: - Validation
+
+    private var isCreateValid: Bool {
         !channelName.trimmingCharacters(in: .whitespaces).isEmpty
     }
+
+    private var isJoinValid: Bool {
+        !inviteCode.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    // MARK: - Actions
 
     private func createChannel() {
         let name = channelName.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return }
-        let channel = appState.channelManager.createChannel(name: name)
+
+        let accessMode: ChirpChannel.AccessMode = isPrivate ? .locked : .open
+        let ownerID: String? = isPrivate ? appState.localPeerID : nil
+
+        let channel = appState.channelManager.createChannel(
+            name: name,
+            accessMode: accessMode,
+            ownerID: ownerID
+        )
         appState.channelManager.joinChannel(id: channel.id)
         dismiss()
     }
-}
 
-// MARK: - Flow Layout for suggestion chips
+    private func joinChannel() {
+        let code = inviteCode.trimmingCharacters(in: .whitespaces)
+        guard !code.isEmpty else { return }
 
-private struct FlowLayout: Layout {
-    var spacing: CGFloat = 8
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let result = arrange(proposal: proposal, subviews: subviews)
-        return result.size
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let result = arrange(proposal: proposal, subviews: subviews)
-        for (index, position) in result.positions.enumerated() {
-            subviews[index].place(
-                at: CGPoint(x: bounds.minX + position.x, y: bounds.minY + position.y),
-                proposal: .unspecified
-            )
-        }
-    }
-
-    private struct ArrangeResult {
-        var size: CGSize
-        var positions: [CGPoint]
-    }
-
-    private func arrange(proposal: ProposedViewSize, subviews: Subviews) -> ArrangeResult {
-        let maxWidth = proposal.width ?? .infinity
-        var positions: [CGPoint] = []
-        var x: CGFloat = 0
-        var y: CGFloat = 0
-        var rowHeight: CGFloat = 0
-        var totalHeight: CGFloat = 0
-
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-
-            if x + size.width > maxWidth, x > 0 {
-                x = 0
-                y += rowHeight + spacing
-                rowHeight = 0
+        let success = appState.channelManager.joinWithInviteCode(code)
+        if success {
+            dismiss()
+        } else {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                joinFailed = true
             }
-
-            positions.append(CGPoint(x: x, y: y))
-            rowHeight = max(rowHeight, size.height)
-            x += size.width + spacing
-            totalHeight = y + rowHeight
+            Task {
+                try? await Task.sleep(for: .seconds(3))
+                withAnimation { joinFailed = false }
+            }
         }
-
-        return ArrangeResult(
-            size: CGSize(width: maxWidth, height: totalHeight),
-            positions: positions
-        )
     }
 }

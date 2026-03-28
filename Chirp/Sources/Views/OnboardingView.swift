@@ -1,125 +1,153 @@
 import SwiftUI
 
-// MARK: - Particle Field
+// MARK: - Animated Mesh Gradient Background
 
-private struct Particle: Identifiable {
-    let id = UUID()
-    var x: CGFloat
-    var y: CGFloat
-    var opacity: Double
-    var size: CGFloat
-    var speed: CGFloat
-}
-
-private struct ParticleFieldView: View {
-    @State private var particles: [Particle] = []
-    @State private var animate = false
-
-    private let particleCount = 40
+private struct MeshGradientBackground: View {
+    @State private var phase: CGFloat = 0.0
 
     var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                ForEach(particles) { particle in
-                    Circle()
-                        .fill(Color(hex: 0xFFB800))
-                        .frame(width: particle.size, height: particle.size)
-                        .opacity(animate ? particle.opacity : particle.opacity * 0.3)
-                        .position(
-                            x: particle.x * geo.size.width,
-                            y: animate
-                                ? particle.y * geo.size.height - 40
-                                : particle.y * geo.size.height + 40
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+            let t = timeline.date.timeIntervalSinceReferenceDate
+            Canvas { context, size in
+                let w = size.width
+                let h = size.height
+
+                // Draw layered radial gradients that shift over time
+                let centers: [(dx: CGFloat, dy: CGFloat, speed: CGFloat)] = [
+                    (0.3, 0.2, 0.4),
+                    (0.7, 0.6, 0.3),
+                    (0.5, 0.8, 0.5),
+                    (0.2, 0.5, 0.35),
+                ]
+
+                for (i, c) in centers.enumerated() {
+                    let offsetX = sin(t * c.speed + Double(i) * 1.5) * 0.15
+                    let offsetY = cos(t * c.speed * 0.8 + Double(i) * 2.0) * 0.12
+                    let cx = (c.dx + offsetX) * w
+                    let cy = (c.dy + offsetY) * h
+
+                    let colors: [(Color, CGFloat)] = i % 2 == 0
+                        ? [
+                            (Color(red: 0.08, green: 0.05, blue: 0.25).opacity(0.8), 0),
+                            (Color(red: 0.12, green: 0.08, blue: 0.35).opacity(0.4), 0.5),
+                            (Color.clear, 1.0),
+                        ]
+                        : [
+                            (Color(red: 0.05, green: 0.08, blue: 0.30).opacity(0.7), 0),
+                            (Color(red: 0.10, green: 0.05, blue: 0.28).opacity(0.3), 0.5),
+                            (Color.clear, 1.0),
+                        ]
+
+                    let gradient = Gradient(stops: colors.map {
+                        Gradient.Stop(color: $0.0, location: $0.1)
+                    })
+
+                    let radius = max(w, h) * 0.6
+                    context.fill(
+                        Path(CGRect(origin: .zero, size: size)),
+                        with: .radialGradient(
+                            gradient,
+                            center: CGPoint(x: cx, y: cy),
+                            startRadius: 0,
+                            endRadius: radius
                         )
-                }
-            }
-            .onAppear {
-                particles = (0..<particleCount).map { _ in
-                    Particle(
-                        x: CGFloat.random(in: 0...1),
-                        y: CGFloat.random(in: 0...1),
-                        opacity: Double.random(in: 0.05...0.25),
-                        size: CGFloat.random(in: 1.5...3.5),
-                        speed: CGFloat.random(in: 0.5...1.5)
                     )
                 }
+            }
+        }
+        .ignoresSafeArea()
+    }
+}
+
+// MARK: - Spring Letter Wordmark
+
+private struct SpringWordmark: View {
+    let text: String = "ChirpChirp"
+    @State private var letterVisible: [Bool] = Array(repeating: false, count: 10)
+
+    var body: some View {
+        HStack(spacing: -2) {
+            ForEach(Array(text.enumerated()), id: \.offset) { index, char in
+                Text(String(char))
+                    .font(.system(size: 60, weight: .heavy, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [
+                                Color(hex: 0xFFB800),
+                                Color(hex: 0xFFD060),
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .scaleEffect(letterVisible[index] ? 1.0 : 0.0)
+                    .opacity(letterVisible[index] ? 1.0 : 0.0)
+            }
+        }
+        .onAppear {
+            for i in 0..<text.count {
                 withAnimation(
-                    .easeInOut(duration: 6.0)
-                    .repeatForever(autoreverses: true)
+                    .spring(response: 0.5, dampingFraction: 0.55)
+                    .delay(Double(i) * 0.05 + 0.3)
                 ) {
-                    animate = true
+                    letterVisible[i] = true
                 }
             }
         }
     }
 }
 
-// MARK: - Radio Wave Rings
+// MARK: - 3D Radio Wave Rings
 
-private struct RadioWaveView: View {
-    @State private var ringScales: [CGFloat] = [0.2, 0.2, 0.2, 0.2, 0.2]
-    @State private var ringOpacities: [Double] = [0.7, 0.6, 0.5, 0.4, 0.3]
-    @State private var iconScale: CGFloat = 0.5
-    @State private var iconOpacity: Double = 0.0
-    @State private var glowOpacity: Double = 0.0
+private struct PerspectiveRadioWaves: View {
+    @State private var ringPhases: [CGFloat] = Array(repeating: 0.3, count: 5)
+    @State private var ringOpacities: [Double] = Array(repeating: 0.6, count: 5)
 
     var body: some View {
         ZStack {
-            // Glow backdrop
-            Circle()
+            // Glow
+            Ellipse()
                 .fill(
                     RadialGradient(
                         colors: [
-                            Color(hex: 0xFFB800).opacity(0.3),
-                            Color(hex: 0xFFB800).opacity(0.0)
+                            Color(hex: 0xFFB800).opacity(0.2),
+                            Color.clear,
                         ],
                         center: .center,
-                        startRadius: 10,
-                        endRadius: 120
+                        startRadius: 5,
+                        endRadius: 100
                     )
                 )
-                .frame(width: 240, height: 240)
-                .opacity(glowOpacity)
+                .frame(width: 260, height: 140)
 
-            // Concentric rings
+            // Concentric rings with perspective tilt
             ForEach(0..<5, id: \.self) { index in
-                Circle()
+                Ellipse()
                     .stroke(
                         Color(hex: 0xFFB800).opacity(ringOpacities[index]),
-                        lineWidth: max(2.5 - CGFloat(index) * 0.4, 0.8)
+                        lineWidth: max(2.5 - CGFloat(index) * 0.3, 0.8)
                     )
                     .frame(width: 200, height: 200)
-                    .scaleEffect(ringScales[index])
+                    .scaleEffect(ringPhases[index])
+                    .rotation3DEffect(.degrees(55), axis: (x: 1, y: 0, z: 0))
             }
 
-            // Center antenna icon
-            Image(systemName: "antenna.radiowaves.left.and.right")
-                .font(.system(size: 52, weight: .medium))
-                .foregroundStyle(Color(hex: 0xFFB800))
-                .scaleEffect(iconScale)
-                .opacity(iconOpacity)
+            // Center dot
+            Circle()
+                .fill(Color(hex: 0xFFB800))
+                .frame(width: 8, height: 8)
+                .shadow(color: Color(hex: 0xFFB800).opacity(0.8), radius: 8)
+                .rotation3DEffect(.degrees(55), axis: (x: 1, y: 0, z: 0))
         }
         .onAppear {
-            // Icon entrance
-            withAnimation(.spring(response: 0.8, dampingFraction: 0.6).delay(0.2)) {
-                iconScale = 1.0
-                iconOpacity = 1.0
-            }
-
-            // Glow
-            withAnimation(.easeIn(duration: 1.0).delay(0.3)) {
-                glowOpacity = 1.0
-            }
-
-            // Staggered ring pulses
             for i in 0..<5 {
-                let delay = Double(i) * 0.35
+                let delay = Double(i) * 0.4
                 withAnimation(
-                    .easeOut(duration: 3.0)
+                    .easeOut(duration: 2.5)
                     .repeatForever(autoreverses: false)
                     .delay(delay)
                 ) {
-                    ringScales[i] = 1.4
+                    ringPhases[i] = 1.8
                     ringOpacities[i] = 0.0
                 }
             }
@@ -127,9 +155,83 @@ private struct RadioWaveView: View {
     }
 }
 
+// MARK: - Onboarding Page
+
+private struct OnboardingPage: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let accentColor: Color
+
+    @State private var iconScale: CGFloat = 0.6
+    @State private var iconOpacity: Double = 0.0
+    @State private var textOpacity: Double = 0.0
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            ZStack {
+                // Glow ring
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                accentColor.opacity(0.2),
+                                accentColor.opacity(0.05),
+                                Color.clear,
+                            ],
+                            center: .center,
+                            startRadius: 20,
+                            endRadius: 80
+                        )
+                    )
+                    .frame(width: 160, height: 160)
+
+                Circle()
+                    .stroke(accentColor.opacity(0.2), lineWidth: 1.5)
+                    .frame(width: 120, height: 120)
+
+                Image(systemName: icon)
+                    .font(.system(size: 48, weight: .medium))
+                    .foregroundStyle(accentColor)
+                    .symbolRenderingMode(.hierarchical)
+            }
+            .scaleEffect(iconScale)
+            .opacity(iconOpacity)
+
+            VStack(spacing: 12) {
+                Text(title)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+
+                Text(subtitle)
+                    .font(.system(size: 17, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+                    .padding(.horizontal, 40)
+            }
+            .opacity(textOpacity)
+
+            Spacer()
+            Spacer()
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.7, dampingFraction: 0.65).delay(0.1)) {
+                iconScale = 1.0
+                iconOpacity = 1.0
+            }
+            withAnimation(.easeOut(duration: 0.6).delay(0.3)) {
+                textOpacity = 1.0
+            }
+        }
+    }
+}
+
 // MARK: - Shimmer Button
 
-private struct ShimmerButtonView: View {
+private struct ShimmerGetStartedButton: View {
     let action: () -> Void
 
     @State private var shimmerOffset: CGFloat = -1.0
@@ -140,20 +242,29 @@ private struct ShimmerButtonView: View {
                 .font(.system(size: 18, weight: .bold, design: .rounded))
                 .foregroundStyle(.black)
                 .frame(maxWidth: .infinity)
-                .frame(height: 56)
+                .frame(height: 58)
                 .background(
                     ZStack {
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(hex: 0xFFB800))
+                        RoundedRectangle(cornerRadius: 18)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(hex: 0xFFB800),
+                                        Color(hex: 0xFFC830),
+                                    ],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
 
                         // Shimmer sweep
-                        RoundedRectangle(cornerRadius: 16)
+                        RoundedRectangle(cornerRadius: 18)
                             .fill(
                                 LinearGradient(
                                     colors: [
                                         .white.opacity(0.0),
-                                        .white.opacity(0.3),
-                                        .white.opacity(0.0)
+                                        .white.opacity(0.35),
+                                        .white.opacity(0.0),
                                     ],
                                     startPoint: UnitPoint(x: shimmerOffset - 0.3, y: 0.5),
                                     endPoint: UnitPoint(x: shimmerOffset + 0.3, y: 0.5)
@@ -161,42 +272,18 @@ private struct ShimmerButtonView: View {
                             )
                     }
                 )
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+                .shadow(color: Color(hex: 0xFFB800).opacity(0.4), radius: 20, y: 8)
         }
         .onAppear {
             withAnimation(
                 .easeInOut(duration: 2.0)
                 .repeatForever(autoreverses: false)
-                .delay(1.5)
+                .delay(0.5)
             ) {
                 shimmerOffset = 2.0
             }
         }
-    }
-}
-
-// MARK: - Typewriter Text
-
-private struct TypewriterText: View {
-    let fullText: String
-    let delay: Double
-
-    @State private var visibleCount = 0
-
-    var body: some View {
-        Text(fullText.prefix(visibleCount))
-            .font(.system(.title3, design: .rounded, weight: .medium))
-            .foregroundStyle(.secondary)
-            .onAppear {
-                Task {
-                    try? await Task.sleep(for: .seconds(delay))
-                    for _ in fullText {
-                        try? await Task.sleep(for: .milliseconds(45))
-                        withAnimation(.easeOut(duration: 0.05)) {
-                            visibleCount += 1
-                        }
-                    }
-                }
-            }
     }
 }
 
@@ -205,178 +292,155 @@ private struct TypewriterText: View {
 struct OnboardingView: View {
     @Environment(AppState.self) private var appState
 
-    @State private var stepsVisible: [Bool] = [false, false, false]
-    @State private var buttonVisible = false
-    @State private var badgeVisible = false
-    @State private var titleOpacity: Double = 0.0
-    @State private var titleScale: CGFloat = 0.85
+    @State private var currentPage = 0
+    @State private var taglineOpacity: Double = 0.0
+    @State private var pagesVisible = false
 
-    private let steps: [(icon: String, title: String, description: String)] = [
-        ("antenna.radiowaves.left.and.right", "Pair nearby friends", "Find and connect to devices around you using Wi-Fi Aware."),
-        ("bubble.left.and.bubble.right.fill", "Create a channel", "Set up a channel for your group to communicate on."),
-        ("mic.fill", "Press and talk", "Hold the button to talk. Release to listen. Simple as that.")
+    private let amber = Color(hex: 0xFFB800)
+
+    private let pages: [(icon: String, title: String, subtitle: String, color: Color)] = [
+        (
+            "antenna.radiowaves.left.and.right",
+            "Pair",
+            "Find friends nearby with zero setup",
+            Color(hex: 0x5E9EFF)
+        ),
+        (
+            "hand.tap.fill",
+            "Talk",
+            "Press and hold. Just like a walkie-talkie.",
+            Color(hex: 0xFFB800)
+        ),
+        (
+            "lock.shield.fill",
+            "Secure",
+            "End-to-end encrypted.\nNo servers. No cloud.",
+            Color(hex: 0x30D158)
+        ),
     ]
 
     var body: some View {
         ZStack {
-            // Background
+            // Deep dark background
             Color.black.ignoresSafeArea()
 
-            // Particle field
-            ParticleFieldView()
-                .ignoresSafeArea()
+            // Animated mesh gradient
+            MeshGradientBackground()
 
-            // Content
             VStack(spacing: 0) {
                 Spacer()
+                    .frame(height: 60)
 
-                // Radio wave animation
-                RadioWaveView()
-                    .frame(height: 220)
-                    .padding(.bottom, 24)
+                // 3D Radio wave animation
+                PerspectiveRadioWaves()
+                    .frame(height: 160)
+                    .padding(.bottom, 16)
 
-                // Title with glow
-                ZStack {
-                    // Glow behind text
-                    Text("ChirpChirp")
-                        .font(.system(size: 56, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color(hex: 0xFFB800))
-                        .blur(radius: 20)
-                        .opacity(0.5)
+                // Spring letter wordmark
+                SpringWordmark()
+                    .padding(.bottom, 6)
 
-                    Text("ChirpChirp")
-                        .font(.system(size: 56, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color(hex: 0xFFB800))
-                }
-                .opacity(titleOpacity)
-                .scaleEffect(titleScale)
-
-                // Typewriter tagline
-                TypewriterText(fullText: "Talk close. No towers needed.", delay: 0.8)
-                    .padding(.top, 6)
-                    .frame(height: 28)
+                // Tagline
+                Text("Talk close. No towers needed.")
+                    .font(.system(size: 17, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.5))
+                    .opacity(taglineOpacity)
 
                 Spacer()
-                    .frame(height: 48)
+                    .frame(height: 36)
 
-                // Steps
-                VStack(spacing: 20) {
-                    ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
-                        stepRow(index: index, step: step)
-                            .opacity(stepsVisible[index] ? 1.0 : 0.0)
-                            .offset(x: stepsVisible[index] ? 0 : -30)
+                // Swipeable page view
+                if pagesVisible {
+                    TabView(selection: $currentPage) {
+                        ForEach(Array(pages.enumerated()), id: \.offset) { index, page in
+                            OnboardingPage(
+                                icon: page.icon,
+                                title: page.title,
+                                subtitle: page.subtitle,
+                                accentColor: page.color
+                            )
+                            .tag(index)
+                        }
                     }
+                    .tabViewStyle(.page(indexDisplayMode: .never))
+                    .frame(height: 320)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+
+                    // Custom amber page dots
+                    HStack(spacing: 10) {
+                        ForEach(0..<pages.count, id: \.self) { index in
+                            Capsule()
+                                .fill(
+                                    index == currentPage
+                                        ? amber
+                                        : amber.opacity(0.25)
+                                )
+                                .frame(
+                                    width: index == currentPage ? 24 : 8,
+                                    height: 8
+                                )
+                                .animation(.spring(response: 0.4, dampingFraction: 0.7), value: currentPage)
+                        }
+                    }
+                    .padding(.top, 4)
                 }
-                .padding(.horizontal, 32)
 
                 Spacer()
 
-                // Get Started button
-                if buttonVisible {
-                    ShimmerButtonView {
+                // Get Started button (only on last page)
+                if currentPage == pages.count - 1 {
+                    ShimmerGetStartedButton {
                         appState.isOnboardingComplete = true
                     }
                     .padding(.horizontal, 32)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .bottom).combined(with: .opacity),
+                        removal: .opacity
+                    ))
                 }
 
                 // No internet badge
-                if badgeVisible {
-                    HStack(spacing: 6) {
-                        Image(systemName: "wifi.slash")
-                            .font(.system(size: 12, weight: .semibold))
-                        Text("No internet required")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    }
-                    .foregroundStyle(Color(hex: 0xFFB800).opacity(0.7))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 7)
-                    .background(
-                        Capsule()
-                            .fill(Color(hex: 0xFFB800).opacity(0.1))
-                            .overlay(
-                                Capsule()
-                                    .stroke(Color(hex: 0xFFB800).opacity(0.2), lineWidth: 0.5)
-                            )
-                    )
-                    .padding(.top, 16)
-                    .transition(.opacity)
+                HStack(spacing: 6) {
+                    Image(systemName: "wifi.slash")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text("No internet required")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
                 }
+                .foregroundStyle(amber.opacity(0.6))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .background(
+                    Capsule()
+                        .fill(amber.opacity(0.08))
+                        .overlay(
+                            Capsule()
+                                .stroke(amber.opacity(0.15), lineWidth: 0.5)
+                        )
+                )
+                .padding(.top, 20)
+                .opacity(taglineOpacity)
 
                 Spacer()
                     .frame(height: 40)
             }
+            .animation(.spring(response: 0.5, dampingFraction: 0.8), value: currentPage)
         }
         .onAppear {
             startAnimations()
         }
     }
 
-    // MARK: - Step Row
-
-    private func stepRow(index: Int, step: (icon: String, title: String, description: String)) -> some View {
-        HStack(spacing: 16) {
-            ZStack {
-                // Circular amber background that fills in
-                Circle()
-                    .fill(Color(hex: 0xFFB800).opacity(stepsVisible[index] ? 0.2 : 0.0))
-                    .frame(width: 50, height: 50)
-                    .animation(.easeOut(duration: 0.6).delay(0.2), value: stepsVisible[index])
-
-                Circle()
-                    .stroke(Color(hex: 0xFFB800).opacity(0.3), lineWidth: 1.5)
-                    .frame(width: 50, height: 50)
-
-                Image(systemName: step.icon)
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(Color(hex: 0xFFB800))
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(step.title)
-                    .font(.system(.body, weight: .bold))
-                    .foregroundStyle(.white)
-
-                Text(step.description)
-                    .font(.system(.caption))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-
-            Spacer()
-        }
-    }
-
     // MARK: - Animations
 
     private func startAnimations() {
-        // Title entrance
-        withAnimation(.spring(response: 0.7, dampingFraction: 0.7).delay(0.3)) {
-            titleOpacity = 1.0
-            titleScale = 1.0
+        // Tagline fades in after wordmark
+        withAnimation(.easeOut(duration: 0.8).delay(0.9)) {
+            taglineOpacity = 1.0
         }
 
-        // Staggered step entrance
-        Task {
-            try? await Task.sleep(for: .seconds(1.2))
-            for i in 0..<3 {
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.75)) {
-                    stepsVisible[i] = true
-                }
-                try? await Task.sleep(for: .seconds(0.5))
-            }
-
-            // Button slides up
-            try? await Task.sleep(for: .seconds(0.3))
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                buttonVisible = true
-            }
-
-            // Badge fades in
-            try? await Task.sleep(for: .seconds(0.4))
-            withAnimation(.easeOut(duration: 0.5)) {
-                badgeVisible = true
-            }
+        // Pages appear
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(1.3)) {
+            pagesVisible = true
         }
     }
 }

@@ -1,82 +1,385 @@
 import SwiftUI
 
-// MARK: - Signal Animation
+// MARK: - Glass Bar Header
 
-private struct SignalBarsView: View {
-    let active: Bool
+private struct GlassHeaderBar: View {
+    let callsign: String
+    let peerCount: Int
 
-    @State private var animating = false
+    private let amber = Color(hex: 0xFFB800)
+    private let green = Color(hex: 0x30D158)
 
     var body: some View {
-        HStack(spacing: 2) {
-            ForEach(0..<3, id: \.self) { index in
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(active ? Color(hex: 0x30D158) : Color.gray.opacity(0.3))
-                    .frame(width: 3, height: CGFloat(6 + index * 3))
-                    .opacity(active && animating ? (index == 2 ? 0.4 : 1.0) : 1.0)
+        HStack(spacing: 12) {
+            // Logo mark
+            HStack(spacing: 6) {
+                Image(systemName: "antenna.radiowaves.left.and.right")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(amber)
+
+                Text("ChirpChirp")
+                    .font(.system(size: 16, weight: .heavy, design: .rounded))
+                    .foregroundStyle(amber)
             }
-        }
-        .onAppear {
-            guard active else { return }
-            withAnimation(
-                .easeInOut(duration: 0.8)
-                .repeatForever(autoreverses: true)
-            ) {
-                animating = true
+
+            Spacer()
+
+            // Callsign
+            Text(callsign)
+                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                .foregroundStyle(.white.opacity(0.8))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule()
+                        .fill(.white.opacity(0.08))
+                )
+
+            // Peer count
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(peerCount > 0 ? green : Color.gray.opacity(0.4))
+                    .frame(width: 7, height: 7)
+
+                Text("\(peerCount)")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(peerCount > 0 ? green : .secondary)
             }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(
+                Capsule()
+                    .fill(.ultraThinMaterial)
+                    .environment(\.colorScheme, .dark)
+            )
         }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .environment(\.colorScheme, .dark)
+                .overlay(
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.05),
+                                    Color.clear,
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                )
+        )
     }
 }
 
-// MARK: - Noise Texture Overlay
+// MARK: - Friend Avatar Bubble
 
-private struct NoiseOverlay: View {
+private struct FriendAvatarBubble: View {
+    let friend: ChirpFriend
+    let action: () -> Void
+
+    private let green = Color(hex: 0x30D158)
+
     var body: some View {
-        Canvas { context, size in
-            // Draw a subtle pattern using small rects
-            for x in stride(from: 0, to: size.width, by: 4) {
-                for y in stride(from: 0, to: size.height, by: 4) {
-                    let val = sin(x * 0.7 + y * 1.3) * cos(x * 1.1 - y * 0.9)
-                    let opacity = abs(val) * 0.03
-                    context.fill(
-                        Path(CGRect(x: x, y: y, width: 4, height: 4)),
-                        with: .color(Color.white.opacity(opacity))
-                    )
+        Button(action: action) {
+            VStack(spacing: 6) {
+                ZStack(alignment: .bottomTrailing) {
+                    // Avatar circle with initial
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    colorForName(friend.name),
+                                    colorForName(friend.name).opacity(0.6),
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 52, height: 52)
+                        .overlay(
+                            Text(String(friend.name.prefix(1)).uppercased())
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                        )
+
+                    // Online dot
+                    if friend.isOnline {
+                        Circle()
+                            .fill(green)
+                            .frame(width: 14, height: 14)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.black, lineWidth: 2.5)
+                            )
+                            .offset(x: 2, y: 2)
+                    }
+                }
+
+                Text(friend.name.split(separator: " ").first.map(String.init) ?? friend.name)
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .lineLimit(1)
+            }
+        }
+        .frame(width: 64)
+    }
+
+    private func colorForName(_ name: String) -> Color {
+        let hash = abs(name.hashValue)
+        let hue = Double(hash % 360) / 360.0
+        return Color(hue: hue, saturation: 0.55, brightness: 0.65)
+    }
+}
+
+// MARK: - Channel Card
+
+private struct ChannelCard: View {
+    let channel: ChirpChannel
+    let isActive: Bool
+    let friends: [ChirpFriend]
+
+    @State private var borderPhase: CGFloat = 0.0
+    @State private var pressed = false
+
+    private let amber = Color(hex: 0xFFB800)
+    private let green = Color(hex: 0x30D158)
+
+    private var gradientColors: [Color] {
+        let hash = abs(channel.name.hashValue)
+        let hue1 = Double(hash % 360) / 360.0
+        let hue2 = (hue1 + 0.08).truncatingRemainder(dividingBy: 1.0)
+        return [
+            Color(hue: hue1, saturation: 0.4, brightness: 0.15),
+            Color(hue: hue2, saturation: 0.35, brightness: 0.10),
+        ]
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            // Top row: name + lock + live badge
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(channel.name)
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+
+                        if channel.accessMode == .locked {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(.white.opacity(0.4))
+                        }
+                    }
+
+                    // Time since creation
+                    Text(channel.createdAt.relativeDisplay)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.35))
+                }
+
+                Spacer()
+
+                if isActive {
+                    LiveBadge()
                 }
             }
+
+            // Bottom row: peer avatars + arrow
+            HStack(spacing: 0) {
+                // Stacked peer avatars
+                peerAvatarStack
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.3))
+            }
         }
-        .allowsHitTesting(false)
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 22)
+                .fill(
+                    LinearGradient(
+                        colors: gradientColors,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22)
+                        .fill(.ultraThinMaterial.opacity(0.3))
+                        .environment(\.colorScheme, .dark)
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 22)
+                .stroke(
+                    isActive
+                        ? amber.opacity(0.5 + Foundation.sin(borderPhase) * 0.3)
+                        : Color.white.opacity(0.06),
+                    lineWidth: isActive ? 1.5 : 0.5
+                )
+        )
+        .shadow(
+            color: isActive ? amber.opacity(0.15) : Color.black.opacity(0.3),
+            radius: isActive ? 20 : 10,
+            y: 6
+        )
+        .scaleEffect(pressed ? 0.97 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: pressed)
+        .onAppear {
+            guard isActive else { return }
+            withAnimation(
+                .easeInOut(duration: 2.0)
+                .repeatForever(autoreverses: true)
+            ) {
+                borderPhase = .pi * 2
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var peerAvatarStack: some View {
+        let peerNames = channel.peers.prefix(4)
+        let overflow = max(0, channel.peers.count - 4)
+
+        HStack(spacing: -10) {
+            ForEach(Array(peerNames.enumerated()), id: \.element.id) { index, peer in
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                peerColor(peer.name),
+                                peerColor(peer.name).opacity(0.6),
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 32, height: 32)
+                    .overlay(
+                        Text(String(peer.name.prefix(1)).uppercased())
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                    )
+                    .overlay(
+                        Circle()
+                            .stroke(Color.black, lineWidth: 2)
+                    )
+                    .zIndex(Double(4 - index))
+            }
+
+            if overflow > 0 {
+                Circle()
+                    .fill(Color.white.opacity(0.12))
+                    .frame(width: 32, height: 32)
+                    .overlay(
+                        Text("+\(overflow)")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.7))
+                    )
+                    .overlay(
+                        Circle()
+                            .stroke(Color.black, lineWidth: 2)
+                    )
+            }
+        }
+    }
+
+    private func peerColor(_ name: String) -> Color {
+        let hash = abs(name.hashValue)
+        let hue = Double(hash % 360) / 360.0
+        return Color(hue: hue, saturation: 0.5, brightness: 0.6)
     }
 }
 
-// MARK: - Pulsing FAB
+// MARK: - Live Badge
 
-private struct PulsingFAB: View {
+private struct LiveBadge: View {
+    @State private var glowing = false
+
+    private let amber = Color(hex: 0xFFB800)
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(Color(hex: 0xFF3B30))
+                .frame(width: 7, height: 7)
+                .shadow(color: Color(hex: 0xFF3B30).opacity(glowing ? 0.8 : 0.2), radius: 4)
+
+            Text("LIVE")
+                .font(.system(size: 10, weight: .black, design: .rounded))
+                .foregroundStyle(.white)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(
+            Capsule()
+                .fill(Color(hex: 0xFF3B30).opacity(0.2))
+                .overlay(
+                    Capsule()
+                        .stroke(Color(hex: 0xFF3B30).opacity(0.4), lineWidth: 0.5)
+                )
+        )
+        .onAppear {
+            withAnimation(
+                .easeInOut(duration: 1.0)
+                .repeatForever(autoreverses: true)
+            ) {
+                glowing = true
+            }
+        }
+    }
+}
+
+// MARK: - Pulsing Glass FAB
+
+private struct GlassFAB: View {
     let isEmpty: Bool
     let action: () -> Void
 
     @State private var pulseScale: CGFloat = 1.0
-    @State private var pulseOpacity: Double = 0.5
+    @State private var pulseOpacity: Double = 0.4
+
+    private let amber = Color(hex: 0xFFB800)
 
     var body: some View {
         ZStack {
             if isEmpty {
                 Circle()
-                    .fill(Color(hex: 0xFFB800).opacity(pulseOpacity))
-                    .frame(width: 60, height: 60)
+                    .fill(amber.opacity(pulseOpacity))
+                    .frame(width: 64, height: 64)
                     .scaleEffect(pulseScale)
             }
 
             Button(action: action) {
                 Image(systemName: "plus")
-                    .font(.system(size: 24, weight: .bold))
+                    .font(.system(size: 26, weight: .bold))
                     .foregroundStyle(.black)
-                    .frame(width: 60, height: 60)
+                    .frame(width: 64, height: 64)
                     .background(
-                        Circle()
-                            .fill(Color(hex: 0xFFB800))
-                            .shadow(color: Color(hex: 0xFFB800).opacity(0.4), radius: 16, y: 4)
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [amber, Color(hex: 0xFFC830)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                            Circle()
+                                .fill(.ultraThinMaterial.opacity(0.15))
+                                .environment(\.colorScheme, .dark)
+                        }
                     )
+                    .clipShape(Circle())
+                    .shadow(color: amber.opacity(0.5), radius: 20, y: 6)
             }
         }
         .onAppear {
@@ -85,64 +388,154 @@ private struct PulsingFAB: View {
                 .easeInOut(duration: 1.5)
                 .repeatForever(autoreverses: true)
             ) {
-                pulseScale = 1.6
+                pulseScale = 1.7
                 pulseOpacity = 0.0
             }
         }
     }
 }
 
-// MARK: - Radio Empty State
+// MARK: - Beautiful Empty State
 
-private struct ChannelEmptyStateView: View {
-    @State private var waveScale: CGFloat = 0.8
-    @State private var waveOpacity: Double = 0.0
+private struct ChannelEmptyState: View {
+    let onTap: () -> Void
+
+    @State private var ringScale: CGFloat = 0.8
+    @State private var ringOpacity: Double = 0.0
+    @State private var floatOffset: CGFloat = 0.0
+
+    private let amber = Color(hex: 0xFFB800)
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 0) {
             Spacer()
-                .frame(height: 40)
+                .frame(height: 80)
 
+            // Illustration
             ZStack {
-                // Outer ring pulse
+                // Outer animated ring
                 Circle()
-                    .stroke(Color(hex: 0xFFB800).opacity(0.15), lineWidth: 1)
-                    .frame(width: 120, height: 120)
-                    .scaleEffect(waveScale)
-                    .opacity(waveOpacity)
+                    .stroke(amber.opacity(0.1), lineWidth: 1)
+                    .frame(width: 160, height: 160)
+                    .scaleEffect(ringScale)
+                    .opacity(ringOpacity)
 
                 Circle()
-                    .fill(Color(hex: 0xFFB800).opacity(0.08))
-                    .frame(width: 90, height: 90)
+                    .stroke(amber.opacity(0.08), lineWidth: 1)
+                    .frame(width: 130, height: 130)
+
+                // Inner glow circle
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                amber.opacity(0.12),
+                                amber.opacity(0.03),
+                                Color.clear,
+                            ],
+                            center: .center,
+                            startRadius: 10,
+                            endRadius: 55
+                        )
+                    )
+                    .frame(width: 110, height: 110)
 
                 Image(systemName: "radio")
-                    .font(.system(size: 38, weight: .light))
-                    .foregroundStyle(Color(hex: 0xFFB800).opacity(0.6))
+                    .font(.system(size: 44, weight: .light))
+                    .foregroundStyle(amber.opacity(0.7))
+                    .symbolRenderingMode(.hierarchical)
             }
+            .offset(y: floatOffset)
 
-            VStack(spacing: 8) {
+            Spacer()
+                .frame(height: 32)
+
+            VStack(spacing: 12) {
                 Text("Create your first channel")
-                    .font(.system(.title3, design: .rounded, weight: .bold))
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
-                Text("Channels let your group talk instantly.\nTap + to get started.")
-                    .font(.system(.subheadline))
-                    .foregroundStyle(.secondary)
+                Text("Channels let your group talk instantly.\nTap the card below to get started.")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.4))
                     .multilineTextAlignment(.center)
-                    .lineSpacing(2)
+                    .lineSpacing(3)
             }
+
+            Spacer()
+                .frame(height: 32)
+
+            // Tappable card
+            Button(action: onTap) {
+                HStack(spacing: 16) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(amber.opacity(0.12))
+                            .frame(width: 52, height: 52)
+
+                        Image(systemName: "plus.bubble.fill")
+                            .font(.system(size: 22, weight: .medium))
+                            .foregroundStyle(amber)
+                    }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("New Channel")
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+
+                        Text("Start talking with friends nearby")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.4))
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(amber.opacity(0.5))
+                }
+                .padding(18)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(.ultraThinMaterial)
+                        .environment(\.colorScheme, .dark)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(amber.opacity(0.15), lineWidth: 0.5)
+                        )
+                )
+            }
+            .padding(.horizontal, 20)
 
             Spacer()
         }
         .onAppear {
             withAnimation(
-                .easeOut(duration: 2.5)
+                .easeOut(duration: 3.0)
                 .repeatForever(autoreverses: false)
             ) {
-                waveScale = 1.5
-                waveOpacity = 0.4
+                ringScale = 1.6
+                ringOpacity = 0.5
+            }
+            withAnimation(
+                .easeInOut(duration: 3.0)
+                .repeatForever(autoreverses: true)
+            ) {
+                floatOffset = -8
             }
         }
+    }
+}
+
+// MARK: - Date Extension
+
+private extension Date {
+    var relativeDisplay: String {
+        let interval = Date().timeIntervalSince(self)
+        if interval < 60 { return "Just now" }
+        if interval < 3600 { return "\(Int(interval / 60))m ago" }
+        if interval < 86400 { return "\(Int(interval / 3600))h ago" }
+        return "\(Int(interval / 86400))d ago"
     }
 }
 
@@ -167,12 +560,7 @@ struct HomeView: View {
             return .connected(peerCount: mpPeers)
         }
 
-        // Multipeer is always browsing, so we're always "searching"
         return .searching
-    }
-
-    private var hasPairedDevices: Bool {
-        return !appState.wifiAwareManager.pairedDevices.isEmpty
     }
 
     var body: some View {
@@ -181,25 +569,22 @@ struct HomeView: View {
                 // Dark background
                 Color.black.ignoresSafeArea()
 
-                // Subtle noise texture
-                NoiseOverlay()
-                    .ignoresSafeArea()
-
                 VStack(spacing: 0) {
-                    // Callsign section
-                    callsignHeader
-                        .padding(.top, 8)
+                    // Glass header bar
+                    GlassHeaderBar(
+                        callsign: appState.callsign,
+                        peerCount: appState.connectedPeerCount
+                    )
 
-                    // Enhanced status pill
-                    enhancedStatusPill
-                        .padding(.top, 12)
+                    // Friends quick-access row
+                    if !appState.friendsManager.friends.isEmpty {
+                        friendsQuickAccess
+                    }
 
-                    // Channel list with pull-to-refresh
+                    // Channel list or empty state
                     channelListView
                 }
             }
-            .navigationTitle("ChirpChirp")
-            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 16) {
@@ -238,6 +623,7 @@ struct HomeView: View {
                     }
                 }
             }
+            .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showChannelCreation) {
                 ChannelCreationView()
             }
@@ -256,69 +642,30 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Callsign Header
+    // MARK: - Friends Quick Access
 
-    private var callsignHeader: some View {
-        HStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .fill(amber.opacity(0.15))
-                    .frame(width: 34, height: 34)
-
-                Image(systemName: "radio")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(amber)
+    private var friendsQuickAccess: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 4) {
+                ForEach(
+                    appState.friendsManager.friends.sorted { a, b in
+                        // Online friends first
+                        if a.isOnline != b.isOnline { return a.isOnline }
+                        return a.name < b.name
+                    }
+                ) { friend in
+                    FriendAvatarBubble(friend: friend) {
+                        // Start direct channel with friend
+                        showChannelCreation = true
+                    }
+                }
             }
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text("Your Callsign")
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-                    .tracking(0.5)
-
-                Text(appState.callsign)
-                    .font(.system(.subheadline, design: .rounded, weight: .bold))
-                    .foregroundStyle(.white)
-            }
-
-            Spacer()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
-    }
-
-    // MARK: - Enhanced Status Pill
-
-    private var enhancedStatusPill: some View {
-        HStack(spacing: 10) {
-            // Animated status dot
-            Circle()
-                .fill(connectionStatus.dotColor)
-                .frame(width: 8, height: 8)
-                .shadow(color: connectionStatus.dotColor.opacity(0.6), radius: 4)
-
-            Text(appState.localPeerName)
-                .font(.system(.caption, design: .rounded, weight: .bold))
-                .foregroundStyle(.white.opacity(0.9))
-
-            Text("--")
-                .font(.system(.caption2))
-                .foregroundStyle(.secondary)
-
-            Text(connectionStatus.text)
-                .font(.system(.caption, weight: .medium))
-                .foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
         .background(
-            Capsule()
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    Capsule()
-                        .stroke(connectionStatus.dotColor.opacity(0.2), lineWidth: 0.5)
-                )
+            Rectangle()
+                .fill(Color.white.opacity(0.02))
         )
     }
 
@@ -328,28 +675,36 @@ struct HomeView: View {
         ZStack(alignment: .bottomTrailing) {
             ScrollView {
                 if appState.channelManager.channels.isEmpty {
-                    ChannelEmptyStateView()
+                    ChannelEmptyState {
+                        showChannelCreation = true
+                    }
                 } else {
-                    LazyVStack(spacing: 12) {
+                    LazyVStack(spacing: 16) {
                         ForEach(appState.channelManager.channels) { channel in
+                            let isActive = appState.channelManager.activeChannel?.id == channel.id
+
                             NavigationLink {
                                 ChannelView(channel: channel)
                             } label: {
-                                channelCard(channel)
+                                ChannelCard(
+                                    channel: channel,
+                                    isActive: isActive,
+                                    friends: appState.friendsManager.friends
+                                )
                             }
-                            .swipeActions(edge: .trailing) {
+                            .contextMenu {
                                 Button(role: .destructive) {
-                                    withAnimation {
+                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                                         appState.channelManager.deleteChannel(id: channel.id)
                                     }
                                 } label: {
-                                    Label("Delete", systemImage: "trash")
+                                    Label("Delete Channel", systemImage: "trash")
                                 }
                             }
                         }
                     }
                     .padding(.horizontal, 16)
-                    .padding(.top, 16)
+                    .padding(.top, 20)
                     .padding(.bottom, 100)
                 }
             }
@@ -358,100 +713,20 @@ struct HomeView: View {
             }
 
             // FAB
-            PulsingFAB(
+            GlassFAB(
                 isEmpty: appState.channelManager.channels.isEmpty
             ) {
                 showChannelCreation = true
             }
             .padding(.trailing, 20)
-            .padding(.bottom, 24)
+            .padding(.bottom, 28)
         }
-    }
-
-    // MARK: - Channel Card
-
-    private func channelCard(_ channel: ChirpChannel) -> some View {
-        let isActive = appState.channelManager.activeChannel?.id == channel.id
-
-        return HStack(spacing: 14) {
-            // Channel icon
-            ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(amber.opacity(0.12))
-                    .frame(width: 50, height: 50)
-
-                Image(systemName: "bubble.left.and.bubble.right.fill")
-                    .font(.system(size: 18))
-                    .foregroundStyle(amber)
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(channel.name)
-                    .font(.system(.body, weight: .bold))
-                    .foregroundStyle(.white)
-
-                HStack(spacing: 8) {
-                    // Member count
-                    HStack(spacing: 4) {
-                        Image(systemName: "person.2.fill")
-                            .font(.system(size: 10))
-                        Text("\(channel.peers.count)")
-                            .font(.system(.caption, weight: .semibold))
-                    }
-                    .foregroundStyle(.secondary)
-
-                    // Status dot
-                    if isActive {
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(green)
-                                .frame(width: 6, height: 6)
-                            Text("Joined")
-                                .font(.system(.caption, weight: .bold))
-                                .foregroundStyle(green)
-                        }
-                    }
-                }
-            }
-
-            Spacer()
-
-            // Signal animation
-            SignalBarsView(active: isActive)
-                .padding(.trailing, 4)
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.tertiary)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
-                .environment(\.colorScheme, .dark)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(
-                    isActive
-                        ? amber.opacity(0.6)
-                        : Color.white.opacity(0.06),
-                    lineWidth: isActive ? 1.5 : 0.5
-                )
-        )
-        .shadow(
-            color: isActive ? amber.opacity(0.1) : .clear,
-            radius: 12,
-            y: 4
-        )
     }
 
     // MARK: - Refresh
 
     private func refreshPeerDiscovery() async {
         isRefreshing = true
-        // Trigger a fresh peer discovery scan
         try? await Task.sleep(for: .seconds(1))
         let peers = await appState.peerTracker.connectedPeers
         connectedPeerCount = peers.count
