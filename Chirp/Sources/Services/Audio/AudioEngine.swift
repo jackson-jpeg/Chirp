@@ -16,6 +16,7 @@ final class AudioEngine {
     private var sequenceNumber: UInt32 = 0
     private var converter: AVAudioConverter?
     private var isCapturing = false
+    private let processingQueue = DispatchQueue(label: "com.chirpchirp.audio.processing", qos: .userInteractive)
 
     private let targetFormat: AVAudioFormat
     private let samplesPerFrame = Constants.Opus.samplesPerFrame
@@ -155,8 +156,16 @@ final class AudioEngine {
             guard let self, self.isCapturing else { return }
             guard buffer.frameLength > 0 else { return }
 
+            // Update level on audio thread (fast, no allocation)
             self.updateInputLevelFromRawBuffer(buffer)
-            self.processInputBuffer(buffer)
+
+            // Process conversion + encoding on a separate queue
+            // This prevents converter.convert() from blocking the audio thread
+            // which was causing deadlocks with removeTap()
+            self.processingQueue.async { [weak self] in
+                guard let self, self.isCapturing else { return }
+                self.processInputBuffer(buffer)
+            }
         }
 
         Logger.audio.info("Capture started — tap: \(tapFormat.sampleRate)Hz/\(tapFormat.channelCount)ch")
@@ -165,13 +174,16 @@ final class AudioEngine {
     func stopCapture() {
         guard let engine, isCapturing else { return }
 
-        // Set flag FIRST so the tap callback exits quickly
+        // Set flag FIRST so callbacks exit
         isCapturing = false
-        // Clear converter to prevent further processing
-        converter = nil
-        captureAccumulator.removeAll()
-        // Remove tap — isCapturing=false ensures callback exits immediately
+        // Remove tap immediately — callback will exit fast since
+        // converter work is on processingQueue, not the audio thread
         engine.inputNode.removeTap(onBus: 0)
+        // Clean up on processing queue to avoid race
+        processingQueue.async { [weak self] in
+            self?.converter = nil
+            self?.captureAccumulator.removeAll()
+        }
 
         Logger.audio.info("Capture stopped")
     }
