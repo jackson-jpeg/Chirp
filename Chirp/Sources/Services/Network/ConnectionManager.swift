@@ -335,7 +335,7 @@ actor ConnectionManager: TransportProtocol {
                     let data = try await self.receivePacket(on: connection)
                     await self.handleReceivedData(data, from: peerID)
                 } catch {
-                    await self.logger.debug("Receive loop ended for \(peerID): \(error.localizedDescription)")
+                    self.logger.debug("Receive loop ended for \(peerID): \(error.localizedDescription)")
                     await self.disconnectPeer(id: peerID)
                     break
                 }

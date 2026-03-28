@@ -32,11 +32,7 @@ struct HomeView: View {
                 StatusPillView(status: connectionStatus)
                     .padding(.top, 12)
 
-                if !hasPairedDevices {
-                    emptyStateView
-                } else {
-                    channelListView
-                }
+                channelListView
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.black)

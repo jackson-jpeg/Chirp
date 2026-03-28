@@ -26,9 +26,8 @@ final class AppState {
 
     // MARK: - Persisted State
 
-    var isOnboardingComplete: Bool {
-        get { UserDefaults.standard.bool(forKey: Keys.onboardingComplete) }
-        set { UserDefaults.standard.set(newValue, forKey: Keys.onboardingComplete) }
+    var isOnboardingComplete: Bool = UserDefaults.standard.bool(forKey: "com.chirp.onboardingComplete") {
+        didSet { UserDefaults.standard.set(isOnboardingComplete, forKey: Keys.onboardingComplete) }
     }
 
     // MARK: - Forwarded State

@@ -8,7 +8,7 @@ enum AudioSessionManager {
         try session.setCategory(
             .playAndRecord,
             mode: .voiceChat,
-            options: [.defaultToSpeaker, .allowBluetooth]
+            options: [.defaultToSpeaker, .allowBluetoothHFP]
         )
 
         try session.setPreferredIOBufferDuration(0.010)

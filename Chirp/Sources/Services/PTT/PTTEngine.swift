@@ -139,7 +139,7 @@ final class PTTEngine: @unchecked Sendable {
 
         audioReceiveTask = Task { [weak self] in
             guard let self else { return }
-            let stream = await self.connectionManager.audioPackets
+            let stream = self.connectionManager.audioPackets
             for await data in stream {
                 guard !Task.isCancelled else { break }
                 guard let packet = AudioPacket.deserialize(data) else {
@@ -155,7 +155,7 @@ final class PTTEngine: @unchecked Sendable {
 
         controlReceiveTask = Task { [weak self] in
             guard let self else { return }
-            let stream = await self.connectionManager.controlMessages
+            let stream = self.connectionManager.controlMessages
             for await message in stream {
                 guard !Task.isCancelled else { break }
                 self.floorController.handleMessage(message)

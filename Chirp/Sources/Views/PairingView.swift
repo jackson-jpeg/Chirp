@@ -19,11 +19,7 @@ struct PairingView: View {
             VStack(spacing: 32) {
                 Spacer()
 
-                if appState.wifiAwareManager.isSupported {
-                    supportedPairingContent
-                } else {
-                    unsupportedContent
-                }
+                supportedPairingContent
 
                 Spacer()
             }
