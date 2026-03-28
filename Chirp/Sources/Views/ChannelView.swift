@@ -84,7 +84,14 @@ struct ChannelView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(channel.name)
         .chirpToast($toast)
+        .onAppear {
+            // Auto-join channel when navigating to it
+            if appState.channelManager.activeChannel?.id != channel.id {
+                appState.channelManager.joinChannel(id: channel.id)
+            }
+        }
         .onChange(of: appState.pttState) { _, newValue in
             withAnimation(.easeInOut(duration: 0.15)) {
                 pttState = newValue

@@ -322,6 +322,15 @@ struct HomeView: View {
                             } label: {
                                 channelCard(channel)
                             }
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) {
+                                    withAnimation {
+                                        appState.channelManager.deleteChannel(id: channel.id)
+                                    }
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                     .padding(.horizontal, 16)
