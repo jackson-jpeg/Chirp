@@ -1,4 +1,5 @@
 import ActivityKit
+import AVFAudio
 import Foundation
 import Observation
 import OSLog
@@ -28,6 +29,29 @@ final class AppState {
 
     var isOnboardingComplete: Bool = UserDefaults.standard.bool(forKey: "com.chirp.onboardingComplete") {
         didSet { UserDefaults.standard.set(isOnboardingComplete, forKey: Keys.onboardingComplete) }
+    }
+
+    var callsign: String = UserDefaults.standard.string(forKey: "com.chirp.callsign") ?? UIDevice.current.name {
+        didSet { UserDefaults.standard.set(callsign, forKey: "com.chirp.callsign") }
+    }
+
+    // MARK: - Permissions
+
+    private(set) var micPermissionGranted: Bool = false
+
+    func requestMicPermission() async {
+        let status = AVAudioApplication.shared.recordPermission
+        switch status {
+        case .granted:
+            micPermissionGranted = true
+        case .undetermined:
+            let granted = await AVAudioApplication.requestRecordPermission()
+            micPermissionGranted = granted
+        case .denied:
+            micPermissionGranted = false
+        @unknown default:
+            micPermissionGranted = false
+        }
     }
 
     // MARK: - Forwarded State
@@ -91,10 +115,14 @@ final class AppState {
 
     /// Call once from the app's root view `.task` modifier.
     func start() async {
+        // Request mic permission early
+        await requestMicPermission()
+
         try? await pttEngine.start()
         await peerTracker.startHealthCheck()
 
-        // Create a default channel if none exist.
+        // Create a default channel if none exist (first launch).
+        // Channels are persisted, so this only runs once.
         if channelManager.channels.isEmpty {
             let defaultChannel = channelManager.createChannel(name: "General")
             channelManager.joinChannel(id: defaultChannel.id)

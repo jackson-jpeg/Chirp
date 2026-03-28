@@ -1,6 +1,6 @@
 import Foundation
 
-struct ChirpPeer: Identifiable, Equatable, Sendable {
+struct ChirpPeer: Identifiable, Equatable, Sendable, Codable {
     let id: String
     var name: String
     var isConnected: Bool = false

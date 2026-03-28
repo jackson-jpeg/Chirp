@@ -13,10 +13,17 @@ final class ChannelManager: @unchecked Sendable {
     // MARK: - Private
 
     private let logger = Logger.ptt
+    private let storageKey = "com.chirp.savedChannels"
+    private let activeChannelKey = "com.chirp.activeChannelID"
+
+    // MARK: - Init
+
+    init() {
+        loadChannels()
+    }
 
     // MARK: - Channel Lifecycle
 
-    /// Creates a new channel and returns it. Does not automatically join.
     @discardableResult
     func createChannel(name: String) -> ChirpChannel {
         let channel = ChirpChannel(
@@ -26,11 +33,11 @@ final class ChannelManager: @unchecked Sendable {
             createdAt: Date()
         )
         channels.append(channel)
+        saveChannels()
         logger.info("Created channel '\(name)' (\(channel.id))")
         return channel
     }
 
-    /// Join an existing channel by ID. Leaves the current channel first if needed.
     func joinChannel(id: String) {
         guard let index = channels.firstIndex(where: { $0.id == id }) else {
             logger.warning("joinChannel failed — channel \(id) not found")
@@ -42,71 +49,76 @@ final class ChannelManager: @unchecked Sendable {
         }
 
         activeChannel = self.channels[index]
+        UserDefaults.standard.set(id, forKey: activeChannelKey)
         logger.info("Joined channel '\(self.channels[index].name)' (\(id))")
     }
 
-    /// Leave the currently active channel.
     func leaveChannel() {
-        guard let channel = activeChannel else {
-            logger.debug("leaveChannel called with no active channel")
-            return
-        }
-
+        guard let channel = activeChannel else { return }
         logger.info("Left channel '\(channel.name)' (\(channel.id))")
         activeChannel = nil
+        UserDefaults.standard.removeObject(forKey: activeChannelKey)
     }
 
     // MARK: - Peer Management
 
-    /// Add a peer to a specific channel.
     func addPeerToChannel(channelID: String, peer: ChirpPeer) {
-        guard let index = channels.firstIndex(where: { $0.id == channelID }) else {
-            logger.warning("addPeerToChannel failed — channel \(channelID) not found")
-            return
-        }
-
-        // Avoid duplicates.
-        guard !channels[index].peers.contains(where: { $0.id == peer.id }) else {
-            logger.debug("Peer \(peer.name) already in channel \(channelID)")
-            return
-        }
+        guard let index = channels.firstIndex(where: { $0.id == channelID }) else { return }
+        guard !channels[index].peers.contains(where: { $0.id == peer.id }) else { return }
 
         self.channels[index].peers.append(peer)
         syncActiveChannel(channelID: channelID, at: index)
         logger.info("Added peer '\(peer.name)' to channel '\(self.channels[index].name)'")
     }
 
-    /// Remove a peer from a specific channel.
     func removePeerFromChannel(channelID: String, peerID: String) {
-        guard let index = channels.firstIndex(where: { $0.id == channelID }) else {
-            logger.warning("removePeerFromChannel failed — channel \(channelID) not found")
-            return
-        }
+        guard let index = channels.firstIndex(where: { $0.id == channelID }) else { return }
 
         self.channels[index].peers.removeAll { $0.id == peerID }
         syncActiveChannel(channelID: channelID, at: index)
         logger.info("Removed peer \(peerID) from channel '\(self.channels[index].name)'")
     }
 
-    // MARK: - Queries
-
-    /// Find a channel by ID.
     func channel(withID id: String) -> ChirpChannel? {
         channels.first { $0.id == id }
     }
 
-    /// Remove a channel entirely.
     func deleteChannel(id: String) {
         if activeChannel?.id == id {
             activeChannel = nil
+            UserDefaults.standard.removeObject(forKey: activeChannelKey)
         }
         channels.removeAll { $0.id == id }
+        saveChannels()
         logger.info("Deleted channel \(id)")
     }
 
-    // MARK: - Private
+    // MARK: - Persistence
 
-    /// Keep activeChannel in sync when the backing array mutates.
+    private func saveChannels() {
+        do {
+            let data = try JSONEncoder().encode(channels)
+            UserDefaults.standard.set(data, forKey: storageKey)
+        } catch {
+            logger.error("Failed to save channels: \(error.localizedDescription)")
+        }
+    }
+
+    private func loadChannels() {
+        guard let data = UserDefaults.standard.data(forKey: storageKey) else { return }
+        do {
+            channels = try JSONDecoder().decode([ChirpChannel].self, from: data)
+            // Restore active channel
+            if let activeID = UserDefaults.standard.string(forKey: activeChannelKey),
+               let index = channels.firstIndex(where: { $0.id == activeID }) {
+                activeChannel = channels[index]
+            }
+            logger.info("Loaded \(self.channels.count) channel(s)")
+        } catch {
+            logger.error("Failed to load channels: \(error.localizedDescription)")
+        }
+    }
+
     private func syncActiveChannel(channelID: String, at index: Int) {
         if activeChannel?.id == channelID {
             activeChannel = channels[index]

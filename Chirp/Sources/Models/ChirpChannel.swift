@@ -1,6 +1,6 @@
 import Foundation
 
-struct ChirpChannel: Identifiable, Equatable, Sendable {
+struct ChirpChannel: Identifiable, Equatable, Sendable, Codable {
     let id: String
     var name: String
     var peers: [ChirpPeer] = []
