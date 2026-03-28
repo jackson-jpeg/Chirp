@@ -158,18 +158,32 @@ struct ChannelView: View {
     // MARK: - Empty Peers
 
     private var emptyPeersView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "person.slash")
-                .font(.system(size: 40, weight: .light))
+        VStack(spacing: 20) {
+            // Show "You" as the only device on the channel
+            VStack(spacing: 8) {
+                ZStack {
+                    Circle()
+                        .fill(Color(hex: 0xFFB800).opacity(0.15))
+                        .frame(width: 64, height: 64)
+
+                    Image(systemName: "iphone.gen3")
+                        .font(.system(size: 28))
+                        .foregroundStyle(Color(hex: 0xFFB800))
+                }
+
+                Text("You")
+                    .font(.system(.caption, weight: .semibold))
+                    .foregroundStyle(Color(hex: 0xFFB800))
+            }
+
+            Text("Waiting for peers...")
+                .font(.system(.subheadline, weight: .medium))
                 .foregroundStyle(.secondary)
 
-            Text("No peers on this channel")
-                .font(.system(.headline, weight: .medium))
-                .foregroundStyle(.secondary)
-
-            Text("Invite friends to join this channel")
-                .font(.system(.subheadline))
+            Text("Other devices running Chirp nearby\nwill appear here automatically")
+                .font(.system(.caption))
                 .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
         }
     }
 

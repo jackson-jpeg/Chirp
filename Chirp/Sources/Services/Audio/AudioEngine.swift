@@ -241,7 +241,6 @@ final class AudioEngine {
             guard let codec else { return }
             do {
                 let encodedData = try codec.encode(encodeBuffer)
-                let seq = sequenceNumber
                 sequenceNumber += 1
                 onEncodedAudio?(encodedData)
             } catch {
