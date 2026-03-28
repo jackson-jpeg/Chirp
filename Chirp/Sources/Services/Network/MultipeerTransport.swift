@@ -28,6 +28,14 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
     // Callback for peer changes
     var onPeersChanged: (([ChirpPeer]) -> Void)?
 
+    // MARK: - Mesh Networking
+
+    /// Set externally to enable mesh relay. When nil, packets use legacy direct format.
+    var meshRouter: MeshRouter?
+
+    /// Magic byte prefix to distinguish mesh packets from legacy direct packets on the wire.
+    private static let meshMagic: UInt8 = 0xAA
+
     // MARK: - Packet framing
 
     private enum PacketType: UInt8 {
@@ -93,19 +101,70 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
 
     // MARK: - Send
 
-    func sendAudio(_ data: Data) throws {
+    func sendAudio(_ data: Data, sequenceNumber: UInt32 = 0, channelID: String? = nil) throws {
         guard !session.connectedPeers.isEmpty else { return }
-        var packet = Data([PacketType.audio.rawValue])
-        packet.append(data)
-        try session.send(packet, toPeers: session.connectedPeers, with: .unreliable)
+
+        if let meshRouter {
+            // Wrap in a mesh packet for multi-hop relay
+            Task {
+                let meshPacket = await meshRouter.createPacket(
+                    type: .audio,
+                    payload: data,
+                    channelID: channelID ?? "",
+                    sequenceNumber: sequenceNumber
+                )
+                let serialized = meshPacket.serialize()
+                var wireData = Data([Self.meshMagic])
+                wireData.append(serialized)
+                try? self.session.send(wireData, toPeers: self.session.connectedPeers, with: .unreliable)
+            }
+        } else {
+            // Legacy direct format
+            var packet = Data([PacketType.audio.rawValue])
+            packet.append(data)
+            try session.send(packet, toPeers: session.connectedPeers, with: .unreliable)
+        }
     }
 
-    func sendControl(_ message: FloorControlMessage) throws {
+    func sendControl(_ message: FloorControlMessage, channelID: String? = nil) throws {
         guard !session.connectedPeers.isEmpty else { return }
         let payload = try JSONEncoder().encode(message)
-        var packet = Data([PacketType.control.rawValue])
-        packet.append(payload)
-        try session.send(packet, toPeers: session.connectedPeers, with: .reliable)
+
+        if let meshRouter {
+            // Wrap in a mesh packet for multi-hop relay
+            Task {
+                let meshPacket = await meshRouter.createPacket(
+                    type: .control,
+                    payload: payload,
+                    channelID: channelID ?? "",
+                    sequenceNumber: 0
+                )
+                let serialized = meshPacket.serialize()
+                var wireData = Data([Self.meshMagic])
+                wireData.append(serialized)
+                try? self.session.send(wireData, toPeers: self.session.connectedPeers, with: .reliable)
+            }
+        } else {
+            // Legacy direct format
+            var packet = Data([PacketType.control.rawValue])
+            packet.append(payload)
+            try session.send(packet, toPeers: session.connectedPeers, with: .reliable)
+        }
+    }
+
+    // MARK: - Mesh Forwarding
+
+    /// Forward a pre-serialized mesh packet to all connected peers except the one it came from.
+    func forwardPacket(_ packet: Data, excludePeer: String) {
+        let targets = session.connectedPeers.filter { $0.displayName != excludePeer }
+        guard !targets.isEmpty else { return }
+
+        var wireData = Data([Self.meshMagic])
+        wireData.append(packet)
+
+        // Use unreliable for forwarded packets — they're already best-effort mesh traffic
+        try? session.send(wireData, toPeers: targets, with: .unreliable)
+        logger.debug("Mesh forwarded packet to \(targets.count) peers (excluded '\(excludePeer)')")
     }
 
     // MARK: - Helpers
@@ -142,6 +201,24 @@ extension MultipeerTransport: MCSessionDelegate {
 
     func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
         guard data.count >= 2 else { return }
+
+        // Check for mesh magic byte
+        if data[0] == Self.meshMagic, let meshRouter {
+            let meshData = Data(data.dropFirst())
+            guard let meshPacket = MeshPacket.deserialize(meshData) else {
+                logger.warning("Failed to deserialize mesh packet from '\(peerID.displayName)'")
+                return
+            }
+
+            let peerName = peerID.displayName
+            let router = meshRouter
+            Task {
+                let _ = await router.handleIncoming(packet: meshPacket, fromPeer: peerName)
+            }
+            return
+        }
+
+        // Legacy direct packet format (no mesh magic byte)
         let typeByte = data[0]
         let payload = data.dropFirst()
 

@@ -589,6 +589,14 @@ struct HomeView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 16) {
                         NavigationLink {
+                            MeshMapView()
+                        } label: {
+                            Image(systemName: "point.3.connected.trianglepath.dotted")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(amber)
+                        }
+
+                        NavigationLink {
                             FriendsView()
                         } label: {
                             ZStack(alignment: .topTrailing) {

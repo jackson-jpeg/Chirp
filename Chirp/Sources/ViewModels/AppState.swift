@@ -21,6 +21,7 @@ final class AppState {
     let liveActivityManager: LiveActivityManager
     let multipeerTransport: MultipeerTransport
     let friendsManager: FriendsManager
+    let meshRouter: MeshRouter
 
     // MARK: - Identity
 
@@ -62,6 +63,7 @@ final class AppState {
     var pttState: PTTState { pttEngine.state }
     var inputLevel: Float { audioEngine.inputLevel }
     private(set) var connectedPeerCount: Int = 0
+    private(set) var meshStats: MeshStats?
 
     // MARK: - Private
 
@@ -117,6 +119,14 @@ final class AppState {
         self.multipeerTransport = transport
         self.friendsManager = FriendsManager()
 
+        // Create mesh router using stable local peer ID as origin
+        guard let originUUID = UUID(uuidString: peerID) else {
+            fatalError("Local peer ID is not a valid UUID: \(peerID)")
+        }
+        let router = MeshRouter(localPeerID: originUUID)
+        self.meshRouter = router
+        transport.meshRouter = router
+
         // Wire multipeer to PTT engine for real peer-to-peer audio
         transport.onPeersChanged = { [weak self] peers in
             guard let self else { return }
@@ -151,6 +161,31 @@ final class AppState {
             }
         }
 
+        // Wire mesh router callbacks
+        let audioEng = self.audioEngine
+        let floorCtrl = self.floorController
+        let mpTransport = self.multipeerTransport
+        Task {
+            await router.setCallbacks(
+                onLocalDelivery: { (packet: MeshPacket) in
+                    switch packet.type {
+                    case .audio:
+                        if let audioPacket = AudioPacket.deserialize(packet.payload) {
+                            audioEng.receiveAudioPacket(audioPacket.opusData, sequenceNumber: audioPacket.sequenceNumber)
+                        }
+                    case .control:
+                        if let message = try? JSONDecoder().decode(FloorControlMessage.self, from: packet.payload) {
+                            floorCtrl.handleMessage(message)
+                        }
+                    }
+                },
+                onForward: { (packet: MeshPacket, excludePeer: String) in
+                    let serialized = packet.serialize()
+                    mpTransport.forwardPacket(serialized, excludePeer: excludePeer)
+                }
+            )
+        }
+
         logger.info("AppState initialized — peerID=\(peerID), name=\(self.callsign)")
     }
 
@@ -171,7 +206,9 @@ final class AppState {
         // Start MultipeerConnectivity transport for local peer discovery
         multipeerTransport.start()
 
-        // Wire multipeer audio/control streams into PTT engine receive loops
+        // Wire multipeer audio/control streams into PTT engine receive loops.
+        // These handle legacy (non-mesh) packets only. Mesh packets are delivered
+        // via meshRouter.onLocalDelivery callbacks wired in init().
         Task {
             for await data in multipeerTransport.audioPackets {
                 if let packet = AudioPacket.deserialize(data) {
@@ -196,6 +233,15 @@ final class AppState {
         // if let channel = channelManager.activeChannel {
         //     liveActivityManager.startActivity(channelName: channel.name)
         // }
+
+        // Periodically update mesh stats for UI
+        Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard let self else { break }
+                self.meshStats = await self.meshRouter.stats
+            }
+        }
 
         logger.info("AppState started")
     }

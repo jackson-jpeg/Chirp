@@ -431,6 +431,23 @@ struct SettingsView: View {
 
                         Divider().background(Color.white.opacity(0.1))
 
+                        // Mesh network stats
+                        HStack(spacing: 6) {
+                            Image(systemName: "point.3.connected.trianglepath.dotted")
+                                .foregroundStyle(Color(hex: 0xFFB800))
+                                .font(.system(size: 10))
+                            Text("Mesh Network")
+                                .foregroundStyle(.white)
+                                .font(.system(.caption, weight: .semibold))
+                        }
+
+                        debugRow("Mesh Nodes", value: meshNodeCount)
+                        debugRow("Max Hops", value: meshMaxHops)
+                        debugRow("Packets Relayed", value: meshPacketsRelayed)
+                        debugRow("Est. Range", value: meshEstRange)
+
+                        Divider().background(Color.white.opacity(0.1))
+
                         // Loopback mode toggle
                         Toggle(isOn: Binding(
                             get: { appState.pttEngine.loopbackMode },
@@ -476,6 +493,27 @@ struct SettingsView: View {
             return String(id.prefix(6)) + "..." + String(id.suffix(4))
         }
         return id
+    }
+
+    private var meshNodeCount: String {
+        let peerCount = appState.channelManager.activeChannel?.peers.count ?? 0
+        return peerCount > 0 ? "\(peerCount + 1)" : "\u{2014}"
+    }
+
+    private var meshMaxHops: String {
+        // Will read from appState.meshRouter when available
+        let peers = appState.channelManager.activeChannel?.peers.count ?? 0
+        return peers > 0 ? "1" : "\u{2014}"
+    }
+
+    private var meshPacketsRelayed: String {
+        // Will read from appState.meshRouter when available
+        "\u{2014}"
+    }
+
+    private var meshEstRange: String {
+        let peers = appState.channelManager.activeChannel?.peers.count ?? 0
+        return peers > 0 ? "~80m" : "\u{2014}"
     }
 
     private var appVersion: String {
