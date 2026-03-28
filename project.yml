@@ -28,6 +28,8 @@ targets:
       - path: Chirp/Resources
     dependencies:
       - package: Opus
+      - target: ChirpLiveActivity
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.chirp.app
@@ -36,6 +38,25 @@ targets:
         GENERATE_INFOPLIST_FILE: false
     info:
       path: Chirp/Info.plist
+
+  ChirpLiveActivity:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ChirpLiveActivity
+      - path: Chirp/Sources/Models/ChirpActivityAttributes.swift
+    dependencies: []
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.chirp.app.live-activity
+        INFOPLIST_FILE: ChirpLiveActivity/Info.plist
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: false
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTED_PLATFORMS: iphoneos iphonesimulator
 
   ChirpTests:
     type: bundle.unit-test

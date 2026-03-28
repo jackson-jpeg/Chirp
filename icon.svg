@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Black background -->
+  <rect width="1024" height="1024" fill="#1A1A1A"/>
+
+  <!-- Bird - geometric industrial stamp, centered -->
+  <g transform="translate(350, 460)">
+    <!-- Tail feathers - two bold angular wedges fanning out -->
+    <polygon points="0,-20 -120,-120 -60,-20" fill="#FFB800"/>
+    <polygon points="0,80 -140,140 -60,70" fill="#FFB800"/>
+    <!-- Middle tail connector -->
+    <polygon points="0,-20 -80,30 0,80" fill="#FFB800"/>
+
+    <!-- Body - large chunky shape -->
+    <path d="M 0,-20 L 0,-100 L 60,-160 L 150,-170 L 220,-140 L 260,-80 L 260,0 L 240,60 L 180,110 L 80,120 L 0,80 Z" fill="#FFB800"/>
+
+    <!-- Head crest - bold spike -->
+    <polygon points="110,-170 150,-230 190,-170" fill="#FFB800"/>
+
+    <!-- Upper beak - thick -->
+    <polygon points="260,-80 260,-120 350,-95" fill="#FFB800"/>
+
+    <!-- Lower beak - wide gap for chirp -->
+    <polygon points="260,-5 260,30 340,15" fill="#FFB800"/>
+
+    <!-- Eye -->
+    <circle cx="175" cy="-90" r="30" fill="#1A1A1A"/>
+  </g>
+
+  <!-- Sound waves -->
+  <g stroke="#FFB800" stroke-width="28" fill="none" stroke-linecap="round">
+    <path d="M 740,335 Q 780,390 740,445"/>
+    <path d="M 795,305 Q 850,390 795,475"/>
+  </g>
+</svg>

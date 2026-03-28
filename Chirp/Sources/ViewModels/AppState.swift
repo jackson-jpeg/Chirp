@@ -1,3 +1,4 @@
+import ActivityKit
 import Foundation
 import Observation
 import OSLog
@@ -16,6 +17,7 @@ final class AppState {
     let pttEngine: PTTEngine
     let channelManager: ChannelManager
     let peerTracker: PeerTracker
+    let liveActivityManager: LiveActivityManager
 
     // MARK: - Identity
 
@@ -81,6 +83,7 @@ final class AppState {
         self.floorController = floorController
         self.pttEngine = pttEngine
         self.channelManager = channelManager
+        self.liveActivityManager = LiveActivityManager()
 
         logger.info("AppState initialized — peerID=\(peerID), name=\(self.localPeerName)")
     }
@@ -98,13 +101,32 @@ final class AppState {
             channelManager.joinChannel(id: defaultChannel.id)
         }
 
+        // Start Live Activity for the active channel.
+        if let channel = channelManager.activeChannel {
+            liveActivityManager.startActivity(channelName: channel.name)
+        }
+
         logger.info("AppState started")
     }
 
     /// Graceful shutdown.
     func stop() {
         pttEngine.stop()
+        liveActivityManager.endActivity()
         Task { await peerTracker.stopHealthCheck() }
         logger.info("AppState stopped")
+    }
+
+    // MARK: - Live Activity
+
+    /// Call this whenever PTT state or audio level changes to keep the Dynamic Island in sync.
+    func updateLiveActivity() {
+        let channel = channelManager.activeChannel
+        liveActivityManager.updateActivity(
+            state: pttState,
+            channelName: channel?.name ?? "Chirp",
+            peerCount: channel?.activePeerCount ?? 0,
+            inputLevel: Double(inputLevel)
+        )
     }
 }
