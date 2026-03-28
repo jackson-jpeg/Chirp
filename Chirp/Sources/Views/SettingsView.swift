@@ -142,6 +142,58 @@ struct SettingsView: View {
             }
             .listRowBackground(Color.white.opacity(0.05))
 
+            // MARK: - Connectivity
+
+            Section {
+                HStack(spacing: 12) {
+                    Image(systemName: "wifi")
+                        .foregroundStyle(appState.wifiAwareManager.isSupported ? Color(hex: 0x30D158) : .secondary)
+                        .frame(width: 24)
+                    Text("Wi-Fi Aware")
+                    Spacer()
+                    Text(appState.wifiAwareManager.isSupported ? "Supported" : "Unavailable")
+                        .foregroundStyle(appState.wifiAwareManager.isSupported ? Color(hex: 0x30D158) : .secondary)
+                        .font(.caption)
+                }
+                .listRowBackground(Color.white.opacity(0.05))
+
+                HStack(spacing: 12) {
+                    Image(systemName: "antenna.radiowaves.left.and.right")
+                        .foregroundStyle(appState.connectedPeerCount > 0 ? Color(hex: 0x30D158) : Color(hex: 0xFFB800))
+                        .frame(width: 24)
+                    Text("Nearby Peers")
+                    Spacer()
+                    Text("\(appState.connectedPeerCount)")
+                        .foregroundStyle(appState.connectedPeerCount > 0 ? Color(hex: 0x30D158) : .secondary)
+                        .font(.caption)
+                }
+                .listRowBackground(Color.white.opacity(0.05))
+
+                Button {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "network")
+                            .foregroundStyle(Color(hex: 0xFFB800))
+                            .frame(width: 24)
+                        Text("Local Network Permission")
+                            .foregroundStyle(.white)
+                        Spacer()
+                        Image(systemName: "arrow.up.forward.app.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .listRowBackground(Color.white.opacity(0.05))
+            } header: {
+                Label("Connectivity", systemImage: "point.3.connected.trianglepath.dotted")
+            } footer: {
+                Text("If peer discovery fails, ensure Local Network is enabled in Settings → Privacy → Local Network → ChirpChirp")
+            }
+
             // MARK: - Paired Devices
 
             Section {
