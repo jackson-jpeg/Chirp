@@ -3,7 +3,7 @@ import Observation
 import OSLog
 
 @Observable
-final class AudioEngine {
+final class AudioEngine: @unchecked Sendable {
     var onEncodedAudio: (@Sendable (Data) -> Void)?
     private(set) var inputLevel: Float = 0.0
 
