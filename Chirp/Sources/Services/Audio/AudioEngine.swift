@@ -40,65 +40,54 @@ final class AudioEngine {
         self.jitterBuffer = jitterBuffer
 
         // Playback source node: pulls decoded PCM from jitter buffer.
-        // Runs at 16kHz mono Int16 — the engine handles resampling to hardware rate.
+        // Uses Float32 at 16kHz mono — the engine resamples to hardware rate.
+        // Int16 source nodes can have issues with format conversion on some devices.
         let jb = jitterBuffer
         let playbackFormat = AVAudioFormat(
-            commonFormat: .pcmFormatInt16,
+            commonFormat: .pcmFormatFloat32,
             sampleRate: Constants.Opus.sampleRate,
             channels: 1,
-            interleaved: true
+            interleaved: false
         )!
 
-        // Residual buffer for partial frame reads across render callbacks
-        var residual = Data()
-        let bytesPerSample = MemoryLayout<Int16>.size
-
+        // The jitter buffer stores Int16 PCM data.
+        // The source node outputs Float32 for better compatibility with the mixer.
         let node = AVAudioSourceNode(format: playbackFormat) { _, _, frameCount, audioBufferList -> OSStatus in
             let ablPointer = UnsafeMutableAudioBufferListPointer(audioBufferList)
-            let requestedBytes = Int(frameCount) * bytesPerSample
-            var outputData = Data()
+            let requestedFrames = Int(frameCount)
 
-            // Drain residual from previous callback first
-            if !residual.isEmpty {
-                let take = min(residual.count, requestedBytes)
-                outputData.append(residual.prefix(take))
-                residual.removeFirst(take)
+            // Get Float32 output pointer
+            guard let outputBuffer = ablPointer.first,
+                  let outputPtr = outputBuffer.mData?.assumingMemoryBound(to: Float.self) else {
+                return noErr
             }
 
-            // Pull frames from jitter buffer until we have enough
-            while outputData.count < requestedBytes {
+            var framesWritten = 0
+
+            // Pull frames from jitter buffer (returns Int16 PCM data)
+            while framesWritten < requestedFrames {
                 if let frame = jb.pull(frameCount: 1) {
-                    let needed = requestedBytes - outputData.count
-                    if frame.count <= needed {
-                        outputData.append(frame)
-                    } else {
-                        outputData.append(frame.prefix(needed))
-                        residual.append(frame.dropFirst(needed))
+                    // Convert Int16 → Float32
+                    frame.withUnsafeBytes { rawPtr in
+                        let int16Ptr = rawPtr.bindMemory(to: Int16.self)
+                        let samplesToWrite = min(int16Ptr.count, requestedFrames - framesWritten)
+                        for i in 0..<samplesToWrite {
+                            outputPtr[framesWritten + i] = Float(int16Ptr[i]) / Float(Int16.max)
+                        }
+                        framesWritten += samplesToWrite
                     }
                 } else {
-                    break // No more data — fill remainder with silence
+                    break
                 }
             }
 
-            // Copy to output buffers, zero-fill any shortfall
-            for bufferIndex in 0..<ablPointer.count {
-                let buf = ablPointer[bufferIndex]
-                guard let dest = buf.mData else { continue }
-                if outputData.count >= requestedBytes {
-                    outputData.withUnsafeBytes { src in
-                        dest.copyMemory(from: src.baseAddress!, byteCount: requestedBytes)
-                    }
-                } else {
-                    // Partial data + silence
-                    if !outputData.isEmpty {
-                        outputData.withUnsafeBytes { src in
-                            dest.copyMemory(from: src.baseAddress!, byteCount: outputData.count)
-                        }
-                    }
-                    let silenceStart = dest.advanced(by: outputData.count)
-                    memset(silenceStart, 0, requestedBytes - outputData.count)
+            // Zero-fill remaining frames with silence
+            if framesWritten < requestedFrames {
+                for i in framesWritten..<requestedFrames {
+                    outputPtr[i] = 0.0
                 }
             }
+
             return noErr
         }
 
@@ -195,7 +184,7 @@ final class AudioEngine {
         do {
             let pcmBuffer = try codec.decode(opusData)
             jitterBuffer.push(pcmBuffer: pcmBuffer, sequenceNumber: sequenceNumber)
-            if sequenceNumber % 50 == 0 {
+            if sequenceNumber < 5 || sequenceNumber % 50 == 0 {
                 Logger.audio.info("Audio flowing: seq=\(sequenceNumber), decoded \(pcmBuffer.frameLength) frames, jb=\(jitterBuffer.bufferedCount) buffered")
             }
         } catch {

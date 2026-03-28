@@ -115,18 +115,19 @@ struct PairingView: View {
         }
 
         #if canImport(DeviceDiscoveryUI) && canImport(WiFiAware)
-        // Device picker for Wi-Fi Aware pairing
-        DevicePairingView(
-            .wifiAware(.connecting(to: .chirpPTT, from: .selected([])))
-        ) {
-            Text("Waiting for nearby devices...")
-                .foregroundStyle(.secondary)
-        } fallback: {
-            Text("Wi-Fi Aware pairing not supported on this device.")
-                .foregroundStyle(.secondary)
+        if let service = WAPublishableService.chirpPTT {
+            DevicePairingView(
+                .wifiAware(.connecting(to: service, from: .selected([])))
+            ) {
+                Text("Waiting for nearby devices...")
+                    .foregroundStyle(.secondary)
+            } fallback: {
+                Text("Wi-Fi Aware pairing not supported on this device.")
+                    .foregroundStyle(.secondary)
+            }
+            .frame(height: 200)
+            .padding(.horizontal, 16)
         }
-        .frame(height: 200)
-        .padding(.horizontal, 16)
         #endif
 
         Spacer()
