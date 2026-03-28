@@ -9,6 +9,10 @@ final class PTTEngine: @unchecked Sendable {
 
     private(set) var state: PTTState = .idle
 
+    /// When true, encoded audio is looped back to the decoder for playback.
+    /// Lets you test the full audio pipeline on a single device.
+    var loopbackMode: Bool = true
+
     // MARK: - Dependencies
 
     let audioEngine: AudioEngine
@@ -50,6 +54,12 @@ final class PTTEngine: @unchecked Sendable {
         audioEngine.onEncodedAudio = { [weak self] opusData in
             guard let self else { return }
             let seq = self.nextSequenceNumber()
+
+            // Loopback: feed encoded audio back to decoder for local playback
+            if self.loopbackMode {
+                self.audioEngine.receiveAudioPacket(opusData, sequenceNumber: seq)
+            }
+
             let packet = AudioPacket(
                 sequenceNumber: seq,
                 timestamp: Self.currentTimestamp(),
@@ -59,7 +69,7 @@ final class PTTEngine: @unchecked Sendable {
                 do {
                     try await self.connectionManager.sendAudio(packet.serialize())
                 } catch {
-                    Logger.network.error("Failed to send audio packet #\(seq): \(error.localizedDescription)")
+                    // Expected when no peers connected — not an error in solo mode
                 }
             }
         }

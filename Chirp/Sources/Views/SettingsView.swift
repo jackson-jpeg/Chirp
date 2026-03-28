@@ -346,6 +346,26 @@ struct SettingsView: View {
                         // Jitter buffer stats
                         debugRow("Jitter Buffer",
                                  value: "init \(Constants.JitterBuffer.initialDepthMs)ms / max \(Constants.JitterBuffer.maxDepthMs)ms")
+
+                        Divider().background(Color.white.opacity(0.1))
+
+                        // Loopback mode toggle
+                        Toggle(isOn: Binding(
+                            get: { appState.pttEngine.loopbackMode },
+                            set: { appState.pttEngine.loopbackMode = $0 }
+                        )) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .foregroundStyle(Color(hex: 0xFFB800))
+                                Text("Loopback Test")
+                                    .foregroundStyle(.white)
+                            }
+                        }
+                        .tint(Color(hex: 0xFFB800))
+
+                        Text("Hear your own voice through the Opus codec pipeline. Use to test audio without a second device.")
+                            .font(.system(.caption2))
+                            .foregroundStyle(.secondary)
                     }
                     .font(.system(.caption, design: .monospaced))
                     .padding(.vertical, 4)
