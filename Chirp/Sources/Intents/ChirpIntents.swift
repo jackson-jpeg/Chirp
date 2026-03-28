@@ -11,13 +11,12 @@ struct StartChirpPTTIntent: AppIntent {
     static let openAppWhenRun = true
 
     func perform() async throws -> some IntentResult {
-        // The app will open and the user can hold PTT.
-        // We post a notification that the ChannelView can observe
-        // to auto-navigate to the active channel.
-        NotificationCenter.default.post(
-            name: .chirpPTTShortcutTriggered,
-            object: nil
-        )
+        await MainActor.run {
+            NotificationCenter.default.post(
+                name: .chirpPTTShortcutTriggered,
+                object: nil
+            )
+        }
         return .result()
     }
 }
@@ -32,10 +31,12 @@ struct OpenChannelIntent: AppIntent {
     var channelName: String?
 
     func perform() async throws -> some IntentResult {
-        NotificationCenter.default.post(
-            name: .chirpOpenChannelShortcut,
-            object: channelName
-        )
+        await MainActor.run {
+            NotificationCenter.default.post(
+                name: .chirpOpenChannelShortcut,
+                object: channelName
+            )
+        }
         return .result()
     }
 }
