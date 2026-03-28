@@ -20,11 +20,13 @@ final class AppState {
     let peerTracker: PeerTracker
     let liveActivityManager: LiveActivityManager
     let multipeerTransport: MultipeerTransport
+    let friendsManager: FriendsManager
 
     // MARK: - Identity
 
     let localPeerID: String
     let localPeerName: String
+    private(set) var peerFingerprint: String = ""
 
     // MARK: - Persisted State
 
@@ -113,6 +115,7 @@ final class AppState {
         let displayName = UserDefaults.standard.string(forKey: "com.chirp.callsign") ?? UIDevice.current.name
         let transport = MultipeerTransport(displayName: displayName)
         self.multipeerTransport = transport
+        self.friendsManager = FriendsManager()
 
         // Wire multipeer to PTT engine for real peer-to-peer audio
         transport.onPeersChanged = { [weak self] peers in
@@ -128,6 +131,15 @@ final class AppState {
                 for peer in peers {
                     self.channelManager.addPeerToChannel(channelID: activeID, peer: peer)
                 }
+            }
+
+            // Update friends online status
+            let onlinePeerIDs = Set(peers.map { $0.id })
+            for friend in self.friendsManager.friends {
+                self.friendsManager.updateOnlineStatus(
+                    peerID: friend.id,
+                    isOnline: onlinePeerIDs.contains(friend.id)
+                )
             }
 
             // Log peer changes
@@ -146,6 +158,9 @@ final class AppState {
 
     /// Call once from the app's root view `.task` modifier.
     func start() async {
+        // Load peer fingerprint
+        self.peerFingerprint = await PeerIdentity.shared.fingerprint
+
         // Request mic permission early
         await requestMicPermission()
 

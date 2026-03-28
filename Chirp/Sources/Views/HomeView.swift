@@ -203,6 +203,23 @@ struct HomeView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 16) {
+                        NavigationLink {
+                            FriendsView()
+                        } label: {
+                            ZStack(alignment: .topTrailing) {
+                                Image(systemName: "person.2.fill")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundStyle(amber)
+
+                                if !appState.friendsManager.onlineFriends.isEmpty {
+                                    Circle()
+                                        .fill(green)
+                                        .frame(width: 8, height: 8)
+                                        .offset(x: 3, y: -3)
+                                }
+                            }
+                        }
+
                         Button {
                             showPairing = true
                         } label: {
