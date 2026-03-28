@@ -1,34 +1,79 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
-  <!-- Black background -->
-  <rect width="1024" height="1024" fill="#1A1A1A"/>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="75%">
+      <stop offset="0%" stop-color="#1E1E22"/>
+      <stop offset="100%" stop-color="#0A0A0C"/>
+    </radialGradient>
+    <linearGradient id="amber1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFD54F"/>
+      <stop offset="100%" stop-color="#FFB800"/>
+    </linearGradient>
+    <linearGradient id="amber2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFB800"/>
+      <stop offset="100%" stop-color="#E09E00"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="42%" cy="45%" r="30%">
+      <stop offset="0%" stop-color="#FFB800" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#FFB800" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
 
-  <!-- Bird - geometric industrial stamp, centered -->
-  <g transform="translate(350, 460)">
-    <!-- Tail feathers - two bold angular wedges fanning out -->
-    <polygon points="0,-20 -120,-120 -60,-20" fill="#FFB800"/>
-    <polygon points="0,80 -140,140 -60,70" fill="#FFB800"/>
-    <!-- Middle tail connector -->
-    <polygon points="0,-20 -80,30 0,80" fill="#FFB800"/>
+  <!-- Background -->
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glow)"/>
 
-    <!-- Body - large chunky shape -->
-    <path d="M 0,-20 L 0,-100 L 60,-160 L 150,-170 L 220,-140 L 260,-80 L 260,0 L 240,60 L 180,110 L 80,120 L 0,80 Z" fill="#FFB800"/>
+  <!-- Sharp angular bird — facing right, beak open, chirping -->
+  <g transform="translate(180, 280)">
+    <!-- Tail — angular spikes -->
+    <polygon points="0,200 -30,120 60,170" fill="url(#amber2)"/>
+    <polygon points="0,230 -40,280 50,240" fill="url(#amber2)"/>
+    <polygon points="10,160 -20,60 80,130" fill="url(#amber2)" opacity="0.85"/>
 
-    <!-- Head crest - bold spike -->
-    <polygon points="110,-170 150,-230 190,-170" fill="#FFB800"/>
+    <!-- Body — sleek angular shape -->
+    <path d="
+      M 60,130
+      L 120,50
+      L 200,20
+      L 300,30
+      L 360,80
+      L 380,150
+      L 360,230
+      L 300,280
+      L 200,300
+      L 100,280
+      L 40,230
+      Z
+    " fill="url(#amber1)"/>
 
-    <!-- Upper beak - thick -->
-    <polygon points="260,-80 260,-120 350,-95" fill="#FFB800"/>
+    <!-- Wing accent -->
+    <path d="
+      M 80,190
+      L 160,140
+      L 280,150
+      L 320,180
+      L 260,220
+      L 140,230
+      Z
+    " fill="url(#amber2)" opacity="0.45"/>
 
-    <!-- Lower beak - wide gap for chirp -->
-    <polygon points="260,-5 260,30 340,15" fill="#FFB800"/>
+    <!-- Upper beak — sharp, angular -->
+    <polygon points="380,110 480,100 380,140" fill="url(#amber1)"/>
 
-    <!-- Eye -->
-    <circle cx="175" cy="-90" r="30" fill="#1A1A1A"/>
+    <!-- Lower beak — separated for open chirp -->
+    <polygon points="380,170 470,170 380,200" fill="url(#amber2)"/>
+
+    <!-- Eye — sharp diamond shape -->
+    <polygon points="260,100 280,80 300,100 280,120" fill="#0A0A0C"/>
+    <polygon points="275,95 282,88 290,95 282,102" fill="#FFD54F" opacity="0.7"/>
   </g>
 
-  <!-- Sound waves -->
-  <g stroke="#FFB800" stroke-width="28" fill="none" stroke-linecap="round">
-    <path d="M 740,335 Q 780,390 740,445"/>
-    <path d="M 795,305 Q 850,390 795,475"/>
+  <!-- Sound waves — three sharp arcs -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M 680,340 C 710,400 710,460 680,510"
+          stroke="#FFB800" stroke-width="20" opacity="0.85"/>
+    <path d="M 730,300 C 775,385 775,480 730,555"
+          stroke="#FFB800" stroke-width="15" opacity="0.5"/>
+    <path d="M 775,265 C 835,370 835,500 775,595"
+          stroke="#FFB800" stroke-width="10" opacity="0.25"/>
   </g>
 </svg>
