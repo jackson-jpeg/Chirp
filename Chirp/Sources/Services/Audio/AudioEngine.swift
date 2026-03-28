@@ -247,7 +247,6 @@ final class AudioEngine {
                 let seq = sequenceNumber
                 sequenceNumber += 1
                 onEncodedAudio?(encodedData)
-                Logger.audio.debug("Encoded frame seq=\(seq), \(encodedData.count) bytes")
             } catch {
                 Logger.audio.error("Opus encode failed: \(error.localizedDescription)")
             }
@@ -263,6 +262,9 @@ final class AudioEngine {
             sumOfSquares += normalized * normalized
         }
         let rms = sqrt(sumOfSquares / Float(samples.count))
-        inputLevel = rms
+        // Amplify for better visual feedback (raw RMS is usually 0.01-0.1)
+        // Amplify for better visual feedback (raw RMS is usually 0.01-0.1)
+        nonisolated(unsafe) let amplified = min(1.0, rms * 5.0)
+        inputLevel = amplified
     }
 }

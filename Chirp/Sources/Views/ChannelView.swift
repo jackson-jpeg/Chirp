@@ -54,21 +54,33 @@ struct ChannelView: View {
 
             Spacer()
 
-            // Waveform (visible during transmit/receive)
+            // Waveform + status (visible during transmit/receive)
             if pttState == .transmitting || isReceiving {
-                WaveformView(inputLevel: inputLevel, pttState: pttState)
-                    .frame(height: 50)
-                    .padding(.horizontal, 40)
-                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
-                    .animation(.easeInOut(duration: 0.2), value: pttState)
+                VStack(spacing: 8) {
+                    // Status label
+                    if pttState == .transmitting {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(Color(hex: 0xFF3B30))
+                                .frame(width: 8, height: 8)
+                            Text("LIVE")
+                                .font(.system(.caption, weight: .heavy))
+                                .foregroundStyle(Color(hex: 0xFF3B30))
+                        }
+                        .transition(.opacity)
+                    } else if case .receiving(let name, _) = pttState {
+                        Text(name)
+                            .font(.system(.caption, weight: .semibold))
+                            .foregroundStyle(Color(hex: 0x30D158))
+                            .transition(.opacity)
+                    }
 
-                // Speaker name during receiving
-                if case .receiving(let name, _) = pttState {
-                    Text(name)
-                        .font(.system(.caption, weight: .semibold))
-                        .foregroundStyle(Color(hex: 0x30D158))
-                        .padding(.top, 4)
+                    WaveformView(inputLevel: max(0.15, inputLevel), pttState: pttState)
+                        .frame(height: 50)
+                        .padding(.horizontal, 40)
                 }
+                .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                .animation(.easeInOut(duration: 0.2), value: pttState)
             }
 
             // PTT Button
