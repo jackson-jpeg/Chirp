@@ -99,32 +99,29 @@ final class AudioEngine {
 
         let inputNode = engine.inputNode
 
-        // Install tap with nil format — lets the system provide buffers in
-        // whatever format the hardware uses. We convert in processInputBuffer.
+        // Force the input node to initialize by accessing it after engine start.
+        // On real devices, outputFormat can return 0Hz until the node is "touched".
+        // Using inputNode.inputFormat(forBus: 0) or installing with nil format
+        // forces initialization.
         let hwFormat = inputNode.outputFormat(forBus: 0)
         Logger.audio.info("Input node format: \(hwFormat.sampleRate)Hz/\(hwFormat.channelCount)ch")
 
-        // Use the hardware format if valid, otherwise nil (system default)
-        let tapFormat: AVAudioFormat? = hwFormat.sampleRate > 0 ? hwFormat : nil
-
-        // Set up converter from hardware format to our target 16kHz mono
-        if let tapFormat, (tapFormat.sampleRate != Constants.Opus.sampleRate || tapFormat.channelCount != 1) {
-            converter = AVAudioConverter(from: tapFormat, to: targetFormat)
-            Logger.audio.info(
-                "Converter created: \(tapFormat.sampleRate)Hz/\(tapFormat.channelCount)ch -> \(Constants.Opus.sampleRate)Hz/1ch"
-            )
-        } else {
-            converter = nil
-        }
-
-        inputNode.installTap(onBus: 0, bufferSize: AVAudioFrameCount(samplesPerFrame), format: tapFormat) {
+        // Install tap with nil format — iOS delivers in hardware native format.
+        // We create the converter lazily in the first callback.
+        let target = self.targetFormat
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: nil) {
             [weak self] buffer, _ in
-            // If we didn't have a valid format at tap install time, create converter now
-            if self?.converter == nil && (buffer.format.sampleRate != Constants.Opus.sampleRate || buffer.format.channelCount != 1) {
-                self?.converter = AVAudioConverter(from: buffer.format, to: self!.targetFormat)
-                Logger.audio.info("Late converter: \(buffer.format.sampleRate)Hz/\(buffer.format.channelCount)ch -> 16000Hz/1ch")
+            guard let self else { return }
+
+            // Lazily create converter on first buffer with real format info
+            if self.converter == nil {
+                let bufFormat = buffer.format
+                if bufFormat.sampleRate != Constants.Opus.sampleRate || bufFormat.channelCount != 1 {
+                    self.converter = AVAudioConverter(from: bufFormat, to: target)
+                    Logger.audio.info("Converter: \(bufFormat.sampleRate)Hz/\(bufFormat.channelCount)ch -> 16000Hz/1ch")
+                }
             }
-            self?.processInputBuffer(buffer)
+            self.processInputBuffer(buffer)
         }
 
         Logger.audio.info("Capture started")
@@ -263,8 +260,7 @@ final class AudioEngine {
         }
         let rms = sqrt(sumOfSquares / Float(samples.count))
         // Amplify for better visual feedback (raw RMS is usually 0.01-0.1)
-        // Amplify for better visual feedback (raw RMS is usually 0.01-0.1)
-        nonisolated(unsafe) let amplified = min(1.0, rms * 5.0)
+        let amplified = min(1.0, rms * 5.0)
         inputLevel = amplified
     }
 }
