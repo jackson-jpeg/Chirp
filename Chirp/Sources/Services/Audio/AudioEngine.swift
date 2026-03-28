@@ -1,4 +1,4 @@
-import AVFoundation
+@preconcurrency import AVFoundation
 import Observation
 import OSLog
 
@@ -96,11 +96,12 @@ final class AudioEngine {
             self.updateInputLevelFromRawBuffer(buffer)
 
             // Process on separate queue to avoid blocking audio thread
+            nonisolated(unsafe) let buf = buffer
             self.processingQueue.async { [weak self] in
                 guard let self, self.isCapturing else { return }
 
                 // Create converter lazily from actual buffer format
-                let fmt = buffer.format
+                let fmt = buf.format
                 if self.converter == nil && fmt.sampleRate > 0 {
                     if fmt.sampleRate != Constants.Opus.sampleRate || fmt.channelCount != 1 || fmt.commonFormat != .pcmFormatInt16 {
                         self.converter = AVAudioConverter(from: fmt, to: self.targetFormat)
@@ -108,7 +109,7 @@ final class AudioEngine {
                     }
                 }
 
-                self.processInputBuffer(buffer)
+                self.processInputBuffer(buf)
             }
         }
 
