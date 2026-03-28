@@ -19,6 +19,7 @@ final class AppState {
     let channelManager: ChannelManager
     let peerTracker: PeerTracker
     let liveActivityManager: LiveActivityManager
+    let multipeerTransport: MultipeerTransport
 
     // MARK: - Identity
 
@@ -108,7 +109,26 @@ final class AppState {
         self.channelManager = channelManager
         self.liveActivityManager = LiveActivityManager()
 
-        logger.info("AppState initialized — peerID=\(peerID), name=\(self.localPeerName)")
+        let displayName = UserDefaults.standard.string(forKey: "com.chirp.callsign") ?? UIDevice.current.name
+        let transport = MultipeerTransport(displayName: displayName)
+        self.multipeerTransport = transport
+
+        // Wire multipeer to PTT engine for real peer-to-peer audio
+        transport.onPeersChanged = { [weak self] peers in
+            guard let self else { return }
+            // Update active channel peers
+            if let activeID = self.channelManager.activeChannel?.id {
+                // Clear old peers and add current ones
+                for existingPeer in self.channelManager.activeChannel?.peers ?? [] {
+                    self.channelManager.removePeerFromChannel(channelID: activeID, peerID: existingPeer.id)
+                }
+                for peer in peers {
+                    self.channelManager.addPeerToChannel(channelID: activeID, peer: peer)
+                }
+            }
+        }
+
+        logger.info("AppState initialized — peerID=\(peerID), name=\(self.callsign)")
     }
 
     // MARK: - Lifecycle
@@ -118,8 +138,26 @@ final class AppState {
         // Request mic permission early
         await requestMicPermission()
 
+        pttEngine.multipeerTransport = multipeerTransport
         try? await pttEngine.start()
         await peerTracker.startHealthCheck()
+
+        // Start MultipeerConnectivity transport for local peer discovery
+        multipeerTransport.start()
+
+        // Wire multipeer audio/control streams into PTT engine receive loops
+        Task {
+            for await data in multipeerTransport.audioPackets {
+                if let packet = AudioPacket.deserialize(data) {
+                    audioEngine.receiveAudioPacket(packet.opusData, sequenceNumber: packet.sequenceNumber)
+                }
+            }
+        }
+        Task {
+            for await message in multipeerTransport.controlMessages {
+                floorController.handleMessage(message)
+            }
+        }
 
         // Create a default channel if none exist (first launch).
         // Channels are persisted, so this only runs once.

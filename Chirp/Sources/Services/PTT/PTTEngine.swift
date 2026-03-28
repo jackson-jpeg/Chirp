@@ -18,6 +18,7 @@ final class PTTEngine: @unchecked Sendable {
     let audioEngine: AudioEngine
     let floorController: FloorController
     let connectionManager: ConnectionManager
+    var multipeerTransport: MultipeerTransport?
 
     // MARK: - Private
 
@@ -65,18 +66,20 @@ final class PTTEngine: @unchecked Sendable {
                 timestamp: Self.currentTimestamp(),
                 opusData: opusData
             )
+            // Send via MultipeerConnectivity
+            try? self.multipeerTransport?.sendAudio(packet.serialize())
+            // Also send via Wi-Fi Aware ConnectionManager
             Task {
-                do {
-                    try await self.connectionManager.sendAudio(packet.serialize())
-                } catch {
-                    // Expected when no peers connected — not an error in solo mode
-                }
+                try? await self.connectionManager.sendAudio(packet.serialize())
             }
         }
 
         // Floor control -> network: broadcast control messages to all peers.
         floorController.sendToAllPeers = { [weak self] message in
             guard let self else { return }
+            // Send via MultipeerConnectivity
+            try? self.multipeerTransport?.sendControl(message)
+            // Also send via Wi-Fi Aware
             Task {
                 do {
                     try await self.connectionManager.sendControl(message)
