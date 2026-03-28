@@ -161,15 +161,13 @@ struct HomeView: View {
     private let green = Color(hex: 0x30D158)
 
     private var connectionStatus: ConnectionStatus {
-        let pairedCount = appState.wifiAwareManager.pairedDevices.count
+        let mpPeers = appState.connectedPeerCount
 
-        if pairedCount == 0 {
-            return .disconnected
+        if mpPeers > 0 {
+            return .connected(peerCount: mpPeers)
         }
 
-        if connectedPeerCount > 0 {
-            return .connected(peerCount: connectedPeerCount)
-        }
+        // Multipeer is always browsing, so we're always "searching"
         return .searching
     }
 

@@ -59,6 +59,7 @@ final class AppState {
 
     var pttState: PTTState { pttEngine.state }
     var inputLevel: Float { audioEngine.inputLevel }
+    private(set) var connectedPeerCount: Int = 0
 
     // MARK: - Private
 
@@ -116,15 +117,25 @@ final class AppState {
         // Wire multipeer to PTT engine for real peer-to-peer audio
         transport.onPeersChanged = { [weak self] peers in
             guard let self else { return }
+            let oldCount = self.connectedPeerCount
+            self.connectedPeerCount = peers.count
+
             // Update active channel peers
             if let activeID = self.channelManager.activeChannel?.id {
-                // Clear old peers and add current ones
                 for existingPeer in self.channelManager.activeChannel?.peers ?? [] {
                     self.channelManager.removePeerFromChannel(channelID: activeID, peerID: existingPeer.id)
                 }
                 for peer in peers {
                     self.channelManager.addPeerToChannel(channelID: activeID, peer: peer)
                 }
+            }
+
+            // Log peer changes
+            if peers.count > oldCount {
+                let newPeer = peers.last
+                Logger.network.info("Peer connected: \(newPeer?.name ?? "unknown") (total: \(peers.count))")
+            } else if peers.count < oldCount {
+                Logger.network.info("Peer disconnected (total: \(peers.count))")
             }
         }
 

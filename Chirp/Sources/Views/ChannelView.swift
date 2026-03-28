@@ -43,12 +43,13 @@ struct ChannelView: View {
 
                 // Peer grid
                 ScrollView {
-                    if channel.peers.isEmpty {
+                    let livePeers = appState.channelManager.activeChannel?.peers ?? []
+                    if livePeers.isEmpty {
                         emptyPeersView
                             .padding(.top, 50)
                     } else {
                         LazyVGrid(columns: peerGridColumns, spacing: 20) {
-                            ForEach(channel.peers) { peer in
+                            ForEach(livePeers) { peer in
                                 VStack(spacing: 6) {
                                     PeerAvatarView(
                                         peer: peer,
@@ -68,6 +69,7 @@ struct ChannelView: View {
                         }
                         .padding(.horizontal, 24)
                         .padding(.top, 20)
+                        .animation(.spring(response: 0.3), value: livePeers.count)
                     }
                 }
 
@@ -169,7 +171,7 @@ struct ChannelView: View {
                     .font(.system(.title3, weight: .bold))
                     .foregroundStyle(.white)
 
-                Text("\(channel.activePeerCount) active")
+                Text("\(appState.channelManager.activeChannel?.activePeerCount ?? 0) active")
                     .font(.system(.caption, weight: .medium))
                     .foregroundStyle(.secondary)
             }
@@ -183,8 +185,9 @@ struct ChannelView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "person.2.fill")
                         .font(.system(size: 12))
-                    Text("\(channel.peers.count)")
+                    Text("\(appState.channelManager.activeChannel?.peers.count ?? 0)")
                         .font(.system(.caption, weight: .bold))
+                        .contentTransition(.numericText())
                 }
                 .foregroundStyle(Constants.Colors.amber)
                 .padding(.horizontal, 8)
