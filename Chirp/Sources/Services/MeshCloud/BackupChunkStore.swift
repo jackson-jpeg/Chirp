@@ -44,7 +44,12 @@ actor BackupChunkStore {
     // MARK: - Init
 
     init() {
-        loadManifest()
+        // Load manifest inline (actor init is nonisolated, can't call isolated methods)
+        if let data = try? Data(contentsOf: Self.manifestURL),
+           let manifest = try? MeshCodable.decoder.decode([String: StoredEntry].self, from: data) {
+            self.entries = manifest
+            self.totalBytesUsed = manifest.values.reduce(0) { $0 + $1.sizeBytes }
+        }
     }
 
     // MARK: - Store
