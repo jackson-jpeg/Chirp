@@ -135,28 +135,15 @@ final class BLEScanner: NSObject {
 
     // MARK: - Device Processing
 
-    private func processDiscovery(
+    private func processDiscoveryParsed(
         peripheralID: String,
         name: String?,
         rssi: Int,
-        advertisementData: [String: Any]
+        companyID: UInt16?,
+        serviceUUIDs: [String]
     ) {
         let now = Date()
-
-        // Extract manufacturer data: first 2 bytes = company ID (little-endian)
-        var companyID: UInt16?
-        var mfgEntry: BLEManufacturerDB.Entry?
-        if let mfgData = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data,
-           mfgData.count >= 2 {
-            companyID = UInt16(mfgData[0]) | (UInt16(mfgData[1]) << 8)
-            mfgEntry = BLEManufacturerDB.lookup(companyID!)
-        }
-
-        // Extract advertised service UUIDs
-        var serviceUUIDs: [String] = []
-        if let uuids = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID] {
-            serviceUUIDs = uuids.map { $0.uuidString }
-        }
+        let mfgEntry = companyID.flatMap { BLEManufacturerDB.lookup($0) }
 
         if var existing = deviceMap[peripheralID] {
             // Update existing device
@@ -261,9 +248,10 @@ final class BLEScanner: NSObject {
 extension BLEScanner: @preconcurrency CBCentralManagerDelegate {
 
     nonisolated func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        let state = central.state
         Task { @MainActor [weak self] in
             guard let self else { return }
-            switch central.state {
+            switch state {
             case .poweredOn:
                 self.bluetoothState = .poweredOn
                 self.logger.info("Bluetooth powered on")
@@ -300,12 +288,24 @@ extension BLEScanner: @preconcurrency CBCentralManagerDelegate {
         // Ignore extremely weak signals
         guard rssi > -100 && rssi < 0 else { return }
 
+        // Extract manufacturer data before crossing isolation boundary
+        var companyID: UInt16?
+        if let mfgData = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data,
+           mfgData.count >= 2 {
+            companyID = UInt16(mfgData[0]) | (UInt16(mfgData[1]) << 8)
+        }
+        var serviceUUIDs: [String] = []
+        if let uuids = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID] {
+            serviceUUIDs = uuids.map { $0.uuidString }
+        }
+
         Task { @MainActor [weak self] in
-            self?.processDiscovery(
+            self?.processDiscoveryParsed(
                 peripheralID: peripheralID,
                 name: name,
                 rssi: rssi,
-                advertisementData: advertisementData
+                companyID: companyID,
+                serviceUUIDs: serviceUUIDs
             )
         }
     }
