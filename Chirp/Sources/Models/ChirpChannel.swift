@@ -12,6 +12,7 @@ struct ChirpChannel: Identifiable, Equatable, Sendable, Codable {
     var peers: [ChirpPeer] = []
     var createdAt: Date = Date()
     var accessMode: AccessMode = .open
+    var theme: ChannelTheme = .squad
     var ownerID: String?
     var inviteCode: String?
     var encryptionKeyData: Data?
