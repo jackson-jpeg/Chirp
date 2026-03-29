@@ -11,11 +11,10 @@ private struct GlassHeaderBar: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Logo mark
+            // Logo mark with perch birds
             HStack(spacing: 6) {
-                Image(systemName: "antenna.radiowaves.left.and.right")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(amber)
+                PerchBirdsView(size: 36, isAnimating: true)
+                    .frame(width: 36, height: 22)
 
                 Text("ChirpChirp")
                     .font(.system(size: 16, weight: .heavy, design: .rounded))
@@ -400,8 +399,6 @@ private struct GlassFAB: View {
 private struct ChannelEmptyState: View {
     let onTap: () -> Void
 
-    @State private var ringScale: CGFloat = 0.8
-    @State private var ringOpacity: Double = 0.0
     @State private var floatOffset: CGFloat = 0.0
 
     private let amber = Color(hex: 0xFFB800)
@@ -411,41 +408,9 @@ private struct ChannelEmptyState: View {
             Spacer()
                 .frame(height: 80)
 
-            // Illustration
-            ZStack {
-                // Outer animated ring
-                Circle()
-                    .stroke(amber.opacity(0.1), lineWidth: 1)
-                    .frame(width: 160, height: 160)
-                    .scaleEffect(ringScale)
-                    .opacity(ringOpacity)
-
-                Circle()
-                    .stroke(amber.opacity(0.08), lineWidth: 1)
-                    .frame(width: 130, height: 130)
-
-                // Inner glow circle
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                amber.opacity(0.12),
-                                amber.opacity(0.03),
-                                Color.clear,
-                            ],
-                            center: .center,
-                            startRadius: 10,
-                            endRadius: 55
-                        )
-                    )
-                    .frame(width: 110, height: 110)
-
-                Image(systemName: "radio")
-                    .font(.system(size: 44, weight: .light))
-                    .foregroundStyle(amber.opacity(0.7))
-                    .symbolRenderingMode(.hierarchical)
-            }
-            .offset(y: floatOffset)
+            // Perch birds mascot illustration
+            PerchBirdsView(size: 160, isAnimating: true)
+                .offset(y: floatOffset)
 
             Spacer()
                 .frame(height: 32)
@@ -510,13 +475,6 @@ private struct ChannelEmptyState: View {
             Spacer()
         }
         .onAppear {
-            withAnimation(
-                .easeOut(duration: 3.0)
-                .repeatForever(autoreverses: false)
-            ) {
-                ringScale = 1.6
-                ringOpacity = 0.5
-            }
             withAnimation(
                 .easeInOut(duration: 3.0)
                 .repeatForever(autoreverses: true)

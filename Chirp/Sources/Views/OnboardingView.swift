@@ -331,8 +331,8 @@ struct OnboardingView: View {
                 Spacer()
                     .frame(height: 60)
 
-                // 3D Radio wave animation
-                PerspectiveRadioWaves()
+                // Animated perch birds mascot
+                PerchBirdsView(size: 240, isAnimating: true)
                     .frame(height: 160)
                     .padding(.bottom, 16)
 
