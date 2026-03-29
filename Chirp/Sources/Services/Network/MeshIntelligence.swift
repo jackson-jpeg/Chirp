@@ -362,7 +362,7 @@ actor MeshIntelligence {
         }
         // Keep top 10 to limit beacon payload size
         let sorted = summary.sorted { $0.value > $1.value }
-        return Dictionary(uniqueKeysWithValues: sorted.prefix(10))
+        return Dictionary(uniqueKeysWithValues: Array(sorted.prefix(10)))
     }
 
     /// Merge pheromone data received from a neighbor's beacon.

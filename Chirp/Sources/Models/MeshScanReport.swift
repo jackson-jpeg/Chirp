@@ -14,7 +14,7 @@ struct MeshScanReport: Codable, Sendable {
 
     func wirePayload() throws -> Data {
         let json = try MeshCodable.encoder.encode(self)
-        var data = Data(magicPrefix)
+        var data = Data(Self.magicPrefix)
         data.append(json)
         return data
     }
