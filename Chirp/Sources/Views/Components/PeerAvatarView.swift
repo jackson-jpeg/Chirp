@@ -106,6 +106,25 @@ struct PeerAvatarView: View {
                     .foregroundStyle(Color.white.opacity(0.7))
             }
 
+            // Wi-Fi Aware badge (top-left) — shows peers on the strong transport
+            if peer.transportType == .wifiAware || peer.transportType == .both {
+                VStack {
+                    HStack {
+                        Image(systemName: "wifi")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(3)
+                            .background(
+                                Circle()
+                                    .fill(Constants.Colors.amber)
+                            )
+                        Spacer()
+                    }
+                    Spacer()
+                }
+                .frame(width: size + 4, height: size + 4)
+            }
+
             // Signal strength mini-indicator (bottom-right)
             VStack {
                 Spacer()
