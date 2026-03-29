@@ -26,8 +26,8 @@ final class PTTEngine {
     private let logger = Logger.ptt
     private let localPeerID: String
     private var sequenceNumber: UInt32 = 0
-    private var stateObservationTask: Task<Void, Never>?
-    private var heartbeatTask: Task<Void, Never>?
+    nonisolated(unsafe) private var stateObservationTask: Task<Void, Never>?
+    nonisolated(unsafe) private var heartbeatTask: Task<Void, Never>?
 
     // MARK: - Init
 
