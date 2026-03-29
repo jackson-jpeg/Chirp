@@ -9,12 +9,8 @@ import WiFiAware
 /// which deduplicates packets by `packetID`. Every byte on the wire uses the same
 /// `0xAA` mesh magic prefix so both transports speak an identical wire format.
 ///
-/// Wi-Fi Aware requires:
-/// - iPhone 12+ hardware
-/// - iOS 26+
-/// - One-time device pairing via `DeviceDiscoveryUI`
-/// - `com.apple.developer.wifi-aware` entitlement (already configured)
-/// - `WiFiAwareServices` in Info.plist (already configured for `_chirp-ptt._udp`)
+/// Uses iOS 26 `NetworkListener` / `NetworkBrowser` / `NetworkConnection` from the
+/// WiFiAware + Network frameworks (WWDC25 Session 228).
 @Observable
 @MainActor
 final class WiFiAwareTransport {
@@ -44,7 +40,7 @@ final class WiFiAwareTransport {
     // MARK: - Private State
 
     /// Active connections keyed by a stable peer identifier.
-    private var connections: [String: NWConnection] = [:]
+    private var connections: [String: NetworkConnection] = [:]
 
     /// Lifecycle tasks.
     private var listenerTask: Task<Void, Never>?
@@ -52,7 +48,7 @@ final class WiFiAwareTransport {
     private var deviceObserverTask: Task<Void, Never>?
 
     /// Wire format: same 0xAA mesh magic as MultipeerTransport.
-    private static let meshMagic: UInt8 = 0xAA
+    private nonisolated static let meshMagic: UInt8 = 0xAA
 
     // MARK: - Auto-Reconnection
 
@@ -68,7 +64,6 @@ final class WiFiAwareTransport {
         self.meshRouter = meshRouter
         self.localPeerID = localPeerID
         self.localPeerName = localPeerName
-
         self.isSupported = WACapabilities.supportedFeatures.contains(.wifiAware)
     }
 
@@ -97,9 +92,6 @@ final class WiFiAwareTransport {
         deviceObserverTask = nil
         reconnectTask = nil
 
-        for (_, conn) in connections {
-            conn.cancel()
-        }
         connections.removeAll()
         peers.removeAll()
         connectedPeerCount = 0
@@ -139,40 +131,33 @@ final class WiFiAwareTransport {
         listenerTask = Task { [weak self] in
             guard let self else { return }
             do {
-                // Create Wi-Fi Aware listener — accept connections from all paired devices.
-                // .selected([]) means "any paired device"; we don't filter by specific device.
-                // The .wifiAware endpoint descriptor configures the transport layer automatically.
-                let listener = try NWListener(
+                // Accept connections from ALL paired devices (.selected([])).
+                // Use realtime performance mode + interactiveVoice for PTT audio.
+                let listener = try NetworkListener(
                     for: .wifiAware(.connecting(to: service, from: .selected([]))),
-                    using: .udp
+                    using: .parameters {}
+                        .wifiAware { $0.performanceMode = .realtime }
+                        .serviceClass(.interactiveVoice)
                 )
-
-                listener.stateUpdateHandler = { [weak self] state in
-                    guard let self else { return }
+                .onStateUpdate { [weak self] _, state in
                     Task { @MainActor in
-                        self.logger.info("WiFiAware listener state: \(String(describing: state))")
+                        self?.logger.info("WiFiAware listener state: \(String(describing: state))")
                     }
                 }
 
-                listener.newConnectionHandler = { [weak self] connection in
+                // listener.run blocks until cancelled, yielding inbound connections.
+                try await listener.run { [weak self] connection in
                     guard let self else { return }
-                    let peerID = "wa-\(connection.endpoint.debugDescription.prefix(16))"
+                    let peerID = "wa-\(UUID().uuidString.prefix(8))"
                     Task { @MainActor in
                         self.logger.info("WiFiAware inbound connection from \(peerID)")
-                        self.setupConnection(connection, peerID: peerID)
+                        self.handleEstablishedConnection(connection, peerID: peerID)
                     }
                 }
-
-                listener.start(queue: .main)
-
-                // Keep the task alive while the listener runs
-                while !Task.isCancelled {
-                    try await Task.sleep(for: .seconds(60))
-                }
-
-                listener.cancel()
             } catch {
-                self.logger.error("WiFiAware listener failed: \(error.localizedDescription)")
+                if !Task.isCancelled {
+                    self.logger.error("WiFiAware listener failed: \(error.localizedDescription)")
+                }
             }
         }
     }
@@ -189,125 +174,86 @@ final class WiFiAwareTransport {
         browserTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let browser = NWBrowser(
-                    for: .wifiAware(.connecting(to: .selected([]), from: service)),
-                    using: .udp
+                let browser = NetworkBrowser(
+                    for: .wifiAware(.connecting(to: .selected([]), from: service))
                 )
-
-                browser.stateUpdateHandler = { [weak self] state in
-                    guard let self else { return }
+                .onStateUpdate { [weak self] _, state in
                     Task { @MainActor in
-                        self.logger.info("WiFiAware browser state: \(String(describing: state))")
+                        self?.logger.info("WiFiAware browser state: \(String(describing: state))")
                     }
                 }
 
-                browser.browseResultsChangedHandler = { [weak self] results, _ in
-                    guard let self else { return }
-                    Task { @MainActor in
-                        for result in results {
-                            let endpointID = "wa-\(result.endpoint.debugDescription.prefix(16))"
-                            guard self.connections[endpointID] == nil else { continue }
+                // browser.run yields discovered endpoints. Connect to the first one found.
+                let endpoint = try await browser.run { waEndpoints in
+                    if let endpoint = waEndpoints.first {
+                        return .finish(endpoint)
+                    }
+                    return .continue
+                }
 
-                            self.logger.info("WiFiAware discovered endpoint: \(endpointID)")
-                            let connection = NWConnection(to: result.endpoint, using: .udp)
-                            self.setupConnection(connection, peerID: endpointID)
-                        }
+                // Establish outbound connection to discovered endpoint
+                let connection = NetworkConnection(
+                    to: endpoint,
+                    using: .parameters {}
+                        .wifiAware { $0.performanceMode = .realtime }
+                        .serviceClass(.interactiveVoice)
+                )
+                .onStateUpdate { [weak self] _, state in
+                    Task { @MainActor in
+                        self?.logger.info("WiFiAware outbound connection state: \(String(describing: state))")
                     }
                 }
 
-                browser.start(queue: .main)
+                let peerID = "wa-\(UUID().uuidString.prefix(8))"
+                self.handleEstablishedConnection(connection, peerID: peerID)
 
-                // Keep the task alive while the browser runs
-                while !Task.isCancelled {
-                    try await Task.sleep(for: .seconds(60))
-                }
-
-                browser.cancel()
             } catch {
-                self.logger.error("WiFiAware browser failed: \(error.localizedDescription)")
+                if !Task.isCancelled {
+                    self.logger.error("WiFiAware browser failed: \(error.localizedDescription)")
+                }
             }
         }
     }
 
     // MARK: - Connection Handling
 
-    private func setupConnection(_ connection: NWConnection, peerID: String) {
-        connection.stateUpdateHandler = { [weak self] state in
+    private func handleEstablishedConnection(_ connection: NetworkConnection, peerID: String) {
+        connections[peerID] = connection
+        updatePeerList()
+
+        // Announce ourselves
+        try? sendControl(.peerJoin(peerID: localPeerID, peerName: localPeerName))
+
+        // Start receive loop for this connection
+        Task { [weak self] in
             guard let self else { return }
-            Task { @MainActor in
-                switch state {
-                case .ready:
-                    self.logger.info("WiFiAware peer connected: \(peerID)")
-                    self.connections[peerID] = connection
-                    self.updatePeerList()
-                    try? self.sendControl(.peerJoin(peerID: self.localPeerID, peerName: self.localPeerName))
-                    self.receiveLoop(connection: connection, peerID: peerID)
-
-                case .failed(let error):
-                    self.logger.warning("WiFiAware connection failed for \(peerID): \(error.localizedDescription)")
-                    self.connections.removeValue(forKey: peerID)
-                    self.updatePeerList()
-
-                case .cancelled:
-                    self.logger.info("WiFiAware connection cancelled for \(peerID)")
-                    self.connections.removeValue(forKey: peerID)
-                    self.updatePeerList()
-
-                case .waiting(let error):
-                    self.logger.info("WiFiAware connection waiting for \(peerID): \(error.localizedDescription)")
-
-                default:
-                    break
+            do {
+                for try await message in connection.messages {
+                    self.handleReceivedData(message, from: peerID)
                 }
+            } catch {
+                self.logger.info("WiFiAware connection closed for \(peerID): \(error.localizedDescription)")
             }
+            // Connection ended — remove and update
+            self.connections.removeValue(forKey: peerID)
+            self.updatePeerList()
         }
 
-        connection.start(queue: .main)
+        logger.info("WiFiAware peer connected: \(peerID) (total: \(self.connections.count))")
     }
 
     // MARK: - Receive
 
-    nonisolated private func receiveLoop(connection: NWConnection, peerID: String) {
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
-            guard let self else { return }
-
-            if let data, !data.isEmpty {
-                self.handleReceivedData(data, from: peerID)
-            }
-
-            if let error {
-                Task { @MainActor in
-                    self.logger.warning("WiFiAware receive error from \(peerID): \(error.localizedDescription)")
-                }
-                connection.cancel()
-                return
-            }
-
-            if isComplete {
-                Task { @MainActor in
-                    self.logger.info("WiFiAware connection completed for \(peerID)")
-                }
-                connection.cancel()
-                return
-            }
-
-            self.receiveLoop(connection: connection, peerID: peerID)
-        }
-    }
-
-    nonisolated private func handleReceivedData(_ data: Data, from peerID: String) {
+    private func handleReceivedData(_ data: Data, from peerID: String) {
+        // Same wire format as MultipeerTransport: 0xAA + MeshPacket
         guard data.count >= 2, data[0] == Self.meshMagic else {
-            Task { @MainActor in
-                self.logger.warning("Dropped non-mesh packet from \(peerID) (\(data.count) bytes)")
-            }
+            logger.warning("Dropped non-mesh packet from \(peerID) (\(data.count) bytes)")
             return
         }
 
         let meshData = Data(data.dropFirst())
         guard let meshPacket = MeshPacket.deserialize(meshData) else {
-            Task { @MainActor in
-                self.logger.warning("Failed to deserialize mesh packet from \(peerID)")
-            }
+            logger.warning("Failed to deserialize mesh packet from \(peerID)")
             return
         }
 
@@ -383,11 +329,7 @@ final class WiFiAwareTransport {
         wireData.append(packet)
 
         for (peerID, connection) in connections where peerID != excludePeer {
-            connection.send(content: wireData, completion: .contentProcessed { [weak self] error in
-                if let error {
-                    self?.logger.warning("Forward send error to \(peerID): \(error.localizedDescription)")
-                }
-            })
+            connection.send(wireData)
         }
 
         let targetCount = connections.keys.filter { $0 != excludePeer }.count
@@ -399,12 +341,8 @@ final class WiFiAwareTransport {
     // MARK: - Private Helpers
 
     private func broadcastToAll(_ data: Data) {
-        for (peerID, connection) in connections {
-            connection.send(content: data, completion: .contentProcessed { [weak self] error in
-                if let error {
-                    self?.logger.warning("Broadcast send error to \(peerID): \(error.localizedDescription)")
-                }
-            })
+        for (_, connection) in connections {
+            connection.send(data)
         }
     }
 
@@ -415,9 +353,10 @@ final class WiFiAwareTransport {
         peers = connections.keys.map { id in
             ChirpPeer(
                 id: id,
-                name: id, // Updated with real name from pairing info when available
+                name: id,
                 isConnected: true,
-                signalStrength: 3 // Wi-Fi Aware = strong signal
+                signalStrength: 3,
+                transportType: .wifiAware
             )
         }
         onPeersChanged?(peers)
@@ -451,14 +390,11 @@ final class WiFiAwareTransport {
             guard let self, !Task.isCancelled else { return }
 
             self.logger.info("WiFiAware reconnecting: restarting listener + browser")
-
-            // Stop and restart discovery
             self.listenerTask?.cancel()
             self.browserTask?.cancel()
             self.startListener()
             self.startBrowser()
 
-            // Exponential backoff, capped
             self.reconnectBackoff = min(self.reconnectBackoff * 2.0, Self.maxBackoff)
         }
     }
