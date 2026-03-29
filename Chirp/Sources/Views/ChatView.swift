@@ -15,12 +15,14 @@ struct ChatView: View {
     var onSend: (String, UUID?) -> Void
     var onShareLocation: () -> Void
     var onSendImage: ((String) -> Void)?
+    var onSendFile: ((URL) -> Void)?
 
     @State private var composedText: String = ""
     @State private var replyingTo: MeshTextMessage?
     @State private var showScrollToBottom: Bool = false
     @State private var isNearBottom: Bool = true
     @State private var showImagePicker: Bool = false
+    @State private var showDocumentPicker: Bool = false
     @State private var imagePickerSource: ImagePickerSource = .library
 
     private let logger = Logger(subsystem: Constants.subsystem, category: "ChatView")
@@ -52,7 +54,10 @@ struct ChatView: View {
                         onPickPhoto: {
                             imagePickerSource = .library
                             showImagePicker = true
-                        }
+                        },
+                        onPickDocument: onSendFile != nil ? {
+                            showDocumentPicker = true
+                        } : nil
                     )
                 }
 
@@ -70,6 +75,11 @@ struct ChatView: View {
         .sheet(isPresented: $showImagePicker) {
             ImagePickerView(source: imagePickerSource) { image in
                 sendImage(image)
+            }
+        }
+        .sheet(isPresented: $showDocumentPicker) {
+            DocumentPickerView { url in
+                onSendFile?(url)
             }
         }
     }

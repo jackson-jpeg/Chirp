@@ -87,6 +87,34 @@ struct MeshPacket: Sendable {
                 if Array(payload.prefix(4)) == magic {
                     return .normal
                 }
+                // Sound alerts: SND! magic
+                let sndMagic: [UInt8] = [0x53, 0x4E, 0x44, 0x21]
+                if Array(payload.prefix(4)) == sndMagic {
+                    return .high
+                }
+                // Delivery ACKs: ACK! magic -- lightweight, relay at normal priority
+                let ackMagic: [UInt8] = [0x41, 0x43, 0x4B, 0x21]
+                if Array(payload.prefix(4)) == ackMagic {
+                    return .normal
+                }
+                // File transfer prefixes: FIL!, FLC!, FNK!
+                let filMagic: [UInt8] = [0x46, 0x49, 0x4C, 0x21]
+                let flcMagic: [UInt8] = [0x46, 0x4C, 0x43, 0x21]
+                let fnkMagic: [UInt8] = [0x46, 0x4E, 0x4B, 0x21]
+                let prefix4 = Array(payload.prefix(4))
+                if prefix4 == filMagic || prefix4 == flcMagic || prefix4 == fnkMagic {
+                    return .normal
+                }
+                // Mesh Cloud: BCK! (backup chunk) — not urgent
+                let bckMagic: [UInt8] = [0x42, 0x43, 0x4B, 0x21]
+                if prefix4 == bckMagic {
+                    return .normal
+                }
+                // Mesh Cloud: BRQ! (backup retrieval request) — user waiting
+                let brqMagic: [UInt8] = [0x42, 0x52, 0x51, 0x21]
+                if prefix4 == brqMagic {
+                    return .high
+                }
             }
             return .high
         }

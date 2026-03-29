@@ -54,4 +54,20 @@ enum AccessibilityID {
     // MARK: - Onboarding
     static let onboardingView = "onboardingView"
     static let getStartedButton = "getStartedButton"
+
+    // MARK: - Protect (V3)
+    static let protectStatusBar = "protectStatusBar"
+    static let protectTabPicker = "protectTabPicker"
+    static let roomScannerView = "roomScannerView"
+    static let scanButton = "scanButton"
+    static let shareWithMeshButton = "shareWithMeshButton"
+    static let privacyShieldView = "privacyShieldView"
+    static let privacyScoreGauge = "privacyScoreGauge"
+    static let soundAlertsView = "soundAlertsView"
+    static let meshCloudView = "meshCloudView"
+    static let storageDonationToggle = "storageDonationToggle"
+
+    // MARK: - File Transfer (V3)
+    static let documentPickerButton = "documentPickerButton"
+    static let fileTransferBubble = "fileTransferBubble"
 }

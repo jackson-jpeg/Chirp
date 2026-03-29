@@ -26,12 +26,14 @@ final class DualTransportTests: XCTestCase {
     // MARK: - Helpers
 
     private func installCallbacks() async {
+        nonisolated(unsafe) var delivered = self.deliveredPackets!
+        nonisolated(unsafe) var forwarded = self.forwardedPackets!
         await router.setCallbacks(
-            onLocalDelivery: { [weak self] packet in
-                self?.deliveredPackets.append(packet)
+            onLocalDelivery: { packet in
+                delivered.append(packet)
             },
-            onForward: { [weak self] packet, fromPeer in
-                self?.forwardedPackets.append((packet, fromPeer))
+            onForward: { packet, fromPeer in
+                forwarded.append((packet, fromPeer))
             }
         )
     }

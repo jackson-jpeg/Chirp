@@ -30,6 +30,7 @@ struct SettingsView: View {
                 quickAccessSection
                 emergencySection
                 privacySecuritySection
+                meshCloudSection
                 aboutSection
                 debugSection
 
@@ -473,6 +474,51 @@ struct SettingsView: View {
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+    }
+
+    // MARK: - Mesh Cloud
+
+    private var meshCloudSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sectionHeader(icon: "cloud.fill", title: "Mesh Cloud")
+
+            VStack(spacing: 1) {
+                glassRow {
+                    NavigationLink {
+                        MeshCloudView()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "cloud.fill")
+                                .foregroundStyle(amber)
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Distributed Backup")
+                                    .foregroundStyle(.white)
+                                Text(meshCloudStatusText)
+                                    .font(.system(.caption2))
+                                    .foregroundStyle(.white.opacity(0.4))
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+    }
+
+    private var meshCloudStatusText: String {
+        let service = appState.meshCloudService
+        if service.isDonating {
+            let usedMB = Double(service.storageDonated) / (1024.0 * 1024.0)
+            return String(format: "Donating %.1f / %d MB", usedMB, service.storageQuotaMB)
+        } else {
+            return "Storage donation paused"
         }
     }
 

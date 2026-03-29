@@ -13,6 +13,7 @@ struct ChatInputBar: View {
     var onShareLocation: () -> Void
     var onTakePhoto: (() -> Void)?
     var onPickPhoto: (() -> Void)?
+    var onPickDocument: (() -> Void)?
 
     @FocusState private var isTextFieldFocused: Bool
 
@@ -136,6 +137,14 @@ struct ChatInputBar: View {
                     onPickPhoto()
                 } label: {
                     Label("Send Photo", systemImage: "photo.fill")
+                }
+            }
+
+            if let onPickDocument {
+                Button {
+                    onPickDocument()
+                } label: {
+                    Label("Send Document", systemImage: "doc.fill")
                 }
             }
         } label: {

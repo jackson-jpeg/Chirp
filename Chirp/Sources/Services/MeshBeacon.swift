@@ -27,13 +27,15 @@ final class MeshBeacon {
         /// GPS coordinates shared via location-share messages (nil if not shared).
         var latitude: Double?
         var longitude: Double?
+        /// Pheromone trail summary: top destination->score pairs for cross-node trail sharing.
+        var pheromoneTrails: [String: Double]?
 
         /// True if this node was heard directly (1 hop away).
         var isDirect: Bool { hopCount <= 1 }
 
         enum CodingKeys: String, CodingKey {
             case id, name, channels, hopCount, batteryLevel, timestamp, lastSeen, neighborIDs
-            case latitude, longitude
+            case latitude, longitude, pheromoneTrails
         }
 
         init(
@@ -46,7 +48,8 @@ final class MeshBeacon {
             lastSeen: Date,
             neighborIDs: [String] = [],
             latitude: Double? = nil,
-            longitude: Double? = nil
+            longitude: Double? = nil,
+            pheromoneTrails: [String: Double]? = nil
         ) {
             self.id = id
             self.name = name
@@ -58,6 +61,7 @@ final class MeshBeacon {
             self.neighborIDs = neighborIDs
             self.latitude = latitude
             self.longitude = longitude
+            self.pheromoneTrails = pheromoneTrails
         }
 
         init(from decoder: Decoder) throws {
@@ -74,6 +78,8 @@ final class MeshBeacon {
             // Backwards compatible: older beacons may omit coordinates
             latitude = try container.decodeIfPresent(Double.self, forKey: .latitude)
             longitude = try container.decodeIfPresent(Double.self, forKey: .longitude)
+            // Backwards compatible: older beacons may omit pheromone trails
+            pheromoneTrails = try container.decodeIfPresent([String: Double].self, forKey: .pheromoneTrails)
         }
     }
 
@@ -120,6 +126,12 @@ final class MeshBeacon {
     private var localName: String?
     private var cachedBatteryLevel: Float = 0
     private var localChannels: [String] = []
+
+    /// Pheromone router reference for including trail data in beacons.
+    var pheromoneRouter: PheromoneRouter?
+
+    /// Cached pheromone summary from last async fetch, included in next beacon.
+    private var cachedPheromoneTrails: [String: Double]?
 
     /// Magic bytes prepended to beacon payloads.
     static let beaconMagic: [UInt8] = [0x42, 0x43, 0x4E, 0x21] // "BCN!"
@@ -277,6 +289,18 @@ final class MeshBeacon {
                     ]
                 )
             }
+
+            // Publish pheromone trail data for MeshIntelligence to merge
+            if let trails = beacon.pheromoneTrails, !trails.isEmpty {
+                NotificationCenter.default.post(
+                    name: .meshPheromoneUpdate,
+                    object: nil,
+                    userInfo: [
+                        "neighborID": beacon.id,
+                        "trails": trails
+                    ]
+                )
+            }
         } catch {
             logger.debug("Failed to decode beacon: \(error.localizedDescription)")
         }
@@ -317,6 +341,16 @@ final class MeshBeacon {
         // Include IDs of our direct peers so remote nodes can build topology
         let neighborIDs = Array(directPeers.map(\.id).prefix(20)) // cap to keep payload small
 
+        // Gather pheromone trail summary (async, but we fire-and-forget with cached data)
+        // The pheromone data is fetched asynchronously; if unavailable this cycle, it will
+        // be included in the next beacon.
+        let router = pheromoneRouter
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let trails = await router?.pheromoneSummaryForBeacon()
+            self.cachedPheromoneTrails = trails?.isEmpty == false ? trails : nil
+        }
+
         let beacon = BeaconInfo(
             id: localID,
             name: localName,
@@ -325,7 +359,8 @@ final class MeshBeacon {
             batteryLevel: batteryLevel,
             timestamp: Date(),
             lastSeen: Date(),
-            neighborIDs: neighborIDs
+            neighborIDs: neighborIDs,
+            pheromoneTrails: cachedPheromoneTrails
         )
 
         guard let payload = encodeBeacon(beacon) else {
@@ -366,4 +401,8 @@ extension Notification.Name {
     /// Posted when a beacon carries neighbor topology information.
     /// `userInfo` contains `"peerID"` (String) and `"neighborIDs"` ([String]).
     static let meshTopologyUpdate = Notification.Name("com.chirpchirp.meshTopologyUpdate")
+
+    /// Posted when a beacon carries pheromone trail data.
+    /// `userInfo` contains `"neighborID"` (String) and `"trails"` ([String: Double]).
+    static let meshPheromoneUpdate = Notification.Name("com.chirpchirp.meshPheromoneUpdate")
 }

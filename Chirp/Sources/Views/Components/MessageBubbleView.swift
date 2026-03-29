@@ -44,6 +44,12 @@ struct MessageBubbleView: View {
                             )
                         } else if attachment == .image {
                             ImageAttachmentView(text: message.text)
+                        } else if attachment == .file || attachment == .voiceNote {
+                            attachmentBadge(attachment)
+                            Text(message.text)
+                                .font(.system(.body, weight: .regular))
+                                .foregroundStyle(.white)
+                                .multilineTextAlignment(.leading)
                         } else {
                             attachmentBadge(attachment)
                             Text(message.text)
@@ -123,6 +129,8 @@ struct MessageBubbleView: View {
         case .location: "location.fill"
         case .image: "photo.fill"
         case .contact: "person.crop.circle.fill"
+        case .file: "doc.fill"
+        case .voiceNote: "waveform"
         }
     }
 
@@ -131,6 +139,8 @@ struct MessageBubbleView: View {
         case .location: "Location"
         case .image: "Image"
         case .contact: "Contact"
+        case .file: "File"
+        case .voiceNote: "Voice Note"
         }
     }
 

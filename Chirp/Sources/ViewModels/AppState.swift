@@ -33,6 +33,12 @@ final class AppState {
     let proximityAlert: ProximityAlert
     let offlineMapManager: OfflineMapManager
     let meshShield: MeshShield
+    let fileTransferService: FileTransferService
+    let bleScanner: BLEScanner
+    let privacyShield: PrivacyShield
+    let soundAlertService: SoundAlertService
+    let pheromoneRouter: PheromoneRouter
+    let meshCloudService: MeshCloudService
 
     // MARK: - Identity
 
@@ -139,6 +145,11 @@ final class AppState {
         // Text messaging service
         let textMessageService = TextMessageService()
         self.textMessageService = textMessageService
+
+        // File transfer service
+        let fileTransferService = FileTransferService()
+        self.fileTransferService = fileTransferService
+
         self.locationService = LocationService()
         self.storeAndForwardRelay = StoreAndForwardRelay()
         self.meshBeacon = MeshBeacon()
@@ -147,6 +158,35 @@ final class AppState {
         self.proximityAlert = ProximityAlert()
         self.offlineMapManager = OfflineMapManager()
         self.meshShield = MeshShield()
+
+        // BLE room scanner
+        let bleScanner = BLEScanner()
+        self.bleScanner = bleScanner
+
+        // Privacy analysis (local only — no mesh wiring needed)
+        self.privacyShield = PrivacyShield(bleScanner: bleScanner)
+
+        // Sound alert service for emergency sound detection
+        let soundAlertService = SoundAlertService(locationService: self.locationService)
+        soundAlertService.configure(senderID: peerID, senderName: self.localPeerName)
+        self.soundAlertService = soundAlertService
+
+        // Pheromone routing overlay -- bio-inspired ACK backpropagation and relay optimization
+        let pheromoneRouter = PheromoneRouter()
+        pheromoneRouter.configure(
+            meshIntelligence: self.meshIntelligence,
+            localPeerID: peerID,
+            localPeerName: self.localPeerName
+        )
+        self.pheromoneRouter = pheromoneRouter
+
+        // Wire pheromone router into mesh beacon for trail sharing
+        self.meshBeacon.pheromoneRouter = pheromoneRouter
+
+        // Mesh Cloud — distributed encrypted backup
+        // Fingerprint loaded asynchronously later in start(), use placeholder for now
+        let meshCloudService = MeshCloudService(localPeerID: peerID, localFingerprint: "")
+        self.meshCloudService = meshCloudService
 
         // Create MultipeerConnectivity transport (works on any iPhone, zero friction)
         let displayName = UserDefaults.standard.string(forKey: "com.chirpchirp.callsign") ?? UIDevice.current.name
@@ -163,6 +203,20 @@ final class AppState {
         transport.onPeersChanged = { [weak self] _ in self?.updateUnifiedPeerList() }
         waTransport?.onPeersChanged = { [weak self] _ in self?.updateUnifiedPeerList() }
 
+        // Capture channel manager reference for closures below
+        let chanMgrRef = self.channelManager
+
+        // Wire pheromone router send callback -- ACKs go out on both transports
+        pheromoneRouter.onSendPacket = { payload, channelID in
+            let peers = chanMgrRef.activeChannel?.peers ?? []
+            if TransportPreference.shouldSendOnMC(peers: peers) {
+                try? transport.sendControlData(payload, channelID: channelID)
+            }
+            if TransportPreference.shouldSendOnWA(peers: peers) {
+                try? waTransport?.sendControlData(payload, channelID: channelID)
+            }
+        }
+
         // Wire encryption provider for text messages on locked channels
         textMessageService.channelCryptoProvider = { [weak self] channelID in
             self?.channelManager.getChannelCrypto(for: channelID)
@@ -171,9 +225,70 @@ final class AppState {
         // Wire triple-layer encryption into text messaging
         textMessageService.meshShield = self.meshShield
 
+        // Wire channel crypto into MeshShield so cover traffic is encrypted with channel key
+        meshShield.channelCryptoProvider = { [weak self] channelID in
+            self?.channelManager.getChannelCrypto(for: channelID)
+        }
+        meshShield.activeChannelProvider = { [weak self] in
+            self?.channelManager.activeChannel?.id
+        }
+
+        // Wire encryption provider for file transfers on locked channels
+        fileTransferService.channelCryptoProvider = { [weak self] channelID in
+            self?.channelManager.getChannelCrypto(for: channelID)
+        }
+
         // Wire text message service — prefer Wi-Fi Aware when available
-        let chanMgrRef = self.channelManager
         textMessageService.onSendPacket = { payload, channelID in
+            let peers = chanMgrRef.activeChannel?.peers ?? []
+            if TransportPreference.shouldSendOnMC(peers: peers) {
+                try? transport.sendControlData(payload, channelID: channelID)
+            }
+            if TransportPreference.shouldSendOnWA(peers: peers) {
+                try? waTransport?.sendControlData(payload, channelID: channelID)
+            }
+        }
+
+        // Wire BLE scanner — same transport pattern as text messages
+        bleScanner.onSendPacket = { payload, channelID in
+            let peers = chanMgrRef.activeChannel?.peers ?? []
+            if TransportPreference.shouldSendOnMC(peers: peers) {
+                try? transport.sendControlData(payload, channelID: channelID)
+            }
+            if TransportPreference.shouldSendOnWA(peers: peers) {
+                try? waTransport?.sendControlData(payload, channelID: channelID)
+            }
+        }
+
+        // Wire file transfer service — same transport pattern as text messages
+        fileTransferService.onSendPacket = { payload, channelID in
+            let peers = chanMgrRef.activeChannel?.peers ?? []
+            if TransportPreference.shouldSendOnMC(peers: peers) {
+                try? transport.sendControlData(payload, channelID: channelID)
+            }
+            if TransportPreference.shouldSendOnWA(peers: peers) {
+                try? waTransport?.sendControlData(payload, channelID: channelID)
+            }
+        }
+
+        // Wire raw audio buffer to sound alert service for emergency sound detection
+        audioEngine.onRawAudioBuffer = { [weak soundAlertService] buffer, time in
+            soundAlertService?.feedAudio(buffer: buffer, time: time)
+        }
+
+        // Wire sound alert broadcast — same transport pattern as text messages
+        soundAlertService.onAlertBroadcast = { payload in
+            let peers = chanMgrRef.activeChannel?.peers ?? []
+            if TransportPreference.shouldSendOnMC(peers: peers) {
+                try? transport.sendControlData(payload, channelID: "")
+            }
+            if TransportPreference.shouldSendOnWA(peers: peers) {
+                try? waTransport?.sendControlData(payload, channelID: "")
+            }
+        }
+
+        // Wire mesh cloud service — backup chunks and retrieval requests broadcast on both transports
+        meshCloudService.onSendPacket = { payload, channelID in
             let peers = chanMgrRef.activeChannel?.peers ?? []
             if TransportPreference.shouldSendOnMC(peers: peers) {
                 try? transport.sendControlData(payload, channelID: channelID)
@@ -214,6 +329,11 @@ final class AppState {
         let chanMgr = self.channelManager
         let peerTrk = self.peerTracker
         let txtService = self.textMessageService
+        let fileService = self.fileTransferService
+        let bleScan = self.bleScanner
+        let sndAlertService = self.soundAlertService
+        let pheroRouter = self.pheromoneRouter
+        let cloudService = self.meshCloudService
         Task {
             await router.setCallbacks(
                 onLocalDelivery: { (packet: MeshPacket) in
@@ -238,8 +358,41 @@ final class AppState {
                                 audioEng.receiveAudioPacket(audioPacket.opusData, sequenceNumber: audioPacket.sequenceNumber)
                             }
                         case .control:
+                            // Try delivery ACK first (ACK! prefix) -- pheromone backpropagation
+                            if DeliveryACK.from(payload: packet.payload) != nil {
+                                pheroRouter.handleACK(packet.payload, fromPeer: packet.originID.uuidString)
+                                return // ACKs are fully consumed here
+                            }
+
                             // Try text message first (TXT! prefix), pass channelID for decryption
-                            txtService.handlePacket(packet.payload, channelID: packet.channelID)
+                            let channelForACK = packet.channelID
+                            let beforeCount = txtService.messagesByChannel[channelForACK]?.count ?? 0
+                            txtService.handlePacket(packet.payload, channelID: channelForACK)
+                            let afterCount = txtService.messagesByChannel[channelForACK]?.count ?? 0
+
+                            // If a new text message was delivered, acknowledge via pheromone backpropagation
+                            if afterCount > beforeCount, !channelForACK.isEmpty {
+                                pheroRouter.acknowledgeDelivery(
+                                    packetID: packet.packetID,
+                                    senderID: packet.originID.uuidString,
+                                    channelID: packet.channelID
+                                )
+                            }
+
+                            // Try file transfer (FIL! / FLC! / FNK! prefixes)
+                            fileService.handlePacket(packet.payload, channelID: packet.channelID)
+
+                            // Try scan report (SCN! prefix)
+                            bleScan.handleMeshScanReport(packet.payload)
+
+                            // Try sound alert (SND! prefix)
+                            sndAlertService.handleMeshAlert(packet.payload)
+
+                            // Try mesh cloud backup chunk (BCK! prefix)
+                            cloudService.handleBackupChunk(packet.payload)
+
+                            // Try mesh cloud retrieval request (BRQ! prefix)
+                            cloudService.handleRetrievalRequest(packet.payload)
 
                             if let message = try? MeshCodable.decoder.decode(FloorControlMessage.self, from: packet.payload) {
                                 floorCtrl.handleMessage(message)
@@ -364,6 +517,17 @@ final class AppState {
                   let neighbors = notification.userInfo?["neighborIDs"] as? [String] else { return }
             Task {
                 await intelligence.updateTopology(peerID: peerID, connectedTo: Set(neighbors))
+            }
+        }
+
+        // Subscribe to pheromone trail updates from beacons to merge into MeshIntelligence
+        NotificationCenter.default.addObserver(
+            forName: .meshPheromoneUpdate, object: nil, queue: .main
+        ) { notification in
+            guard let neighborID = notification.userInfo?["neighborID"] as? String,
+                  let trails = notification.userInfo?["trails"] as? [String: Double] else { return }
+            Task {
+                await intelligence.mergePheromones(from: neighborID, trails: trails)
             }
         }
 

@@ -99,90 +99,7 @@ private struct GlassHeaderBar: View {
     }
 }
 
-// MARK: - Mesh Status Bar
-
-private struct MeshStatusBar: View {
-    let peerCount: Int
-    let meshStats: MeshStats?
-
-    @State private var gradientOffset: CGFloat = 0
-
-    private var maxHops: Int {
-        Int(meshStats?.maxHops ?? 0)
-    }
-
-    private var estimatedRange: Int {
-        meshStats?.estimatedRangeMeters ?? (peerCount * 80)
-    }
-
-    private var meshHealthColor: Color {
-        if peerCount >= 3 { return Constants.Colors.electricGreen }
-        if peerCount >= 1 { return Constants.Colors.amber }
-        return Color.gray
-    }
-
-    var body: some View {
-        HStack(spacing: 0) {
-            Text("\(peerCount) node\(peerCount == 1 ? "" : "s")")
-                .foregroundStyle(.white.opacity(0.6))
-
-            separator
-
-            Text("\(maxHops) hop\(maxHops == 1 ? "" : "s")")
-                .foregroundStyle(.white.opacity(0.6))
-
-            separator
-
-            Text("~\(estimatedRange)m range")
-                .foregroundStyle(.white.opacity(0.6))
-
-            Spacer()
-
-            // Health indicator dot
-            Circle()
-                .fill(meshHealthColor)
-                .frame(width: 6, height: 6)
-        }
-        .font(.system(size: 11, weight: .medium, design: .monospaced))
-        .padding(.horizontal, 20)
-        .padding(.vertical, 8)
-        .background(
-            ZStack {
-                Rectangle()
-                    .fill(Color.black.opacity(0.5))
-
-                // Animated gradient bar based on mesh health
-                GeometryReader { geo in
-                    LinearGradient(
-                        colors: [
-                            meshHealthColor.opacity(0.0),
-                            meshHealthColor.opacity(0.08),
-                            meshHealthColor.opacity(0.0),
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                    .frame(width: geo.size.width * 0.5)
-                    .offset(x: gradientOffset * geo.size.width)
-                }
-                .clipped()
-            }
-        )
-        .onAppear {
-            withAnimation(
-                .linear(duration: 4.0)
-                    .repeatForever(autoreverses: true)
-            ) {
-                gradientOffset = 0.6
-            }
-        }
-    }
-
-    private var separator: some View {
-        Text("  |  ")
-            .foregroundStyle(.white.opacity(0.15))
-    }
-}
+// MeshStatusBar removed — replaced by ProtectStatusBar (see Components/ProtectStatusBar.swift)
 
 // MARK: - Friend Avatar Bubble
 
@@ -869,6 +786,14 @@ struct HomeView: View {
     @State private var showSOSConfirm = false
     @State private var sosHoldProgress: CGFloat = 0
     @State private var pendingMessageCount: Int = 0
+    @State private var selectedTab: HomeTab = .channels
+    @Namespace private var tabAnimation
+
+    private enum HomeTab: String, CaseIterable {
+        case channels = "Channels"
+        case protect = "Protect"
+        case files = "Files"
+    }
 
     private var connectionStatus: ConnectionStatus {
         let mpPeers = appState.connectedPeerCount
@@ -878,6 +803,36 @@ struct HomeView: View {
         }
 
         return .searching
+    }
+
+    // MARK: - Tab Picker
+
+    private var homeTabPicker: some View {
+        HStack(spacing: Constants.Layout.smallSpacing) {
+            ForEach(HomeTab.allCases, id: \.self) { tab in
+                Button {
+                    withAnimation(.spring(response: Constants.Animations.springResponse, dampingFraction: Constants.Animations.springDamping)) {
+                        selectedTab = tab
+                    }
+                } label: {
+                    Text(tab.rawValue)
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(selectedTab == tab ? .white : .white.opacity(0.5))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background {
+                            if selectedTab == tab {
+                                Capsule()
+                                    .fill(Constants.Colors.amber)
+                                    .matchedGeometryEffect(id: "tabIndicator", in: tabAnimation)
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, Constants.Layout.horizontalPadding)
+        .padding(.vertical, 10)
     }
 
     var body: some View {
@@ -902,21 +857,34 @@ struct HomeView: View {
                         peerCount: appState.connectedPeerCount
                     )
 
-                    // Mesh health status bar (only when mesh has nodes)
-                    if appState.connectedPeerCount > 0 {
-                        MeshStatusBar(
-                            peerCount: appState.connectedPeerCount,
-                            meshStats: appState.meshStats
-                        )
-                    }
+                    // Protect status bar
+                    ProtectStatusBar(
+                        peerCount: appState.connectedPeerCount,
+                        threatCount: appState.bleScanner.threatDevices.count,
+                        isScanning: appState.bleScanner.isScanning,
+                        isEmergencyActive: EmergencyMode.shared.isActive
+                    )
 
-                    // Friends quick-access row
-                    if !appState.friendsManager.friends.isEmpty {
-                        friendsQuickAccess
-                    }
+                    // Tab picker
+                    homeTabPicker
 
-                    // Channel list or empty state
-                    channelListView
+                    // Tab content
+                    switch selectedTab {
+                    case .channels:
+                        // Friends quick-access row
+                        if !appState.friendsManager.friends.isEmpty {
+                            friendsQuickAccess
+                        }
+
+                        // Channel list or empty state
+                        channelListView
+
+                    case .protect:
+                        ProtectTabView()
+
+                    case .files:
+                        FilesTabView()
+                    }
 
                     // Bottom quick actions
                     BottomQuickActions(

@@ -281,6 +281,28 @@ struct ChannelView: View {
                     attachmentType: .image
                 )
                 toast = ToastItem(message: "Image sent", type: .success)
+            },
+            onSendFile: { fileURL in
+                guard let fileData = try? Data(contentsOf: fileURL) else {
+                    toast = ToastItem(message: "Could not read file", type: .warning)
+                    return
+                }
+                guard fileData.count <= FileTransferService.maxFileSize else {
+                    let maxMB = FileTransferService.maxFileSize / 1_048_576
+                    toast = ToastItem(message: "File too large (max \(maxMB) MB)", type: .warning)
+                    return
+                }
+                let fileName = fileURL.lastPathComponent
+                let mimeType = fileURL.mimeType
+                appState.fileTransferService.sendFile(
+                    fileData,
+                    fileName: fileName,
+                    mimeType: mimeType,
+                    channelID: channel.id,
+                    senderID: appState.localPeerID,
+                    senderName: appState.callsign
+                )
+                toast = ToastItem(message: "Sending \(fileName)...", type: .info)
             }
         )
     }

@@ -99,7 +99,7 @@ final class MeshIntelligenceTests: XCTestCase {
 
         XCTAssertNotNil(metrics)
         XCTAssertEqual(metrics?.packetsReceived, 1)
-        XCTAssertEqual(metrics?.avgLatencyMs, 50.0, accuracy: 0.01)
+        XCTAssertEqual(metrics?.avgLatencyMs ?? 0, 50.0, accuracy: 0.01)
         XCTAssertGreaterThan(metrics?.signalQuality ?? 0, 0)
     }
 

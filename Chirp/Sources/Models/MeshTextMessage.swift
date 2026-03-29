@@ -26,6 +26,10 @@ struct MeshTextMessage: Codable, Sendable, Identifiable {
         case image
         /// Peer identity card.
         case contact
+        /// File transfer (metadata sent via FileTransferService).
+        case file
+        /// Voice note audio clip.
+        case voiceNote
     }
 
     // MARK: - Constants

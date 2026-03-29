@@ -101,6 +101,23 @@ actor MeshIntelligence {
         entry.count += 1
         relayRateTracker[packet.originID] = entry
 
+        // Pheromone-guided relay filtering:
+        // If we have pheromone data for this packet's channel and the trail through us
+        // is weak, deprioritize normal/low priority packets. Strong trails always relay.
+        if !packet.channelID.isEmpty {
+            if let score = pheromoneScoreForChannel(packet.channelID) {
+                // Strong trail (>= 0.5): always relay regardless of other factors
+                if score >= 0.5 {
+                    return true
+                }
+                // Weak trail (< 0.1): skip normal and low priority packets
+                if score < 0.1 && priority <= .normal {
+                    logger.debug("Skipping relay — weak pheromone trail (\(score, format: .fixed(precision: 3))) for channel")
+                    return false
+                }
+            }
+        }
+
         // Even if the sending peer has high loss rate, still relay --
         // they need help getting their packets through the mesh
         return true
@@ -272,6 +289,140 @@ actor MeshIntelligence {
         // Also prune rate tracker
         let rateCutoff = Date().addingTimeInterval(-2)
         relayRateTracker = relayRateTracker.filter { $0.value.windowStart >= rateCutoff }
+    }
+
+    // MARK: - Pheromone Routing
+
+    /// Pheromone trail: for a given destination, how strong is the trail through each neighbor?
+    /// Key: destinationPeerID (or "channel:<id>"), Value: [neighborPeerID: pheromoneScore]
+    private var pheromoneMap: [String: [String: Double]] = [:]
+
+    /// Exponential decay half-life in seconds.
+    private static let pheromoneHalfLife: TimeInterval = 30.0
+
+    /// Base pheromone deposit on successful delivery ACK.
+    private static let baseDeposit: Double = 1.0
+
+    /// Minimum pheromone threshold -- below this, trail is pruned.
+    private static let minPheromone: Double = 0.01
+
+    /// Maximum pheromone cap to prevent runaway reinforcement.
+    private static let maxPheromone: Double = 10.0
+
+    /// Evaporation factor per decay cycle (applied every 5s).
+    /// For half-life of 30s: factor = 0.5^(5/30) ≈ 0.891
+    private static var decayFactor: Double {
+        pow(0.5, 5.0 / pheromoneHalfLife)
+    }
+
+    /// Deposit pheromone on a path after successful delivery ACK.
+    /// Called when we receive a delivery ACK -- strengthens the trail through `viaNeighbor` for `destination`.
+    func depositPheromone(destination: String, viaNeighbor: String, amount: Double = baseDeposit) {
+        var trails = pheromoneMap[destination] ?? [:]
+        let current = trails[viaNeighbor] ?? 0
+        trails[viaNeighbor] = min(current + amount, Self.maxPheromone)
+        pheromoneMap[destination] = trails
+    }
+
+    /// Get the best neighbor(s) to forward a packet toward a destination.
+    /// Returns neighbors sorted by pheromone strength (highest first).
+    /// If no pheromone data exists for this destination, returns nil (fall back to broadcast).
+    func pheromoneRoute(for destination: String) -> [(neighbor: String, score: Double)]? {
+        guard let trails = pheromoneMap[destination], !trails.isEmpty else { return nil }
+        let sorted = trails.sorted { $0.value > $1.value }
+        return sorted.map { (neighbor: $0.key, score: $0.value) }
+    }
+
+    /// Apply exponential decay to all pheromone trails. Call every 5 seconds.
+    func evaporatePheromones() {
+        let factor = Self.decayFactor
+        for (dest, var trails) in pheromoneMap {
+            for (neighbor, score) in trails {
+                let decayed = score * factor
+                if decayed < Self.minPheromone {
+                    trails.removeValue(forKey: neighbor)
+                } else {
+                    trails[neighbor] = decayed
+                }
+            }
+            if trails.isEmpty {
+                pheromoneMap.removeValue(forKey: dest)
+            } else {
+                pheromoneMap[dest] = trails
+            }
+        }
+    }
+
+    /// Get a summary of top pheromone trails for beacon sharing.
+    /// Returns the top 10 destination->score pairs (aggregated across neighbors).
+    func pheromoneSummary() -> [String: Double] {
+        var summary: [String: Double] = [:]
+        for (dest, trails) in pheromoneMap {
+            summary[dest] = trails.values.max() ?? 0
+        }
+        // Keep top 10 to limit beacon payload size
+        let sorted = summary.sorted { $0.value > $1.value }
+        return Dictionary(uniqueKeysWithValues: sorted.prefix(10))
+    }
+
+    /// Merge pheromone data received from a neighbor's beacon.
+    /// Discounted by a factor (information loses value with each hop).
+    func mergePheromones(from neighborID: String, trails: [String: Double], discount: Double = 0.5) {
+        for (dest, score) in trails {
+            let discounted = score * discount
+            guard discounted >= Self.minPheromone else { continue }
+            var existing = pheromoneMap[dest] ?? [:]
+            let current = existing[neighborID] ?? 0
+            // Use max rather than add -- don't double-count propagated data
+            existing[neighborID] = max(current, discounted)
+            pheromoneMap[dest] = existing
+        }
+    }
+
+    /// Spore mode check: returns true if this node has very few peers and should aggressively discover.
+    func isInSporeMode() -> Bool {
+        visiblePeerCount <= 1 && linkMetrics.filter({ !$0.value.isStale }).count <= 1
+    }
+
+    /// Get pheromone-weighted relay decision: which specific peers to forward to.
+    /// Returns nil if no pheromone data -> caller should broadcast to all peers (existing behavior).
+    /// Returns a list of recommended peer IDs to send to for directed routing.
+    func selectRelayPeers(for packet: MeshPacket, allPeers: [String]) -> [String]? {
+        // Critical/emergency packets always broadcast to all peers
+        let priority = MeshPacket.inferPriority(type: packet.type, payload: packet.payload)
+        if priority >= .critical { return nil }
+
+        // For broadcast packets (empty channelID), always broadcast
+        if packet.channelID.isEmpty { return nil }
+
+        // Check if we have pheromone routes for peers on this channel
+        let channelKey = "channel:\(packet.channelID)"
+        if let routes = pheromoneRoute(for: channelKey) {
+            let validRoutes = routes.filter { allPeers.contains($0.neighbor) }
+            if !validRoutes.isEmpty {
+                // Send to top peers by pheromone score, but always include at least 2
+                // for redundancy (mesh resilience > efficiency)
+                let topCount = max(2, validRoutes.count / 2)
+                let selected = validRoutes.prefix(topCount).map(\.neighbor)
+
+                // Also include one random peer for exploration (ant colony optimization)
+                let unexplored = allPeers.filter { peer in !selected.contains(peer) }
+                if let explorer = unexplored.randomElement() {
+                    return Array(selected) + [explorer]
+                }
+                return Array(selected)
+            }
+        }
+
+        return nil // No pheromone data -- broadcast to all
+    }
+
+    /// Check whether a packet on a given channel has strong pheromone support through this node.
+    /// Used by ``shouldRelay(packet:batteryLevel:priority:)`` to deprioritize weak trails.
+    func pheromoneScoreForChannel(_ channelID: String) -> Double? {
+        let channelKey = "channel:\(channelID)"
+        guard let trails = pheromoneMap[channelKey], !trails.isEmpty else { return nil }
+        return trails.values.max()
     }
 }
 

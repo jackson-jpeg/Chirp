@@ -10,6 +10,7 @@ import OSLog
 final class AudioEngine: @unchecked Sendable {
     var onEncodedAudio: (@Sendable (Data) -> Void)?
     var onDecodedPCM: ((AVAudioPCMBuffer) -> Void)?
+    var onRawAudioBuffer: (@Sendable (AVAudioPCMBuffer, AVAudioTime) -> Void)?
     private(set) var inputLevel: Float = 0.0
 
     private var engine: AVAudioEngine?
@@ -93,12 +94,15 @@ final class AudioEngine: @unchecked Sendable {
         converter = nil
 
         inputNode.installTap(onBus: 0, bufferSize: 4096, format: nil) {
-            [weak self] buffer, _ in
+            [weak self] buffer, time in
             guard let self, self.isCapturing else { return }
             guard buffer.frameLength > 0 else { return }
 
             // Update level on audio thread (fast)
             self.updateInputLevelFromRawBuffer(buffer)
+
+            // Feed raw audio to sound analysis (if wired)
+            self.onRawAudioBuffer?(buffer, time)
 
             // Process on separate queue to avoid blocking audio thread
             nonisolated(unsafe) let buf = buffer

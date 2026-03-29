@@ -120,6 +120,12 @@ final class MeshShield {
     private var wifiAwareTransport: WiFiAwareTransport?
     private var fakeTrafficTask: Task<Void, Never>?
 
+    /// Returns the ChannelCrypto for a given channel ID, if the channel is locked.
+    var channelCryptoProvider: ((String) -> ChannelCrypto?)?
+
+    /// Returns the current active channel ID, if any.
+    var activeChannelProvider: (() -> String?)?
+
     // MARK: - Init
 
     init() {}
@@ -187,13 +193,26 @@ final class MeshShield {
 
     private func injectCoverPacket() {
         let packetType: MeshPacket.PacketType = Bool.random() ? .audio : .control
-        let payloadSize = packetType == .audio ? Int.random(in: 100...300) : Int.random(in: 50...500)
+        // Size distribution matches real encrypted message ranges
+        let payloadSize = packetType == .audio ? Int.random(in: 80...350) : Int.random(in: 80...600)
 
-        // Cover payload: magic prefix + random bytes (indistinguishable after encryption)
-        var payload = Data(Self.coverMagic)
+        // Cover payload: magic prefix + random bytes
+        // After channel encryption, 0xDEADBEEF is invisible on the wire.
+        // Only revealed after decryption by nodes with the channel key.
+        var coverPayload = Data(Self.coverMagic)
         var noise = [UInt8](repeating: 0, count: max(0, payloadSize - 4))
         for i in noise.indices { noise[i] = UInt8.random(in: 0...255) }
-        payload.append(Data(noise))
+        coverPayload.append(Data(noise))
+
+        // Encrypt cover payload with channel key so it's indistinguishable from real traffic
+        var wirePayload = coverPayload
+        var channelID = ""
+        if let activeID = activeChannelProvider?(),
+           let crypto = channelCryptoProvider?(activeID),
+           let encrypted = try? crypto.encrypt(coverPayload) {
+            wirePayload = encrypted
+            channelID = activeID
+        }
 
         let packet = MeshPacket(
             type: packetType,
@@ -202,8 +221,8 @@ final class MeshShield {
             packetID: UUID(),
             sequenceNumber: UInt32.random(in: 0...UInt32.max),
             timestamp: UInt64(Date().timeIntervalSince1970 * 1000),
-            channelID: "",
-            payload: payload
+            channelID: channelID,
+            payload: wirePayload
         )
 
         let serialized = packet.serialize()

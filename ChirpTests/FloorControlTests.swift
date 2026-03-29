@@ -49,7 +49,7 @@ final class FloorControlTests: XCTestCase {
         let remoteRequest = FloorControlMessage.floorRequest(
             senderID: "remote-1",
             senderName: "RemoteUser",
-            timestamp: 1000
+            timestamp: Date(timeIntervalSince1970: 1000)
         )
         controller.handleMessage(remoteRequest)
         XCTAssertEqual(controller.state, .receiving(speakerName: "RemoteUser", speakerID: "remote-1"))
@@ -219,7 +219,7 @@ final class FloorControlTests: XCTestCase {
         let firstRequest = FloorControlMessage.floorRequest(
             senderID: "remote-1",
             senderName: "Alice",
-            timestamp: 1000
+            timestamp: Date(timeIntervalSince1970: 1000)
         )
         controller.handleMessage(firstRequest)
         XCTAssertEqual(controller.state, .receiving(speakerName: "Alice", speakerID: "remote-1"))

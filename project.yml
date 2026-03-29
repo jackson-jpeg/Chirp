@@ -40,6 +40,8 @@ targets:
         product: GRDB
       - package: MapLibreNative
         product: MapLibre
+      - sdk: CoreBluetooth.framework
+      - sdk: SoundAnalysis.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp
@@ -60,6 +62,7 @@ targets:
         NSCameraUsageDescription: "ChirpChirp uses your camera to take photos and share them with nearby devices."
         NSPhotoLibraryUsageDescription: "ChirpChirp accesses your photo library to share images with nearby devices."
         NSPhotoLibraryAddUsageDescription: "ChirpChirp saves received images to your photo library."
+        NSBluetoothAlwaysUsageDescription: "ChirpChirp scans for nearby Bluetooth devices to help detect potential surveillance or tracking equipment."
         NSLocalNetworkUsageDescription: "ChirpChirp uses your local network to discover and connect to nearby devices for walkie-talkie communication."
         NSBonjourServices:
           - "_chirp-ptt._udp."

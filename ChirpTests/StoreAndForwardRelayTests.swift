@@ -6,8 +6,7 @@ final class StoreAndForwardRelayTests: XCTestCase {
 
     private var relay: StoreAndForwardRelay!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
         relay = StoreAndForwardRelay()
         // Clear any state loaded from disk so each test starts clean
         clearRelay()

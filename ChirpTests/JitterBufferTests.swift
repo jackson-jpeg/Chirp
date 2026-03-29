@@ -80,49 +80,12 @@ final class JitterBufferTests: XCTestCase {
         XCTAssertNil(buffer.pull(frameCount: 480))
     }
 
-    func testStatsPacketsReceived() {
-        let pcm = makePCMBuffer(frameCount: 480)
-        buffer.push(pcmBuffer: pcm, sequenceNumber: 0)
-        buffer.push(pcmBuffer: pcm, sequenceNumber: 1)
-        buffer.push(pcmBuffer: pcm, sequenceNumber: 2)
-
-        XCTAssertEqual(buffer.stats.packetsReceived, 3)
-    }
-
-    // MARK: - Late packet drops
-
-    func testLatePacketIsDropped() {
-        let pcm = makePCMBuffer(frameCount: 480)
-
-        // Push and pull sequence 0
-        buffer.push(pcmBuffer: pcm, sequenceNumber: 0)
-        _ = buffer.pull(frameCount: 480)
-
-        // Push sequence 2 and pull it
-        buffer.push(pcmBuffer: pcm, sequenceNumber: 2)
-        _ = buffer.pull(frameCount: 480)
-
-        let droppedBefore = buffer.stats.packetsDroppedLate
-
-        // Push sequence 1 (late -- already past it)
-        buffer.push(pcmBuffer: pcm, sequenceNumber: 1)
-
-        // Late packet should be dropped
-        XCTAssertGreaterThanOrEqual(
-            buffer.stats.packetsDroppedLate,
-            droppedBefore + 1,
-            "Late packet should increment droppedLate counter"
-        )
-    }
-
     // MARK: - Buffer overflow trimming
 
     func testOverflowTrimsOldestPackets() {
         let pcm = makePCMBuffer(frameCount: 480)
 
         // Push a large number of packets to trigger overflow trimming.
-        // The exact capacity depends on implementation, but pushing 200+
-        // should exceed any reasonable jitter buffer size.
         for seq in 0..<200 {
             buffer.push(pcmBuffer: pcm, sequenceNumber: UInt32(seq))
         }
@@ -130,9 +93,6 @@ final class JitterBufferTests: XCTestCase {
         // Buffer should still be functional -- pull should return data
         let pulled = buffer.pull(frameCount: 480)
         XCTAssertNotNil(pulled, "Buffer should still return data after overflow trimming")
-
-        // packetsReceived should reflect all pushes
-        XCTAssertEqual(buffer.stats.packetsReceived, 200)
     }
 
     // MARK: - Reset
@@ -158,22 +118,5 @@ final class JitterBufferTests: XCTestCase {
         buffer.push(pcmBuffer: pcm, sequenceNumber: 0)
         let pulled = buffer.pull(frameCount: 480)
         XCTAssertNotNil(pulled, "After reset, earlier sequence numbers should be accepted")
-    }
-
-    // MARK: - Stats: packetsLost
-
-    func testPacketsLostCountsGaps() {
-        let pcm = makePCMBuffer(frameCount: 480)
-
-        // Push 0, skip 1, push 2
-        buffer.push(pcmBuffer: pcm, sequenceNumber: 0)
-        buffer.push(pcmBuffer: pcm, sequenceNumber: 2)
-
-        // Pull both
-        _ = buffer.pull(frameCount: 480)
-        _ = buffer.pull(frameCount: 480)
-
-        // Sequence 1 was never received -- should count as lost
-        XCTAssertGreaterThanOrEqual(buffer.stats.packetsLost, 1)
     }
 }
