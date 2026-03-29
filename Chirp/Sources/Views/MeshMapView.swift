@@ -236,8 +236,8 @@ private struct TopologyCanvas: View {
             let distance = hop * 80
             let labelAngle: Double = -.pi / 4.0  // 45 degrees up-right
             let labelPoint = CGPoint(
-                x: center.x + radius * cos(labelAngle) + 10,
-                y: center.y + radius * sin(labelAngle) - 10
+                x: center.x + radius * CGFloat(cos(labelAngle)) + 10,
+                y: center.y + radius * CGFloat(sin(labelAngle)) - 10
             )
             let text = Text("\(distance)m")
                 .font(.system(size: 9, weight: .medium, design: .monospaced))

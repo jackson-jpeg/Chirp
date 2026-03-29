@@ -218,7 +218,8 @@ final class AppState {
                         }
                     case .control:
                         // Try text message first (TXT! prefix)
-                        txtService.handlePacket(packet.payload)
+                        let controlPayload = packet.payload
+                        Task { @MainActor in txtService.handlePacket(controlPayload) }
 
                         if let message = try? MeshCodable.decoder.decode(FloorControlMessage.self, from: packet.payload) {
                             floorCtrl.handleMessage(message)
