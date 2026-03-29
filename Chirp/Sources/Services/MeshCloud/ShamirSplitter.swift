@@ -100,27 +100,28 @@ enum ShamirSplitter {
 
     private static func gf256Mul(_ a: UInt8, _ b: UInt8) -> UInt8 {
         guard a != 0 && b != 0 else { return 0 }
-        let logA = Int(logTable[Int(a)])
-        let logB = Int(logTable[Int(b)])
-        return expTable[(logA + logB) % 255]
+        return expTable[Int(logTable[Int(a)]) + Int(logTable[Int(b)])]
     }
 
     private static func gf256Div(_ a: UInt8, _ b: UInt8) -> UInt8 {
-        guard b != 0 else { return 0 } // Division by zero — should never happen with valid shares
+        guard b != 0 else { return 0 }
         guard a != 0 else { return 0 }
-        let logA = Int(logTable[Int(a)])
-        let logB = Int(logTable[Int(b)])
-        return expTable[(logA - logB + 255) % 255]
+        return expTable[Int(logTable[Int(a)]) + 255 - Int(logTable[Int(b)])]
     }
 
     // Precomputed log/exp tables for GF(256) with generator 2 and polynomial 0x11B.
+    // expTable has 512 entries so that (logA + logB) can index directly without modulo.
     private static let expTable: [UInt8] = {
-        var table = [UInt8](repeating: 0, count: 256)
+        var table = [UInt8](repeating: 0, count: 512)
         var x: UInt16 = 1
-        for i in 0..<256 {
+        for i in 0..<255 {
             table[i] = UInt8(x)
             x = x << 1
             if x >= 256 { x ^= 0x11B }
+        }
+        // Duplicate the cycle for overflow-safe lookup
+        for i in 255..<512 {
+            table[i] = table[i - 255]
         }
         return table
     }()
