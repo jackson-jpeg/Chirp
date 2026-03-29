@@ -24,6 +24,10 @@ final class AppState {
     let meshRouter: MeshRouter
     let meshIntelligence: MeshIntelligence
     let backgroundService: BackgroundMeshService
+    let textMessageService: TextMessageService
+    let locationService: LocationService
+    let storeAndForwardRelay: StoreAndForwardRelay
+    let meshBeacon: MeshBeacon
 
     // MARK: - Identity
 
@@ -74,6 +78,8 @@ final class AppState {
     private enum Keys {
         static let peerID = "com.chirpchirp.localPeerID"
         static let onboardingComplete = "com.chirpchirp.onboardingComplete"
+        static let activeChannelID = "com.chirpchirp.activeChannelID"
+        static let meshRunning = "com.chirpchirp.meshRunning"
     }
 
     // MARK: - Init
@@ -103,7 +109,7 @@ final class AppState {
         let pttEngine = PTTEngine(
             audioEngine: audioEngine,
             floorController: floorController,
-            connectionManager: connectionManager
+            localPeerID: peerID
         )
         let channelManager = ChannelManager()
 
@@ -116,9 +122,6 @@ final class AppState {
         self.channelManager = channelManager
         self.liveActivityManager = LiveActivityManager()
 
-        let displayName = UserDefaults.standard.string(forKey: "com.chirpchirp.callsign") ?? UIDevice.current.name
-        let transport = MultipeerTransport(displayName: displayName)
-        self.multipeerTransport = transport
         self.friendsManager = FriendsManager()
 
         // Create mesh router using stable local peer ID as origin
@@ -129,7 +132,18 @@ final class AppState {
         self.meshRouter = router
         self.meshIntelligence = MeshIntelligence()
         self.backgroundService = BackgroundMeshService.shared
-        transport.meshRouter = router
+
+        // Text messaging service
+        let textMessageService = TextMessageService()
+        self.textMessageService = textMessageService
+        self.locationService = LocationService()
+        self.storeAndForwardRelay = StoreAndForwardRelay()
+        self.meshBeacon = MeshBeacon()
+
+        // Create transport with mesh router injected at init
+        let displayName = UserDefaults.standard.string(forKey: "com.chirpchirp.callsign") ?? UIDevice.current.name
+        let transport = MultipeerTransport(displayName: displayName, meshRouter: router, localPeerID: peerID, localPeerName: self.localPeerName)
+        self.multipeerTransport = transport
 
         // Wire multipeer to PTT engine for real peer-to-peer audio
         transport.onPeersChanged = { [weak self] peers in
@@ -156,6 +170,14 @@ final class AppState {
                 )
             }
 
+            // Check store-and-forward relay for pending messages to newly connected peers
+            for peer in peers {
+                let pending = self.storeAndForwardRelay.checkPendingForPeer(peer.id)
+                for msg in pending {
+                    try? transport.sendControlData(msg.payload, channelID: msg.channelID)
+                }
+            }
+
             // Log peer changes
             if peers.count > oldCount {
                 let newPeer = peers.last
@@ -165,21 +187,53 @@ final class AppState {
             }
         }
 
-        // Wire mesh router callbacks
+        // Wire text message service to transport
+        let txtService = self.textMessageService
+        textMessageService.onSendPacket = { payload, channelID in
+            try? transport.sendControlData(payload, channelID: channelID)
+        }
+
+        // Wire mesh router callbacks.
+        // This is the SOLE delivery path for all incoming audio and control packets.
         let audioEng = self.audioEngine
         let floorCtrl = self.floorController
         let mpTransport = self.multipeerTransport
+        let chanMgr = self.channelManager
+        let peerTrk = self.peerTracker
         Task {
             await router.setCallbacks(
                 onLocalDelivery: { (packet: MeshPacket) in
+                    // Channel filtering: drop audio for wrong channel.
+                    // Control packets with empty channelID (broadcasts) are always delivered.
+                    let activeID = chanMgr.activeChannel?.id ?? ""
+                    if !packet.channelID.isEmpty && packet.channelID != activeID {
+                        // Wrong channel -- drop audio, but still deliver broadcast controls
+                        if packet.type == .audio { return }
+                    }
+
                     switch packet.type {
                     case .audio:
                         if let audioPacket = AudioPacket.deserialize(packet.payload) {
                             audioEng.receiveAudioPacket(audioPacket.opusData, sequenceNumber: audioPacket.sequenceNumber)
                         }
                     case .control:
-                        if let message = try? JSONDecoder().decode(FloorControlMessage.self, from: packet.payload) {
+                        // Try text message first (TXT! prefix)
+                        txtService.handlePacket(packet.payload)
+
+                        if let message = try? MeshCodable.decoder.decode(FloorControlMessage.self, from: packet.payload) {
                             floorCtrl.handleMessage(message)
+
+                            // Route heartbeat and peer join/leave to PeerTracker
+                            switch message {
+                            case .heartbeat(let peerID, let timestamp):
+                                Task { await peerTrk.handleHeartbeat(peerID: peerID, timestamp: timestamp) }
+                            case .peerJoin(let peerID, let peerName):
+                                Task { await peerTrk.updatePeer(id: peerID, name: peerName) }
+                            case .peerLeave(let peerID):
+                                Task { await peerTrk.removePeer(id: peerID) }
+                            default:
+                                break
+                            }
                         }
                     }
                 },
@@ -203,28 +257,26 @@ final class AppState {
         // Request mic permission early
         await requestMicPermission()
 
+        // Register for audio session interruption and route change notifications
+        AudioSessionManager.registerForNotifications()
+
+        // Wire interruption callbacks to PTTEngine for auto-release on phone calls etc.
+        let ptt = self.pttEngine
+        AudioSessionManager.onInterruptionBegan = {
+            ptt.stopTransmitting()
+        }
+        AudioSessionManager.onInterruptionEnded = {
+            // Session reactivated -- no auto-transmit, just log readiness
+            Logger.audio.info("Audio interruption ended — PTT ready")
+        }
+
         pttEngine.multipeerTransport = multipeerTransport
         try? await pttEngine.start()
         await peerTracker.startHealthCheck()
 
-        // Start MultipeerConnectivity transport for local peer discovery
+        // Start MultipeerConnectivity transport for local peer discovery.
+        // All incoming packets are delivered via meshRouter.onLocalDelivery (wired in init).
         multipeerTransport.start()
-
-        // Wire multipeer audio/control streams into PTT engine receive loops.
-        // These handle legacy (non-mesh) packets only. Mesh packets are delivered
-        // via meshRouter.onLocalDelivery callbacks wired in init().
-        Task {
-            for await data in multipeerTransport.audioPackets {
-                if let packet = AudioPacket.deserialize(data) {
-                    audioEngine.receiveAudioPacket(packet.opusData, sequenceNumber: packet.sequenceNumber)
-                }
-            }
-        }
-        Task {
-            for await message in multipeerTransport.controlMessages {
-                floorController.handleMessage(message)
-            }
-        }
 
         // Create a default channel if none exist (first launch).
         // Channels are persisted, so this only runs once.
@@ -233,10 +285,27 @@ final class AppState {
             channelManager.joinChannel(id: defaultChannel.id)
         }
 
+        // Crash recovery: rejoin previously active channel if the app was killed
+        recoverActiveState()
+
+        // Save active state for crash recovery
+        saveActiveState()
+
         // Live Activity disabled until widget extension signing is resolved
         // if let channel = channelManager.activeChannel {
         //     liveActivityManager.startActivity(channelName: channel.name)
         // }
+
+        // Start mesh beacon broadcasting for presence detection
+        let channelIDs = channelManager.channels.map(\.id)
+        meshBeacon.startBroadcasting(
+            localID: localPeerID,
+            localName: callsign,
+            channels: channelIDs
+        )
+
+        // Request location permission for location sharing features
+        locationService.requestPermission()
 
         // Register background tasks to keep mesh alive
         backgroundService.registerBackgroundTasks()
@@ -256,10 +325,44 @@ final class AppState {
 
     /// Graceful shutdown.
     func stop() {
+        clearActiveState()
         pttEngine.stop()
         liveActivityManager.endActivity()
         Task { await peerTracker.stopHealthCheck() }
         logger.info("AppState stopped")
+    }
+
+    // MARK: - State Persistence for Crash Recovery
+
+    /// Save active channel and mesh state so we can recover after a crash or force-quit.
+    private func saveActiveState() {
+        let channelID = channelManager.activeChannel?.id
+        UserDefaults.standard.set(channelID, forKey: Keys.activeChannelID)
+        UserDefaults.standard.set(true, forKey: Keys.meshRunning)
+        logger.info("Saved active state: channel=\(channelID ?? "none")")
+    }
+
+    /// Clear saved state on intentional stop.
+    private func clearActiveState() {
+        UserDefaults.standard.removeObject(forKey: Keys.activeChannelID)
+        UserDefaults.standard.set(false, forKey: Keys.meshRunning)
+        logger.info("Cleared active state")
+    }
+
+    /// Attempt to rejoin a previously active channel after crash recovery.
+    private func recoverActiveState() {
+        guard UserDefaults.standard.bool(forKey: Keys.meshRunning) else { return }
+
+        if let savedChannelID = UserDefaults.standard.string(forKey: Keys.activeChannelID) {
+            // Check if this channel still exists
+            if channelManager.channels.contains(where: { $0.id == savedChannelID }) {
+                channelManager.joinChannel(id: savedChannelID)
+                logger.info("Crash recovery: rejoined channel \(savedChannelID)")
+            } else {
+                logger.warning("Crash recovery: saved channel \(savedChannelID) no longer exists")
+                clearActiveState()
+            }
+        }
     }
 
     // MARK: - Live Activity

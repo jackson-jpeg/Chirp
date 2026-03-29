@@ -8,4 +8,5 @@ extension Logger {
     static let ptt = Logger(subsystem: subsystem, category: "ptt")
     static let ui = Logger(subsystem: subsystem, category: "ui")
     static let wifiAware = Logger(subsystem: subsystem, category: "wifiAware")
+    static let textMessage = Logger(subsystem: subsystem, category: "TextMessage")
 }

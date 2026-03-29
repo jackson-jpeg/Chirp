@@ -286,11 +286,15 @@ struct EmergencySOSView: View {
     @State private var countdownSeconds = 3
     @State private var countdownTimer: Timer?
     @State private var vignetteOpacity: Double = 0.0
+    @State private var emergencyHoldProgress: CGFloat = 0.0
+    @State private var emergencyHoldTimer: Timer?
+    @State private var isHoldingForEmergency = false
 
     private let red = Constants.Colors.hotRed
     private let amber = Constants.Colors.amber
 
     private var beacon: EmergencyBeacon { EmergencyBeacon.shared }
+    private var emergencyMode: EmergencyMode { EmergencyMode.shared }
 
     var body: some View {
         ZStack {
@@ -314,11 +318,34 @@ struct EmergencySOSView: View {
                     headerSection
 
                     // SOS Button.
+                    // Tap: toggle SOS beacon. Long-press (3s): toggle emergency mode.
                     SOSButton(isActive: beacon.isActive) {
                         if beacon.isActive {
                             beacon.deactivate()
                         } else {
                             startCountdown()
+                        }
+                    }
+                    .simultaneousGesture(
+                        LongPressGesture(minimumDuration: 3.0)
+                            .onChanged { _ in
+                                startEmergencyHold()
+                            }
+                            .onEnded { _ in
+                                completeEmergencyHold()
+                            }
+                    )
+                    .overlay(alignment: .bottom) {
+                        if isHoldingForEmergency {
+                            VStack(spacing: 4) {
+                                ProgressView(value: emergencyHoldProgress)
+                                    .tint(Constants.Colors.emergencyRed)
+                                    .frame(width: 120)
+                                Text("Hold for Emergency Mode")
+                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(Constants.Colors.emergencyRed.opacity(0.8))
+                            }
+                            .offset(y: 100)
                         }
                     }
                     .padding(.vertical, 16)
@@ -329,6 +356,9 @@ struct EmergencySOSView: View {
                     } else {
                         inactiveInfoSection
                     }
+
+                    // Emergency Mode toggle section.
+                    emergencyModeSection
 
                     // GPS coordinates.
                     coordinateSection
@@ -628,6 +658,137 @@ struct EmergencySOSView: View {
             .repeatForever(autoreverses: true)
         ) {
             vignetteOpacity = 0.3
+        }
+    }
+
+    // MARK: - Emergency Mode Section
+
+    private var emergencyModeSection: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 6) {
+                Image(systemName: "exclamationmark.octagon.fill")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(Constants.Colors.emergencyRed)
+
+                Text("EMERGENCY MODE")
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .foregroundStyle(Constants.Colors.emergencyRed.opacity(0.8))
+                    .tracking(2)
+
+                Spacer()
+
+                // Toggle
+                Toggle("", isOn: Binding(
+                    get: { emergencyMode.isActive },
+                    set: { newValue in
+                        if newValue {
+                            emergencyMode.activate()
+                        } else {
+                            emergencyMode.deactivate()
+                        }
+                    }
+                ))
+                .tint(Constants.Colors.emergencyRed)
+                .labelsHidden()
+            }
+
+            if emergencyMode.isActive {
+                VStack(alignment: .leading, spacing: 8) {
+                    emergencyInfoRow(
+                        icon: "bolt.fill",
+                        text: "Max TTL (\(emergencyMode.maxTTL) hops), relay everything"
+                    )
+                    emergencyInfoRow(
+                        icon: "waveform",
+                        text: "Low-bandwidth audio (8 kbps)"
+                    )
+                    emergencyInfoRow(
+                        icon: "location.fill",
+                        text: "Location broadcast every \(Int(emergencyMode.locationBroadcastInterval))s"
+                    )
+                    emergencyInfoRow(
+                        icon: "antenna.radiowaves.left.and.right",
+                        text: "Beacon interval \(Int(emergencyMode.beaconInterval))s"
+                    )
+                }
+            } else {
+                Text("Optimizes the app for disaster scenarios: max range, aggressive relay, low-bandwidth audio, and periodic location sharing.")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.4))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(emergencyMode.isActive
+                      ? Constants.Colors.emergencyRed.opacity(0.08)
+                      : Color.white.opacity(0.04))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(
+                            emergencyMode.isActive
+                                ? Constants.Colors.emergencyRed.opacity(0.3)
+                                : Color.white.opacity(0.08),
+                            lineWidth: emergencyMode.isActive ? 1.0 : 0.5
+                        )
+                )
+        )
+    }
+
+    private func emergencyInfoRow(icon: String, text: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Constants.Colors.emergencyRed.opacity(0.7))
+                .frame(width: 18)
+
+            Text(text)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.white.opacity(0.5))
+
+            Spacer()
+        }
+    }
+
+    // MARK: - Emergency Mode Hold Gesture
+
+    private func startEmergencyHold() {
+        guard !isHoldingForEmergency else { return }
+        isHoldingForEmergency = true
+        emergencyHoldProgress = 0
+
+        let interval: TimeInterval = 0.05
+        let totalDuration: TimeInterval = 3.0
+        let steps = totalDuration / interval
+        nonisolated(unsafe) var currentStep: Double = 0
+
+        emergencyHoldTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
+            currentStep += 1
+            let progress = CGFloat(currentStep / steps)
+            DispatchQueue.main.async {
+                withAnimation(.linear(duration: interval)) {
+                    emergencyHoldProgress = min(progress, 1.0)
+                }
+            }
+            if currentStep >= steps {
+                timer.invalidate()
+            }
+        }
+    }
+
+    private func completeEmergencyHold() {
+        emergencyHoldTimer?.invalidate()
+        emergencyHoldTimer = nil
+        isHoldingForEmergency = false
+        emergencyHoldProgress = 0
+
+        // Toggle emergency mode
+        if emergencyMode.isActive {
+            emergencyMode.deactivate()
+        } else {
+            emergencyMode.activate()
         }
     }
 }

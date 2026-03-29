@@ -11,6 +11,12 @@ struct ChannelView: View {
     @State private var toast: ToastItem?
     @State private var transmitStartTime: Date?
     @State private var meshPhase: CGFloat = 0
+    @State private var channelMode: ChannelMode = .talk
+
+    enum ChannelMode: String, CaseIterable {
+        case talk = "Talk"
+        case chat = "Chat"
+    }
 
     // MARK: - Layout Constants
 
@@ -20,6 +26,12 @@ struct ChannelView: View {
     private let waveformRadius: CGFloat = 100
 
     // MARK: - Body
+
+    // MARK: - Unread Badge
+
+    private var chatUnreadCount: Int {
+        appState.textMessageService.unreadCount(for: channel.id)
+    }
 
     var body: some View {
         ZStack {
@@ -35,28 +47,19 @@ struct ChannelView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
 
-                Spacer()
+                // Mode picker: Talk | Chat
+                modePicker
+                    .padding(.horizontal, 40)
+                    .padding(.top, 12)
+                    .padding(.bottom, 8)
 
-                // Status pill
-                statusPill
-                    .padding(.bottom, 24)
-
-                // Idle birds — friendly waiting state above waveform
-                if pttState == .idle {
-                    PerchBirdsView(size: 100, isAnimating: true)
-                        .transition(.opacity.combined(with: .scale(scale: 0.8)))
-                        .padding(.bottom, 8)
+                if channelMode == .talk {
+                    // Existing PTT UI
+                    talkModeContent
+                } else {
+                    // Chat UI
+                    chatModeContent
                 }
-
-                // Central composition: peers around waveform around PTT
-                centralComposition
-                    .padding(.bottom, 24)
-
-                // Loopback indicator
-                loopbackIndicator
-
-                Spacer()
-                    .frame(height: 40)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -90,6 +93,112 @@ struct ChannelView: View {
                 appState.updateLiveActivity()
             }
         }
+    }
+
+    // MARK: - Mode Picker
+
+    private var modePicker: some View {
+        HStack(spacing: 0) {
+            ForEach(ChannelMode.allCases, id: \.self) { mode in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        channelMode = mode
+                    }
+                    if mode == .chat {
+                        appState.textMessageService.markAsRead(channelID: channel.id)
+                    }
+                } label: {
+                    ZStack(alignment: .topTrailing) {
+                        Text(mode.rawValue)
+                            .font(.system(.subheadline, weight: .semibold))
+                            .foregroundStyle(channelMode == mode ? .white : .white.opacity(0.4))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(
+                                channelMode == mode
+                                    ? RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .fill(Color.white.opacity(0.12))
+                                    : nil
+                            )
+
+                        // Unread badge on Chat tab
+                        if mode == .chat && channelMode != .chat && chatUnreadCount > 0 {
+                            Text("\(min(chatUnreadCount, 99))")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(Capsule().fill(Constants.Colors.hotRed))
+                                .offset(x: -4, y: 2)
+                        }
+                    }
+                }
+                .accessibilityLabel("\(mode.rawValue) mode")
+            }
+        }
+        .padding(3)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .opacity(0.5)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.5)
+        )
+    }
+
+    // MARK: - Talk Mode Content
+
+    private var talkModeContent: some View {
+        VStack(spacing: 0) {
+            Spacer()
+
+            // Status pill
+            statusPill
+                .padding(.bottom, 24)
+
+            // Idle birds — friendly waiting state above waveform
+            if pttState == .idle {
+                PerchBirdsView(size: 100, isAnimating: true)
+                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                    .padding(.bottom, 8)
+            }
+
+            // Central composition: peers around waveform around PTT
+            centralComposition
+                .padding(.bottom, 24)
+
+            // Loopback indicator
+            loopbackIndicator
+
+            Spacer()
+                .frame(height: 40)
+        }
+    }
+
+    // MARK: - Chat Mode Content
+
+    private var chatModeContent: some View {
+        ChatView(
+            channelID: channel.id,
+            localPeerID: appState.localPeerID,
+            localPeerName: appState.localPeerName,
+            messages: appState.textMessageService.messages(for: channel.id),
+            onSend: { text, replyToID in
+                appState.textMessageService.send(
+                    text: text,
+                    channelID: channel.id,
+                    senderID: appState.localPeerID,
+                    senderName: appState.localPeerName,
+                    replyToID: replyToID
+                )
+            },
+            onShareLocation: {
+                // TODO: Phase 2 — share location via mesh
+                toast = ToastItem(message: "Location sharing coming soon", type: .info)
+            }
+        )
     }
 
     // MARK: - Animated Mesh Background
@@ -517,5 +626,103 @@ struct ChannelView: View {
             return peer.id == speakerID
         }
         return false
+    }
+
+    // MARK: - Mode Picker
+
+    private var modePicker: some View {
+        HStack(spacing: 0) {
+            ForEach(ChannelMode.allCases, id: \.self) { mode in
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        channelMode = mode
+                    }
+                    if mode == .chat {
+                        appState.textMessageService.markAsRead(channelID: channel.id)
+                    }
+                } label: {
+                    HStack(spacing: 5) {
+                        Text(mode.rawValue)
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+
+                        if mode == .chat && chatUnreadCount > 0 && channelMode != .chat {
+                            Text("\(chatUnreadCount)")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(.black)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(Capsule().fill(Constants.Colors.amber))
+                        }
+                    }
+                    .foregroundStyle(channelMode == mode ? .white : .white.opacity(0.4))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(
+                        channelMode == mode
+                            ? Capsule().fill(.white.opacity(0.12))
+                            : nil
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .background(
+            Capsule().fill(.white.opacity(0.06))
+        )
+    }
+
+    // MARK: - Talk Mode Content
+
+    private var talkModeContent: some View {
+        VStack(spacing: 0) {
+            statusPill
+                .padding(.top, 8)
+
+            Spacer()
+
+            centralComposition
+
+            Spacer()
+
+            // Quick reply bar
+            QuickReplyBar(
+                replies: QuickReplyManager.defaults,
+                onTap: { reply in
+                    if case .text(let message) = reply.type {
+                        appState.textMessageService.send(
+                            text: message,
+                            channelID: channel.id,
+                            senderID: appState.localPeerID,
+                            senderName: appState.callsign
+                        )
+                    }
+                }
+            )
+            .padding(.bottom, 4)
+
+            loopbackIndicator
+                .padding(.bottom, 8)
+        }
+    }
+
+    // MARK: - Chat Mode Content
+
+    private var chatModeContent: some View {
+        ChatView(
+            channelID: channel.id,
+            localPeerID: appState.localPeerID,
+            localPeerName: appState.callsign,
+            messages: appState.textMessageService.messages(for: channel.id),
+            onSend: { text, replyToID in
+                appState.textMessageService.send(
+                    text: text,
+                    channelID: channel.id,
+                    senderID: appState.localPeerID,
+                    senderName: appState.callsign,
+                    replyToID: replyToID
+                )
+            },
+            onShareLocation: {}
+        )
     }
 }

@@ -17,33 +17,31 @@ final class PTTEngine: @unchecked Sendable {
 
     let audioEngine: AudioEngine
     let floorController: FloorController
-    let connectionManager: ConnectionManager
     var multipeerTransport: MultipeerTransport?
 
     // MARK: - Private
 
     private let logger = Logger.ptt
+    private let localPeerID: String
     private var sequenceNumber: UInt32 = 0
-    private var audioReceiveTask: Task<Void, Never>?
-    private var controlReceiveTask: Task<Void, Never>?
     private var stateObservationTask: Task<Void, Never>?
+    private var heartbeatTask: Task<Void, Never>?
 
     // MARK: - Init
 
     init(
         audioEngine: AudioEngine,
         floorController: FloorController,
-        connectionManager: ConnectionManager
+        localPeerID: String
     ) {
         self.audioEngine = audioEngine
         self.floorController = floorController
-        self.connectionManager = connectionManager
+        self.localPeerID = localPeerID
     }
 
     deinit {
-        audioReceiveTask?.cancel()
-        controlReceiveTask?.cancel()
         stateObservationTask?.cancel()
+        heartbeatTask?.cancel()
     }
 
     // MARK: - Setup
@@ -51,7 +49,7 @@ final class PTTEngine: @unchecked Sendable {
     /// Wire callbacks between subsystems.
     func setupCallbacks() {
         // Audio capture -> network: when the audio engine encodes a frame,
-        // wrap it in an AudioPacket and send over the transport.
+        // wrap it in an AudioPacket and send over the mesh transport.
         audioEngine.onEncodedAudio = { [weak self] opusData in
             guard let self else { return }
             let seq = self.nextSequenceNumber()
@@ -66,27 +64,15 @@ final class PTTEngine: @unchecked Sendable {
                 timestamp: Self.currentTimestamp(),
                 opusData: opusData
             )
-            // Send via MultipeerConnectivity
+            // Send via MultipeerConnectivity (routed through MeshRouter)
             try? self.multipeerTransport?.sendAudio(packet.serialize())
-            // Also send via Wi-Fi Aware ConnectionManager
-            Task {
-                try? await self.connectionManager.sendAudio(packet.serialize())
-            }
         }
 
-        // Floor control -> network: broadcast control messages to all peers.
+        // Floor control -> network: broadcast control messages to all peers
+        // via MultipeerConnectivity (routed through MeshRouter).
         floorController.sendToAllPeers = { [weak self] message in
             guard let self else { return }
-            // Send via MultipeerConnectivity
             try? self.multipeerTransport?.sendControl(message)
-            // Also send via Wi-Fi Aware
-            Task {
-                do {
-                    try await self.connectionManager.sendControl(message)
-                } catch {
-                    Logger.network.error("Failed to send control message: \(error.localizedDescription)")
-                }
-            }
         }
 
         logger.info("PTTEngine callbacks wired")
@@ -94,21 +80,20 @@ final class PTTEngine: @unchecked Sendable {
 
     // MARK: - Lifecycle
 
-    /// Full startup sequence: configure audio, wire callbacks, start receive loops.
+    /// Full startup sequence: configure audio and wire callbacks.
+    /// Audio/control delivery is handled externally by AppState's meshRouter callback.
     func start() async throws {
         try audioEngine.setup()
         setupCallbacks()
-        await startReceiving()
+        startHeartbeat()
         logger.info("PTTEngine started")
     }
 
     /// Tear down all tasks and the audio engine.
     func stop() {
-        audioReceiveTask?.cancel()
-        controlReceiveTask?.cancel()
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
         stateObservationTask?.cancel()
-        audioReceiveTask = nil
-        controlReceiveTask = nil
         stateObservationTask = nil
         audioEngine.teardown()
         logger.info("PTTEngine stopped")
@@ -131,7 +116,7 @@ final class PTTEngine: @unchecked Sendable {
         audioEngine.resetJitterBuffer()
         audioEngine.startCapture()
         syncState()
-        logger.info("Transmitting — audio capture started")
+        logger.info("Transmitting -- audio capture started")
     }
 
     /// Stop transmitting: halt capture and release the floor.
@@ -142,42 +127,19 @@ final class PTTEngine: @unchecked Sendable {
         logger.info("Stopped transmitting")
     }
 
-    // MARK: - Receive Loops
+    // MARK: - Heartbeat
 
-    /// Spawn two long-lived tasks: one for incoming audio packets and one for
-    /// control messages from the transport layer.
-    func startReceiving() async {
-        // Cancel any existing tasks before creating new ones.
-        audioReceiveTask?.cancel()
-        controlReceiveTask?.cancel()
-
-        audioReceiveTask = Task { [weak self] in
-            guard let self else { return }
-            let stream = self.connectionManager.audioPackets
-            for await data in stream {
-                guard !Task.isCancelled else { break }
-                guard let packet = AudioPacket.deserialize(data) else {
-                    Logger.audio.warning("Failed to deserialize audio packet (\(data.count) bytes)")
-                    continue
-                }
-                self.audioEngine.receiveAudioPacket(
-                    packet.opusData,
-                    sequenceNumber: packet.sequenceNumber
+    private func startHeartbeat() {
+        heartbeatTask?.cancel()
+        heartbeatTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(5))
+                guard !Task.isCancelled, let self else { break }
+                try? self.multipeerTransport?.sendControl(
+                    .heartbeat(peerID: self.localPeerID, timestamp: Date())
                 )
             }
         }
-
-        controlReceiveTask = Task { [weak self] in
-            guard let self else { return }
-            let stream = self.connectionManager.controlMessages
-            for await message in stream {
-                guard !Task.isCancelled else { break }
-                self.floorController.handleMessage(message)
-                self.syncState()
-            }
-        }
-
-        logger.info("Receive loops started")
     }
 
     // MARK: - Private Helpers

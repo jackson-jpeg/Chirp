@@ -545,6 +545,9 @@ struct HomeView: View {
                     // Channel list or empty state
                     channelListView
                 }
+
+                // Emergency mode overlay — always on top
+                EmergencyModeOverlay(emergencyMode: EmergencyMode.shared)
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -751,7 +754,8 @@ struct HomeView: View {
                 type: .control,
                 payload: data,
                 channelID: "",  // Broadcast to all channels
-                sequenceNumber: 0
+                sequenceNumber: 0,
+                priority: .critical  // SOS: maximum TTL and relay priority
             )
             // Forward to all peers
             appState.multipeerTransport.forwardPacket(packet.serialize(), excludePeer: "")

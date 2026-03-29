@@ -13,8 +13,9 @@ final class BackgroundMeshService {
     static let shared = BackgroundMeshService()
 
     private let logger = Logger(subsystem: "com.chirpchirp.app", category: "Background")
-    private var silentPlayer: AVAudioPlayer?
+    private var toneEngine: AVAudioEngine?
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
+    private var engineRestartTask: Task<Void, Never>?
 
     private(set) var isBackgrounded = false
 
@@ -60,10 +61,11 @@ final class BackgroundMeshService {
         scheduleNextRefresh()
     }
 
-    // MARK: - Silent Audio Keep-Alive
+    // MARK: - Inaudible Tone Keep-Alive
 
-    /// Start a silent audio loop to keep the app running via the audio background mode.
-    /// iOS allows apps playing audio to continue executing in the background.
+    /// Start an inaudible 20Hz tone at -60dB to keep the app running via audio background mode.
+    /// A real (but inaudible) tone is more robust than pure silence -- iOS is less likely
+    /// to detect "no audio" and suspend the process.
     private func startSilentAudio() {
         // Configure audio session for background playback
         let session = AVAudioSession.sharedInstance()
@@ -75,33 +77,81 @@ final class BackgroundMeshService {
             return
         }
 
-        // Generate a tiny silent audio buffer (0.1 seconds of silence at 44100 Hz)
-        guard let silentData = generateSilentWAV(durationSeconds: 0.1, sampleRate: 44100) else {
-            logger.error("Failed to generate silent audio data")
-            return
-        }
-
-        do {
-            let player = try AVAudioPlayer(data: silentData)
-            player.numberOfLoops = -1  // Loop forever
-            player.volume = 0.0
-            player.play()
-            self.silentPlayer = player
-            logger.info("Silent audio keep-alive started")
-        } catch {
-            logger.error("Failed to start silent audio player: \(error.localizedDescription)")
-        }
+        startToneEngine()
+        monitorEngineHealth()
     }
 
-    /// Stop the silent audio loop.
+    /// Stop the inaudible tone and tear down the engine.
     private func stopSilentAudio() {
-        silentPlayer?.stop()
-        silentPlayer = nil
+        engineRestartTask?.cancel()
+        engineRestartTask = nil
+
+        if let engine = toneEngine {
+            engine.stop()
+            toneEngine = nil
+        }
 
         // Deactivate the playback session so it doesn't interfere with PTT audio
         let session = AVAudioSession.sharedInstance()
         try? session.setActive(false, options: .notifyOthersOnDeactivation)
-        logger.info("Silent audio keep-alive stopped")
+        logger.info("Inaudible tone keep-alive stopped")
+    }
+
+    /// Create and start an AVAudioEngine with a source node generating 20Hz at -60dB.
+    private func startToneEngine() {
+        let engine = AVAudioEngine()
+        let sampleRate: Double = 44100.0
+        let frequency: Double = 20.0        // 20Hz -- below human hearing threshold for most people
+        let amplitude: Float = 0.001        // approximately -60dB
+
+        let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
+        var phase: Double = 0.0
+        let phaseIncrement = 2.0 * Double.pi * frequency / sampleRate
+
+        let sourceNode = AVAudioSourceNode(format: format) { _, _, frameCount, audioBufferList -> OSStatus in
+            let bufferList = UnsafeMutableAudioBufferListPointer(audioBufferList)
+            for frame in 0..<Int(frameCount) {
+                let sample = Float(sin(phase)) * amplitude
+                phase += phaseIncrement
+                if phase >= 2.0 * Double.pi { phase -= 2.0 * Double.pi }
+                for buffer in bufferList {
+                    let buf = UnsafeMutableBufferPointer<Float>(buffer)
+                    buf[frame] = sample
+                }
+            }
+            return noErr
+        }
+
+        engine.attach(sourceNode)
+        engine.connect(sourceNode, to: engine.mainMixerNode, format: format)
+
+        do {
+            try engine.start()
+            self.toneEngine = engine
+            logger.info("Inaudible 20Hz tone keep-alive started (amplitude=\(amplitude))")
+        } catch {
+            logger.error("Failed to start tone engine: \(error.localizedDescription)")
+        }
+    }
+
+    /// Monitor the tone engine and auto-restart if iOS stops it unexpectedly.
+    private func monitorEngineHealth() {
+        engineRestartTask?.cancel()
+        engineRestartTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(5))
+                guard let self, self.isBackgrounded else { break }
+                if let engine = self.toneEngine, !engine.isRunning {
+                    self.logger.warning("Tone engine stopped unexpectedly — restarting")
+                    engine.stop()
+                    self.toneEngine = nil
+
+                    // Re-activate audio session before restarting
+                    try? AVAudioSession.sharedInstance().setActive(true)
+                    self.startToneEngine()
+                }
+            }
+        }
     }
 
     // MARK: - UIKit Background Task
@@ -165,50 +215,4 @@ final class BackgroundMeshService {
         }
     }
 
-    // MARK: - Silent WAV Generation
-
-    /// Generate a minimal WAV file with silence.
-    private func generateSilentWAV(durationSeconds: Double, sampleRate: Int) -> Data? {
-        let numChannels: UInt16 = 1
-        let bitsPerSample: UInt16 = 16
-        let numSamples = Int(durationSeconds * Double(sampleRate))
-        let dataSize = numSamples * Int(numChannels) * Int(bitsPerSample / 8)
-
-        var data = Data()
-        data.reserveCapacity(44 + dataSize)
-
-        // RIFF header
-        data.append(contentsOf: "RIFF".utf8)
-        appendUInt32LE(&data, UInt32(36 + dataSize))
-        data.append(contentsOf: "WAVE".utf8)
-
-        // fmt chunk
-        data.append(contentsOf: "fmt ".utf8)
-        appendUInt32LE(&data, 16)  // chunk size
-        appendUInt16LE(&data, 1)   // PCM format
-        appendUInt16LE(&data, numChannels)
-        appendUInt32LE(&data, UInt32(sampleRate))
-        appendUInt32LE(&data, UInt32(sampleRate * Int(numChannels) * Int(bitsPerSample / 8)))  // byte rate
-        appendUInt16LE(&data, numChannels * (bitsPerSample / 8))  // block align
-        appendUInt16LE(&data, bitsPerSample)
-
-        // data chunk
-        data.append(contentsOf: "data".utf8)
-        appendUInt32LE(&data, UInt32(dataSize))
-
-        // Silent samples (all zeros)
-        data.append(Data(count: dataSize))
-
-        return data
-    }
-
-    private func appendUInt16LE(_ data: inout Data, _ value: UInt16) {
-        var v = value.littleEndian
-        data.append(contentsOf: withUnsafeBytes(of: &v) { Array($0) })
-    }
-
-    private func appendUInt32LE(_ data: inout Data, _ value: UInt32) {
-        var v = value.littleEndian
-        data.append(contentsOf: withUnsafeBytes(of: &v) { Array($0) })
-    }
 }

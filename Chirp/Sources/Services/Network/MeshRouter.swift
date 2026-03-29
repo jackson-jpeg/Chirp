@@ -107,8 +107,9 @@ actor MeshRouter {
         }
 
         // 4d. Track the deepest hop depth we've observed.
-        let hopsUsed = MeshPacket.defaultTTL >= packet.ttl
-            ? MeshPacket.defaultTTL - packet.ttl
+        //     With adaptive TTL the original TTL is unknown, so use maxTTL as ceiling.
+        let hopsUsed = MeshPacket.maxTTL >= packet.ttl
+            ? MeshPacket.maxTTL - packet.ttl
             : 0
         if hopsUsed > maxHopsObserved {
             maxHopsObserved = hopsUsed
@@ -121,15 +122,29 @@ actor MeshRouter {
     // MARK: - Packet creation
 
     /// Build a fresh mesh packet originating from this device.
+    ///
+    /// - Parameters:
+    ///   - type: Audio or control.
+    ///   - payload: The encoded payload bytes.
+    ///   - channelID: Target channel (empty string = broadcast).
+    ///   - sequenceNumber: Monotonic sequence within a PTT session.
+    ///   - priority: Message priority used to compute adaptive TTL.
+    ///               When `nil`, priority is inferred from the packet content.
     func createPacket(
         type: MeshPacket.PacketType,
         payload: Data,
         channelID: String,
-        sequenceNumber: UInt32
+        sequenceNumber: UInt32,
+        priority: MeshPacket.MessagePriority? = nil
     ) -> MeshPacket {
+        let resolvedPriority = priority ?? MeshPacket.inferPriority(type: type, payload: payload)
+        let ttl = min(
+            MeshPacket.adaptiveTTL(for: type, priority: resolvedPriority),
+            MeshPacket.maxTTL
+        )
         let packet = MeshPacket(
             type: type,
-            ttl: MeshPacket.defaultTTL,
+            ttl: ttl,
             originID: localPeerID,
             packetID: UUID(),
             sequenceNumber: sequenceNumber,
@@ -140,6 +155,7 @@ actor MeshRouter {
         // Pre-register so we don't process our own packet if it echoes back
         // before the expiry window closes.
         seenPackets.append((id: packet.packetID, time: Date()))
+        logger.trace("Created packet priority=\(resolvedPriority.rawValue) ttl=\(ttl)")
         return packet
     }
 

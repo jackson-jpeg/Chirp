@@ -37,6 +37,16 @@ struct MeshPacket: Sendable {
         case control = 0x02
     }
 
+    /// Priority level for relay decisions and adaptive TTL computation.
+    enum MessagePriority: UInt8, Comparable, Sendable {
+        case low = 0        // Audio relay
+        case normal = 1     // Beacons
+        case high = 2       // Text messages, location shares
+        case critical = 3   // SOS / Emergency
+
+        static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
+    }
+
     // MARK: - Constants
 
     /// Default hop count for new packets.
@@ -45,6 +55,42 @@ struct MeshPacket: Sendable {
     static let maxTTL: UInt8 = 8
     /// Minimum valid wire-format size (header + 2-byte channel length + 0 channel + 0 payload).
     private static let minWireSize = 48 // 46 header + 2 channel-length
+
+    // MARK: - Adaptive TTL
+
+    /// Compute a TTL tailored to the packet's type and priority.
+    /// Higher-priority messages propagate further through the mesh.
+    static func adaptiveTTL(for type: PacketType, priority: MessagePriority) -> UInt8 {
+        switch priority {
+        case .critical: return 8   // SOS: max reach
+        case .high:     return 6   // Text: wide propagation
+        case .normal:   return 4   // Beacons: medium
+        case .low:      return 2   // Audio: real-time, no point relaying far
+        }
+    }
+
+    /// Infer priority from packet content heuristics.
+    static func inferPriority(type: PacketType, payload: Data) -> MessagePriority {
+        switch type {
+        case .audio:
+            return .low
+        case .control:
+            // Check for SOS marker in the payload (JSON key "sos" or beacon magic)
+            if payload.count >= 4 {
+                // Look for SOS marker -- matches {"type":"SOS"}, {"sos":...}, etc.
+                if let text = String(data: payload, encoding: .utf8),
+                   text.localizedCaseInsensitiveContains("\"sos\"") {
+                    return .critical
+                }
+                // Beacons start with "BCN!" magic
+                let magic: [UInt8] = [0x42, 0x43, 0x4E, 0x21]
+                if Array(payload.prefix(4)) == magic {
+                    return .normal
+                }
+            }
+            return .high
+        }
+    }
 
     // MARK: - Serialization
 

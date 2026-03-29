@@ -6,6 +6,9 @@ actor PeerTracker {
     private var peers: [String: ChirpPeer] = [:]
     private var healthCheckTask: Task<Void, Never>?
 
+    /// Called when a peer is marked stale (no heartbeat for >15s). Parameter is the peer ID.
+    var onPeerStale: (@Sendable (String) -> Void)?
+
     // MARK: - Peer Management
 
     func updatePeer(id: String, name: String) {
@@ -77,6 +80,7 @@ actor PeerTracker {
                 peer.isConnected = false
                 peers[id] = peer
                 logger.warning("Peer \(peer.name) (\(id)) marked disconnected — no heartbeat for >\(staleThreshold)s")
+                onPeerStale?(id)
             }
         }
     }

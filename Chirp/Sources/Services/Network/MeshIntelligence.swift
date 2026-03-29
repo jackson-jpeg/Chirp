@@ -37,22 +37,52 @@ actor MeshIntelligence {
     private var relayRateTracker: [UUID: (count: Int, windowStart: Date)] = [:]
     private let maxRelaysPerSecond = 100
 
+    // Congestion tracking: number of packets pending in the outbound queue
+    private(set) var outboundQueueCount: Int = 0
+    private static let congestionThreshold = 50
+
+    /// Number of direct peers currently visible (set by MeshBeacon or transport layer).
+    private(set) var visiblePeerCount: Int = 0
+
+    /// Density threshold above which beacon relay rate is reduced.
+    private static let highDensityPeerThreshold = 10
+
     // MARK: - Relay Decision
 
     /// Determine whether this device should relay a given packet.
-    /// Considers battery level, packet priority, link quality, and rate limits.
-    func shouldRelay(packet: MeshPacket, batteryLevel: Float) -> Bool {
-        // Critical battery: preserve the device entirely
+    /// Considers battery level, message priority, congestion, mesh density, and rate limits.
+    func shouldRelay(
+        packet: MeshPacket,
+        batteryLevel: Float,
+        priority: MeshPacket.MessagePriority
+    ) -> Bool {
+        // Critical battery (<10%): only relay SOS
         if batteryLevel < 0.10 {
-            logger.info("Skipping relay — battery critical (\(batteryLevel * 100, format: .fixed(precision: 0))%%)")
+            if priority < .critical {
+                logger.info("Skipping relay — battery critical (\(batteryLevel * 100, format: .fixed(precision: 0))%%), priority \(priority.rawValue)")
+                return false
+            }
+        }
+
+        // Low battery (<20%): only relay critical and high priority
+        if batteryLevel < 0.20 {
+            if priority < .high {
+                logger.info("Skipping relay — battery low (\(batteryLevel * 100, format: .fixed(precision: 0))%%), priority \(priority.rawValue)")
+                return false
+            }
+        }
+
+        // Congestion check: drop low-priority packets when queue is overloaded
+        if outboundQueueCount > Self.congestionThreshold && priority <= .low {
+            logger.info("Dropping low-priority relay — outbound queue congested (\(self.outboundQueueCount) pending)")
             return false
         }
 
-        // Low battery: only relay emergency / SOS packets (control type with TTL >= default implies important)
-        if batteryLevel < 0.20 {
-            let isEmergency = packet.type == .control
-            if !isEmergency {
-                logger.info("Skipping non-emergency relay — battery low (\(batteryLevel * 100, format: .fixed(precision: 0))%%)")
+        // Dense mesh: probabilistically skip beacon relays to reduce chatter
+        if visiblePeerCount > Self.highDensityPeerThreshold && priority == .normal {
+            // In a dense mesh, most beacons are redundant. Skip ~50% of beacon relays.
+            if Bool.random() {
+                logger.debug("Skipping beacon relay — high mesh density (\(self.visiblePeerCount) peers)")
                 return false
             }
         }
@@ -74,6 +104,25 @@ actor MeshIntelligence {
         // Even if the sending peer has high loss rate, still relay --
         // they need help getting their packets through the mesh
         return true
+    }
+
+    /// Legacy overload -- infers priority from packet content for callers that
+    /// have not been updated yet.
+    func shouldRelay(packet: MeshPacket, batteryLevel: Float) -> Bool {
+        let priority = MeshPacket.inferPriority(type: packet.type, payload: packet.payload)
+        return shouldRelay(packet: packet, batteryLevel: batteryLevel, priority: priority)
+    }
+
+    // MARK: - Congestion & Density Updates
+
+    /// Update the outbound queue depth so relay decisions account for congestion.
+    func updateOutboundQueueCount(_ count: Int) {
+        outboundQueueCount = count
+    }
+
+    /// Update the number of directly visible peers for density-aware decisions.
+    func updateVisiblePeerCount(_ count: Int) {
+        visiblePeerCount = count
     }
 
     /// Returns extra TTL reduction based on link conditions.

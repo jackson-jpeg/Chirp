@@ -25,6 +25,7 @@ enum Constants {
         static let amber = Color(hex: 0xFFB800)
         static let hotRed = Color(hex: 0xFF3B30)
         static let electricGreen = Color(hex: 0x30D158)
+        static let emergencyRed = Color(hex: 0xCC0000)
     }
 }
 

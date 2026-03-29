@@ -120,6 +120,29 @@ struct SettingsView: View {
                 Text("Assign ChirpChirp to your Action Button for instant push-to-talk. Also works with Siri: \"Hey Siri, push to talk with ChirpChirp\"")
             }
 
+            // MARK: - Emergency Mode
+
+            Section {
+                Toggle(isOn: Binding(
+                    get: { EmergencyMode.shared.isActive },
+                    set: { newValue in
+                        if newValue {
+                            EmergencyMode.shared.activate()
+                        } else {
+                            EmergencyMode.shared.deactivate()
+                        }
+                    }
+                )) {
+                    settingsRow(icon: "exclamationmark.octagon.fill", title: "Emergency Mode")
+                }
+                .tint(Color(hex: 0xCC0000))
+            } header: {
+                Label("Emergency", systemImage: "sos")
+            } footer: {
+                Text("Optimizes the app for disaster scenarios: max mesh range, aggressive relay, low-bandwidth audio, and periodic location broadcasts.")
+            }
+            .listRowBackground(Color.white.opacity(0.05))
+
             // MARK: - Audio
 
             Section {
