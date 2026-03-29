@@ -198,8 +198,11 @@ final class WiFiAwareTransport {
     // MARK: - Connection Registration
 
     /// Register a NetworkConnection by type-erasing it into a PeerHandle.
-    /// Uses TLV framing so `.messages` and `.send()` work with raw Data.
-    private func registerConnection<T>(_ connection: NetworkConnection<T>, peerID: String) {
+    /// Constrained to `MessageProtocol` with `Data` content so `.messages` and `.send()` work.
+    private func registerConnection<T: MessageProtocol>(
+        _ connection: NetworkConnection<T>,
+        peerID: String
+    ) where T.ContentType == Data {
         // Create send closure that captures the typed connection
         let sendClosure: @Sendable (Data) async throws -> Void = { data in
             try await connection.send(data)
