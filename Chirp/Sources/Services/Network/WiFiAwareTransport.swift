@@ -40,7 +40,7 @@ final class WiFiAwareTransport {
     // MARK: - Private State
 
     /// Active connections keyed by a stable peer identifier.
-    private var connections: [String: NetworkConnection<Never>] = [:]
+    private var connections: [String: NWConnection] = [:]
 
     /// Lifecycle tasks.
     private var listenerTask: Task<Void, Never>?
@@ -135,9 +135,7 @@ final class WiFiAwareTransport {
                 // Use realtime performance mode + interactiveVoice for PTT audio.
                 let listener = try NetworkListener(
                     for: .wifiAware(.connecting(to: service, from: .selected([]))),
-                    using: .parameters {}
-                        .wifiAware { $0.performanceMode = .realtime }
-                        .serviceClass(.interactiveVoice)
+                    using: .udp
                 )
                 .onStateUpdate { [weak self] _, state in
                     Task { @MainActor in
@@ -146,12 +144,15 @@ final class WiFiAwareTransport {
                 }
 
                 // listener.run blocks until cancelled, yielding inbound connections.
-                try await listener.run { [weak self] connection in
+                try await listener.run { [weak self] inboundConnection in
                     guard let self else { return }
                     let peerID = "wa-\(UUID().uuidString.prefix(8))"
+                    // Extract the underlying NWConnection for data transfer
+                    let nwConnection = inboundConnection.nwConnection
                     Task { @MainActor in
                         self.logger.info("WiFiAware inbound connection from \(peerID)")
-                        self.handleEstablishedConnection(connection, peerID: peerID)
+                        nwConnection.start(queue: .main)
+                        self.handleEstablishedConnection(nwConnection, peerID: peerID)
                     }
                 }
             } catch {
@@ -192,20 +193,19 @@ final class WiFiAwareTransport {
                 }
 
                 // Establish outbound connection to discovered endpoint
-                let connection = NetworkConnection(
-                    to: endpoint,
-                    using: .parameters {}
-                        .wifiAware { $0.performanceMode = .realtime }
-                        .serviceClass(.interactiveVoice)
-                )
-                .onStateUpdate { [weak self] _, state in
+                // Create NWConnection to the discovered Wi-Fi Aware endpoint
+                let nwConnection = NWConnection(to: endpoint, using: .udp)
+                let peerID = "wa-\(UUID().uuidString.prefix(8))"
+
+                nwConnection.stateUpdateHandler = { [weak self] state in
+                    guard let self else { return }
                     Task { @MainActor in
-                        self?.logger.info("WiFiAware outbound connection state: \(String(describing: state))")
+                        self.logger.info("WiFiAware outbound connection state: \(String(describing: state))")
                     }
                 }
+                nwConnection.start(queue: .main)
 
-                let peerID = "wa-\(UUID().uuidString.prefix(8))"
-                self.handleEstablishedConnection(connection, peerID: peerID)
+                self.handleEstablishedConnection(nwConnection, peerID: peerID)
 
             } catch {
                 if !Task.isCancelled {
@@ -217,45 +217,58 @@ final class WiFiAwareTransport {
 
     // MARK: - Connection Handling
 
-    private func handleEstablishedConnection(_ connection: NetworkConnection<Never>, peerID: String) {
+    private func handleEstablishedConnection(_ connection: NWConnection, peerID: String) {
         connections[peerID] = connection
         updatePeerList()
 
         // Announce ourselves
         try? sendControl(.peerJoin(peerID: localPeerID, peerName: localPeerName))
 
-        // Start receive loop for this connection
-        Task { [weak self] in
-            guard let self else { return }
-            do {
-                for try await message in connection.messages {
-                    self.handleReceivedData(message, from: peerID)
-                }
-            } catch {
-                self.logger.info("WiFiAware connection closed for \(peerID): \(error.localizedDescription)")
-            }
-            // Connection ended — remove and update
-            self.connections.removeValue(forKey: peerID)
-            self.updatePeerList()
-        }
+        // Start receive loop
+        startReceiveLoop(connection: connection, peerID: peerID)
 
         logger.info("WiFiAware peer connected: \(peerID) (total: \(self.connections.count))")
     }
 
+    private nonisolated func startReceiveLoop(connection: NWConnection, peerID: String) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
+            guard let self else { return }
+
+            if let data, !data.isEmpty {
+                self.handleReceivedData(data, from: peerID)
+            }
+
+            if let error {
+                Task { @MainActor in
+                    self.logger.warning("WiFiAware receive error from \(peerID): \(error.localizedDescription)")
+                    self.connections.removeValue(forKey: peerID)
+                    self.updatePeerList()
+                }
+                return
+            }
+
+            if isComplete {
+                Task { @MainActor in
+                    self.connections.removeValue(forKey: peerID)
+                    self.updatePeerList()
+                }
+                return
+            }
+
+            // Continue receiving
+            self.startReceiveLoop(connection: connection, peerID: peerID)
+        }
+    }
+
     // MARK: - Receive
 
-    private func handleReceivedData(_ data: Data, from peerID: String) {
+    private nonisolated func handleReceivedData(_ data: Data, from peerID: String) {
         // Same wire format as MultipeerTransport: 0xAA + MeshPacket
-        guard data.count >= 2, data[0] == Self.meshMagic else {
-            logger.warning("Dropped non-mesh packet from \(peerID) (\(data.count) bytes)")
-            return
-        }
+        let magic = Self.meshMagic
+        guard data.count >= 2, data[0] == magic else { return }
 
         let meshData = Data(data.dropFirst())
-        guard let meshPacket = MeshPacket.deserialize(meshData) else {
-            logger.warning("Failed to deserialize mesh packet from \(peerID)")
-            return
-        }
+        guard let meshPacket = MeshPacket.deserialize(meshData) else { return }
 
         let router = meshRouter
         Task {
@@ -329,7 +342,7 @@ final class WiFiAwareTransport {
         wireData.append(packet)
 
         for (peerID, connection) in connections where peerID != excludePeer {
-            connection.send(wireData)
+            connection.send(content: wireData, completion: .idempotent)
         }
 
         let targetCount = connections.keys.filter { $0 != excludePeer }.count
@@ -342,7 +355,7 @@ final class WiFiAwareTransport {
 
     private func broadcastToAll(_ data: Data) {
         for (_, connection) in connections {
-            connection.send(data)
+            connection.send(content: data, completion: .idempotent)
         }
     }
 
