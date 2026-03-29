@@ -11,7 +11,7 @@ final class WiFiAwareManager {
     private(set) var pairedDevices: [WAPairedDevice] = []
     private(set) var isSupported: Bool = false
 
-    private var observationTask: Task<Void, Never>?
+    nonisolated(unsafe) private var observationTask: Task<Void, Never>?
 
     init() {
         isSupported = WACapabilities.supportedFeatures.contains(.wifiAware)
