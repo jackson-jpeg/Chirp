@@ -9,11 +9,9 @@ import WiFiAware
 /// which deduplicates packets by `packetID`. Every byte on the wire uses the same
 /// `0xAA` mesh magic prefix so both transports speak an identical wire format.
 ///
-/// Uses iOS 26 `NetworkListener` / `NetworkBrowser` / `NetworkConnection` from
-/// WiFiAware + Network frameworks (WWDC25 Session 228).
-///
-/// Connection objects are stored opaquely via send/cancel closures to avoid
-/// exposing the `NetworkConnection<ApplicationProtocol>` generic parameter.
+/// Uses iOS 26 `NetworkListener` / `NetworkBrowser` / `NetworkConnection` with
+/// TLV (Type-Length-Value) framing over TLS for message-based data exchange.
+/// (WWDC25 Sessions 228 + 250)
 @Observable
 @MainActor
 final class WiFiAwareTransport {
@@ -35,12 +33,12 @@ final class WiFiAwareTransport {
 
     // MARK: - Connection Tracking
 
-    /// Opaque handle to a Wi-Fi Aware peer connection.
-    /// Wraps `NetworkConnection<T>.send` / cancel so we don't leak the generic.
-    private struct PeerHandle {
+    /// Each peer connection is managed by its own Task. We store send closures
+    /// to broadcast mesh packets, type-erasing the NetworkConnection generic.
+    private struct PeerHandle: Sendable {
         let id: String
-        let send: @Sendable (Data) -> Void
-        let cancel: @Sendable () -> Void
+        let send: @Sendable (Data) async throws -> Void
+        let task: Task<Void, Never>
     }
 
     private var activePeers: [String: PeerHandle] = [:]
@@ -52,9 +50,10 @@ final class WiFiAwareTransport {
     private var deviceObserverTask: Task<Void, Never>?
     private var reconnectTask: Task<Void, Never>?
 
-    // MARK: - Constants
-
     nonisolated static let meshMagic: UInt8 = 0xAA
+
+    /// TLV type value for mesh packets (arbitrary, just needs to be consistent).
+    private static let meshTLVType: Int = 0x4D45 // "ME" for mesh
 
     private var previousPeerCount: Int = 0
     private var reconnectBackoff: TimeInterval = 2.0
@@ -93,7 +92,7 @@ final class WiFiAwareTransport {
         deviceObserverTask = nil
         reconnectTask = nil
 
-        for (_, handle) in activePeers { handle.cancel() }
+        for (_, handle) in activePeers { handle.task.cancel() }
         activePeers.removeAll()
         peers.removeAll()
         connectedPeerCount = 0
@@ -132,20 +131,21 @@ final class WiFiAwareTransport {
         listenerTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let listener = try NetworkListener(
-                    for: .wifiAware(.connecting(to: service, from: .selected([]))),
-                    using: .parameters { TLS() }
-                )
-                .onStateUpdate { [weak self] _, state in
-                    Task { @MainActor in
-                        self?.logger.info("WiFiAware listener: \(String(describing: state))")
+                // TLV framing over TLS gives us message boundaries + encryption.
+                // Wi-Fi Aware adds Wi-Fi layer encryption on top.
+                try await NetworkListener(
+                    for: .wifiAware(.connecting(to: service, from: .selected([])))
+                ) {
+                    TLV {
+                        TLS()
                     }
                 }
-
-                try await listener.run { [weak self] connection in
+                .run { [weak self] connection in
                     guard let self else { return }
                     let peerID = "wa-in-\(UUID().uuidString.prefix(8))"
-                    self.registerConnection(connection, peerID: peerID)
+                    Task { @MainActor in
+                        self.registerConnection(connection, peerID: peerID)
+                    }
                 }
             } catch {
                 if !Task.isCancelled {
@@ -170,11 +170,6 @@ final class WiFiAwareTransport {
                 let browser = NetworkBrowser(
                     for: .wifiAware(.connecting(to: .selected([]), from: service))
                 )
-                .onStateUpdate { [weak self] _, state in
-                    Task { @MainActor in
-                        self?.logger.info("WiFiAware browser: \(String(describing: state))")
-                    }
-                }
 
                 let endpoint = try await browser.run { waEndpoints in
                     if let ep = waEndpoints.first {
@@ -183,13 +178,9 @@ final class WiFiAwareTransport {
                     return .continue
                 }
 
-                let connection = NetworkConnection(
-                    to: endpoint,
-                    using: .parameters { TLS() }
-                )
-                .onStateUpdate { [weak self] _, state in
-                    Task { @MainActor in
-                        self?.logger.info("WiFiAware outbound: \(String(describing: state))")
+                let connection = NetworkConnection(to: endpoint) {
+                    TLV {
+                        TLS()
                     }
                 }
 
@@ -206,34 +197,38 @@ final class WiFiAwareTransport {
 
     // MARK: - Connection Registration
 
-    /// Register any `NetworkConnection<T>` by capturing its send/cancel as closures.
-    /// This erases the generic parameter so we can store handles uniformly.
+    /// Register a NetworkConnection by type-erasing it into a PeerHandle.
+    /// Uses TLV framing so `.messages` and `.send()` work with raw Data.
     private func registerConnection<T>(_ connection: NetworkConnection<T>, peerID: String) {
-        // Capture send and cancel as type-erased closures
-        let handle = PeerHandle(
-            id: peerID,
-            send: { data in connection.send(data) },
-            cancel: { connection.cancel() }
-        )
+        // Create send closure that captures the typed connection
+        let sendClosure: @Sendable (Data) async throws -> Void = { data in
+            try await connection.send(data)
+        }
 
+        // Receive task: reads messages and feeds to mesh router
+        let receiveTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                for try await (incomingData, _) in connection.messages {
+                    await self.handleReceivedData(incomingData, from: peerID)
+                }
+            } catch {
+                if !Task.isCancelled {
+                    self.logger.info("WiFiAware connection ended: \(peerID) — \(error.localizedDescription)")
+                }
+            }
+            // Connection closed — clean up
+            self.activePeers.removeValue(forKey: peerID)
+            self.updatePeerList()
+        }
+
+        let handle = PeerHandle(id: peerID, send: sendClosure, task: receiveTask)
         activePeers[peerID] = handle
         updatePeerList()
 
         // Announce ourselves
-        try? sendControl(.peerJoin(peerID: localPeerID, peerName: localPeerName))
-
-        // Start receive loop
-        Task { [weak self] in
-            guard let self else { return }
-            do {
-                for try await message in connection.messages {
-                    self.handleReceivedData(message, from: peerID)
-                }
-            } catch {
-                self.logger.info("WiFiAware connection closed: \(peerID)")
-            }
-            self.activePeers.removeValue(forKey: peerID)
-            self.updatePeerList()
+        Task {
+            try? await self.sendControlAsync(.peerJoin(peerID: self.localPeerID, peerName: self.localPeerName))
         }
 
         logger.info("WiFiAware peer registered: \(peerID) (total: \(self.activePeers.count))")
@@ -259,7 +254,7 @@ final class WiFiAwareTransport {
         }
     }
 
-    // MARK: - Send
+    // MARK: - Send (Public API)
 
     func sendAudio(_ data: Data, sequenceNumber: UInt32 = 0, channelID: String? = nil) throws {
         guard !activePeers.isEmpty else { return }
@@ -271,7 +266,7 @@ final class WiFiAwareTransport {
             )
             var wireData = Data([Self.meshMagic])
             wireData.append(packet.serialize())
-            self.broadcastToAll(wireData)
+            await self.broadcastToAll(wireData)
         }
     }
 
@@ -286,7 +281,7 @@ final class WiFiAwareTransport {
             )
             var wireData = Data([Self.meshMagic])
             wireData.append(packet.serialize())
-            self.broadcastToAll(wireData)
+            await self.broadcastToAll(wireData)
         }
     }
 
@@ -300,25 +295,40 @@ final class WiFiAwareTransport {
             )
             var wireData = Data([Self.meshMagic])
             wireData.append(packet.serialize())
-            self.broadcastToAll(wireData)
+            await self.broadcastToAll(wireData)
         }
     }
 
     func forwardPacket(_ packet: Data, excludePeer: String) {
         var wireData = Data([Self.meshMagic])
         wireData.append(packet)
-        for (peerID, handle) in activePeers where peerID != excludePeer {
-            handle.send(wireData)
+        Task {
+            for (peerID, handle) in self.activePeers where peerID != excludePeer {
+                try? await handle.send(wireData)
+            }
         }
     }
 
-    // MARK: - Private
+    // MARK: - Private Send Helpers
 
-    private func broadcastToAll(_ data: Data) {
+    private func sendControlAsync(_ message: FloorControlMessage) async throws {
+        let payload = try MeshCodable.encoder.encode(message)
+        let router = meshRouter
+        let packet = await router.createPacket(
+            type: .control, payload: payload, channelID: "", sequenceNumber: 0
+        )
+        var wireData = Data([Self.meshMagic])
+        wireData.append(packet.serialize())
+        await broadcastToAll(wireData)
+    }
+
+    private func broadcastToAll(_ data: Data) async {
         for (_, handle) in activePeers {
-            handle.send(data)
+            try? await handle.send(data)
         }
     }
+
+    // MARK: - Peer List
 
     private func updatePeerList() {
         let count = activePeers.count
@@ -337,6 +347,8 @@ final class WiFiAwareTransport {
         }
         previousPeerCount = count
     }
+
+    // MARK: - Auto-Reconnection
 
     private func scheduleReconnect() {
         reconnectTask?.cancel()
