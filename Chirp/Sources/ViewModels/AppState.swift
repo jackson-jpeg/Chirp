@@ -32,6 +32,7 @@ final class AppState {
     let quickReplyManager: QuickReplyManager
     let proximityAlert: ProximityAlert
     let offlineMapManager: OfflineMapManager
+    let meshShield: MeshShield
 
     // MARK: - Identity
 
@@ -145,6 +146,7 @@ final class AppState {
         self.quickReplyManager = QuickReplyManager()
         self.proximityAlert = ProximityAlert()
         self.offlineMapManager = OfflineMapManager()
+        self.meshShield = MeshShield()
 
         // Create MultipeerConnectivity transport (works on any iPhone, zero friction)
         let displayName = UserDefaults.standard.string(forKey: "com.chirpchirp.callsign") ?? UIDevice.current.name
@@ -165,6 +167,9 @@ final class AppState {
         textMessageService.channelCryptoProvider = { [weak self] channelID in
             self?.channelManager.getChannelCrypto(for: channelID)
         }
+
+        // Wire triple-layer encryption into text messaging
+        textMessageService.meshShield = self.meshShield
 
         // Wire text message service — prefer Wi-Fi Aware when available
         let chanMgrRef = self.channelManager
@@ -219,6 +224,12 @@ final class AppState {
                         if !packet.channelID.isEmpty && packet.channelID != activeID {
                             // Wrong channel -- drop audio, but still deliver broadcast controls
                             if packet.type == .audio { return }
+                        }
+
+                        // Silently discard cover traffic
+                        // inside the payload. These are only recognisable after local decryption.
+                        if MeshShield.isCoverTraffic(packet.payload) {
+                            return
                         }
 
                         switch packet.type {
@@ -304,6 +315,12 @@ final class AppState {
         // MeshRouter dedup (by packetID) prevents double-delivery when both transports carry the same packet.
         multipeerTransport.start()
         wifiAwareTransport?.start()
+
+        // Start cover traffic + triple encryption
+        meshShield.start(
+            transport: multipeerTransport,
+            waTransport: wifiAwareTransport
+        )
 
         // Create a default channel if none exist (first launch).
         // Channels are persisted, so this only runs once.

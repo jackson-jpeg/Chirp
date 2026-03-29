@@ -419,6 +419,7 @@ struct SettingsView: View {
         }
     }
 
+
     // MARK: - Privacy & Security
 
     private var privacySecuritySection: some View {
