@@ -62,13 +62,12 @@ struct DetectedDeviceRow: View {
 
     /// Map RSSI to 0-4 signal bars.
     private var signalLevel: Int {
-        switch device.rssi {
-        case -50...: return 4      // Excellent
-        case -65 ..< -50: return 3 // Good
-        case -80 ..< -65: return 2 // Fair
-        case -95 ..< -80: return 1 // Weak
-        default: return 0          // No signal
-        }
+        let rssi = device.rssi
+        if rssi >= -50 { return 4 }      // Excellent
+        if rssi >= -65 { return 3 }      // Good
+        if rssi >= -80 { return 2 }      // Fair
+        if rssi >= -95 { return 1 }      // Weak
+        return 0                          // No signal
     }
 
     private var categoryIcon: String {
