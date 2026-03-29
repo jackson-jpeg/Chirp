@@ -67,6 +67,7 @@ final class MeshBeacon: @unchecked Sendable {
     private var pruneTimer: Timer?
     private var localID: String?
     private var localName: String?
+    nonisolated(unsafe) private var cachedBatteryLevel: Float = 0
     private var localChannels: [String] = []
 
     /// Magic bytes prepended to beacon payloads.
@@ -95,6 +96,8 @@ final class MeshBeacon: @unchecked Sendable {
         self.localID = localID
         self.localName = localName
         self.localChannels = channels
+        UIDevice.current.isBatteryMonitoringEnabled = true
+        self.cachedBatteryLevel = max(0, UIDevice.current.batteryLevel)
 
         stopBroadcasting()
 
@@ -204,10 +207,8 @@ final class MeshBeacon: @unchecked Sendable {
     private func broadcastBeacon() {
         guard let localID, let localName else { return }
 
-        let batteryLevel: Float = {
-            let level = UIDevice.current.batteryLevel
-            return level >= 0 ? level : 0
-        }()
+        // Battery level cached from main actor context
+        let batteryLevel: Float = cachedBatteryLevel
 
         let beacon = BeaconInfo(
             id: localID,
