@@ -44,7 +44,7 @@ final class PheromoneRoutingTests: XCTestCase {
         XCTAssertNotNil(routes)
         XCTAssertEqual(routes?.count, 1)
         XCTAssertEqual(routes?.first?.neighbor, "peer1")
-        XCTAssertEqual(routes?.first?.score, 1.0, accuracy: 0.001)
+        XCTAssertEqual(routes?.first?.score ?? 0, 1.0, accuracy: 0.001)
     }
 
     // MARK: - Multiple deposits accumulate
@@ -56,7 +56,7 @@ final class PheromoneRoutingTests: XCTestCase {
 
         let routes = await intel.pheromoneRoute(for: "channel:test")
         XCTAssertNotNil(routes)
-        XCTAssertEqual(routes?.first?.score, 3.0, accuracy: 0.001)
+        XCTAssertEqual(routes?.first?.score ?? 0, 3.0, accuracy: 0.001)
     }
 
     // MARK: - Multiple neighbors ranked
@@ -73,9 +73,9 @@ final class PheromoneRoutingTests: XCTestCase {
         XCTAssertNotNil(routes)
         XCTAssertEqual(routes?.count, 2)
         XCTAssertEqual(routes?[0].neighbor, "peer1")
-        XCTAssertEqual(routes?[0].score, 2.0, accuracy: 0.001)
+        XCTAssertEqual(routes?[0].score ?? 0, 2.0, accuracy: 0.001)
         XCTAssertEqual(routes?[1].neighbor, "peer2")
-        XCTAssertEqual(routes?[1].score, 1.0, accuracy: 0.001)
+        XCTAssertEqual(routes?[1].score ?? 0, 1.0, accuracy: 0.001)
     }
 
     // MARK: - Evaporation
