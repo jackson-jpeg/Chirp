@@ -52,6 +52,7 @@ final class LiveTranscription {
     private var recognizer: SFSpeechRecognizer?
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
+    private var availabilityDelegate: AvailabilityDelegate?
     private var transcriptionStartTime: Date?
 
     /// Maximum history entries kept in memory.
@@ -74,11 +75,13 @@ final class LiveTranscription {
         isAvailable = recognizer?.isAvailable ?? false
 
         // Watch for availability changes (e.g. locale changes, resource downloads)
-        recognizer?.delegate = AvailabilityDelegate { [weak self] available in
+        let delegate = AvailabilityDelegate { [weak self] available in
             Task { @MainActor [weak self] in
                 self?.isAvailable = available
             }
         }
+        self.availabilityDelegate = delegate
+        recognizer?.delegate = delegate
     }
 
     // MARK: - Authorization

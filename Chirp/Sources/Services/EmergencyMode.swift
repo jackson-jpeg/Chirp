@@ -100,7 +100,9 @@ final class EmergencyMode: @unchecked Sendable {
         UserDefaults.standard.set(true, forKey: Keys.isActive)
 
         // Enable battery monitoring so the overlay can show battery %.
-        UIDevice.current.isBatteryMonitoringEnabled = true
+        Task { @MainActor in
+            UIDevice.current.isBatteryMonitoringEnabled = true
+        }
 
         NotificationCenter.default.post(
             name: .emergencyModeChanged,

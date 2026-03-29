@@ -106,7 +106,7 @@ final class MeshBeacon: @unchecked Sendable {
     private var pruneTimer: Timer?
     private var localID: String?
     private var localName: String?
-    nonisolated(unsafe) private var cachedBatteryLevel: Float = 0
+    private var cachedBatteryLevel: Float = 0
     private var localChannels: [String] = []
 
     /// Magic bytes prepended to beacon payloads.

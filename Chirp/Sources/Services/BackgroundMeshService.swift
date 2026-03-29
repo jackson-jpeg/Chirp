@@ -67,15 +67,12 @@ final class BackgroundMeshService {
     /// A real (but inaudible) tone is more robust than pure silence -- iOS is less likely
     /// to detect "no audio" and suspend the process.
     private func startSilentAudio() {
-        // Configure audio session for background playback
+        // Don't reconfigure the audio session — the PTT engine already has it
+        // set to .playAndRecord with the audio background mode entitlement.
+        // Changing to .playback here would conflict and cause '!pri' errors.
+        // Just ensure the session is active and start the tone engine.
         let session = AVAudioSession.sharedInstance()
-        do {
-            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-            try session.setActive(true)
-        } catch {
-            logger.error("Failed to configure audio session for background: \(error.localizedDescription)")
-            return
-        }
+        try? session.setActive(true)
 
         startToneEngine()
         monitorEngineHealth()
