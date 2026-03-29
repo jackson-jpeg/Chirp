@@ -231,6 +231,7 @@ final class FileTransferTests: XCTestCase {
 
     // MARK: - Max file size constant
 
+    @MainActor
     func testMaxFileSizeIsFiveMB() {
         XCTAssertEqual(FileTransferService.maxFileSize, 5 * 1_048_576)
     }
