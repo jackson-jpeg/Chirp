@@ -94,6 +94,9 @@ struct CircularWaveformView: View {
         .frame(width: (radius + maxBarLength + 16) * 2,
                height: (radius + maxBarLength + 16) * 2)
         .drawingGroup()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Audio waveform visualization")
+        .accessibilityIdentifier(AccessibilityID.waveform)
     }
 
     // MARK: - Bar Length Computation

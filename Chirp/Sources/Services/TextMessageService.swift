@@ -14,7 +14,7 @@ import OSLog
 /// for every `.control` packet — non-text payloads are silently ignored.
 @Observable
 @MainActor
-final class TextMessageService: @unchecked Sendable {
+final class TextMessageService {
 
     // MARK: - Public state
 
@@ -26,6 +26,10 @@ final class TextMessageService: @unchecked Sendable {
     /// Transport hook: `(payload, channelID)`.
     /// The caller wraps the payload in a ``MeshPacket`` and sends it to peers.
     var onSendPacket: ((Data, String) -> Void)?
+
+    /// Optional encryption provider: returns ``ChannelCrypto`` for locked channels.
+    /// Wired by AppState to ``ChannelManager/getChannelCrypto(for:)``.
+    var channelCryptoProvider: ((String) -> ChannelCrypto?)?
 
     // MARK: - Private state
 
@@ -82,9 +86,12 @@ final class TextMessageService: @unchecked Sendable {
         // and won't be duplicated if they echo back through the mesh.
         seenIDs[message.id] = Date()
 
-        // Encode and hand off to transport.
+        // Encode, optionally encrypt, and hand off to transport.
         do {
-            let payload = try message.wirePayload()
+            var payload = try message.wirePayload()
+            if let crypto = channelCryptoProvider?(channelID) {
+                payload = try crypto.encrypt(payload)
+            }
             onSendPacket?(payload, channelID)
             logger.info("Sent text message \(message.id.uuidString, privacy: .public) on channel \(channelID, privacy: .public)")
         } catch {
@@ -98,8 +105,19 @@ final class TextMessageService: @unchecked Sendable {
     ///
     /// Call this from the mesh router's `onLocalDelivery` for every `.control`
     /// packet. Non-text payloads (missing the `TXT!` prefix) are silently ignored.
-    func handlePacket(_ data: Data) {
-        guard let message = MeshTextMessage.from(payload: data) else {
+    /// - Parameters:
+    ///   - data: Raw control payload (may be encrypted).
+    ///   - channelID: Channel this packet arrived on (from ``MeshPacket/channelID``).
+    func handlePacket(_ data: Data, channelID: String = "") {
+        // Try to decrypt if channel has encryption
+        var decrypted = data
+        if let crypto = channelCryptoProvider?(channelID) {
+            if let plain = try? crypto.decrypt(data) {
+                decrypted = plain
+            }
+        }
+
+        guard let message = MeshTextMessage.from(payload: decrypted) else {
             return // Not a text message — ignore.
         }
 

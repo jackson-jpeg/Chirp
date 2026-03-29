@@ -3,12 +3,15 @@ import Observation
 import OSLog
 
 @Observable
-final class FloorController: @unchecked Sendable {
+@MainActor
+final class FloorController {
 
     // MARK: - Public State
 
     private(set) var currentSpeaker: (id: String, name: String)?
-    private(set) var state: PTTState = .idle
+    private(set) var state: PTTState = .idle {
+        didSet { onStateChange?(state) }
+    }
 
     // MARK: - Configuration
 
@@ -17,6 +20,9 @@ final class FloorController: @unchecked Sendable {
 
     /// Callback wired by PTTEngine to broadcast control messages to all peers.
     var sendToAllPeers: (@Sendable (FloorControlMessage) -> Void)?
+
+    /// Callback fired on every state change — used to trigger live transcription start/stop.
+    var onStateChange: ((PTTState) -> Void)?
 
     // MARK: - Private
 
@@ -38,7 +44,7 @@ final class FloorController: @unchecked Sendable {
         guard state == .idle else {
             logger.info("Floor request denied — state is \(String(describing: self.state))")
             state = .denied
-            Task { @MainActor [weak self] in
+            Task { [weak self] in
                 try? await Task.sleep(for: .milliseconds(600))
                 guard let self, self.state == .denied else { return }
                 self.state = .idle

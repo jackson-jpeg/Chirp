@@ -12,7 +12,7 @@ final class AppState {
     // MARK: - Services
 
     let wifiAwareManager: WiFiAwareManager
-    let connectionManager: ConnectionManager
+    let wifiAwareTransport: WiFiAwareTransport?
     let audioEngine: AudioEngine
     let floorController: FloorController
     let pttEngine: PTTEngine
@@ -28,6 +28,9 @@ final class AppState {
     let locationService: LocationService
     let storeAndForwardRelay: StoreAndForwardRelay
     let meshBeacon: MeshBeacon
+    let liveTranscription: LiveTranscription
+    let quickReplyManager: QuickReplyManager
+    let proximityAlert: ProximityAlert
 
     // MARK: - Identity
 
@@ -101,7 +104,6 @@ final class AppState {
         let audioEngine = AudioEngine()
         let peerTracker = PeerTracker()
         let wifiAwareManager = WiFiAwareManager()
-        let connectionManager = ConnectionManager()
         let floorController = FloorController(
             localPeerID: peerID,
             localPeerName: self.localPeerName
@@ -116,7 +118,6 @@ final class AppState {
         self.audioEngine = audioEngine
         self.peerTracker = peerTracker
         self.wifiAwareManager = wifiAwareManager
-        self.connectionManager = connectionManager
         self.floorController = floorController
         self.pttEngine = pttEngine
         self.channelManager = channelManager
@@ -139,108 +140,113 @@ final class AppState {
         self.locationService = LocationService()
         self.storeAndForwardRelay = StoreAndForwardRelay()
         self.meshBeacon = MeshBeacon()
+        self.liveTranscription = LiveTranscription()
+        self.quickReplyManager = QuickReplyManager()
+        self.proximityAlert = ProximityAlert()
 
-        // Create transport with mesh router injected at init
+        // Create MultipeerConnectivity transport (works on any iPhone, zero friction)
         let displayName = UserDefaults.standard.string(forKey: "com.chirpchirp.callsign") ?? UIDevice.current.name
         let transport = MultipeerTransport(displayName: displayName, meshRouter: router, localPeerID: peerID, localPeerName: self.localPeerName)
         self.multipeerTransport = transport
 
-        // Wire multipeer to PTT engine for real peer-to-peer audio
-        transport.onPeersChanged = { [weak self] peers in
-            guard let self else { return }
-            let oldCount = self.connectedPeerCount
-            self.connectedPeerCount = peers.count
+        // Create Wi-Fi Aware transport (long range, paired devices, iPhone 12+)
+        let waCandidate = WiFiAwareTransport(meshRouter: router, localPeerID: peerID, localPeerName: self.localPeerName)
+        let waTransport: WiFiAwareTransport? = waCandidate.isSupported ? waCandidate : nil
+        self.wifiAwareTransport = waTransport
 
-            // Update active channel peers
-            if let activeID = self.channelManager.activeChannel?.id {
-                for existingPeer in self.channelManager.activeChannel?.peers ?? [] {
-                    self.channelManager.removePeerFromChannel(channelID: activeID, peerID: existingPeer.id)
-                }
-                for peer in peers {
-                    self.channelManager.addPeerToChannel(channelID: activeID, peer: peer)
-                }
-            }
+        // Unified peer list: merge peers from both transports, dedup by ID.
+        // Both transports call this when their peer lists change.
+        transport.onPeersChanged = { [weak self] _ in self?.updateUnifiedPeerList() }
+        waTransport?.onPeersChanged = { [weak self] _ in self?.updateUnifiedPeerList() }
 
-            // Update friends online status
-            let onlinePeerIDs = Set(peers.map { $0.id })
-            for friend in self.friendsManager.friends {
-                self.friendsManager.updateOnlineStatus(
-                    peerID: friend.id,
-                    isOnline: onlinePeerIDs.contains(friend.id)
-                )
-            }
-
-            // Check store-and-forward relay for pending messages to newly connected peers
-            for peer in peers {
-                let pending = self.storeAndForwardRelay.checkPendingForPeer(peer.id)
-                for msg in pending {
-                    try? transport.sendControlData(msg.payload, channelID: msg.channelID)
-                }
-            }
-
-            // Log peer changes
-            if peers.count > oldCount {
-                let newPeer = peers.last
-                Logger.network.info("Peer connected: \(newPeer?.name ?? "unknown") (total: \(peers.count))")
-            } else if peers.count < oldCount {
-                Logger.network.info("Peer disconnected (total: \(peers.count))")
-            }
+        // Wire encryption provider for text messages on locked channels
+        textMessageService.channelCryptoProvider = { [weak self] channelID in
+            self?.channelManager.getChannelCrypto(for: channelID)
         }
 
-        // Wire text message service to transport
-        let txtService = self.textMessageService
+        // Wire text message service to send on BOTH transports
         textMessageService.onSendPacket = { payload, channelID in
             try? transport.sendControlData(payload, channelID: channelID)
+            try? waTransport?.sendControlData(payload, channelID: channelID)
+        }
+
+        // Wire decoded PCM audio to live transcription
+        let transcription = self.liveTranscription
+        audioEngine.onDecodedPCM = { buffer in
+            transcription.feedAudioBuffer(buffer)
+        }
+
+        // Wire floor state changes to start/stop transcription
+        floorController.onStateChange = { newState in
+            switch newState {
+            case .receiving(let speakerName, _):
+                transcription.startTranscribing(speakerName: speakerName)
+            default:
+                if transcription.isTranscribing {
+                    transcription.stopTranscribing()
+                }
+            }
         }
 
         // Wire mesh router callbacks.
         // This is the SOLE delivery path for all incoming audio and control packets.
+        // All delivery is dispatched to @MainActor for safe access to @MainActor-isolated
+        // services (ChannelManager, FloorController, TextMessageService).
+        // Audio playback remains low-latency because AudioEngine.receiveAudioPacket
+        // schedules buffers on the player node internally.
         let audioEng = self.audioEngine
         let floorCtrl = self.floorController
         let mpTransport = self.multipeerTransport
+        let waTransportRef = self.wifiAwareTransport
         let chanMgr = self.channelManager
         let peerTrk = self.peerTracker
+        let txtService = self.textMessageService
         Task {
             await router.setCallbacks(
                 onLocalDelivery: { (packet: MeshPacket) in
-                    // Channel filtering: drop audio for wrong channel.
-                    // Control packets with empty channelID (broadcasts) are always delivered.
-                    let activeID = chanMgr.activeChannel?.id ?? ""
-                    if !packet.channelID.isEmpty && packet.channelID != activeID {
-                        // Wrong channel -- drop audio, but still deliver broadcast controls
-                        if packet.type == .audio { return }
-                    }
-
-                    switch packet.type {
-                    case .audio:
-                        if let audioPacket = AudioPacket.deserialize(packet.payload) {
-                            audioEng.receiveAudioPacket(audioPacket.opusData, sequenceNumber: audioPacket.sequenceNumber)
+                    Task { @MainActor in
+                        // Channel filtering: drop audio for wrong channel.
+                        // Control packets with empty channelID (broadcasts) are always delivered.
+                        let activeID = chanMgr.activeChannel?.id ?? ""
+                        if !packet.channelID.isEmpty && packet.channelID != activeID {
+                            // Wrong channel -- drop audio, but still deliver broadcast controls
+                            if packet.type == .audio { return }
                         }
-                    case .control:
-                        // Try text message first (TXT! prefix)
-                        let controlPayload = packet.payload
-                        Task { @MainActor in txtService.handlePacket(controlPayload) }
 
-                        if let message = try? MeshCodable.decoder.decode(FloorControlMessage.self, from: packet.payload) {
-                            floorCtrl.handleMessage(message)
+                        switch packet.type {
+                        case .audio:
+                            if let audioPacket = AudioPacket.deserialize(packet.payload) {
+                                audioEng.receiveAudioPacket(audioPacket.opusData, sequenceNumber: audioPacket.sequenceNumber)
+                            }
+                        case .control:
+                            // Try text message first (TXT! prefix), pass channelID for decryption
+                            txtService.handlePacket(packet.payload, channelID: packet.channelID)
 
-                            // Route heartbeat and peer join/leave to PeerTracker
-                            switch message {
-                            case .heartbeat(let peerID, let timestamp):
-                                Task { await peerTrk.handleHeartbeat(peerID: peerID, timestamp: timestamp) }
-                            case .peerJoin(let peerID, let peerName):
-                                Task { await peerTrk.updatePeer(id: peerID, name: peerName) }
-                            case .peerLeave(let peerID):
-                                Task { await peerTrk.removePeer(id: peerID) }
-                            default:
-                                break
+                            if let message = try? MeshCodable.decoder.decode(FloorControlMessage.self, from: packet.payload) {
+                                floorCtrl.handleMessage(message)
+
+                                // Route heartbeat and peer join/leave to PeerTracker
+                                switch message {
+                                case .heartbeat(let peerID, let timestamp):
+                                    Task { await peerTrk.handleHeartbeat(peerID: peerID, timestamp: timestamp) }
+                                case .peerJoin(let peerID, let peerName):
+                                    Task { await peerTrk.updatePeer(id: peerID, name: peerName) }
+                                case .peerLeave(let peerID):
+                                    Task { await peerTrk.removePeer(id: peerID) }
+                                default:
+                                    break
+                                }
                             }
                         }
                     }
                 },
                 onForward: { (packet: MeshPacket, excludePeer: String) in
+                    // Forward on BOTH transports — MeshRouter dedup handles overlap
                     let serialized = packet.serialize()
                     mpTransport.forwardPacket(serialized, excludePeer: excludePeer)
+                    Task { @MainActor in
+                        waTransportRef?.forwardPacket(serialized, excludePeer: excludePeer)
+                    }
                 }
             )
         }
@@ -262,9 +268,13 @@ final class AppState {
         AudioSessionManager.registerForNotifications()
 
         // Wire interruption callbacks to PTTEngine for auto-release on phone calls etc.
+        // The callback fires on .main queue (from registerForNotifications), so
+        // MainActor.assumeIsolated is safe here.
         let ptt = self.pttEngine
         AudioSessionManager.onInterruptionBegan = {
-            ptt.stopTransmitting()
+            MainActor.assumeIsolated {
+                ptt.stopTransmitting()
+            }
         }
         AudioSessionManager.onInterruptionEnded = {
             // Session reactivated -- no auto-transmit, just log readiness
@@ -272,12 +282,14 @@ final class AppState {
         }
 
         pttEngine.multipeerTransport = multipeerTransport
+        pttEngine.wifiAwareTransport = wifiAwareTransport
         try? await pttEngine.start()
         await peerTracker.startHealthCheck()
 
-        // Start MultipeerConnectivity transport for local peer discovery.
-        // All incoming packets are delivered via meshRouter.onLocalDelivery (wired in init).
+        // Start both transports — all incoming packets delivered via meshRouter.onLocalDelivery.
+        // MeshRouter dedup (by packetID) prevents double-delivery when both transports carry the same packet.
         multipeerTransport.start()
+        wifiAwareTransport?.start()
 
         // Create a default channel if none exist (first launch).
         // Channels are persisted, so this only runs once.
@@ -305,11 +317,24 @@ final class AppState {
             channels: channelIDs
         )
 
-        // Request location permission for location sharing features
+        // Request location permission and start updates for location sharing
         locationService.requestPermission()
+        locationService.startUpdating()
 
         // Register background tasks to keep mesh alive
         backgroundService.registerBackgroundTasks()
+
+        // Subscribe to mesh topology updates from beacons to feed MeshIntelligence
+        let intelligence = self.meshIntelligence
+        NotificationCenter.default.addObserver(
+            forName: .meshTopologyUpdate, object: nil, queue: .main
+        ) { notification in
+            guard let peerID = notification.userInfo?["peerID"] as? String,
+                  let neighbors = notification.userInfo?["neighborIDs"] as? [String] else { return }
+            Task {
+                await intelligence.updateTopology(peerID: peerID, connectedTo: Set(neighbors))
+            }
+        }
 
         // Periodically update mesh stats and prune stale intelligence data
         Task { [weak self] in
@@ -317,6 +342,7 @@ final class AppState {
                 try? await Task.sleep(for: .seconds(2))
                 guard let self else { break }
                 self.meshStats = await self.meshRouter.stats
+                await self.meshIntelligence.updateVisiblePeerCount(self.meshBeacon.directPeers.count)
                 await self.meshIntelligence.pruneStaleEntries()
             }
         }
@@ -363,6 +389,75 @@ final class AppState {
                 logger.warning("Crash recovery: saved channel \(savedChannelID) no longer exists")
                 clearActiveState()
             }
+        }
+    }
+
+    // MARK: - Unified Peer List
+
+    /// Merge peers from both transports, dedup by ID, prefer Wi-Fi Aware metadata.
+    private func updateUnifiedPeerList() {
+        let mcPeers = multipeerTransport.peers
+        let waPeers = wifiAwareTransport?.peers ?? []
+
+        var merged: [String: ChirpPeer] = [:]
+        for peer in mcPeers {
+            var p = peer
+            p.transportType = .multipeer
+            merged[peer.id] = p
+        }
+        for peer in waPeers {
+            if var existing = merged[peer.id] {
+                existing.transportType = .both
+                existing.signalStrength = max(existing.signalStrength, peer.signalStrength)
+                merged[peer.id] = existing
+            } else {
+                var p = peer
+                p.transportType = .wifiAware
+                merged[peer.id] = p
+            }
+        }
+
+        let allPeers = Array(merged.values)
+        let oldCount = connectedPeerCount
+        connectedPeerCount = allPeers.count
+
+        // Update active channel peers
+        if let activeID = channelManager.activeChannel?.id {
+            for existingPeer in channelManager.activeChannel?.peers ?? [] {
+                channelManager.removePeerFromChannel(channelID: activeID, peerID: existingPeer.id)
+            }
+            for peer in allPeers {
+                channelManager.addPeerToChannel(channelID: activeID, peer: peer)
+            }
+        }
+
+        // Update friends online status
+        let onlinePeerIDs = Set(allPeers.map { $0.id })
+        for friend in friendsManager.friends {
+            friendsManager.updateOnlineStatus(
+                peerID: friend.id,
+                isOnline: onlinePeerIDs.contains(friend.id)
+            )
+        }
+
+        // Check proximity alerts for friends coming into range
+        proximityAlert.checkProximity(onlinePeers: allPeers, friends: friendsManager.friends)
+
+        // Check store-and-forward relay for pending messages to newly connected peers
+        let mpTransport = multipeerTransport
+        for peer in allPeers {
+            let pending = storeAndForwardRelay.checkPendingForPeer(peer.id)
+            for msg in pending {
+                try? mpTransport.sendControlData(msg.payload, channelID: msg.channelID)
+                try? wifiAwareTransport?.sendControlData(msg.payload, channelID: msg.channelID)
+            }
+        }
+
+        // Log peer changes
+        if allPeers.count > oldCount {
+            Logger.network.info("Peer connected (total: \(allPeers.count), MC: \(mcPeers.count), WA: \(waPeers.count))")
+        } else if allPeers.count < oldCount {
+            Logger.network.info("Peer disconnected (total: \(allPeers.count))")
         }
     }
 

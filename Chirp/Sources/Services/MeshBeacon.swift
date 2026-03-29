@@ -9,7 +9,8 @@ import UIKit
 /// and battery level. Stale nodes (not seen in 10 seconds) are pruned
 /// automatically.
 @Observable
-final class MeshBeacon: @unchecked Sendable {
+@MainActor
+final class MeshBeacon {
 
     // MARK: - Types
 

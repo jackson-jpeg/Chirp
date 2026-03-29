@@ -14,11 +14,18 @@ struct ChannelView: View {
     @State private var channelMode: ChannelMode = .talk
     @State private var hasUsedPTT: Bool = false
     @State private var showHoldHint: Bool = true
-    @State private var liveTranscription = LiveTranscription()
+    @State private var showPairingSheet: Bool = false
 
-    enum ChannelMode: String, CaseIterable {
-        case talk = "Talk"
-        case chat = "Chat"
+    enum ChannelMode: CaseIterable {
+        case talk
+        case chat
+
+        var label: String {
+            switch self {
+            case .talk: return String(localized: "channel.mode.talk")
+            case .chat: return String(localized: "channel.mode.chat")
+            }
+        }
     }
 
     // MARK: - Layout Constants
@@ -70,8 +77,9 @@ struct ChannelView: View {
             }
 
             // Transcript overlay — slides down from top when receiving
-            TranscriptOverlayView(transcription: liveTranscription)
+            TranscriptOverlayView(transcription: appState.liveTranscription)
         }
+        .debugOverlay()
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .toolbar {
@@ -83,7 +91,25 @@ struct ChannelView: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.7))
                 }
+                .accessibilityLabel("Back")
             }
+            // Show "Boost" pairing button when Wi-Fi Aware is available
+            if appState.wifiAwareTransport != nil {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showPairingSheet = true
+                    } label: {
+                        Image(systemName: "wifi")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Constants.Colors.amber)
+                    }
+                    .accessibilityLabel("Boost connection with Wi-Fi Aware pairing")
+                }
+            }
+        }
+        .sheet(isPresented: $showPairingSheet) {
+            PairingView()
+                .environment(appState)
         }
         .chirpToast($toast)
         .onAppear {
@@ -119,7 +145,7 @@ struct ChannelView: View {
                     }
                 } label: {
                     ZStack(alignment: .topTrailing) {
-                        Text(mode.rawValue)
+                        Text(mode.label)
                             .font(.system(.subheadline, weight: channelMode == mode ? .bold : .semibold))
                             .foregroundStyle(channelMode == mode ? .white : .white.opacity(0.35))
                             .frame(maxWidth: .infinity)
@@ -148,7 +174,8 @@ struct ChannelView: View {
                         }
                     }
                 }
-                .accessibilityLabel("\(mode.rawValue) mode")
+                .accessibilityLabel("\(mode.label) mode\(channelMode == mode ? ", selected" : "")")
+                .accessibilityHint(mode == .chat && chatUnreadCount > 0 ? "\(chatUnreadCount) unread message\(chatUnreadCount == 1 ? "" : "s")" : "")
             }
         }
         .padding(3)
@@ -171,7 +198,19 @@ struct ChannelView: View {
 
             // Status pill — floats higher
             statusPill
-                .padding(.bottom, 28)
+                .padding(.bottom, 12)
+
+            // Quick replies — tap to send as text message
+            QuickReplyBar(replies: appState.quickReplyManager.replies) { reply in
+                appState.textMessageService.send(
+                    text: reply.label,
+                    channelID: channel.id,
+                    senderID: appState.localPeerID,
+                    senderName: appState.callsign
+                )
+                toast = ToastItem(message: "Sent: \(reply.label)", type: .success)
+            }
+            .padding(.bottom, 12)
 
             // Idle birds — friendly waiting state above waveform
             if pttState == .idle {
@@ -219,8 +258,19 @@ struct ChannelView: View {
                 )
             },
             onShareLocation: {
-                // TODO: Phase 2 — share location via mesh
-                toast = ToastItem(message: "Location sharing coming soon", type: .info)
+                guard let location = appState.locationService.currentLocation else {
+                    toast = ToastItem(message: "Location unavailable", type: .warning)
+                    return
+                }
+                let locText = LocationService.encodeLocation(location)
+                appState.textMessageService.send(
+                    text: locText,
+                    channelID: channel.id,
+                    senderID: appState.localPeerID,
+                    senderName: appState.callsign,
+                    attachmentType: .location
+                )
+                toast = ToastItem(message: "Location shared", type: .success)
             }
         )
     }
@@ -263,6 +313,7 @@ struct ChannelView: View {
         }
         .ignoresSafeArea()
         .animation(.easeInOut(duration: 0.6), value: pttState)
+        .accessibilityHidden(true)
     }
 
     private func meshColors(for state: PTTState) -> (Color, Color, Color) {
@@ -374,6 +425,7 @@ struct ChannelView: View {
             }
         }
         .animation(.easeInOut(duration: 0.4), value: pttState)
+        .accessibilityHidden(true)
     }
 
     // MARK: - Channel Header (Minimal)
@@ -400,6 +452,7 @@ struct ChannelView: View {
                     Capsule()
                         .strokeBorder(Constants.Colors.amber.opacity(0.3), lineWidth: 0.5)
                 )
+                .accessibilityLabel("Locked channel")
             }
 
             // Mesh reach indicator
@@ -410,6 +463,7 @@ struct ChannelView: View {
             // Peer count pill
             peerCountPill
         }
+        .accessibilityElement(children: .combine)
     }
 
     private var meshReachLabel: some View {
@@ -445,6 +499,9 @@ struct ChannelView: View {
             Capsule()
                 .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.5)
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(appState.channelManager.activeChannel?.activePeerCount ?? 0) peer\((appState.channelManager.activeChannel?.activePeerCount ?? 0) == 1 ? "" : "s") connected")
+        .accessibilityIdentifier(AccessibilityID.peerCountPill)
     }
 
     // MARK: - Status Pill (Floating Glass)
@@ -464,6 +521,22 @@ struct ChannelView: View {
             )
             .shadow(color: statusAccentColor.opacity(isReceiving ? 0.3 : 0.1), radius: 12)
             .animation(.easeInOut(duration: 0.2), value: pttState)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(statusAccessibilityLabel)
+            .accessibilityIdentifier(AccessibilityID.statusPill)
+    }
+
+    private var statusAccessibilityLabel: String {
+        switch pttState {
+        case .idle:
+            return "Status: Ready"
+        case .transmitting:
+            return "Status: Transmitting live"
+        case .receiving(let name, _):
+            return "Status: Receiving from \(name)"
+        case .denied:
+            return "Status: Channel busy"
+        }
     }
 
     @ViewBuilder
@@ -474,7 +547,7 @@ struct ChannelView: View {
                 Circle()
                     .fill(Constants.Colors.amber)
                     .frame(width: 6, height: 6)
-                Text("Ready")
+                Text(String(localized: "channel.status.ready"))
                     .font(.system(.subheadline, weight: .semibold))
                     .foregroundStyle(Constants.Colors.amber)
             }
@@ -488,7 +561,7 @@ struct ChannelView: View {
                     .fill(Constants.Colors.electricGreen)
                     .frame(width: 8, height: 8)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("LISTENING")
+                    Text(String(localized: "channel.status.listening"))
                         .font(.system(size: 9, weight: .heavy))
                         .foregroundStyle(Constants.Colors.electricGreen.opacity(0.6))
                     Text(name)
@@ -502,7 +575,7 @@ struct ChannelView: View {
                 Circle()
                     .fill(Color.gray)
                     .frame(width: 6, height: 6)
-                Text("Channel busy")
+                Text(String(localized: "channel.status.busy"))
                     .font(.system(.subheadline, weight: .semibold))
                     .foregroundStyle(.secondary)
             }
@@ -527,7 +600,7 @@ struct ChannelView: View {
                     .foregroundStyle(Constants.Colors.hotRed)
                     .contentTransition(.numericText())
 
-                Text("LIVE")
+                Text(String(localized: "channel.status.live"))
                     .font(.system(size: 10, weight: .black))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 6)
@@ -711,11 +784,11 @@ struct ChannelView: View {
                     .rotationEffect(sweepAngle)
 
                 VStack(spacing: 6) {
-                    Text("Scanning...")
+                    Text(String(localized: "channel.radar.scanning"))
                         .font(.system(.caption, weight: .medium))
                         .foregroundStyle(Constants.Colors.amber.opacity(0.6))
 
-                    Text("Peers will orbit here")
+                    Text(String(localized: "channel.radar.peersHint"))
                         .font(.system(size: 10))
                         .foregroundStyle(.white.opacity(0.3))
                 }
@@ -732,7 +805,7 @@ struct ChannelView: View {
             HStack(spacing: 6) {
                 Image(systemName: "arrow.triangle.2.circlepath")
                     .font(.system(size: 11))
-                Text("Loopback ON")
+                Text(String(localized: "channel.loopback.on"))
                     .font(.system(.caption2, weight: .medium))
             }
             .foregroundStyle(Constants.Colors.amber.opacity(0.6))
@@ -756,12 +829,12 @@ struct ChannelView: View {
     @ViewBuilder
     private var pttHintText: some View {
         if pttState == .idle && showHoldHint && !hasUsedPTT {
-            Text("Hold to Talk")
+            Text(String(localized: "channel.ptt.holdToTalk"))
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(.white.opacity(0.35))
                 .transition(.opacity)
         } else if pttState == .transmitting {
-            Text("Release to stop")
+            Text(String(localized: "channel.ptt.releaseToStop"))
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(Constants.Colors.hotRed.opacity(0.5))
                 .transition(.opacity)
@@ -772,21 +845,40 @@ struct ChannelView: View {
 
     private var quickActionBar: some View {
         HStack(spacing: 20) {
-            quickActionButton(icon: "camera.fill", label: "Camera") {
+            quickActionButton(icon: "camera.fill", label: String(localized: "channel.quickAction.camera")) {
                 toast = ToastItem(message: "Camera sharing coming soon", type: .info)
             }
-            quickActionButton(icon: "text.bubble.fill", label: "Chat") {
+            .accessibilityIdentifier(AccessibilityID.quickActionCamera)
+
+            quickActionButton(icon: "text.bubble.fill", label: String(localized: "channel.quickAction.chat")) {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     channelMode = .chat
                 }
                 appState.textMessageService.markAsRead(channelID: channel.id)
             }
-            quickActionButton(icon: "location.fill", label: "Location") {
-                toast = ToastItem(message: "Location sharing coming soon", type: .info)
+            .accessibilityIdentifier(AccessibilityID.quickActionChat)
+
+            quickActionButton(icon: "location.fill", label: String(localized: "channel.quickAction.location")) {
+                guard let location = appState.locationService.currentLocation else {
+                    toast = ToastItem(message: "Location unavailable", type: .warning)
+                    return
+                }
+                let locText = LocationService.encodeLocation(location)
+                appState.textMessageService.send(
+                    text: locText,
+                    channelID: channel.id,
+                    senderID: appState.localPeerID,
+                    senderName: appState.callsign,
+                    attachmentType: .location
+                )
+                toast = ToastItem(message: "Location shared", type: .success)
             }
-            quickActionButton(icon: "sos", label: "SOS") {
+            .accessibilityIdentifier(AccessibilityID.quickActionLocation)
+
+            quickActionButton(icon: "sos", label: String(localized: "channel.quickAction.sos")) {
                 toast = ToastItem(message: "SOS beacon coming soon", type: .info)
             }
+            .accessibilityIdentifier(AccessibilityID.quickActionSOS)
         }
         .padding(.horizontal, 24)
     }

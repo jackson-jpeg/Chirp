@@ -21,7 +21,8 @@ enum AudioQuality: Sendable {
 /// Singleton accessed via `EmergencyMode.shared`. State is persisted in
 /// UserDefaults so it survives a crash or force-quit.
 @Observable
-final class EmergencyMode: @unchecked Sendable {
+@MainActor
+final class EmergencyMode {
 
     static let shared = EmergencyMode()
 
@@ -100,9 +101,7 @@ final class EmergencyMode: @unchecked Sendable {
         UserDefaults.standard.set(true, forKey: Keys.isActive)
 
         // Enable battery monitoring so the overlay can show battery %.
-        Task { @MainActor in
-            UIDevice.current.isBatteryMonitoringEnabled = true
-        }
+        UIDevice.current.isBatteryMonitoringEnabled = true
 
         NotificationCenter.default.post(
             name: .emergencyModeChanged,

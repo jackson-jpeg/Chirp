@@ -122,6 +122,8 @@ struct PeerAvatarView: View {
             }
             .frame(width: size + 4, height: size + 4)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(peer.name), \(peer.isConnected ? "connected" : "disconnected")\(isActiveSpeaker ? ", speaking" : "")")
         .onAppear {
             if isActiveSpeaker {
                 startWaveAnimation()

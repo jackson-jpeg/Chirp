@@ -45,7 +45,8 @@ struct SettingsView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Color.black)
-        .navigationTitle("Settings")
+        .accessibilityIdentifier(AccessibilityID.settingsView)
+        .navigationTitle(String(localized: "settings.title"))
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showActionButtonSetup) {
             ActionButtonSetupView()
@@ -76,7 +77,7 @@ struct SettingsView: View {
 
             // Callsign (editable)
             VStack(spacing: 6) {
-                TextField("Callsign", text: Bindable(appState).callsign)
+                TextField(String(localized: "settings.profile.callsign"), text: Bindable(appState).callsign)
                     .font(.system(.title2, design: .rounded, weight: .bold))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
@@ -105,7 +106,7 @@ struct SettingsView: View {
                         HStack(spacing: 4) {
                             Image(systemName: copiedID ? "checkmark" : "doc.on.doc")
                                 .font(.system(size: 10, weight: .semibold))
-                            Text(copiedID ? "Copied" : "Copy ID")
+                            Text(copiedID ? String(localized: "settings.profile.copied") : String(localized: "settings.profile.copyID"))
                                 .font(.system(.caption2, weight: .semibold))
                         }
                         .foregroundStyle(copiedID ? green : amber)
@@ -131,21 +132,21 @@ struct SettingsView: View {
 
     private var meshNetworkSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            sectionHeader(icon: "point.3.connected.trianglepath.dotted", title: "Mesh Network")
+            sectionHeader(icon: "point.3.connected.trianglepath.dotted", title: String(localized: "settings.meshNetwork.title"))
 
             VStack(spacing: 1) {
                 // Wi-Fi Aware status
                 glassRow {
                     HStack(spacing: 12) {
                         Image(systemName: "wifi")
-                            .foregroundStyle(appState.wifiAwareManager.isSupported ? green : .secondary)
+                            .foregroundStyle(appState.wifiAwareTransport != nil ? green : .secondary)
                             .frame(width: 24)
-                        Text("Wi-Fi Aware")
+                        Text(String(localized: "settings.meshNetwork.wifiAware"))
                             .foregroundStyle(.white)
                         Spacer()
                         statusBadge(
-                            text: appState.wifiAwareManager.isSupported ? "Active" : "Unavailable",
-                            color: appState.wifiAwareManager.isSupported ? green : .secondary
+                            text: appState.wifiAwareTransport != nil ? String(localized: "settings.status.active") : String(localized: "settings.status.unavailable"),
+                            color: appState.wifiAwareTransport != nil ? green : .secondary
                         )
                     }
                 }
@@ -156,7 +157,7 @@ struct SettingsView: View {
                         Image(systemName: "antenna.radiowaves.left.and.right")
                             .foregroundStyle(appState.connectedPeerCount > 0 ? green : amber)
                             .frame(width: 24)
-                        Text("Nearby Peers")
+                        Text(String(localized: "settings.meshNetwork.nearbyPeers"))
                             .foregroundStyle(.white)
                         Spacer()
                         Text("\(appState.connectedPeerCount)")
@@ -171,10 +172,10 @@ struct SettingsView: View {
                         Image(systemName: "link")
                             .foregroundStyle(amber)
                             .frame(width: 24)
-                        Text("Paired Devices")
+                        Text(String(localized: "settings.meshNetwork.pairedDevices"))
                             .foregroundStyle(.white)
                         Spacer()
-                        Text("\(appState.wifiAwareManager.pairedDevices.count)")
+                        Text("\(appState.wifiAwareTransport?.pairedDeviceCount ?? 0)")
                             .font(.system(.body, design: .monospaced, weight: .semibold))
                             .foregroundStyle(.white.opacity(0.6))
                     }
@@ -194,7 +195,7 @@ struct SettingsView: View {
                             Image(systemName: "network")
                                 .foregroundStyle(amber)
                                 .frame(width: 24)
-                            Text("Local Network Permission")
+                            Text(String(localized: "settings.meshNetwork.localNetworkPermission"))
                                 .foregroundStyle(.white)
                             Spacer()
                             Image(systemName: "arrow.up.forward.app.fill")
@@ -207,7 +208,7 @@ struct SettingsView: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-            Text("Ensure Local Network is enabled in Settings → Privacy → Local Network → ChirpChirp")
+            Text(String(localized: "settings.meshNetwork.localNetworkHint"))
                 .font(.system(.caption2))
                 .foregroundStyle(.white.opacity(0.3))
                 .padding(.horizontal, 4)
@@ -224,7 +225,7 @@ struct SettingsView: View {
                 Image(systemName: "arrow.triangle.branch")
                     .foregroundStyle(amber)
                     .frame(width: 24)
-                Text("Packets Relayed")
+                Text(String(localized: "settings.meshNetwork.packetsRelayed"))
                     .foregroundStyle(.white)
                 Spacer()
                 meshStatValue(stats.map { "\($0.relayed)" } ?? "\u{2014}",
@@ -237,7 +238,7 @@ struct SettingsView: View {
                 Image(systemName: "checkmark.circle")
                     .foregroundStyle(amber)
                     .frame(width: 24)
-                Text("Delivered")
+                Text(String(localized: "settings.meshNetwork.delivered"))
                     .foregroundStyle(.white)
                 Spacer()
                 meshStatValue(stats.map { "\($0.delivered)" } ?? "\u{2014}",
@@ -250,7 +251,7 @@ struct SettingsView: View {
                 Image(systemName: "arrow.3.trianglepath")
                     .foregroundStyle(amber)
                     .frame(width: 24)
-                Text("Deduplicated")
+                Text(String(localized: "settings.meshNetwork.deduplicated"))
                     .foregroundStyle(.white)
                 Spacer()
                 meshStatValue(stats.map { "\($0.deduplicated)" } ?? "\u{2014}",
@@ -263,7 +264,7 @@ struct SettingsView: View {
                 Image(systemName: "point.topleft.down.to.point.bottomright.curvepath")
                     .foregroundStyle(amber)
                     .frame(width: 24)
-                Text("Max Hops")
+                Text(String(localized: "settings.meshNetwork.maxHops"))
                     .foregroundStyle(.white)
                 Spacer()
                 meshStatValue(stats.map { "\($0.maxHops)" } ?? "\u{2014}",
@@ -276,7 +277,7 @@ struct SettingsView: View {
                 Image(systemName: "scope")
                     .foregroundStyle(amber)
                     .frame(width: 24)
-                Text("Est. Range")
+                Text(String(localized: "settings.meshNetwork.estRange"))
                     .foregroundStyle(.white)
                 Spacer()
                 meshStatValue(stats.map { "\($0.estimatedRangeMeters)m" } ?? "\u{2014}",
@@ -295,26 +296,26 @@ struct SettingsView: View {
 
     private var audioHapticsSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            sectionHeader(icon: "waveform.circle", title: "Audio & Haptics")
+            sectionHeader(icon: "waveform.circle", title: String(localized: "settings.audioHaptics.title"))
 
             VStack(spacing: 1) {
                 glassRow {
                     Toggle(isOn: $speakerOutput) {
-                        settingsRow(icon: "speaker.wave.2.fill", title: "Speaker Output")
+                        settingsRow(icon: "speaker.wave.2.fill", title: String(localized: "settings.audioHaptics.speakerOutput"))
                     }
                     .tint(amber)
                 }
 
                 glassRow {
                     Toggle(isOn: $hapticFeedback) {
-                        settingsRow(icon: "hand.tap.fill", title: "Haptic Feedback")
+                        settingsRow(icon: "hand.tap.fill", title: String(localized: "settings.audioHaptics.hapticFeedback"))
                     }
                     .tint(amber)
                 }
 
                 glassRow {
                     Toggle(isOn: $chirpSounds) {
-                        settingsRow(icon: "waveform", title: "Chirp Sounds")
+                        settingsRow(icon: "waveform", title: String(localized: "settings.audioHaptics.chirpSounds"))
                     }
                     .tint(amber)
                 }
@@ -324,14 +325,14 @@ struct SettingsView: View {
                         get: { appState.pttEngine.loopbackMode },
                         set: { appState.pttEngine.loopbackMode = $0 }
                     )) {
-                        settingsRow(icon: "arrow.triangle.2.circlepath", title: "Loopback Test")
+                        settingsRow(icon: "arrow.triangle.2.circlepath", title: String(localized: "settings.audioHaptics.loopbackTest"))
                     }
                     .tint(amber)
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-            Text("Loopback plays your voice back through the Opus codec pipeline for testing without a second device.")
+            Text(String(localized: "settings.audioHaptics.loopbackDescription"))
                 .font(.system(.caption2))
                 .foregroundStyle(.white.opacity(0.3))
                 .padding(.horizontal, 4)
@@ -343,7 +344,7 @@ struct SettingsView: View {
 
     private var quickAccessSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            sectionHeader(icon: "bolt.fill", title: "Quick Access")
+            sectionHeader(icon: "bolt.fill", title: String(localized: "settings.quickAccess.title"))
 
             VStack(spacing: 1) {
                 glassRow {
@@ -354,7 +355,7 @@ struct SettingsView: View {
                             Image(systemName: "button.horizontal.top.press.fill")
                                 .foregroundStyle(amber)
                                 .frame(width: 24)
-                            Text("Set Up Action Button")
+                            Text(String(localized: "settings.quickAccess.actionButton"))
                                 .foregroundStyle(.white)
                             Spacer()
                             Image(systemName: "chevron.right")
@@ -371,9 +372,9 @@ struct SettingsView: View {
                             .foregroundStyle(amber)
                             .frame(width: 24)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Siri Shortcut")
+                            Text(String(localized: "settings.quickAccess.siriShortcut"))
                                 .foregroundStyle(.white)
-                            Text("\"Hey Siri, push to talk with ChirpChirp\"")
+                            Text(String(localized: "settings.quickAccess.siriShortcutHint"))
                                 .font(.system(.caption2))
                                 .foregroundStyle(.white.opacity(0.4))
                         }
@@ -389,7 +390,7 @@ struct SettingsView: View {
 
     private var emergencySection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            sectionHeader(icon: "sos", title: "Emergency")
+            sectionHeader(icon: "sos", title: String(localized: "settings.emergency.title"))
 
             VStack(spacing: 1) {
                 glassRow {
@@ -403,14 +404,14 @@ struct SettingsView: View {
                             }
                         }
                     )) {
-                        settingsRow(icon: "exclamationmark.octagon.fill", title: "Emergency Mode")
+                        settingsRow(icon: "exclamationmark.octagon.fill", title: String(localized: "settings.emergency.emergencyMode"))
                     }
                     .tint(Constants.Colors.emergencyRed)
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-            Text("Optimizes for disaster scenarios: max mesh range, aggressive relay, low-bandwidth audio, and periodic location broadcasts.")
+            Text(String(localized: "settings.emergency.emergencyModeDescription"))
                 .font(.system(.caption2))
                 .foregroundStyle(.white.opacity(0.3))
                 .padding(.horizontal, 4)
@@ -422,7 +423,7 @@ struct SettingsView: View {
 
     private var privacySecuritySection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            sectionHeader(icon: "lock.shield.fill", title: "Privacy & Security")
+            sectionHeader(icon: "lock.shield.fill", title: String(localized: "settings.privacySecurity.title"))
 
             VStack(spacing: 1) {
                 glassRow {
@@ -430,10 +431,10 @@ struct SettingsView: View {
                         Image(systemName: "lock.fill")
                             .foregroundStyle(green)
                             .frame(width: 24)
-                        Text("End-to-End Encryption")
+                        Text(String(localized: "settings.privacySecurity.e2eEncryption"))
                             .foregroundStyle(.white)
                         Spacer()
-                        statusBadge(text: "On", color: green)
+                        statusBadge(text: String(localized: "settings.status.on"), color: green)
                     }
                 }
 
@@ -443,7 +444,7 @@ struct SettingsView: View {
                             .foregroundStyle(amber)
                             .frame(width: 24)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Your Fingerprint")
+                            Text(String(localized: "settings.privacySecurity.yourFingerprint"))
                                 .foregroundStyle(.white)
                             Text(formattedFingerprint)
                                 .font(.system(.caption2, design: .monospaced))
@@ -460,9 +461,9 @@ struct SettingsView: View {
                             .foregroundStyle(green)
                             .frame(width: 24)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Zero Servers")
+                            Text(String(localized: "settings.privacySecurity.zeroServers"))
                                 .foregroundStyle(.white)
-                            Text("All communication is device-to-device")
+                            Text(String(localized: "settings.privacySecurity.zeroServersDescription"))
                                 .font(.system(.caption2))
                                 .foregroundStyle(.white.opacity(0.4))
                         }
@@ -478,7 +479,7 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            sectionHeader(icon: "info.circle", title: "About")
+            sectionHeader(icon: "info.circle", title: String(localized: "settings.about.title"))
 
             VStack(spacing: 1) {
                 // How Chirp Works
@@ -492,7 +493,7 @@ struct SettingsView: View {
                             Image(systemName: "questionmark.circle")
                                 .foregroundStyle(amber)
                                 .frame(width: 24)
-                            Text("How Chirp Works")
+                            Text(String(localized: "settings.about.howItWorks"))
                                 .foregroundStyle(.white)
                             Spacer()
                             Image(systemName: "chevron.right")
@@ -507,14 +508,14 @@ struct SettingsView: View {
                 if howItWorksExpanded {
                     glassRow {
                         VStack(alignment: .leading, spacing: 14) {
-                            infoItem(icon: "wifi", title: "Wi-Fi Aware",
-                                     text: "Connects devices directly without a router, cell tower, or internet.")
-                            infoItem(icon: "mic.fill", title: "Push-to-Talk",
-                                     text: "Hold to talk, release to listen. Like a real walkie-talkie.")
-                            infoItem(icon: "person.2.fill", title: "Channels",
-                                     text: "Create or join channels. Everyone on the same channel hears each other.")
-                            infoItem(icon: "lock.shield.fill", title: "Privacy",
-                                     text: "All communication stays device-to-device. No servers. Ever.")
+                            infoItem(icon: "wifi", title: String(localized: "settings.about.wifiAware.title"),
+                                     text: String(localized: "settings.about.wifiAware.description"))
+                            infoItem(icon: "mic.fill", title: String(localized: "settings.about.pushToTalk.title"),
+                                     text: String(localized: "settings.about.pushToTalk.description"))
+                            infoItem(icon: "person.2.fill", title: String(localized: "settings.about.channels.title"),
+                                     text: String(localized: "settings.about.channels.description"))
+                            infoItem(icon: "lock.shield.fill", title: String(localized: "settings.about.privacy.title"),
+                                     text: String(localized: "settings.about.privacy.description"))
                         }
                         .padding(.vertical, 4)
                     }
@@ -530,7 +531,7 @@ struct SettingsView: View {
                             Image(systemName: "star.fill")
                                 .foregroundStyle(amber)
                                 .frame(width: 24)
-                            Text("Rate ChirpChirp")
+                            Text(String(localized: "settings.about.rateApp"))
                                 .foregroundStyle(.white)
                             Spacer()
                             Image(systemName: "arrow.up.forward")
@@ -550,7 +551,7 @@ struct SettingsView: View {
                             Image(systemName: "hand.raised.fill")
                                 .foregroundStyle(amber)
                                 .frame(width: 24)
-                            Text("Privacy Policy")
+                            Text(String(localized: "settings.about.privacyPolicy"))
                                 .foregroundStyle(.white)
                             Spacer()
                             Image(systemName: "arrow.up.forward")
@@ -570,7 +571,7 @@ struct SettingsView: View {
                             Image(systemName: "chevron.left.forwardslash.chevron.right")
                                 .foregroundStyle(amber)
                                 .frame(width: 24)
-                            Text("Open Source Credits")
+                            Text(String(localized: "settings.about.openSourceCredits"))
                                 .foregroundStyle(.white)
                             Spacer()
                             Image(systemName: "arrow.up.forward")
@@ -668,10 +669,13 @@ struct SettingsView: View {
                             }
 
                             debugRow("Wi-Fi Aware",
-                                     value: appState.wifiAwareManager.isSupported ? "Supported" : "Unsupported")
+                                     value: appState.wifiAwareTransport != nil ? "Active" : "Unsupported")
 
-                            debugRow("Paired Devices",
-                                     value: "\(appState.wifiAwareManager.pairedDevices.count)")
+                            debugRow("Paired Devices (WA)",
+                                     value: "\(appState.wifiAwareTransport?.pairedDeviceCount ?? 0)")
+
+                            debugRow("Connected (WA)",
+                                     value: "\(appState.wifiAwareTransport?.connectedPeerCount ?? 0)")
 
                             debugRow("Jitter Buffer",
                                      value: "init \(Constants.JitterBuffer.initialDepthMs)ms / max \(Constants.JitterBuffer.maxDepthMs)ms")

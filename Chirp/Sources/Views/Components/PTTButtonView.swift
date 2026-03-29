@@ -242,6 +242,11 @@ struct PTTButtonView: View {
             .offset(x: shakeOffset)
             .animation(.spring(response: 0.15, dampingFraction: 0.55), value: isPressed)
             .allowsHitTesting(canInteract)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Push to talk")
+            .accessibilityHint(isTransmitting ? "Release to stop transmitting" : "Hold to transmit voice")
+            .accessibilityAddTraits(.startsMediaSession)
+            .accessibilityIdentifier(AccessibilityID.pttButton)
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { _ in

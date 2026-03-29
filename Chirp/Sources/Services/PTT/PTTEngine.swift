@@ -3,7 +3,8 @@ import Observation
 import OSLog
 
 @Observable
-final class PTTEngine: @unchecked Sendable {
+@MainActor
+final class PTTEngine {
 
     // MARK: - Public State
 
@@ -18,6 +19,7 @@ final class PTTEngine: @unchecked Sendable {
     let audioEngine: AudioEngine
     let floorController: FloorController
     var multipeerTransport: MultipeerTransport?
+    var wifiAwareTransport: WiFiAwareTransport?
 
     // MARK: - Private
 
@@ -50,29 +52,38 @@ final class PTTEngine: @unchecked Sendable {
     func setupCallbacks() {
         // Audio capture -> network: when the audio engine encodes a frame,
         // wrap it in an AudioPacket and send over the mesh transport.
+        // The closure runs on the audio processing queue, so dispatch to
+        // @MainActor for state access (sequence number, loopback mode).
         audioEngine.onEncodedAudio = { [weak self] opusData in
-            guard let self else { return }
-            let seq = self.nextSequenceNumber()
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let seq = self.nextSequenceNumber()
 
-            // Loopback: feed encoded audio back to decoder for local playback
-            if self.loopbackMode {
-                self.audioEngine.receiveAudioPacket(opusData, sequenceNumber: seq)
+                // Loopback: feed encoded audio back to decoder for local playback
+                if self.loopbackMode {
+                    self.audioEngine.receiveAudioPacket(opusData, sequenceNumber: seq)
+                }
+
+                let packet = AudioPacket(
+                    sequenceNumber: seq,
+                    timestamp: Self.currentTimestamp(),
+                    opusData: opusData
+                )
+                // Send via both transports — MeshRouter dedup handles overlap
+                let serialized = packet.serialize()
+                try? self.multipeerTransport?.sendAudio(serialized)
+                try? self.wifiAwareTransport?.sendAudio(serialized)
             }
-
-            let packet = AudioPacket(
-                sequenceNumber: seq,
-                timestamp: Self.currentTimestamp(),
-                opusData: opusData
-            )
-            // Send via MultipeerConnectivity (routed through MeshRouter)
-            try? self.multipeerTransport?.sendAudio(packet.serialize())
         }
 
         // Floor control -> network: broadcast control messages to all peers
-        // via MultipeerConnectivity (routed through MeshRouter).
+        // via both transports (routed through MeshRouter).
         floorController.sendToAllPeers = { [weak self] message in
-            guard let self else { return }
-            try? self.multipeerTransport?.sendControl(message)
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                try? self.multipeerTransport?.sendControl(message)
+                try? self.wifiAwareTransport?.sendControl(message)
+            }
         }
 
         logger.info("PTTEngine callbacks wired")
@@ -135,9 +146,9 @@ final class PTTEngine: @unchecked Sendable {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(5))
                 guard !Task.isCancelled, let self else { break }
-                try? self.multipeerTransport?.sendControl(
-                    .heartbeat(peerID: self.localPeerID, timestamp: Date())
-                )
+                let heartbeat = FloorControlMessage.heartbeat(peerID: self.localPeerID, timestamp: Date())
+                try? self.multipeerTransport?.sendControl(heartbeat)
+                try? self.wifiAwareTransport?.sendControl(heartbeat)
             }
         }
     }

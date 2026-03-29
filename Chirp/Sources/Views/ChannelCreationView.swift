@@ -4,9 +4,16 @@ struct ChannelCreationView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
 
-    enum Mode: String, CaseIterable {
-        case create = "Create Channel"
-        case join = "Join with Code"
+    enum Mode: CaseIterable {
+        case create
+        case join
+
+        var label: String {
+            switch self {
+            case .create: return String(localized: "channelCreation.mode.create")
+            case .join: return String(localized: "channelCreation.mode.join")
+            }
+        }
     }
 
     @State private var mode: Mode = .create
@@ -27,7 +34,7 @@ struct ChannelCreationView: View {
                 // Segmented picker
                 Picker("Mode", selection: $mode) {
                     ForEach(Mode.allCases, id: \.self) { m in
-                        Text(m.rawValue).tag(m)
+                        Text(m.label).tag(m)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -45,7 +52,7 @@ struct ChannelCreationView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
+                    Button(String(localized: "common.cancel")) { dismiss() }
                         .foregroundStyle(.secondary)
                 }
             }
@@ -62,7 +69,7 @@ struct ChannelCreationView: View {
         VStack(spacing: 0) {
             // Channel name field — large centered with amber underline
             VStack(spacing: 6) {
-                TextField("Channel Name", text: $channelName)
+                TextField(String(localized: "channelCreation.create.namePlaceholder"), text: $channelName)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
@@ -90,12 +97,12 @@ struct ChannelCreationView: View {
                     .contentTransition(.symbolEffect(.replace))
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Private Channel")
+                    Text(String(localized: "channelCreation.create.privateChannel"))
                         .font(.system(.body, weight: .semibold))
                         .foregroundStyle(.white)
 
                     if isPrivate {
-                        Text("Only people with the invite code can join")
+                        Text(String(localized: "channelCreation.create.privateChannelHint"))
                             .font(.system(.caption))
                             .foregroundStyle(.secondary)
                             .transition(.opacity.combined(with: .move(edge: .top)))
@@ -119,7 +126,7 @@ struct ChannelCreationView: View {
 
             // Suggested name chips
             VStack(alignment: .leading, spacing: 10) {
-                Text("SUGGESTIONS")
+                Text(String(localized: "channelCreation.create.suggestions"))
                     .font(.system(.caption2, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .tracking(0.5)
@@ -171,7 +178,7 @@ struct ChannelCreationView: View {
 
             // Create button
             Button(action: createChannel) {
-                Text("Create")
+                Text(String(localized: "channelCreation.create.button"))
                     .font(.system(.headline, weight: .bold))
                     .foregroundStyle(isCreateValid ? .black : .white.opacity(0.3))
                     .frame(maxWidth: .infinity)
@@ -202,7 +209,7 @@ struct ChannelCreationView: View {
                     .foregroundStyle(amber.opacity(0.7))
                     .padding(.bottom, 4)
 
-                TextField("Enter invite code", text: $inviteCode)
+                TextField(String(localized: "channelCreation.join.codePlaceholder"), text: $inviteCode)
                     .font(.system(size: 20, weight: .semibold, design: .monospaced))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
@@ -222,14 +229,14 @@ struct ChannelCreationView: View {
                     .frame(height: 2)
                     .frame(maxWidth: 240)
 
-                Text("Ask the channel owner for their invite code")
+                Text(String(localized: "channelCreation.join.hint"))
                     .font(.system(.caption))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.top, 4)
 
                 if joinFailed {
-                    Label("Invalid code. Check and try again.", systemImage: "exclamationmark.triangle")
+                    Label(String(localized: "channelCreation.join.invalidCode"), systemImage: "exclamationmark.triangle")
                         .font(.system(.caption, weight: .medium))
                         .foregroundStyle(Constants.Colors.hotRed)
                         .transition(.opacity.combined(with: .scale(scale: 0.9)))
@@ -241,7 +248,7 @@ struct ChannelCreationView: View {
 
             // Join button
             Button(action: joinChannel) {
-                Text("Join")
+                Text(String(localized: "channelCreation.join.button"))
                     .font(.system(.headline, weight: .bold))
                     .foregroundStyle(isJoinValid ? .black : .white.opacity(0.3))
                     .frame(maxWidth: .infinity)

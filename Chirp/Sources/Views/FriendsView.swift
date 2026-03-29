@@ -30,7 +30,7 @@ struct FriendsView: View {
                 Button {
                     showAddFriend = true
                 } label: {
-                    Label("Add Friend", systemImage: "person.badge.plus")
+                    Label(String(localized: "friends.addFriend"), systemImage: "person.badge.plus")
                         .font(.system(.subheadline, weight: .bold))
                         .foregroundStyle(.black)
                         .padding(.horizontal, 24)
@@ -82,18 +82,18 @@ struct FriendsView: View {
             titleVisibility: .visible
         ) {
             if let friend = selectedFriend {
-                Button("Start Channel") {
+                Button(String(localized: "friends.action.startChannel")) {
                     startDirectChannel(with: friend)
                 }
-                Button("View Details") {
+                Button(String(localized: "friends.action.viewDetails")) {
                     detailFriend = friend
                 }
-                Button("Remove", role: .destructive) {
+                Button(String(localized: "friends.action.remove"), role: .destructive) {
                     withAnimation {
                         appState.friendsManager.removeFriend(id: friend.id)
                     }
                 }
-                Button("Cancel", role: .cancel) {
+                Button(String(localized: "common.cancel"), role: .cancel) {
                     selectedFriend = nil
                 }
             }
@@ -113,7 +113,7 @@ struct FriendsView: View {
     private var customHeader: some View {
         VStack(spacing: 0) {
             HStack(alignment: .center) {
-                Text("Friends")
+                Text(String(localized: "friends.title"))
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
@@ -178,11 +178,11 @@ struct FriendsView: View {
                 .padding(.bottom, 4)
 
             VStack(spacing: 12) {
-                Text("Your flock awaits")
+                Text(String(localized: "friends.emptyState.title"))
                     .font(.system(.title2, design: .rounded, weight: .bold))
                     .foregroundStyle(.white)
 
-                Text("Add friends to start talking instantly.\nShare your ChirpChirp code or discover\npeople nearby on the same network.")
+                Text(String(localized: "friends.emptyState.subtitle"))
                     .font(.system(.subheadline))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -196,10 +196,10 @@ struct FriendsView: View {
                     .foregroundStyle(amber.opacity(0.6))
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Share your unique code")
+                    Text(String(localized: "friends.emptyState.shareCodeTitle"))
                         .font(.system(.caption, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.7))
-                    Text("Friends can add you with your ChirpChirp ID")
+                    Text(String(localized: "friends.emptyState.shareCodeSubtitle"))
                         .font(.system(.caption2))
                         .foregroundStyle(.secondary)
                 }
@@ -220,7 +220,7 @@ struct FriendsView: View {
             Button {
                 showAddFriend = true
             } label: {
-                Label("Add Friend", systemImage: "person.badge.plus")
+                Label(String(localized: "friends.addFriend"), systemImage: "person.badge.plus")
                     .font(.system(.body, weight: .bold))
                     .foregroundStyle(.black)
                     .padding(.horizontal, 32)
@@ -250,7 +250,7 @@ struct FriendsView: View {
                                 .font(.system(size: 11, weight: .bold))
                                 .foregroundStyle(green)
 
-                            Text("IN RANGE")
+                            Text(String(localized: "friends.section.inRange"))
                                 .font(.system(.caption, weight: .bold))
                                 .foregroundStyle(green)
                                 .tracking(0.5)
@@ -283,7 +283,7 @@ struct FriendsView: View {
                 // Offline Friends section
                 if !offlineFriends.isEmpty {
                     VStack(alignment: .leading, spacing: 14) {
-                        Text("OFFLINE")
+                        Text(String(localized: "friends.section.offline"))
                             .font(.system(.caption, weight: .bold))
                             .foregroundStyle(.secondary)
                             .textCase(.uppercase)
@@ -394,14 +394,14 @@ struct FriendsView: View {
             Button {
                 startDirectChannel(with: friend)
             } label: {
-                Label("Start Channel", systemImage: "waveform")
+                Label(String(localized: "friends.action.startChannel"), systemImage: "waveform")
             }
             Button(role: .destructive) {
                 withAnimation {
                     appState.friendsManager.removeFriend(id: friend.id)
                 }
             } label: {
-                Label("Remove Friend", systemImage: "person.badge.minus")
+                Label(String(localized: "friends.action.removeFriend"), systemImage: "person.badge.minus")
             }
         }
     }
@@ -464,7 +464,7 @@ struct FriendsView: View {
                             Circle()
                                 .fill(Color.gray.opacity(0.2))
                                 .frame(width: 5, height: 5)
-                            Text("Never seen")
+                            Text(String(localized: "friends.status.neverSeen"))
                                 .font(.system(.caption))
                                 .foregroundStyle(.secondary.opacity(0.7))
                         }
@@ -486,14 +486,14 @@ struct FriendsView: View {
             Button {
                 startDirectChannel(with: friend)
             } label: {
-                Label("Start Channel", systemImage: "waveform")
+                Label(String(localized: "friends.action.startChannel"), systemImage: "waveform")
             }
             Button(role: .destructive) {
                 withAnimation {
                     appState.friendsManager.removeFriend(id: friend.id)
                 }
             } label: {
-                Label("Remove Friend", systemImage: "person.badge.minus")
+                Label(String(localized: "friends.action.removeFriend"), systemImage: "person.badge.minus")
             }
         }
     }
@@ -604,7 +604,7 @@ private struct FriendDetailSheet: View {
                             Circle()
                                 .fill(green)
                                 .frame(width: 6, height: 6)
-                            Text("In Range")
+                            Text(String(localized: "friends.status.inRange"))
                                 .font(.system(.caption, weight: .semibold))
                                 .foregroundStyle(green)
                         }
@@ -613,7 +613,7 @@ private struct FriendDetailSheet: View {
                         HStack(spacing: 5) {
                             Image(systemName: "clock")
                                 .font(.system(size: 10))
-                            Text("Last seen ")
+                            Text(String(localized: "friends.status.lastSeen"))
                             + Text(lastSeen, format: .relative(presentation: .named))
                         }
                         .font(.system(.caption))
@@ -638,7 +638,7 @@ private struct FriendDetailSheet: View {
                                     .font(.system(size: 20, weight: .semibold))
                                     .foregroundStyle(.black)
                             }
-                            Text("Talk")
+                            Text(String(localized: "friends.detail.talk"))
                                 .font(.system(.caption, weight: .semibold))
                                 .foregroundStyle(.white)
                         }
@@ -658,7 +658,7 @@ private struct FriendDetailSheet: View {
                                     .font(.system(size: 20, weight: .semibold))
                                     .foregroundStyle(.white.opacity(0.7))
                             }
-                            Text("Message")
+                            Text(String(localized: "friends.detail.message"))
                                 .font(.system(.caption, weight: .semibold))
                                 .foregroundStyle(.white.opacity(0.6))
                         }
@@ -674,7 +674,7 @@ private struct FriendDetailSheet: View {
                     HStack(spacing: 6) {
                         Image(systemName: "person.badge.minus")
                             .font(.system(size: 13, weight: .medium))
-                        Text("Remove Friend")
+                        Text(String(localized: "friends.action.removeFriend"))
                             .font(.system(.subheadline, weight: .medium))
                     }
                     .foregroundStyle(Constants.Colors.hotRed.opacity(0.8))

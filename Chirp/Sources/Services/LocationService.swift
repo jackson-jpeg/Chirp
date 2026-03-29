@@ -2,7 +2,8 @@ import CoreLocation
 import OSLog
 
 @Observable
-final class LocationService: NSObject, CLLocationManagerDelegate, @unchecked Sendable {
+@MainActor
+final class LocationService: NSObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     private let logger = Logger(subsystem: Constants.subsystem, category: "Location")
 

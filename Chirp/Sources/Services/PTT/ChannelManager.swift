@@ -4,7 +4,8 @@ import Observation
 import OSLog
 
 @Observable
-final class ChannelManager: @unchecked Sendable {
+@MainActor
+final class ChannelManager {
 
     // MARK: - Public State
 

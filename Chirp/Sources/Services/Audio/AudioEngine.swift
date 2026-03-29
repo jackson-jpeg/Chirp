@@ -2,9 +2,14 @@
 import Observation
 import OSLog
 
+/// `@unchecked Sendable` is required because AVAudioEngine tap callbacks run on the
+/// audio I/O thread. Mutable state: `captureAccumulator` and `converter` are accessed
+/// exclusively on `processingQueue`; `inputLevel` is a display-only float written from
+/// the audio thread (benign race for UI animation).
 @Observable
 final class AudioEngine: @unchecked Sendable {
     var onEncodedAudio: (@Sendable (Data) -> Void)?
+    var onDecodedPCM: ((AVAudioPCMBuffer) -> Void)?
     private(set) var inputLevel: Float = 0.0
 
     private var engine: AVAudioEngine?
@@ -171,6 +176,9 @@ final class AudioEngine: @unchecked Sendable {
                     floatData[0][i] = Float(int16Data[0][i]) / Float(Int16.max)
                 }
             }
+
+            // Feed decoded PCM to live transcription (if wired)
+            onDecodedPCM?(floatBuffer)
 
             // Schedule on player node — plays immediately
             playerNode.scheduleBuffer(floatBuffer)

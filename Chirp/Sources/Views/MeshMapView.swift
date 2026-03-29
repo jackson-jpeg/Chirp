@@ -627,21 +627,36 @@ struct MeshMapView: View {
     /// Build topology nodes from MeshBeacon's sortedNodes if available,
     /// otherwise fall back to channel peers.
     private var topologyNodes: [TopologyNode] {
-        let channel = appState.channelManager.activeChannel
-        let peers = channel?.peers ?? []
+        // Use full mesh beacon topology — richer data than channel peers alone.
+        let beaconNodes = appState.meshBeacon.sortedNodes
+        guard !beaconNodes.isEmpty else {
+            // Fall back to channel peers if no beacon data yet
+            let peers = appState.channelManager.activeChannel?.peers ?? []
+            return peers.map { peer in
+                TopologyNode(
+                    id: peer.id,
+                    name: peer.name,
+                    hopCount: 1,
+                    isConnected: peer.isConnected,
+                    batteryLevel: -1,
+                    signalQuality: peer.transportType == .wifiAware || peer.transportType == .both ? 0.95 : 0.7,
+                    lastSeen: Date(),
+                    neighborIDs: []
+                )
+            }
+        }
 
-        // Build nodes from channel peers. In a full deployment MeshBeacon.sortedNodes
-        // would provide richer data; we derive what we can from available sources.
-        return peers.map { peer in
-            TopologyNode(
-                id: peer.id,
-                name: peer.name,
-                hopCount: 1, // channel peers are direct
-                isConnected: peer.isConnected,
-                batteryLevel: -1,
-                signalQuality: 0.8, // default good for direct peers
-                lastSeen: Date(),
-                neighborIDs: []
+        return beaconNodes.map { beacon in
+            let isStale = Date().timeIntervalSince(beacon.lastSeen) > 10
+            return TopologyNode(
+                id: beacon.id,
+                name: beacon.name,
+                hopCount: Int(beacon.hopCount),
+                isConnected: !isStale,
+                batteryLevel: beacon.batteryLevel,
+                signalQuality: beacon.isDirect ? 0.9 : 0.5,
+                lastSeen: beacon.lastSeen,
+                neighborIDs: beacon.neighborIDs
             )
         }
     }
@@ -685,6 +700,9 @@ struct MeshMapView: View {
                         sosActive: sosActive
                     )
                 }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Mesh topology map with \(topologyNodes.count) peer\(topologyNodes.count == 1 ? "" : "s")")
+                .accessibilityIdentifier(AccessibilityID.meshMapCanvas)
 
                 // Center node (self)
                 VStack(spacing: 4) {
@@ -707,6 +725,9 @@ struct MeshMapView: View {
                 // Health score overlaid at center, offset below the node
                 HealthScoreView(score: cachedHealthScore)
                     .position(x: center.x, y: center.y + 52)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Mesh health score: \(Int(cachedHealthScore * 100)) percent")
+                    .accessibilityIdentifier(AccessibilityID.meshHealthScore)
 
                 // "You" label
                 Text("You")
@@ -733,6 +754,10 @@ struct MeshMapView: View {
                             .lineLimit(1)
                     }
                     .position(point)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(node.name), \(node.hopCount) hop\(node.hopCount == 1 ? "" : "s") away, signal \(node.signalQuality > 0.7 ? "good" : node.signalQuality > 0.3 ? "fair" : "poor")")
+                    .accessibilityHint("Tap for details")
+                    .accessibilityAddTraits(.isButton)
                     .onTapGesture {
                         selectedNode = node
                     }
@@ -783,8 +808,10 @@ struct MeshMapView: View {
                     stats: appState.meshStats,
                     maxHops: maxHops
                 )
+                .accessibilityIdentifier(AccessibilityID.meshStatsBar)
             }
         }
+        .accessibilityIdentifier(AccessibilityID.meshMap)
         .navigationTitle("Mesh Network")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)

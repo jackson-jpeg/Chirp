@@ -2,7 +2,8 @@ import Foundation
 import OSLog
 
 @Observable
-final class StoreAndForwardRelay: @unchecked Sendable {
+@MainActor
+final class StoreAndForwardRelay {
 
     private let logger = Logger(subsystem: "com.chirpchirp.app", category: "StoreForward")
 

@@ -36,14 +36,26 @@ struct MessageBubbleView: View {
 
                     // Attachment indicator
                     if let attachment = message.attachmentType {
-                        attachmentBadge(attachment)
+                        if attachment == .location {
+                            // Render interactive location view instead of plain text
+                            LocationAttachmentView(
+                                text: message.text,
+                                viewerLocation: nil
+                            )
+                        } else {
+                            attachmentBadge(attachment)
+                            Text(message.text)
+                                .font(.system(.body, weight: .regular))
+                                .foregroundStyle(.white)
+                                .multilineTextAlignment(.leading)
+                        }
+                    } else {
+                        // Plain text message
+                        Text(message.text)
+                            .font(.system(.body, weight: .regular))
+                            .foregroundStyle(.white)
+                            .multilineTextAlignment(.leading)
                     }
-
-                    // Message text
-                    Text(message.text)
-                        .font(.system(.body, weight: .regular))
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.leading)
 
                     // Timestamp
                     Text(formattedTime)

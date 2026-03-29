@@ -29,11 +29,11 @@ struct AddFriendView: View {
                     .padding(.bottom, 40)
                 }
             }
-            .navigationTitle("Add Friend")
+            .navigationTitle(String(localized: "addFriend.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+                    Button(String(localized: "common.done")) { dismiss() }
                         .font(.system(.body, weight: .semibold))
                         .foregroundStyle(amber)
                 }
@@ -51,7 +51,7 @@ struct AddFriendView: View {
 
     private var yourCodeSection: some View {
         VStack(spacing: 14) {
-            Text("YOUR CHIRPCHIRP CODE")
+            Text(String(localized: "addFriend.yourCode.title"))
                 .font(.system(.caption2, weight: .bold))
                 .foregroundStyle(.secondary)
                 .tracking(1)
@@ -82,7 +82,7 @@ struct AddFriendView: View {
                         }
                     } label: {
                         Label(
-                            showCopied ? "Copied!" : "Copy",
+                            showCopied ? String(localized: "addFriend.yourCode.copied") : String(localized: "addFriend.yourCode.copy"),
                             systemImage: showCopied ? "checkmark.circle.fill" : "doc.on.doc"
                         )
                         .font(.system(.caption, weight: .semibold))
@@ -103,9 +103,9 @@ struct AddFriendView: View {
 
                     if !peerFingerprint.isEmpty {
                         ShareLink(
-                            item: "Add me on ChirpChirp! My code: \(peerFingerprint)"
+                            item: String(localized: "addFriend.yourCode.shareText \(peerFingerprint)")
                         ) {
-                            Label("Share", systemImage: "square.and.arrow.up")
+                            Label(String(localized: "addFriend.yourCode.share"), systemImage: "square.and.arrow.up")
                                 .font(.system(.caption, weight: .semibold))
                                 .foregroundStyle(amber)
                                 .padding(.horizontal, 14)
@@ -131,7 +131,7 @@ struct AddFriendView: View {
                     .shadow(color: amber.opacity(0.12), radius: 24, y: 2)
             )
 
-            Text("Share this code so friends can add you.")
+            Text(String(localized: "addFriend.yourCode.hint"))
                 .font(.system(.caption))
                 .foregroundStyle(.secondary)
         }
@@ -141,7 +141,7 @@ struct AddFriendView: View {
 
     private var addFriendSection: some View {
         VStack(spacing: 12) {
-            Text("ADD A FRIEND")
+            Text(String(localized: "addFriend.add.title"))
                 .font(.system(.caption2, weight: .bold))
                 .foregroundStyle(.secondary)
                 .tracking(1)
@@ -149,7 +149,7 @@ struct AddFriendView: View {
                 .padding(.leading, 4)
 
             VStack(spacing: 10) {
-                TextField("Their code", text: $friendCode)
+                TextField(String(localized: "addFriend.add.codePlaceholder"), text: $friendCode)
                     .textFieldStyle(.plain)
                     .font(.system(.body, design: .monospaced, weight: .medium))
                     .foregroundStyle(.white)
@@ -165,7 +165,7 @@ struct AddFriendView: View {
                             )
                     )
 
-                TextField("What to call them", text: $friendName)
+                TextField(String(localized: "addFriend.add.namePlaceholder"), text: $friendName)
                     .textFieldStyle(.plain)
                     .font(.system(.body, weight: .medium))
                     .foregroundStyle(.white)
@@ -182,7 +182,7 @@ struct AddFriendView: View {
                 Button {
                     addFriend()
                 } label: {
-                    Text("Add")
+                    Text(String(localized: "addFriend.add.button"))
                         .font(.system(.body, weight: .bold))
                         .foregroundStyle(canAdd ? .black : .white.opacity(0.3))
                         .frame(maxWidth: .infinity)
@@ -206,7 +206,7 @@ struct AddFriendView: View {
 
         return VStack(spacing: 12) {
             HStack {
-                Text("NEARBY")
+                Text(String(localized: "addFriend.nearby.title"))
                     .font(.system(.caption2, weight: .bold))
                     .foregroundStyle(.secondary)
                     .tracking(1)
@@ -234,7 +234,7 @@ struct AddFriendView: View {
                     }
                 }
 
-                Text("Scanning")
+                Text(String(localized: "addFriend.nearby.scanning"))
                     .font(.system(.caption2, weight: .medium))
                     .foregroundStyle(green.opacity(0.7))
             }
@@ -246,7 +246,7 @@ struct AddFriendView: View {
                         .font(.system(size: 24, weight: .light))
                         .foregroundStyle(.secondary.opacity(0.5))
 
-                    Text("Looking for people nearby...")
+                    Text(String(localized: "addFriend.nearby.lookingForPeople"))
                         .font(.system(.caption))
                         .foregroundStyle(.secondary)
                 }
@@ -280,7 +280,7 @@ struct AddFriendView: View {
                                     .font(.system(.body, weight: .medium))
                                     .foregroundStyle(.white)
 
-                                Text("In range")
+                                Text(String(localized: "addFriend.nearby.inRange"))
                                     .font(.system(.caption))
                                     .foregroundStyle(green.opacity(0.8))
                             }
@@ -293,7 +293,7 @@ struct AddFriendView: View {
                                     name: peer.name
                                 )
                             } label: {
-                                Text("Add")
+                                Text(String(localized: "addFriend.nearby.add"))
                                     .font(.system(.caption, weight: .bold))
                                     .foregroundStyle(.black)
                                     .padding(.horizontal, 14)

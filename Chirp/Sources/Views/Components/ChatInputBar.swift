@@ -45,6 +45,7 @@ struct ChatInputBar: View {
                             }
                         }
                         .accessibilityLabel("Message input")
+                        .accessibilityIdentifier(AccessibilityID.chatInputField)
 
                     // Character counter (visible near limit)
                     if text.count >= characterWarningThreshold {
@@ -126,6 +127,7 @@ struct ChatInputBar: View {
                 .frame(width: 36, height: 36)
         }
         .accessibilityLabel("Attachments")
+        .accessibilityIdentifier(AccessibilityID.chatAttachmentMenu)
     }
 
     // MARK: - Send Button
@@ -143,6 +145,8 @@ struct ChatInputBar: View {
         }
         .disabled(!canSend)
         .accessibilityLabel("Send message")
+        .accessibilityHint(canSend ? "Sends your message to the channel" : "Type a message first")
+        .accessibilityIdentifier(AccessibilityID.chatSendButton)
         .animation(.easeInOut(duration: 0.15), value: canSend)
     }
 }

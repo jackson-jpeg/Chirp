@@ -93,6 +93,8 @@ struct StatusPillView: View {
                 )
                 .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Connection: \(status.text)")
         .animation(.easeInOut(duration: 0.3), value: statusKey)
         .onAppear {
             startPulseIfNeeded()

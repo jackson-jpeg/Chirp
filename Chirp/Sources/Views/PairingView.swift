@@ -1,10 +1,6 @@
 import SwiftUI
-#if canImport(WiFiAware)
 import WiFiAware
-#endif
-#if canImport(DeviceDiscoveryUI)
 import DeviceDiscoveryUI
-#endif
 
 struct PairingView: View {
     @Environment(AppState.self) private var appState
@@ -85,36 +81,36 @@ struct PairingView: View {
             .multilineTextAlignment(.center)
 
         // Paired devices list
-        if !appState.wifiAwareManager.pairedDevices.isEmpty {
+        if let waTransport = appState.wifiAwareTransport, waTransport.pairedDeviceCount > 0 {
             VStack(alignment: .leading, spacing: 12) {
                 Text("PAIRED DEVICES")
                     .font(.system(.caption, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 20)
 
-                ForEach(Array(appState.wifiAwareManager.pairedDevices.enumerated()), id: \.offset) { _, device in
-                    HStack {
-                        Image(systemName: "iphone")
-                            .foregroundStyle(Color(hex: 0x30D158))
+                HStack {
+                    Image(systemName: "wifi")
+                        .foregroundStyle(Color(hex: 0x30D158))
 
-                        Text(String(describing: device))
-                            .foregroundStyle(.white)
+                    Text("\(waTransport.pairedDeviceCount) paired device\(waTransport.pairedDeviceCount == 1 ? "" : "s")")
+                        .foregroundStyle(.white)
 
-                        Spacer()
+                    Spacer()
 
-                        Image(systemName: "checkmark.circle.fill")
+                    if waTransport.connectedPeerCount > 0 {
+                        Text("\(waTransport.connectedPeerCount) connected")
+                            .font(.system(.caption, weight: .semibold))
                             .foregroundStyle(Color(hex: 0x30D158))
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .background(Color.white.opacity(0.05))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .padding(.horizontal, 16)
                 }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(Color.white.opacity(0.05))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .padding(.horizontal, 16)
             }
         }
 
-        #if canImport(DeviceDiscoveryUI) && canImport(WiFiAware)
         if let service = WAPublishableService.chirpPTT {
             DevicePairingView(
                 .wifiAware(.connecting(to: service, from: .selected([])))
@@ -128,7 +124,6 @@ struct PairingView: View {
             .frame(height: 200)
             .padding(.horizontal, 16)
         }
-        #endif
 
         Spacer()
     }

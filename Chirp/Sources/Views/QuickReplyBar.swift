@@ -46,6 +46,8 @@ struct QuickReplyBar: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Quick reply: \(reply.label)")
+        .accessibilityHint("Tap to send, hold to preview")
         .onLongPressGesture(minimumDuration: 0.5) {
             previewReply = reply
         }

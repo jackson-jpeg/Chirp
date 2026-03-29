@@ -29,6 +29,8 @@ struct SignalStrengthIndicator: View {
             }
             .frame(height: maxBarHeight, alignment: .bottom)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Signal strength \(level) of \(barCount)")
         .onAppear {
             animatedLevel = level.clamped(to: 0...barCount)
         }

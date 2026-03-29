@@ -8,6 +8,10 @@ import OSLog
 ///
 /// ALL packets are wrapped in MeshPacket format via the mesh router.
 /// There is no legacy code path -- every byte on the wire starts with meshMagic 0xAA.
+///
+/// `@unchecked Sendable` is required because MCSessionDelegate methods run on arbitrary
+/// internal queues. Mutable state (`peers`, `previousPeerCount`, `reconnectBackoff`) is
+/// dispatched to main queue via `updatePeerList()` to prevent data races with UI reads.
 final class MultipeerTransport: NSObject, @unchecked Sendable {
 
     // MARK: - Properties
@@ -173,9 +177,12 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
 
     // MARK: - Helpers
 
+    /// Update the peer list. Called from MCSession delegate (arbitrary queue),
+    /// so dispatches to main to avoid data races with UI reads.
     private func updatePeerList() {
-        let currentCount = session.connectedPeers.count
-        peers = session.connectedPeers.map { mcPeer in
+        let connectedPeers = session.connectedPeers
+        let currentCount = connectedPeers.count
+        let newPeers = connectedPeers.map { mcPeer in
             ChirpPeer(
                 id: mcPeer.displayName,
                 name: mcPeer.displayName,
@@ -183,20 +190,25 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
                 signalStrength: 3
             )
         }
-        onPeersChanged?(peers)
-        logger.info("Peers updated: \(self.peers.count) connected")
 
-        // Auto-reconnection: if we had peers but now have none, schedule reconnect
-        if currentCount == 0 && previousPeerCount > 0 {
-            scheduleReconnect()
-        } else if currentCount > 0 {
-            // We have peers again — cancel any pending reconnect and reset backoff
-            reconnectTask?.cancel()
-            reconnectTask = nil
-            reconnectBackoff = Self.initialBackoff
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.peers = newPeers
+            self.onPeersChanged?(newPeers)
+            self.logger.info("Peers updated: \(newPeers.count) connected")
+
+            // Auto-reconnection: if we had peers but now have none, schedule reconnect
+            if currentCount == 0 && self.previousPeerCount > 0 {
+                self.scheduleReconnect()
+            } else if currentCount > 0 {
+                // We have peers again — cancel any pending reconnect and reset backoff
+                self.reconnectTask?.cancel()
+                self.reconnectTask = nil
+                self.reconnectBackoff = Self.initialBackoff
+            }
+
+            self.previousPeerCount = currentCount
         }
-
-        previousPeerCount = currentCount
     }
 
     // MARK: - Auto-Reconnection

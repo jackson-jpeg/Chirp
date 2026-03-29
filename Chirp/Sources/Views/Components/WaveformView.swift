@@ -106,6 +106,8 @@ struct WaveformView: View {
         }
         .frame(height: maxBarHeight * 2 + 10)
         .drawingGroup()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Audio level waveform")
     }
 
     private func computeBarHeight(index: Int, level: CGFloat, time: Double) -> CGFloat {

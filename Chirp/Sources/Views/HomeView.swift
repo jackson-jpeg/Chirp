@@ -43,8 +43,8 @@ private struct GlassHeaderBar: View {
                     }
 
                     Text(peerCount > 0
-                         ? "\(peerCount) node\(peerCount == 1 ? "" : "s") in mesh"
-                         : "No mesh"
+                         ? String(localized: "home.header.nodesInMesh \(peerCount)")
+                         : String(localized: "home.header.noMesh")
                     )
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(peerCount > 0 ? Constants.Colors.electricGreen : .secondary)
@@ -262,6 +262,21 @@ private struct ChannelCard: View {
         ]
     }
 
+    private var channelAccessibilityLabel: String {
+        var parts = [channel.name]
+        parts.append("\(channel.activePeerCount) peer\(channel.activePeerCount == 1 ? "" : "s")")
+        if channel.accessMode == .locked {
+            parts.append("locked")
+        }
+        if isActive {
+            parts.append("currently active")
+        }
+        if unreadCount > 0 {
+            parts.append("\(unreadCount) unread")
+        }
+        return parts.joined(separator: ", ")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             // Top row: name + lock + badges
@@ -321,6 +336,10 @@ private struct ChannelCard: View {
                     .foregroundStyle(.white.opacity(0.3))
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(channelAccessibilityLabel)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier(AccessibilityID.channelCard)
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 22)
@@ -563,11 +582,11 @@ private struct ChannelEmptyState: View {
                 .frame(height: 28)
 
             VStack(spacing: 12) {
-                Text("Start your mesh network")
+                Text(String(localized: "home.emptyState.title"))
                     .font(.system(size: 26, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
-                Text("Create a channel and nearby devices\nwill connect automatically. No servers needed.")
+                Text(String(localized: "home.emptyState.subtitle"))
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(.white.opacity(0.4))
                     .multilineTextAlignment(.center)
@@ -591,11 +610,11 @@ private struct ChannelEmptyState: View {
                     }
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Create Channel")
+                        Text(String(localized: "home.emptyState.createChannel"))
                             .font(.system(size: 17, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
 
-                        Text("Infrastructure-free communication")
+                        Text(String(localized: "home.emptyState.createChannelSubtitle"))
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(.white.opacity(0.4))
                     }
@@ -680,7 +699,7 @@ private struct BottomQuickActions: View {
         HStack(spacing: 0) {
             QuickActionButton(
                 icon: "plus.bubble.fill",
-                label: "New Channel",
+                label: String(localized: "home.quickAction.newChannel"),
                 color: Constants.Colors.amber,
                 action: onNewChannel
             )
@@ -699,7 +718,7 @@ private struct BottomQuickActions: View {
 
                 QuickActionButton(
                     icon: "antenna.radiowaves.left.and.right",
-                    label: "Gateway",
+                    label: String(localized: "home.quickAction.gateway"),
                     color: Constants.Colors.electricGreen,
                     action: onGateway
                 )
@@ -921,6 +940,7 @@ struct HomeView: View {
                             .foregroundStyle(Constants.Colors.amber)
                     }
                     .accessibilityLabel("Mesh Map")
+                    .accessibilityIdentifier(AccessibilityID.meshMapButton)
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
@@ -932,6 +952,7 @@ struct HomeView: View {
                             .foregroundStyle(.secondary)
                     }
                     .accessibilityLabel("Settings")
+                    .accessibilityIdentifier(AccessibilityID.settingsButton)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -948,15 +969,20 @@ struct HomeView: View {
                     localPeerName: appState.localPeerName
                 )
             }
-            .alert("Activate SOS Beacon?", isPresented: $showSOSConfirm) {
-                Button("Send SOS", role: .destructive) {
+            .alert(String(localized: "home.sos.alertTitle"), isPresented: $showSOSConfirm) {
+                Button(String(localized: "home.sos.sendButton"), role: .destructive) {
                     activateSOS()
                 }
-                Button("Cancel", role: .cancel) {}
+                Button(String(localized: "common.cancel"), role: .cancel) {}
             } message: {
-                Text("This will broadcast an emergency signal to all nearby mesh devices. Use only in a real emergency.")
+                Text(String(localized: "home.sos.alertMessage"))
             }
             .chirpToast($toast)
+            .onChange(of: appState.proximityAlert.recentAlerts.count) { _, _ in
+                if let latest = appState.proximityAlert.recentAlerts.last {
+                    toast = ToastItem(message: "\(latest.friendName) is \(latest.distance)!", type: .info)
+                }
+            }
             .task {
                 while !Task.isCancelled {
                     let peers = await appState.peerTracker.connectedPeers
@@ -973,12 +999,12 @@ struct HomeView: View {
         VStack(spacing: 0) {
             // Section header with "See All" link
             HStack {
-                Text("Friends")
+                Text(String(localized: "home.friends.title"))
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.5))
 
                 if !appState.friendsManager.onlineFriends.isEmpty {
-                    Text("\(appState.friendsManager.onlineFriends.count) online")
+                    Text(String(localized: "home.friends.online \(appState.friendsManager.onlineFriends.count)"))
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundStyle(Constants.Colors.electricGreen.opacity(0.7))
                 }
@@ -988,7 +1014,7 @@ struct HomeView: View {
                 NavigationLink {
                     FriendsView()
                 } label: {
-                    Text("See All")
+                    Text(String(localized: "home.friends.seeAll"))
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundStyle(Constants.Colors.amber.opacity(0.7))
                 }
@@ -1050,7 +1076,7 @@ struct HomeView: View {
                                     appState.channelManager.deleteChannel(id: channel.id)
                                 }
                             } label: {
-                                Label("Delete Channel", systemImage: "trash")
+                                Label(String(localized: "home.channel.delete"), systemImage: "trash")
                             }
                         }
                     }

@@ -17,7 +17,7 @@ private struct CountdownOverlay: View {
             VStack(spacing: 32) {
                 Spacer()
 
-                Text("ACTIVATING SOS")
+                Text(String(localized: "emergency.countdown.activating"))
                     .font(.system(size: 14, weight: .black, design: .monospaced))
                     .foregroundStyle(Constants.Colors.hotRed)
                     .tracking(4)
@@ -39,14 +39,14 @@ private struct CountdownOverlay: View {
                         }
                     }
 
-                Text("Press cancel to abort")
+                Text(String(localized: "emergency.countdown.cancelHint"))
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(.white.opacity(0.5))
 
                 Spacer()
 
                 Button(action: onCancel) {
-                    Text("CANCEL")
+                    Text(String(localized: "emergency.countdown.cancel"))
                         .font(.system(size: 18, weight: .black, design: .rounded))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
@@ -60,6 +60,8 @@ private struct CountdownOverlay: View {
                                 )
                         )
                 }
+                .accessibilityLabel("Cancel SOS activation")
+                .accessibilityIdentifier(AccessibilityID.sosCancelButton)
                 .padding(.horizontal, 40)
                 .padding(.bottom, 60)
             }
@@ -139,7 +141,7 @@ private struct SOSButton: View {
                             .foregroundStyle(.white)
 
                         if isActive {
-                            Text("ACTIVE")
+                            Text(String(localized: "emergency.sos.active"))
                                 .font(.system(size: 12, weight: .black, design: .monospaced))
                                 .foregroundStyle(.white.opacity(0.8))
                                 .tracking(2)
@@ -148,6 +150,9 @@ private struct SOSButton: View {
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(isActive ? "SOS beacon active. Tap to deactivate" : "Activate SOS beacon")
+            .accessibilityHint(isActive ? "Stops broadcasting emergency signal" : "Broadcasts emergency signal to all nearby mesh devices")
+            .accessibilityIdentifier(AccessibilityID.sosActivateButton)
         }
         .onAppear {
             guard isActive else { return }
@@ -341,7 +346,7 @@ struct EmergencySOSView: View {
                                 ProgressView(value: emergencyHoldProgress)
                                     .tint(Constants.Colors.emergencyRed)
                                     .frame(width: 120)
-                                Text("Hold for Emergency Mode")
+                                Text(String(localized: "emergency.holdForEmergencyMode"))
                                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                                     .foregroundStyle(Constants.Colors.emergencyRed.opacity(0.8))
                             }
@@ -383,13 +388,13 @@ struct EmergencySOSView: View {
                 .transition(.opacity)
             }
         }
-        .navigationTitle("Emergency SOS")
+        .navigationTitle(String(localized: "emergency.title"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             if beacon.isActive {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Deactivate") {
+                    Button(String(localized: "emergency.deactivate")) {
                         beacon.deactivate()
                     }
                     .font(.system(size: 14, weight: .bold))
@@ -419,14 +424,14 @@ struct EmergencySOSView: View {
                 .font(.system(size: 28, weight: .black))
                 .foregroundStyle(red)
 
-            Text("EMERGENCY BEACON")
+            Text(String(localized: "emergency.header.beacon"))
                 .font(.system(size: 13, weight: .black, design: .monospaced))
                 .foregroundStyle(red.opacity(0.8))
                 .tracking(3)
 
             Text(beacon.isActive
-                 ? "Broadcasting SOS to mesh network"
-                 : "Tap SOS to broadcast your location")
+                 ? String(localized: "emergency.header.broadcasting")
+                 : String(localized: "emergency.header.tapToActivate"))
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(.white.opacity(0.5))
                 .multilineTextAlignment(.center)
@@ -441,14 +446,14 @@ struct EmergencySOSView: View {
             HStack(spacing: 20) {
                 statusPill(
                     icon: "antenna.radiowaves.left.and.right",
-                    label: "Broadcasts",
+                    label: String(localized: "emergency.status.broadcasts"),
                     value: "\(beacon.broadcastCount)",
                     color: red
                 )
 
                 statusPill(
                     icon: "point.3.connected.trianglepath.dotted",
-                    label: "Mesh Nodes",
+                    label: String(localized: "emergency.status.meshNodes"),
                     value: "\(appState.connectedPeerCount)",
                     color: amber
                 )
@@ -462,13 +467,13 @@ struct EmergencySOSView: View {
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(battery > 0.2 ? Constants.Colors.electricGreen : red)
 
-                    Text("\(Int(battery * 100))% battery remaining")
+                    Text(String(localized: "emergency.status.batteryRemaining \(Int(battery * 100))"))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.6))
                 }
             }
 
-            Text("Broadcasting to \(appState.connectedPeerCount) mesh node\(appState.connectedPeerCount == 1 ? "" : "s")")
+            Text(String(localized: "emergency.status.broadcastingTo \(appState.connectedPeerCount)"))
                 .font(.system(size: 15, weight: .bold, design: .rounded))
                 .foregroundStyle(red)
         }
@@ -479,13 +484,13 @@ struct EmergencySOSView: View {
     private var inactiveInfoSection: some View {
         VStack(spacing: 16) {
             infoRow(icon: "antenna.radiowaves.left.and.right",
-                    text: "Broadcasts every 5 seconds at max range (TTL 8)")
+                    text: String(localized: "emergency.info.broadcastFrequency"))
             infoRow(icon: "location.fill",
-                    text: "Includes your GPS coordinates and battery level")
+                    text: String(localized: "emergency.info.includesGPS"))
             infoRow(icon: "bell.badge.fill",
-                    text: "All mesh devices show an alert with your location")
+                    text: String(localized: "emergency.info.alertDevices"))
             infoRow(icon: "moon.fill",
-                    text: "Continues broadcasting even when app is backgrounded")
+                    text: String(localized: "emergency.info.backgroundBroadcast"))
         }
         .padding(20)
         .background(
@@ -522,7 +527,7 @@ struct EmergencySOSView: View {
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(amber)
 
-                Text("CURRENT POSITION")
+                Text(String(localized: "emergency.coordinates.currentPosition"))
                     .font(.system(size: 11, weight: .black, design: .monospaced))
                     .foregroundStyle(amber.opacity(0.7))
                     .tracking(2)
@@ -542,7 +547,7 @@ struct EmergencySOSView: View {
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundStyle(.white.opacity(0.35))
             } else {
-                Text("Acquiring GPS signal...")
+                Text(String(localized: "emergency.coordinates.acquiringGPS"))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.white.opacity(0.4))
             }
@@ -568,7 +573,7 @@ struct EmergencySOSView: View {
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(red)
 
-                Text("INCOMING SOS ALERTS")
+                Text(String(localized: "emergency.alerts.incoming"))
                     .font(.system(size: 11, weight: .black, design: .monospaced))
                     .foregroundStyle(red.opacity(0.8))
                     .tracking(2)
@@ -670,7 +675,7 @@ struct EmergencySOSView: View {
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(Constants.Colors.emergencyRed)
 
-                Text("EMERGENCY MODE")
+                Text(String(localized: "emergency.emergencyMode.title"))
                     .font(.system(size: 11, weight: .black, design: .monospaced))
                     .foregroundStyle(Constants.Colors.emergencyRed.opacity(0.8))
                     .tracking(2)
@@ -696,23 +701,23 @@ struct EmergencySOSView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     emergencyInfoRow(
                         icon: "bolt.fill",
-                        text: "Max TTL (\(emergencyMode.maxTTL) hops), relay everything"
+                        text: String(localized: "emergency.emergencyMode.maxTTL \(emergencyMode.maxTTL)")
                     )
                     emergencyInfoRow(
                         icon: "waveform",
-                        text: "Low-bandwidth audio (8 kbps)"
+                        text: String(localized: "emergency.emergencyMode.lowBandwidth")
                     )
                     emergencyInfoRow(
                         icon: "location.fill",
-                        text: "Location broadcast every \(Int(emergencyMode.locationBroadcastInterval))s"
+                        text: String(localized: "emergency.emergencyMode.locationBroadcast \(Int(emergencyMode.locationBroadcastInterval))")
                     )
                     emergencyInfoRow(
                         icon: "antenna.radiowaves.left.and.right",
-                        text: "Beacon interval \(Int(emergencyMode.beaconInterval))s"
+                        text: String(localized: "emergency.emergencyMode.beaconInterval \(Int(emergencyMode.beaconInterval))")
                     )
                 }
             } else {
-                Text("Optimizes the app for disaster scenarios: max range, aggressive relay, low-bandwidth audio, and periodic location sharing.")
+                Text(String(localized: "emergency.emergencyMode.description"))
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.white.opacity(0.4))
                     .fixedSize(horizontal: false, vertical: true)

@@ -99,6 +99,7 @@ struct PerchBirdsView: View {
 
         }
         .frame(width: size, height: size * 0.6)
+        .accessibilityHidden(true)
         .onAppear {
             guard isAnimating else { return }
             startAnimations()

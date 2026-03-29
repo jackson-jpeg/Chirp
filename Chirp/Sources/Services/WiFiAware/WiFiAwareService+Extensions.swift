@@ -1,4 +1,3 @@
-#if canImport(WiFiAware)
 import WiFiAware
 
 extension WAPublishableService {
@@ -12,4 +11,3 @@ extension WASubscribableService {
         allServices["_chirp-ptt._udp"]
     }
 }
-#endif

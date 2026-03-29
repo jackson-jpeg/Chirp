@@ -14,7 +14,8 @@ import OSLog
 /// For now the gateway logs the attempt, increments ``sentCount``, and marks the
 /// message as sent so the UI can show progress.
 @Observable
-final class MeshGateway: @unchecked Sendable {
+@MainActor
+final class MeshGateway {
 
     static let shared = MeshGateway()
 

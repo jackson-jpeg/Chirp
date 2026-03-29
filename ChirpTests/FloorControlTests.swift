@@ -1,6 +1,7 @@
 import XCTest
 @testable import Chirp
 
+@MainActor
 final class FloorControlTests: XCTestCase {
 
     private var controller: FloorController!

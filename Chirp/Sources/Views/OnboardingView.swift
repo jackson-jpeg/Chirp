@@ -286,7 +286,7 @@ private struct ShimmerGetStartedButton: View {
 
     var body: some View {
         Button(action: action) {
-            Text("Get Started")
+            Text(String(localized: "onboarding.getStarted"))
                 .font(.system(size: 18, weight: .bold, design: .rounded))
                 .foregroundStyle(.black)
                 .frame(maxWidth: .infinity)
@@ -332,6 +332,7 @@ private struct ShimmerGetStartedButton: View {
             }
         }
         .accessibilityLabel("Get Started")
+        .accessibilityIdentifier(AccessibilityID.getStartedButton)
     }
 }
 
@@ -395,14 +396,16 @@ private struct EncryptionIllustration: View {
 private struct UseCasesIllustration: View {
     @State private var visibleCount = 0
 
-    private let useCases: [(icon: String, label: String)] = [
-        ("tornado", "Disasters"),
-        ("music.note.house.fill", "Concerts"),
-        ("figure.hiking", "Off-Grid"),
-        ("hand.raised.fill", "Protests"),
-        ("mountain.2.fill", "Adventures"),
-        ("building.2.fill", "Emergencies"),
-    ]
+    private var useCases: [(icon: String, label: String)] {
+        [
+            ("tornado", String(localized: "onboarding.useCase.disasters")),
+            ("music.note.house.fill", String(localized: "onboarding.useCase.concerts")),
+            ("figure.hiking", String(localized: "onboarding.useCase.offGrid")),
+            ("hand.raised.fill", String(localized: "onboarding.useCase.protests")),
+            ("mountain.2.fill", String(localized: "onboarding.useCase.adventures")),
+            ("building.2.fill", String(localized: "onboarding.useCase.emergencies")),
+        ]
+    }
 
     var body: some View {
         let amber = Constants.Colors.amber
@@ -465,10 +468,10 @@ private struct TalkChatIllustration: View {
                         .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(.black)
                 }
-                Text("Voice")
+                Text(String(localized: "onboarding.talkChat.voice"))
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.7))
-                Text("Speed")
+                Text(String(localized: "onboarding.talkChat.speed"))
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.white.opacity(0.35))
             }
@@ -490,10 +493,10 @@ private struct TalkChatIllustration: View {
                         .font(.system(size: 28, weight: .medium))
                         .foregroundStyle(amber)
                 }
-                Text("Text")
+                Text(String(localized: "onboarding.talkChat.text"))
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.7))
-                Text("Stealth")
+                Text(String(localized: "onboarding.talkChat.stealth"))
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.white.opacity(0.35))
             }
@@ -525,32 +528,32 @@ struct OnboardingView: View {
     private var pages: [(title: String, subtitle: String, color: Color, illustration: AnyView)] {
         [
             (
-                "No towers. No internet.\nNo problem.",
-                "ChirpChirp works when nothing else does. Your phone connects directly to nearby devices.",
+                String(localized: "onboarding.page1.title"),
+                String(localized: "onboarding.page1.subtitle"),
                 Constants.Colors.hotRed,
                 AnyView(TowerDownIllustration())
             ),
             (
-                "Every phone extends\nthe network.",
-                "Your phone helps others communicate, and theirs helps you. The mesh grows with every user.",
+                String(localized: "onboarding.page2.title"),
+                String(localized: "onboarding.page2.subtitle"),
                 Constants.Colors.amber,
                 AnyView(MeshNetworkIllustration())
             ),
             (
-                "Talk or text.",
-                "Voice for speed. Text for stealth and efficiency. Both work across the mesh.",
+                String(localized: "onboarding.page3.title"),
+                String(localized: "onboarding.page3.subtitle"),
                 Constants.Colors.amber,
                 AnyView(TalkChatIllustration())
             ),
             (
-                "Private by default.",
-                "End-to-end encrypted. No servers. No accounts. No data collection. Ever.",
+                String(localized: "onboarding.page4.title"),
+                String(localized: "onboarding.page4.subtitle"),
                 Constants.Colors.electricGreen,
                 AnyView(EncryptionIllustration())
             ),
             (
-                "Built for when\nit matters most.",
-                "Natural disasters. Concerts. Protests. Off-grid adventures. Anywhere communication fails.",
+                String(localized: "onboarding.page5.title"),
+                String(localized: "onboarding.page5.subtitle"),
                 Constants.Colors.amber,
                 AnyView(UseCasesIllustration())
             ),
@@ -576,7 +579,7 @@ struct OnboardingView: View {
                     .padding(.bottom, 4)
 
                 // Tagline
-                Text("Infrastructure-free communication.")
+                Text(String(localized: "onboarding.tagline"))
                     .font(.system(size: 15, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.45))
                     .opacity(taglineOpacity)
@@ -638,7 +641,7 @@ struct OnboardingView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "wifi.slash")
                         .font(.system(size: 11, weight: .semibold))
-                    Text("No internet required")
+                    Text(String(localized: "onboarding.noInternetRequired"))
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                 }
                 .foregroundStyle(amber.opacity(0.6))

@@ -37,8 +37,8 @@ struct GatewayMessageView: View {
 
         var placeholder: String {
             switch self {
-            case .sms: return "Phone number"
-            case .email: return "Email address"
+            case .sms: return String(localized: "gateway.recipient.phonePlaceholder")
+            case .email: return String(localized: "gateway.recipient.emailPlaceholder")
             }
         }
 
@@ -89,11 +89,11 @@ struct GatewayMessageView: View {
                     .padding(20)
                 }
             }
-            .navigationTitle("Gateway Message")
+            .navigationTitle(String(localized: "gateway.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
+                    Button(String(localized: "common.cancel")) {
                         dismiss()
                     }
                     .foregroundStyle(amber)
@@ -125,7 +125,7 @@ struct GatewayMessageView: View {
             }
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(gateway.gatewayAvailable ? "Gateway Available" : "No Gateway in Mesh")
+                Text(gateway.gatewayAvailable ? String(localized: "gateway.status.available") : String(localized: "gateway.status.noGateway"))
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
@@ -165,7 +165,7 @@ struct GatewayMessageView: View {
 
     private var gatewayStatusSubtitle: String {
         if gateway.isGatewayNode {
-            return "This device has internet — relaying for mesh"
+            return String(localized: "gateway.status.relayingForMesh")
         } else if !gateway.knownGateways.isEmpty {
             let count = gateway.knownGateways.count
             let name = gateway.knownGateways.values.first?.peerName ?? "unknown"
@@ -174,7 +174,7 @@ struct GatewayMessageView: View {
             }
             return "\(count) gateways available"
         }
-        return "Messages will queue until a gateway appears"
+        return String(localized: "gateway.status.willQueue")
     }
 
     // MARK: - Delivery Mode
@@ -217,7 +217,7 @@ struct GatewayMessageView: View {
 
     private var recipientInput: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(deliveryMode == .sms ? "Recipient Phone" : "Recipient Email")
+            Text(deliveryMode == .sms ? String(localized: "gateway.recipient.phoneLabel") : String(localized: "gateway.recipient.emailLabel"))
                 .font(.system(size: 12, weight: .bold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.4))
                 .textCase(.uppercase)
@@ -272,7 +272,7 @@ struct GatewayMessageView: View {
     private var messageInput: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Message")
+                Text(String(localized: "gateway.message.label"))
                     .font(.system(size: 12, weight: .bold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.4))
                     .textCase(.uppercase)
@@ -317,7 +317,7 @@ struct GatewayMessageView: View {
                 Image(systemName: "paperplane.fill")
                     .font(.system(size: 15, weight: .semibold))
 
-                Text(gateway.gatewayAvailable ? "Send via Gateway" : "Queue for Gateway")
+                Text(gateway.gatewayAvailable ? String(localized: "gateway.send.sendVia") : String(localized: "gateway.send.queue"))
                     .font(.system(size: 16, weight: .bold, design: .rounded))
             }
             .foregroundStyle(canSend ? .black : .white.opacity(0.3))
@@ -374,13 +374,13 @@ struct GatewayMessageView: View {
                 .font(.system(size: 48, weight: .medium))
                 .foregroundStyle(gateway.gatewayAvailable ? green : amber)
 
-            Text(gateway.gatewayAvailable ? "Sent!" : "Queued")
+            Text(gateway.gatewayAvailable ? String(localized: "gateway.confirmation.sent") : String(localized: "gateway.confirmation.queued"))
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
 
             Text(gateway.gatewayAvailable
-                 ? "Message delivered via gateway"
-                 : "Message queued for next gateway")
+                 ? String(localized: "gateway.confirmation.deliveredMessage")
+                 : String(localized: "gateway.confirmation.queuedMessage"))
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(.white.opacity(0.5))
         }
@@ -492,11 +492,11 @@ private struct CountryCodePicker: View {
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
             }
-            .navigationTitle("Country Code")
+            .navigationTitle(String(localized: "gateway.countryCode.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+                    Button(String(localized: "common.done")) { dismiss() }
                         .foregroundStyle(amber)
                 }
             }

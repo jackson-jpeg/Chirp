@@ -124,6 +124,7 @@ struct ChirpToastView: View {
                         .frame(width: 22, height: 22)
                         .background(Circle().fill(Color.white.opacity(0.1)))
                 }
+                .accessibilityLabel("Dismiss notification")
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 11)
