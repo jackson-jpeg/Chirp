@@ -1,77 +1,186 @@
 import SwiftUI
 
-// MARK: - Glass Bar Header
+// MARK: - Glass Header Bar (Revamped)
 
 private struct GlassHeaderBar: View {
     let callsign: String
     let peerCount: Int
 
-    private let amber = Color(hex: 0xFFB800)
-    private let green = Color(hex: 0x30D158)
+    @State private var pulseOpacity: Double = 0.6
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Logo mark with perch birds
-            HStack(spacing: 6) {
-                PerchBirdsView(size: 36, isAnimating: true)
-                    .frame(width: 36, height: 22)
+        VStack(spacing: 0) {
+            HStack(spacing: 14) {
+                // Logo mark — larger, more prominent
+                HStack(spacing: 8) {
+                    PerchBirdsView(size: 44, isAnimating: true)
+                        .frame(width: 44, height: 28)
 
-                Text("ChirpChirp")
-                    .font(.system(size: 16, weight: .heavy, design: .rounded))
-                    .foregroundStyle(amber)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("ChirpChirp")
+                            .font(.system(size: 20, weight: .heavy, design: .rounded))
+                            .foregroundStyle(Constants.Colors.amber)
+
+                        Text(callsign)
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.45))
+                    }
+                }
+
+                Spacer()
+
+                // Mesh node count — prominent with animated pulse
+                HStack(spacing: 6) {
+                    ZStack {
+                        if peerCount > 0 {
+                            Circle()
+                                .fill(Constants.Colors.electricGreen.opacity(pulseOpacity * 0.5))
+                                .frame(width: 14, height: 14)
+                        }
+                        Circle()
+                            .fill(peerCount > 0 ? Constants.Colors.electricGreen : Color.gray.opacity(0.4))
+                            .frame(width: 8, height: 8)
+                    }
+
+                    Text(peerCount > 0
+                         ? "\(peerCount) node\(peerCount == 1 ? "" : "s") in mesh"
+                         : "No mesh"
+                    )
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(peerCount > 0 ? Constants.Colors.electricGreen : .secondary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(.ultraThinMaterial)
+                        .environment(\.colorScheme, .dark)
+                        .overlay(
+                            Capsule()
+                                .stroke(
+                                    peerCount > 0
+                                        ? Constants.Colors.electricGreen.opacity(0.2)
+                                        : Color.white.opacity(0.06),
+                                    lineWidth: 0.5
+                                )
+                        )
+                )
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .environment(\.colorScheme, .dark)
+                    .overlay(
+                        Rectangle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.06),
+                                        Color.clear,
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                    )
+            )
+        }
+        .onAppear {
+            guard peerCount > 0 else { return }
+            withAnimation(
+                .easeInOut(duration: 1.8)
+                    .repeatForever(autoreverses: true)
+            ) {
+                pulseOpacity = 0.15
+            }
+        }
+    }
+}
+
+// MARK: - Mesh Status Bar
+
+private struct MeshStatusBar: View {
+    let peerCount: Int
+    let meshStats: MeshStats?
+
+    @State private var gradientOffset: CGFloat = 0
+
+    private var maxHops: Int {
+        Int(meshStats?.maxHops ?? 0)
+    }
+
+    private var estimatedRange: Int {
+        meshStats?.estimatedRangeMeters ?? (peerCount * 80)
+    }
+
+    private var meshHealthColor: Color {
+        if peerCount >= 3 { return Constants.Colors.electricGreen }
+        if peerCount >= 1 { return Constants.Colors.amber }
+        return Color.gray
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Text("\(peerCount) node\(peerCount == 1 ? "" : "s")")
+                .foregroundStyle(.white.opacity(0.6))
+
+            separator
+
+            Text("\(maxHops) hop\(maxHops == 1 ? "" : "s")")
+                .foregroundStyle(.white.opacity(0.6))
+
+            separator
+
+            Text("~\(estimatedRange)m range")
+                .foregroundStyle(.white.opacity(0.6))
 
             Spacer()
 
-            // Callsign
-            Text(callsign)
-                .font(.system(size: 13, weight: .bold, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.8))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(
-                    Capsule()
-                        .fill(.white.opacity(0.08))
-                )
-
-            // Peer count
-            HStack(spacing: 5) {
-                Circle()
-                    .fill(peerCount > 0 ? green : Color.gray.opacity(0.4))
-                    .frame(width: 7, height: 7)
-
-                Text("\(peerCount)")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(peerCount > 0 ? green : .secondary)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(
-                Capsule()
-                    .fill(.ultraThinMaterial)
-                    .environment(\.colorScheme, .dark)
-            )
+            // Health indicator dot
+            Circle()
+                .fill(meshHealthColor)
+                .frame(width: 6, height: 6)
         }
+        .font(.system(size: 11, weight: .medium, design: .monospaced))
         .padding(.horizontal, 20)
-        .padding(.vertical, 12)
+        .padding(.vertical, 8)
         .background(
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .environment(\.colorScheme, .dark)
-                .overlay(
-                    Rectangle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.05),
-                                    Color.clear,
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                )
+            ZStack {
+                Rectangle()
+                    .fill(Color.black.opacity(0.5))
+
+                // Animated gradient bar based on mesh health
+                GeometryReader { geo in
+                    LinearGradient(
+                        colors: [
+                            meshHealthColor.opacity(0.0),
+                            meshHealthColor.opacity(0.08),
+                            meshHealthColor.opacity(0.0),
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(width: geo.size.width * 0.5)
+                    .offset(x: gradientOffset * geo.size.width)
+                }
+                .clipped()
+            }
         )
+        .onAppear {
+            withAnimation(
+                .linear(duration: 4.0)
+                    .repeatForever(autoreverses: true)
+            ) {
+                gradientOffset = 0.6
+            }
+        }
+    }
+
+    private var separator: some View {
+        Text("  |  ")
+            .foregroundStyle(.white.opacity(0.15))
     }
 }
 
@@ -81,13 +190,10 @@ private struct FriendAvatarBubble: View {
     let friend: ChirpFriend
     let action: () -> Void
 
-    private let green = Color(hex: 0x30D158)
-
     var body: some View {
         Button(action: action) {
             VStack(spacing: 6) {
                 ZStack(alignment: .bottomTrailing) {
-                    // Avatar circle with initial
                     Circle()
                         .fill(
                             LinearGradient(
@@ -106,10 +212,9 @@ private struct FriendAvatarBubble: View {
                                 .foregroundStyle(.white)
                         )
 
-                    // Online dot
                     if friend.isOnline {
                         Circle()
-                            .fill(green)
+                            .fill(Constants.Colors.electricGreen)
                             .frame(width: 14, height: 14)
                             .overlay(
                                 Circle()
@@ -125,6 +230,7 @@ private struct FriendAvatarBubble: View {
                     .lineLimit(1)
             }
         }
+        .accessibilityLabel("\(friend.name), \(friend.isOnline ? "online" : "offline")")
         .frame(width: 64)
     }
 
@@ -135,18 +241,16 @@ private struct FriendAvatarBubble: View {
     }
 }
 
-// MARK: - Channel Card
+// MARK: - Channel Card (Enhanced)
 
 private struct ChannelCard: View {
     let channel: ChirpChannel
     let isActive: Bool
     let friends: [ChirpFriend]
+    let unreadCount: Int
 
     @State private var borderPhase: CGFloat = 0.0
-    @State private var pressed = false
-
-    private let amber = Color(hex: 0xFFB800)
-    private let green = Color(hex: 0x30D158)
+    @State private var glowIntensity: Double = 0.0
 
     private var gradientColors: [Color] {
         let hash = abs(channel.name.hashValue)
@@ -160,7 +264,7 @@ private struct ChannelCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            // Top row: name + lock + live badge
+            // Top row: name + lock + badges
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
@@ -175,22 +279,39 @@ private struct ChannelCard: View {
                         }
                     }
 
-                    // Time since creation
-                    Text(channel.createdAt.relativeDisplay)
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.35))
+                    // Time since creation + hop indicator
+                    HStack(spacing: 10) {
+                        Text(channel.createdAt.relativeDisplay)
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.35))
+
+                        // Mesh hop reach indicator
+                        HStack(spacing: 3) {
+                            Image(systemName: "point.3.connected.trianglepath.dotted")
+                                .font(.system(size: 9, weight: .bold))
+                            Text("\(channel.activePeerCount) peer\(channel.activePeerCount == 1 ? "" : "s")")
+                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        }
+                        .foregroundStyle(Constants.Colors.amber.opacity(0.5))
+                    }
                 }
 
                 Spacer()
 
-                if isActive {
-                    LiveBadge()
+                // Badges column
+                VStack(alignment: .trailing, spacing: 6) {
+                    if isActive {
+                        LiveBadge()
+                    }
+
+                    if unreadCount > 0 {
+                        UnreadBadge(count: unreadCount)
+                    }
                 }
             }
 
             // Bottom row: peer avatars + arrow
             HStack(spacing: 0) {
-                // Stacked peer avatars
                 peerAvatarStack
 
                 Spacer()
@@ -220,25 +341,23 @@ private struct ChannelCard: View {
             RoundedRectangle(cornerRadius: 22)
                 .stroke(
                     isActive
-                        ? amber.opacity(0.5 + Foundation.sin(borderPhase) * 0.3)
+                        ? Constants.Colors.amber.opacity(0.6 + glowIntensity * 0.3)
                         : Color.white.opacity(0.06),
-                    lineWidth: isActive ? 1.5 : 0.5
+                    lineWidth: isActive ? 2.0 : 0.5
                 )
         )
         .shadow(
-            color: isActive ? amber.opacity(0.15) : Color.black.opacity(0.3),
-            radius: isActive ? 20 : 10,
+            color: isActive ? Constants.Colors.amber.opacity(0.2 + glowIntensity * 0.15) : Color.black.opacity(0.3),
+            radius: isActive ? 24 : 10,
             y: 6
         )
-        .scaleEffect(pressed ? 0.97 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: pressed)
         .onAppear {
             guard isActive else { return }
             withAnimation(
                 .easeInOut(duration: 2.0)
-                .repeatForever(autoreverses: true)
+                    .repeatForever(autoreverses: true)
             ) {
-                borderPhase = .pi * 2
+                glowIntensity = 1.0
             }
         }
     }
@@ -298,19 +417,36 @@ private struct ChannelCard: View {
     }
 }
 
+// MARK: - Unread Badge
+
+private struct UnreadBadge: View {
+    let count: Int
+
+    var body: some View {
+        Text("\(min(count, 99))\(count > 99 ? "+" : "")")
+            .font(.system(size: 11, weight: .black, design: .rounded))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(
+                Capsule()
+                    .fill(Constants.Colors.amber)
+            )
+            .accessibilityLabel("\(count) unread message\(count == 1 ? "" : "s")")
+    }
+}
+
 // MARK: - Live Badge
 
 private struct LiveBadge: View {
     @State private var glowing = false
 
-    private let amber = Color(hex: 0xFFB800)
-
     var body: some View {
         HStack(spacing: 5) {
             Circle()
-                .fill(Color(hex: 0xFF3B30))
+                .fill(Constants.Colors.hotRed)
                 .frame(width: 7, height: 7)
-                .shadow(color: Color(hex: 0xFF3B30).opacity(glowing ? 0.8 : 0.2), radius: 4)
+                .shadow(color: Constants.Colors.hotRed.opacity(glowing ? 0.8 : 0.2), radius: 4)
 
             Text("LIVE")
                 .font(.system(size: 10, weight: .black, design: .rounded))
@@ -320,16 +456,16 @@ private struct LiveBadge: View {
         .padding(.vertical, 5)
         .background(
             Capsule()
-                .fill(Color(hex: 0xFF3B30).opacity(0.2))
+                .fill(Constants.Colors.hotRed.opacity(0.2))
                 .overlay(
                     Capsule()
-                        .stroke(Color(hex: 0xFF3B30).opacity(0.4), lineWidth: 0.5)
+                        .stroke(Constants.Colors.hotRed.opacity(0.4), lineWidth: 0.5)
                 )
         )
         .onAppear {
             withAnimation(
                 .easeInOut(duration: 1.0)
-                .repeatForever(autoreverses: true)
+                    .repeatForever(autoreverses: true)
             ) {
                 glowing = true
             }
@@ -337,90 +473,101 @@ private struct LiveBadge: View {
     }
 }
 
-// MARK: - Pulsing Glass FAB
+// MARK: - Mesh Network Illustration (Empty State)
 
-private struct GlassFAB: View {
-    let isEmpty: Bool
-    let action: () -> Void
-
-    @State private var pulseScale: CGFloat = 1.0
-    @State private var pulseOpacity: Double = 0.4
-
-    private let amber = Color(hex: 0xFFB800)
+private struct MeshNetworkIllustration: View {
+    @State private var nodePositions: [(CGFloat, CGFloat)] = [
+        (0.2, 0.3), (0.5, 0.15), (0.8, 0.35),
+        (0.35, 0.65), (0.65, 0.7), (0.5, 0.5),
+    ]
+    @State private var lineOpacity: Double = 0.0
+    @State private var nodeScale: CGFloat = 0.0
 
     var body: some View {
         ZStack {
-            if isEmpty {
-                Circle()
-                    .fill(amber.opacity(pulseOpacity))
-                    .frame(width: 64, height: 64)
-                    .scaleEffect(pulseScale)
+            // Connection lines
+            Canvas { context, size in
+                let points = nodePositions.map { CGPoint(x: $0.0 * size.width, y: $0.1 * size.height) }
+                let connections: [(Int, Int)] = [
+                    (0, 5), (1, 5), (2, 5), (3, 5), (4, 5),
+                    (0, 1), (1, 2), (3, 4), (0, 3),
+                ]
+
+                for (a, b) in connections {
+                    var path = Path()
+                    path.move(to: points[a])
+                    path.addLine(to: points[b])
+                    context.stroke(
+                        path,
+                        with: .color(Constants.Colors.amber.opacity(lineOpacity * 0.3)),
+                        lineWidth: 1
+                    )
+                }
             }
 
-            Button(action: action) {
-                Image(systemName: "plus")
-                    .font(.system(size: 26, weight: .bold))
-                    .foregroundStyle(.black)
-                    .frame(width: 64, height: 64)
-                    .background(
-                        ZStack {
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [amber, Color(hex: 0xFFC830)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                            Circle()
-                                .fill(.ultraThinMaterial.opacity(0.15))
-                                .environment(\.colorScheme, .dark)
-                        }
+            // Nodes
+            ForEach(0..<nodePositions.count, id: \.self) { index in
+                let pos = nodePositions[index]
+                let isCenter = index == 5
+                Circle()
+                    .fill(
+                        isCenter
+                            ? Constants.Colors.amber.opacity(0.8)
+                            : Constants.Colors.amber.opacity(0.4)
                     )
-                    .clipShape(Circle())
-                    .shadow(color: amber.opacity(0.5), radius: 20, y: 6)
+                    .frame(width: isCenter ? 12 : 8, height: isCenter ? 12 : 8)
+                    .shadow(color: Constants.Colors.amber.opacity(0.4), radius: isCenter ? 8 : 4)
+                    .scaleEffect(nodeScale)
+                    .position(
+                        x: pos.0 * 180,
+                        y: pos.1 * 120
+                    )
             }
         }
+        .frame(width: 180, height: 120)
         .onAppear {
-            guard isEmpty else { return }
-            withAnimation(
-                .easeInOut(duration: 1.5)
-                .repeatForever(autoreverses: true)
-            ) {
-                pulseScale = 1.7
-                pulseOpacity = 0.0
+            withAnimation(.spring(response: 0.8, dampingFraction: 0.6).delay(0.2)) {
+                nodeScale = 1.0
+            }
+            withAnimation(.easeIn(duration: 1.2).delay(0.5)) {
+                lineOpacity = 1.0
             }
         }
     }
 }
 
-// MARK: - Beautiful Empty State
+// MARK: - Enhanced Empty State
 
 private struct ChannelEmptyState: View {
     let onTap: () -> Void
 
     @State private var floatOffset: CGFloat = 0.0
 
-    private let amber = Color(hex: 0xFFB800)
-
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
-                .frame(height: 80)
+                .frame(height: 40)
 
-            // Perch birds mascot illustration
-            PerchBirdsView(size: 160, isAnimating: true)
+            // Mesh network illustration
+            MeshNetworkIllustration()
                 .offset(y: floatOffset)
 
             Spacer()
-                .frame(height: 32)
+                .frame(height: 20)
+
+            // Perch birds mascot
+            PerchBirdsView(size: 120, isAnimating: true)
+                .offset(y: floatOffset * 0.6)
+
+            Spacer()
+                .frame(height: 28)
 
             VStack(spacing: 12) {
-                Text("Create your first channel")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                Text("Start your mesh network")
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
-                Text("Channels let your group talk instantly.\nTap the card below to get started.")
+                Text("Create a channel and nearby devices\nwill connect automatically. No servers needed.")
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(.white.opacity(0.4))
                     .multilineTextAlignment(.center)
@@ -428,36 +575,36 @@ private struct ChannelEmptyState: View {
             }
 
             Spacer()
-                .frame(height: 32)
+                .frame(height: 36)
 
-            // Tappable card
+            // CTA card
             Button(action: onTap) {
                 HStack(spacing: 16) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 14)
-                            .fill(amber.opacity(0.12))
+                            .fill(Constants.Colors.amber.opacity(0.15))
                             .frame(width: 52, height: 52)
 
                         Image(systemName: "plus.bubble.fill")
                             .font(.system(size: 22, weight: .medium))
-                            .foregroundStyle(amber)
+                            .foregroundStyle(Constants.Colors.amber)
                     }
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("New Channel")
+                        Text("Create Channel")
                             .font(.system(size: 17, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
 
-                        Text("Start talking with friends nearby")
+                        Text("Infrastructure-free communication")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(.white.opacity(0.4))
                     }
 
                     Spacer()
 
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(amber.opacity(0.5))
+                    Image(systemName: "arrow.right.circle.fill")
+                        .font(.system(size: 24, weight: .medium))
+                        .foregroundStyle(Constants.Colors.amber.opacity(0.7))
                 }
                 .padding(18)
                 .background(
@@ -466,22 +613,120 @@ private struct ChannelEmptyState: View {
                         .environment(\.colorScheme, .dark)
                         .overlay(
                             RoundedRectangle(cornerRadius: 20)
-                                .stroke(amber.opacity(0.15), lineWidth: 0.5)
+                                .stroke(Constants.Colors.amber.opacity(0.2), lineWidth: 0.5)
                         )
                 )
+                .shadow(color: Constants.Colors.amber.opacity(0.1), radius: 16, y: 4)
             }
             .padding(.horizontal, 20)
+            .accessibilityLabel("Create your first channel")
 
             Spacer()
         }
         .onAppear {
             withAnimation(
                 .easeInOut(duration: 3.0)
-                .repeatForever(autoreverses: true)
+                    .repeatForever(autoreverses: true)
             ) {
                 floatOffset = -8
             }
         }
+    }
+}
+
+// MARK: - Quick Action Button
+
+private struct QuickActionButton: View {
+    let icon: String
+    let label: String
+    let color: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(color.opacity(0.12))
+                        .frame(width: 50, height: 50)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(color.opacity(0.15), lineWidth: 0.5)
+                        )
+
+                    Image(systemName: icon)
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(color)
+                }
+
+                Text(label)
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+        }
+        .accessibilityLabel(label)
+    }
+}
+
+// MARK: - Bottom Quick Actions
+
+private struct BottomQuickActions: View {
+    let onNewChannel: () -> Void
+    let onSOS: () -> Void
+    let gatewayAvailable: Bool
+    let onGateway: () -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            QuickActionButton(
+                icon: "plus.bubble.fill",
+                label: "New Channel",
+                color: Constants.Colors.amber,
+                action: onNewChannel
+            )
+
+            Spacer()
+
+            QuickActionButton(
+                icon: "sos",
+                label: "SOS",
+                color: Constants.Colors.hotRed,
+                action: onSOS
+            )
+
+            if gatewayAvailable {
+                Spacer()
+
+                QuickActionButton(
+                    icon: "antenna.radiowaves.left.and.right",
+                    label: "Gateway",
+                    color: Constants.Colors.electricGreen,
+                    action: onGateway
+                )
+            }
+        }
+        .padding(.horizontal, 40)
+        .padding(.vertical, 14)
+        .background(
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .environment(\.colorScheme, .dark)
+                .overlay(
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.clear, Color.white.opacity(0.03)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                )
+                .overlay(alignment: .top) {
+                    Rectangle()
+                        .fill(Color.white.opacity(0.06))
+                        .frame(height: 0.5)
+                }
+        )
     }
 }
 
@@ -497,274 +742,6 @@ private extension Date {
     }
 }
 
-// MARK: - Home View
-
-struct HomeView: View {
-    @Environment(AppState.self) private var appState
-
-    @State private var showChannelCreation = false
-    @State private var showPairing = false
-    @State private var toast: ToastItem?
-    @State private var connectedPeerCount = 0
-    @State private var isRefreshing = false
-    @State private var showSOSConfirm = false
-    @State private var sosHoldProgress: CGFloat = 0
-    @State private var pendingMessageCount: Int = 0
-
-    private let amber = Color(hex: 0xFFB800)
-    private let green = Color(hex: 0x30D158)
-
-    private var connectionStatus: ConnectionStatus {
-        let mpPeers = appState.connectedPeerCount
-
-        if mpPeers > 0 {
-            return .connected(peerCount: mpPeers)
-        }
-
-        return .searching
-    }
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                // Dark background
-                Color.black.ignoresSafeArea()
-
-                VStack(spacing: 0) {
-                    // Glass header bar
-                    GlassHeaderBar(
-                        callsign: appState.callsign,
-                        peerCount: appState.connectedPeerCount
-                    )
-
-                    // Friends quick-access row
-                    if !appState.friendsManager.friends.isEmpty {
-                        friendsQuickAccess
-                    }
-
-                    // Channel list or empty state
-                    channelListView
-                }
-
-                // Emergency mode overlay — always on top
-                EmergencyModeOverlay(emergencyMode: EmergencyMode.shared)
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    // SOS Emergency Button — requires long press to activate
-                    SOSToolbarButton(showConfirm: $showSOSConfirm)
-                }
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 16) {
-                        // Voice messages indicator
-                        ZStack(alignment: .topTrailing) {
-                            Image(systemName: "envelope.fill")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundStyle(pendingMessageCount > 0 ? amber : .secondary)
-
-                            if pendingMessageCount > 0 {
-                                Text("\(min(pendingMessageCount, 99))")
-                                    .font(.system(size: 9, weight: .black, design: .rounded))
-                                    .foregroundStyle(.white)
-                                    .frame(minWidth: 16, minHeight: 16)
-                                    .background(
-                                        Circle()
-                                            .fill(Color(hex: 0xFF3B30))
-                                    )
-                                    .offset(x: 8, y: -8)
-                            }
-                        }
-
-                        NavigationLink {
-                            MeshMapView()
-                        } label: {
-                            Image(systemName: "point.3.connected.trianglepath.dotted")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundStyle(amber)
-                        }
-
-                        NavigationLink {
-                            FriendsView()
-                        } label: {
-                            ZStack(alignment: .topTrailing) {
-                                Image(systemName: "person.2.fill")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundStyle(amber)
-
-                                if !appState.friendsManager.onlineFriends.isEmpty {
-                                    Circle()
-                                        .fill(green)
-                                        .frame(width: 8, height: 8)
-                                        .offset(x: 3, y: -3)
-                                }
-                            }
-                        }
-
-                        Button {
-                            showPairing = true
-                        } label: {
-                            Image(systemName: "antenna.radiowaves.left.and.right")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundStyle(amber)
-                        }
-
-                        NavigationLink {
-                            SettingsView()
-                        } label: {
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .sheet(isPresented: $showChannelCreation) {
-                ChannelCreationView()
-            }
-            .sheet(isPresented: $showPairing) {
-                PairingView()
-                    .onAppearAnimations()
-            }
-            .alert("Activate SOS Beacon?", isPresented: $showSOSConfirm) {
-                Button("Send SOS", role: .destructive) {
-                    activateSOS()
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This will broadcast an emergency signal to all nearby mesh devices. Use only in a real emergency.")
-            }
-            .chirpToast($toast)
-            .task {
-                while !Task.isCancelled {
-                    let peers = await appState.peerTracker.connectedPeers
-                    connectedPeerCount = peers.count
-                    try? await Task.sleep(for: .seconds(2))
-                }
-            }
-        }
-    }
-
-    // MARK: - Friends Quick Access
-
-    private var friendsQuickAccess: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 4) {
-                ForEach(
-                    appState.friendsManager.friends.sorted { a, b in
-                        // Online friends first
-                        if a.isOnline != b.isOnline { return a.isOnline }
-                        return a.name < b.name
-                    }
-                ) { friend in
-                    FriendAvatarBubble(friend: friend) {
-                        // Start direct channel with friend
-                        showChannelCreation = true
-                    }
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-        }
-        .background(
-            Rectangle()
-                .fill(Color.white.opacity(0.02))
-        )
-    }
-
-    // MARK: - Channel List
-
-    private var channelListView: some View {
-        ZStack(alignment: .bottomTrailing) {
-            ScrollView {
-                if appState.channelManager.channels.isEmpty {
-                    ChannelEmptyState {
-                        showChannelCreation = true
-                    }
-                } else {
-                    LazyVStack(spacing: 16) {
-                        ForEach(appState.channelManager.channels) { channel in
-                            let isActive = appState.channelManager.activeChannel?.id == channel.id
-
-                            NavigationLink {
-                                ChannelView(channel: channel)
-                            } label: {
-                                ChannelCard(
-                                    channel: channel,
-                                    isActive: isActive,
-                                    friends: appState.friendsManager.friends
-                                )
-                            }
-                            .contextMenu {
-                                Button(role: .destructive) {
-                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                        appState.channelManager.deleteChannel(id: channel.id)
-                                    }
-                                } label: {
-                                    Label("Delete Channel", systemImage: "trash")
-                                }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 20)
-                    .padding(.bottom, 100)
-                }
-            }
-            .refreshable {
-                await refreshPeerDiscovery()
-            }
-
-            // FAB
-            GlassFAB(
-                isEmpty: appState.channelManager.channels.isEmpty
-            ) {
-                showChannelCreation = true
-            }
-            .padding(.trailing, 20)
-            .padding(.bottom, 28)
-        }
-    }
-
-    // MARK: - Refresh
-
-    private func refreshPeerDiscovery() async {
-        isRefreshing = true
-        try? await Task.sleep(for: .seconds(1))
-        let peers = await appState.peerTracker.connectedPeers
-        connectedPeerCount = peers.count
-        isRefreshing = false
-    }
-
-    // MARK: - SOS
-
-    private func activateSOS() {
-        // Send an SOS control packet through the mesh with max TTL
-        let sosPayload: [String: String] = [
-            "type": "SOS",
-            "from": appState.callsign,
-            "peerID": appState.localPeerID,
-            "time": ISO8601DateFormatter().string(from: Date()),
-        ]
-        guard let data = try? JSONEncoder().encode(sosPayload) else { return }
-
-        Task {
-            let packet = await appState.meshRouter.createPacket(
-                type: .control,
-                payload: data,
-                channelID: "",  // Broadcast to all channels
-                sequenceNumber: 0,
-                priority: .critical  // SOS: maximum TTL and relay priority
-            )
-            // Forward to all peers
-            appState.multipeerTransport.forwardPacket(packet.serialize(), excludePeer: "")
-        }
-
-        toast = ToastItem(message: "SOS beacon activated", type: .error)
-    }
-}
-
 // MARK: - SOS Toolbar Button
 
 /// A long-press-activated SOS button that prevents accidental triggers.
@@ -776,29 +753,27 @@ private struct SOSToolbarButton: View {
     @State private var holdProgress: CGFloat = 0
     @State private var holdTimer: Timer?
 
-    private let holdDuration: TimeInterval = 1.5  // seconds to hold before confirming
-    private let sosRed = Color(hex: 0xFF3B30)
+    private let holdDuration: TimeInterval = 1.5
 
     var body: some View {
         Button {
             // Tap does nothing -- must long press
         } label: {
             ZStack {
-                // Background fill that grows with hold progress
                 Circle()
                     .trim(from: 0, to: holdProgress)
-                    .stroke(sosRed, lineWidth: 2.5)
+                    .stroke(Constants.Colors.hotRed, lineWidth: 2.5)
                     .rotationEffect(.degrees(-90))
                     .frame(width: 30, height: 30)
 
                 Text("SOS")
                     .font(.system(size: 10, weight: .black, design: .rounded))
-                    .foregroundStyle(isHolding ? .white : sosRed.opacity(0.6))
+                    .foregroundStyle(isHolding ? .white : Constants.Colors.hotRed.opacity(0.6))
             }
             .frame(width: 34, height: 34)
             .background(
                 Circle()
-                    .fill(isHolding ? sosRed.opacity(0.3) : Color.clear)
+                    .fill(isHolding ? Constants.Colors.hotRed.opacity(0.3) : Color.clear)
             )
         }
         .simultaneousGesture(
@@ -858,5 +833,270 @@ private struct SOSToolbarButton: View {
             isHolding = false
             holdProgress = 0
         }
+    }
+}
+
+// MARK: - Home View
+
+struct HomeView: View {
+    @Environment(AppState.self) private var appState
+
+    @State private var showChannelCreation = false
+    @State private var showPairing = false
+    @State private var showGatewayMessage = false
+    @State private var toast: ToastItem?
+    @State private var connectedPeerCount = 0
+    @State private var isRefreshing = false
+    @State private var showSOSConfirm = false
+    @State private var sosHoldProgress: CGFloat = 0
+    @State private var pendingMessageCount: Int = 0
+
+    private var connectionStatus: ConnectionStatus {
+        let mpPeers = appState.connectedPeerCount
+
+        if mpPeers > 0 {
+            return .connected(peerCount: mpPeers)
+        }
+
+        return .searching
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                // Deep dark background with subtle navy gradient
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.02, green: 0.02, blue: 0.06),
+                        Color.black,
+                        Color(red: 0.01, green: 0.01, blue: 0.04),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    // Glass header bar
+                    GlassHeaderBar(
+                        callsign: appState.callsign,
+                        peerCount: appState.connectedPeerCount
+                    )
+
+                    // Mesh health status bar (only when mesh has nodes)
+                    if appState.connectedPeerCount > 0 {
+                        MeshStatusBar(
+                            peerCount: appState.connectedPeerCount,
+                            meshStats: appState.meshStats
+                        )
+                    }
+
+                    // Friends quick-access row
+                    if !appState.friendsManager.friends.isEmpty {
+                        friendsQuickAccess
+                    }
+
+                    // Channel list or empty state
+                    channelListView
+
+                    // Bottom quick actions
+                    BottomQuickActions(
+                        onNewChannel: { showChannelCreation = true },
+                        onSOS: { showSOSConfirm = true },
+                        gatewayAvailable: MeshGateway.shared.gatewayAvailable,
+                        onGateway: { showGatewayMessage = true }
+                    )
+                }
+
+                // Emergency mode overlay -- always on top
+                EmergencyModeOverlay(emergencyMode: EmergencyMode.shared)
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink {
+                        MeshMapView()
+                    } label: {
+                        Image(systemName: "point.3.connected.trianglepath.dotted")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(Constants.Colors.amber)
+                    }
+                    .accessibilityLabel("Mesh Map")
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        SettingsView()
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    .accessibilityLabel("Settings")
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $showChannelCreation) {
+                ChannelCreationView()
+            }
+            .sheet(isPresented: $showPairing) {
+                PairingView()
+                    .onAppearAnimations()
+            }
+            .sheet(isPresented: $showGatewayMessage) {
+                GatewayMessageView(
+                    localPeerID: appState.localPeerID,
+                    localPeerName: appState.localPeerName
+                )
+            }
+            .alert("Activate SOS Beacon?", isPresented: $showSOSConfirm) {
+                Button("Send SOS", role: .destructive) {
+                    activateSOS()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will broadcast an emergency signal to all nearby mesh devices. Use only in a real emergency.")
+            }
+            .chirpToast($toast)
+            .task {
+                while !Task.isCancelled {
+                    let peers = await appState.peerTracker.connectedPeers
+                    connectedPeerCount = peers.count
+                    try? await Task.sleep(for: .seconds(2))
+                }
+            }
+        }
+    }
+
+    // MARK: - Friends Quick Access
+
+    private var friendsQuickAccess: some View {
+        VStack(spacing: 0) {
+            // Section header with "See All" link
+            HStack {
+                Text("Friends")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.5))
+
+                if !appState.friendsManager.onlineFriends.isEmpty {
+                    Text("\(appState.friendsManager.onlineFriends.count) online")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Constants.Colors.electricGreen.opacity(0.7))
+                }
+
+                Spacer()
+
+                NavigationLink {
+                    FriendsView()
+                } label: {
+                    Text("See All")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(Constants.Colors.amber.opacity(0.7))
+                }
+                .accessibilityLabel("See all friends")
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 14)
+            .padding(.bottom, 8)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 4) {
+                    ForEach(
+                        appState.friendsManager.friends.sorted { a, b in
+                            if a.isOnline != b.isOnline { return a.isOnline }
+                            return a.name < b.name
+                        }
+                    ) { friend in
+                        FriendAvatarBubble(friend: friend) {
+                            showChannelCreation = true
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
+            }
+        }
+        .background(
+            Rectangle()
+                .fill(Color.white.opacity(0.02))
+        )
+    }
+
+    // MARK: - Channel List
+
+    private var channelListView: some View {
+        ScrollView {
+            if appState.channelManager.channels.isEmpty {
+                ChannelEmptyState {
+                    showChannelCreation = true
+                }
+            } else {
+                LazyVStack(spacing: 16) {
+                    ForEach(appState.channelManager.channels) { channel in
+                        let isActive = appState.channelManager.activeChannel?.id == channel.id
+
+                        NavigationLink {
+                            ChannelView(channel: channel)
+                        } label: {
+                            ChannelCard(
+                                channel: channel,
+                                isActive: isActive,
+                                friends: appState.friendsManager.friends,
+                                unreadCount: appState.textMessageService.unreadCount(for: channel.id)
+                            )
+                        }
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                    appState.channelManager.deleteChannel(id: channel.id)
+                                }
+                            } label: {
+                                Label("Delete Channel", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 20)
+                .padding(.bottom, 20)
+            }
+        }
+        .refreshable {
+            await refreshPeerDiscovery()
+        }
+    }
+
+    // MARK: - Refresh
+
+    private func refreshPeerDiscovery() async {
+        isRefreshing = true
+        try? await Task.sleep(for: .seconds(1))
+        let peers = await appState.peerTracker.connectedPeers
+        connectedPeerCount = peers.count
+        isRefreshing = false
+    }
+
+    // MARK: - SOS
+
+    private func activateSOS() {
+        let sosPayload: [String: String] = [
+            "type": "SOS",
+            "from": appState.callsign,
+            "peerID": appState.localPeerID,
+            "time": ISO8601DateFormatter().string(from: Date()),
+        ]
+        guard let data = try? JSONEncoder().encode(sosPayload) else { return }
+
+        Task {
+            let packet = await appState.meshRouter.createPacket(
+                type: .control,
+                payload: data,
+                channelID: "",
+                sequenceNumber: 0,
+                priority: .critical
+            )
+            appState.multipeerTransport.forwardPacket(packet.serialize(), excludePeer: "")
+        }
+
+        toast = ToastItem(message: "SOS beacon activated", type: .error)
     }
 }

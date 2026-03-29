@@ -12,6 +12,9 @@ struct ChannelView: View {
     @State private var transmitStartTime: Date?
     @State private var meshPhase: CGFloat = 0
     @State private var channelMode: ChannelMode = .talk
+    @State private var hasUsedPTT: Bool = false
+    @State private var showHoldHint: Bool = true
+    @State private var liveTranscription = LiveTranscription()
 
     enum ChannelMode: String, CaseIterable {
         case talk = "Talk"
@@ -53,14 +56,21 @@ struct ChannelView: View {
                     .padding(.top, 12)
                     .padding(.bottom, 8)
 
-                if channelMode == .talk {
-                    // Existing PTT UI
-                    talkModeContent
-                } else {
-                    // Chat UI
-                    chatModeContent
+                Group {
+                    if channelMode == .talk {
+                        // Existing PTT UI
+                        talkModeContent
+                    } else {
+                        // Chat UI
+                        chatModeContent
+                            .transition(.opacity.animation(.easeInOut(duration: 0.25)))
+                    }
                 }
+                .animation(.easeInOut(duration: 0.3), value: channelMode)
             }
+
+            // Transcript overlay — slides down from top when receiving
+            TranscriptOverlayView(transcription: liveTranscription)
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
@@ -110,14 +120,19 @@ struct ChannelView: View {
                 } label: {
                     ZStack(alignment: .topTrailing) {
                         Text(mode.rawValue)
-                            .font(.system(.subheadline, weight: .semibold))
-                            .foregroundStyle(channelMode == mode ? .white : .white.opacity(0.4))
+                            .font(.system(.subheadline, weight: channelMode == mode ? .bold : .semibold))
+                            .foregroundStyle(channelMode == mode ? .white : .white.opacity(0.35))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
                             .background(
                                 channelMode == mode
                                     ? RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(Color.white.opacity(0.12))
+                                        .fill(Color.white.opacity(0.15))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                                .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
+                                        )
+                                        .shadow(color: Color.white.opacity(0.05), radius: 4)
                                     : nil
                             )
 
@@ -154,9 +169,9 @@ struct ChannelView: View {
         VStack(spacing: 0) {
             Spacer()
 
-            // Status pill
+            // Status pill — floats higher
             statusPill
-                .padding(.bottom, 24)
+                .padding(.bottom, 28)
 
             // Idle birds — friendly waiting state above waveform
             if pttState == .idle {
@@ -167,14 +182,23 @@ struct ChannelView: View {
 
             // Central composition: peers around waveform around PTT
             centralComposition
-                .padding(.bottom, 24)
+                .padding(.bottom, 8)
+
+            // "Hold to Talk" / "Release to stop" hint
+            pttHintText
+                .padding(.bottom, 12)
+
+            // Quick action icons
+            quickActionBar
+                .padding(.bottom, 12)
 
             // Loopback indicator
             loopbackIndicator
 
             Spacer()
-                .frame(height: 40)
+                .frame(height: 32)
         }
+        .transition(.opacity.animation(.easeInOut(duration: 0.25)))
     }
 
     // MARK: - Chat Mode Content
@@ -333,6 +357,20 @@ struct ChannelView: View {
                 )
                 .ignoresSafeArea()
                 .transition(.opacity)
+
+                // Green edge glow when receiving
+                Rectangle()
+                    .fill(Color.clear)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 0)
+                            .strokeBorder(
+                                Constants.Colors.electricGreen.opacity(0.2),
+                                lineWidth: 2
+                            )
+                            .blur(radius: 12)
+                    )
+                    .ignoresSafeArea()
+                    .transition(.opacity)
             }
         }
         .animation(.easeInOut(duration: 0.4), value: pttState)
@@ -347,67 +385,120 @@ struct ChannelView: View {
                 .foregroundStyle(.white)
 
             if channel.accessMode == .locked {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.5))
+                HStack(spacing: 3) {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 10, weight: .bold))
+                }
+                .foregroundStyle(Constants.Colors.amber)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(
+                    Capsule()
+                        .fill(Constants.Colors.amber.opacity(0.15))
+                )
+                .overlay(
+                    Capsule()
+                        .strokeBorder(Constants.Colors.amber.opacity(0.3), lineWidth: 0.5)
+                )
             }
 
+            // Mesh reach indicator
+            meshReachLabel
+
             Spacer()
+
+            // Peer count pill
+            peerCountPill
         }
+    }
+
+    private var meshReachLabel: some View {
+        let beacon = appState.meshBeacon
+        let hops = max(1, beacon.maxHopDepth)
+        let range = beacon.estimatedRange > 0 ? beacon.estimatedRange : 80
+
+        return Text("~\(range)m | \(hops) hop\(hops == 1 ? "" : "s")")
+            .font(.system(size: 11, weight: .medium, design: .monospaced))
+            .foregroundStyle(.white.opacity(0.35))
+    }
+
+    private var peerCountPill: some View {
+        let count = appState.channelManager.activeChannel?.activePeerCount ?? 0
+
+        return HStack(spacing: 5) {
+            Circle()
+                .fill(count > 0 ? Constants.Colors.electricGreen : Color.gray)
+                .frame(width: 6, height: 6)
+
+            Text("\(count) peer\(count == 1 ? "" : "s")")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.6))
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(
+            Capsule()
+                .fill(.ultraThinMaterial)
+                .opacity(0.5)
+        )
+        .overlay(
+            Capsule()
+                .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.5)
+        )
     }
 
     // MARK: - Status Pill (Floating Glass)
 
     private var statusPill: some View {
-        HStack(spacing: 8) {
-            switch pttState {
-            case .idle:
+        statusPillContent
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .background(
+                Capsule()
+                    .fill(.ultraThinMaterial)
+                    .opacity(0.7)
+            )
+            .overlay(
+                Capsule()
+                    .strokeBorder(statusAccentColor.opacity(0.25), lineWidth: 0.5)
+            )
+            .shadow(color: statusAccentColor.opacity(isReceiving ? 0.3 : 0.1), radius: 12)
+            .animation(.easeInOut(duration: 0.2), value: pttState)
+    }
+
+    @ViewBuilder
+    private var statusPillContent: some View {
+        switch pttState {
+        case .idle:
+            HStack(spacing: 8) {
                 Circle()
                     .fill(Constants.Colors.amber)
                     .frame(width: 6, height: 6)
                 Text("Ready")
                     .font(.system(.subheadline, weight: .semibold))
                     .foregroundStyle(Constants.Colors.amber)
+            }
 
-            case .transmitting:
-                TimelineView(.animation(minimumInterval: 0.1)) { timeline in
-                    let elapsed = transmitStartTime.map { timeline.date.timeIntervalSince($0) } ?? 0
-                    let seconds = Int(elapsed) % 60
-                    let minutes = Int(elapsed) / 60
-                    let pulse = sin(timeline.date.timeIntervalSinceReferenceDate * 4.0) * 0.4 + 0.6
+        case .transmitting:
+            transmittingPillContent
 
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(Constants.Colors.hotRed)
-                            .frame(width: 6, height: 6)
-                            .opacity(pulse)
-
-                        Text(String(format: "%d:%02d", minutes, seconds))
-                            .font(.system(.subheadline, design: .monospaced, weight: .bold))
-                            .foregroundStyle(Constants.Colors.hotRed)
-                            .contentTransition(.numericText())
-
-                        Text("LIVE")
-                            .font(.system(size: 10, weight: .black))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(
-                                Capsule().fill(Constants.Colors.hotRed)
-                            )
-                            .opacity(pulse)
-                    }
-                }
-
-            case .receiving(let name, _):
+        case .receiving(let name, _):
+            HStack(spacing: 8) {
                 Circle()
                     .fill(Constants.Colors.electricGreen)
-                    .frame(width: 6, height: 6)
-                Text("Listening to \(name)")
-                    .font(.system(.subheadline, weight: .semibold))
-                    .foregroundStyle(Constants.Colors.electricGreen)
+                    .frame(width: 8, height: 8)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("LISTENING")
+                        .font(.system(size: 9, weight: .heavy))
+                        .foregroundStyle(Constants.Colors.electricGreen.opacity(0.6))
+                    Text(name)
+                        .font(.system(.subheadline, weight: .bold))
+                        .foregroundStyle(Constants.Colors.electricGreen)
+                }
+            }
 
-            case .denied:
+        case .denied:
+            HStack(spacing: 8) {
                 Circle()
                     .fill(Color.gray)
                     .frame(width: 6, height: 6)
@@ -416,18 +507,34 @@ struct ChannelView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(
-            Capsule()
-                .fill(.ultraThinMaterial)
-                .opacity(0.6)
-        )
-        .overlay(
-            Capsule()
-                .strokeBorder(statusAccentColor.opacity(0.2), lineWidth: 0.5)
-        )
-        .animation(.easeInOut(duration: 0.2), value: pttState)
+    }
+
+    private var transmittingPillContent: some View {
+        TimelineView(.animation(minimumInterval: 0.1)) { timeline in
+            let elapsed = transmitStartTime.map { timeline.date.timeIntervalSince($0) } ?? 0
+            let seconds = Int(elapsed) % 60
+            let minutes = Int(elapsed) / 60
+            let pulse = sin(timeline.date.timeIntervalSinceReferenceDate * 4.0) * 0.4 + 0.6
+
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(Constants.Colors.hotRed)
+                    .frame(width: 6, height: 6)
+                    .opacity(pulse)
+
+                Text(String(format: "%d:%02d", minutes, seconds))
+                    .font(.system(.subheadline, design: .monospaced, weight: .bold))
+                    .foregroundStyle(Constants.Colors.hotRed)
+                    .contentTransition(.numericText())
+
+                Text("LIVE")
+                    .font(.system(size: 10, weight: .black))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Constants.Colors.hotRed))
+            }
+        }
     }
 
     private var statusAccentColor: Color {
@@ -470,6 +577,11 @@ struct ChannelView: View {
                     HapticsManager.shared.pttDown()
                     SoundEffects.shared.playChirpBegin()
                     transmitStartTime = Date()
+                    if !hasUsedPTT {
+                        withAnimation(.easeOut(duration: 0.3)) {
+                            hasUsedPTT = true
+                        }
+                    }
                     appState.pttEngine.startTransmitting()
                 },
                 onPressUp: {
@@ -505,16 +617,30 @@ struct ChannelView: View {
                     peer: peer,
                     isActiveSpeaker: isActive
                 )
-                .scaleEffect(isActive ? 1.25 : 1.0)
+                .scaleEffect(isActive ? 1.3 : 1.0)
                 .shadow(
                     color: isActive
-                        ? Constants.Colors.electricGreen.opacity(0.5)
+                        ? Constants.Colors.electricGreen.opacity(0.6)
                         : Color.clear,
-                    radius: isActive ? 16 : 0
+                    radius: isActive ? 20 : 0
+                )
+                .shadow(
+                    color: isActive
+                        ? Constants.Colors.electricGreen.opacity(0.3)
+                        : Color.clear,
+                    radius: isActive ? 8 : 0
+                )
+                .overlay(
+                    isActive
+                        ? Circle()
+                            .strokeBorder(Constants.Colors.electricGreen.opacity(0.4), lineWidth: 2)
+                            .scaleEffect(1.35)
+                            .modifier(StatusPulsingDot())
+                        : nil
                 )
 
                 Text(peer.name.split(separator: " ").first.map(String.init) ?? peer.name)
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: isActive ? 11 : 10, weight: isActive ? .bold : .semibold))
                     .foregroundStyle(
                         isActive
                             ? Constants.Colors.electricGreen
@@ -554,24 +680,35 @@ struct ChannelView: View {
     // MARK: - Empty Radar Overlay
 
     private var emptyRadarOverlay: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+        TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { timeline in
             let time = timeline.date.timeIntervalSinceReferenceDate
             ZStack {
-                // Pulsing radar rings
-                ForEach(0..<3, id: \.self) { ring in
-                    let phase = (time * 0.5 + Double(ring) * 0.33)
+                // Smooth pulsing radar rings — staggered
+                ForEach(0..<4, id: \.self) { ring in
+                    let phase = (time * 0.35 + Double(ring) * 0.25)
                         .truncatingRemainder(dividingBy: 1.0)
-                    let scale = 0.3 + phase * 0.7
-                    let opacity = max(0, 0.25 - phase * 0.25)
+                    let scale = 0.2 + phase * 0.8
+                    let opacity = max(0, 0.20 - phase * 0.20)
 
                     Circle()
                         .strokeBorder(
                             Constants.Colors.amber.opacity(opacity),
-                            lineWidth: 1
+                            lineWidth: 0.8
                         )
                         .frame(width: peerCircleRadius * 2, height: peerCircleRadius * 2)
                         .scaleEffect(scale)
                 }
+
+                // Sweeping radar line
+                let sweepAngle = Angle(radians: time * 1.2)
+                Circle()
+                    .trim(from: 0, to: 0.08)
+                    .stroke(
+                        Constants.Colors.amber.opacity(0.3),
+                        style: StrokeStyle(lineWidth: 1.5, lineCap: .round)
+                    )
+                    .frame(width: peerCircleRadius * 1.6, height: peerCircleRadius * 1.6)
+                    .rotationEffect(sweepAngle)
 
                 VStack(spacing: 6) {
                     Text("Scanning...")
@@ -614,6 +751,71 @@ struct ChannelView: View {
         }
     }
 
+    // MARK: - PTT Hint Text
+
+    @ViewBuilder
+    private var pttHintText: some View {
+        if pttState == .idle && showHoldHint && !hasUsedPTT {
+            Text("Hold to Talk")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.white.opacity(0.35))
+                .transition(.opacity)
+        } else if pttState == .transmitting {
+            Text("Release to stop")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Constants.Colors.hotRed.opacity(0.5))
+                .transition(.opacity)
+        }
+    }
+
+    // MARK: - Quick Action Bar
+
+    private var quickActionBar: some View {
+        HStack(spacing: 20) {
+            quickActionButton(icon: "camera.fill", label: "Camera") {
+                toast = ToastItem(message: "Camera sharing coming soon", type: .info)
+            }
+            quickActionButton(icon: "text.bubble.fill", label: "Chat") {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    channelMode = .chat
+                }
+                appState.textMessageService.markAsRead(channelID: channel.id)
+            }
+            quickActionButton(icon: "location.fill", label: "Location") {
+                toast = ToastItem(message: "Location sharing coming soon", type: .info)
+            }
+            quickActionButton(icon: "sos", label: "SOS") {
+                toast = ToastItem(message: "SOS beacon coming soon", type: .info)
+            }
+        }
+        .padding(.horizontal, 24)
+    }
+
+    private func quickActionButton(icon: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.5))
+                    .frame(width: 44, height: 44)
+                    .background(
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                            .opacity(0.4)
+                    )
+                    .overlay(
+                        Circle()
+                            .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.5)
+                    )
+
+                Text(label)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.3))
+            }
+        }
+        .accessibilityLabel(label)
+    }
+
     // MARK: - Helpers
 
     private var isReceiving: Bool {
@@ -628,4 +830,21 @@ struct ChannelView: View {
         return false
     }
 
+}
+
+// MARK: - StatusPulsingDot Modifier
+
+private struct StatusPulsingDot: ViewModifier {
+    @State private var isPulsing = false
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(isPulsing ? 1.4 : 1.0)
+            .opacity(isPulsing ? 0.5 : 1.0)
+            .animation(
+                .easeInOut(duration: 0.7).repeatForever(autoreverses: true),
+                value: isPulsing
+            )
+            .onAppear { isPulsing = true }
+    }
 }

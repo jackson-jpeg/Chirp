@@ -22,10 +22,63 @@ enum Constants {
     }
 
     enum Colors {
+        // Primary
         static let amber = Color(hex: 0xFFB800)
-        static let hotRed = Color(hex: 0xFF3B30)
+        static let amberLight = Color(hex: 0xFFD060)
+        static let amberDark = Color(hex: 0xCC9300)
+
+        // Status
         static let electricGreen = Color(hex: 0x30D158)
+        static let hotRed = Color(hex: 0xFF3B30)
         static let emergencyRed = Color(hex: 0xCC0000)
+
+        // Backgrounds
+        static let backgroundPrimary = Color(hex: 0x000000)
+        static let backgroundSecondary = Color(hex: 0x0A0A0F)
+        static let backgroundTertiary = Color(hex: 0x111118)
+        static let cardBackground = Color(hex: 0x141420)
+
+        // Surface
+        static let surfaceGlass = Color.white.opacity(0.06)
+        static let surfaceBorder = Color.white.opacity(0.08)
+        static let surfaceHover = Color.white.opacity(0.12)
+
+        // Text
+        static let textPrimary = Color.white
+        static let textSecondary = Color.white.opacity(0.6)
+        static let textTertiary = Color.white.opacity(0.35)
+
+        // Mesh
+        static let meshHealthGood = Color(hex: 0x30D158)
+        static let meshHealthFair = Color(hex: 0xFFB800)
+        static let meshHealthPoor = Color(hex: 0xFF3B30)
+    }
+
+    enum Typography {
+        static let heroTitle = Font.system(size: 34, weight: .heavy, design: .rounded)
+        static let sectionTitle = Font.system(size: 22, weight: .bold, design: .rounded)
+        static let cardTitle = Font.system(size: 18, weight: .bold, design: .rounded)
+        static let body = Font.system(size: 16, weight: .medium)
+        static let caption = Font.system(size: 13, weight: .medium)
+        static let mono = Font.system(size: 13, weight: .medium, design: .monospaced)
+        static let monoSmall = Font.system(size: 11, weight: .medium, design: .monospaced)
+        static let badge = Font.system(size: 10, weight: .bold, design: .rounded)
+    }
+
+    enum Layout {
+        static let cornerRadius: CGFloat = 18
+        static let cardCornerRadius: CGFloat = 22
+        static let buttonCornerRadius: CGFloat = 14
+        static let horizontalPadding: CGFloat = 20
+        static let cardPadding: CGFloat = 18
+        static let spacing: CGFloat = 16
+        static let smallSpacing: CGFloat = 8
+    }
+
+    enum Animations {
+        static let springResponse: Double = 0.4
+        static let springDamping: Double = 0.8
+        static let quickFade: Double = 0.2
     }
 }
 
