@@ -161,8 +161,8 @@ final class OfflineMapManager: NSObject {
         guard let packs = MLNOfflineStorage.shared.packs else { return }
 
         downloadedRegions = packs.compactMap { pack in
-            guard let context = pack.context,
-                  let metadata = try? JSONSerialization.jsonObject(with: context) as? [String: Any],
+            let context = pack.context
+            guard let metadata = try? JSONSerialization.jsonObject(with: context) as? [String: Any],
                   let name = metadata["name"] as? String else {
                 return nil
             }
@@ -228,8 +228,8 @@ final class OfflineMapManager: NSObject {
     // MARK: - Helpers
 
     private func regionID(for pack: MLNOfflinePack) -> String {
-        guard let context = pack.context,
-              let metadata = try? JSONSerialization.jsonObject(with: context) as? [String: Any],
+        let context = pack.context
+        guard let metadata = try? JSONSerialization.jsonObject(with: context) as? [String: Any],
               let name = metadata["name"] as? String,
               let dateStr = metadata["date"] as? String else {
             return UUID().uuidString

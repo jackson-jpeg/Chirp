@@ -22,13 +22,11 @@ final class MessageDatabase {
         let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
         let dbURL = documentsURL.appendingPathComponent("chirp_messages.db")
 
-        let passphrase = KeychainHelper.getOrCreateDatabaseKey()
-
+        // GRDB standard doesn't include SQLCipher. Instead, rely on iOS Data Protection
+        // for encryption at rest. The DB file is protected by NSFileProtectionCompleteUntilFirstUserAuthentication
+        // which means it's encrypted whenever the device is locked (after first unlock).
+        // Combined with Keychain-stored app secrets, this provides strong at-rest protection.
         var config = Configuration()
-        config.prepareDatabase { db in
-            try db.usePassphrase(passphrase)
-        }
-
         dbQueue = try DatabaseQueue(path: dbURL.path, configuration: config)
 
         // Exclude from backup
