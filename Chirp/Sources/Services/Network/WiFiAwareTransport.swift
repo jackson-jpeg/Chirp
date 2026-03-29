@@ -197,15 +197,14 @@ final class WiFiAwareTransport {
 
     // MARK: - Connection Registration
 
-    /// Register a NetworkConnection by type-erasing it into a PeerHandle.
-    /// Constrained to `MessageProtocol` with `Data` content so `.messages` and `.send()` work.
-    private func registerConnection<T: MessageProtocol>(
-        _ connection: NetworkConnection<T>,
+    /// Register a TLV-framed NetworkConnection by type-erasing it into a PeerHandle.
+    private func registerConnection(
+        _ connection: NetworkConnection<TLV>,
         peerID: String
-    ) where T.ContentType == Data {
+    ) {
         // Create send closure that captures the typed connection
         let sendClosure: @Sendable (Data) async throws -> Void = { data in
-            try await connection.send(data)
+            try await connection.send(data, type: Self.meshTLVType)
         }
 
         // Receive task: reads messages and feeds to mesh router
@@ -213,7 +212,7 @@ final class WiFiAwareTransport {
             guard let self else { return }
             do {
                 for try await (incomingData, _) in connection.messages {
-                    await self.handleReceivedData(incomingData, from: peerID)
+                    self.handleReceivedData(incomingData, from: peerID)
                 }
             } catch {
                 if !Task.isCancelled {

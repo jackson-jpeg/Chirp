@@ -82,19 +82,24 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
         Task { @MainActor in
-            self.authorizationStatus = status
-            self.logger.info("Authorization changed: \(String(describing: status.rawValue))")
+            self.handleAuthorizationChange(status)
+        }
+    }
 
-            switch status {
-            case .authorizedWhenInUse, .authorizedAlways:
-                manager.startUpdatingLocation()
-            case .denied, .restricted:
-                self.logger.warning("Location access denied or restricted")
-            case .notDetermined:
-                break
-            @unknown default:
-                break
-            }
+    @MainActor
+    private func handleAuthorizationChange(_ status: CLAuthorizationStatus) {
+        authorizationStatus = status
+        logger.info("Authorization changed: \(String(describing: status.rawValue))")
+
+        switch status {
+        case .authorizedWhenInUse, .authorizedAlways:
+            manager.startUpdatingLocation()
+        case .denied, .restricted:
+            logger.warning("Location access denied or restricted")
+        case .notDetermined:
+            break
+        @unknown default:
+            break
         }
     }
 }

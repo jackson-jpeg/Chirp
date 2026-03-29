@@ -1,1717 +1,135 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "settings.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Settings"
-          }
-        }
-      }
-    },
-    "settings.profile.callsign" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Callsign"
-          }
-        }
-      }
-    },
-    "settings.profile.copied" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copied"
-          }
-        }
-      }
-    },
-    "settings.profile.copyID" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copy ID"
-          }
-        }
-      }
-    },
-    "settings.meshNetwork.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mesh Network"
-          }
-        }
-      }
-    },
-    "settings.meshNetwork.wifiAware" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wi-Fi Aware"
-          }
-        }
-      }
-    },
-    "settings.status.active" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Active"
-          }
-        }
-      }
-    },
-    "settings.status.unavailable" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unavailable"
-          }
-        }
-      }
-    },
-    "settings.status.on" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "On"
-          }
-        }
-      }
-    },
-    "settings.meshNetwork.nearbyPeers" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nearby Peers"
-          }
-        }
-      }
-    },
-    "settings.meshNetwork.pairedDevices" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Paired Devices"
-          }
-        }
-      }
-    },
-    "settings.meshNetwork.packetsRelayed" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Packets Relayed"
-          }
-        }
-      }
-    },
-    "settings.meshNetwork.delivered" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Delivered"
-          }
-        }
-      }
-    },
-    "settings.meshNetwork.deduplicated" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deduplicated"
-          }
-        }
-      }
-    },
-    "settings.meshNetwork.maxHops" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Max Hops"
-          }
-        }
-      }
-    },
-    "settings.meshNetwork.estRange" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Est. Range"
-          }
-        }
-      }
-    },
-    "settings.meshNetwork.localNetworkPermission" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Local Network Permission"
-          }
-        }
-      }
-    },
-    "settings.meshNetwork.localNetworkHint" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ensure Local Network is enabled in Settings \u2192 Privacy \u2192 Local Network \u2192 ChirpChirp"
-          }
-        }
-      }
-    },
-    "settings.audioHaptics.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Audio & Haptics"
-          }
-        }
-      }
-    },
-    "settings.audioHaptics.speakerOutput" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Speaker Output"
-          }
-        }
-      }
-    },
-    "settings.audioHaptics.hapticFeedback" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Haptic Feedback"
-          }
-        }
-      }
-    },
-    "settings.audioHaptics.chirpSounds" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chirp Sounds"
-          }
-        }
-      }
-    },
-    "settings.audioHaptics.loopbackTest" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Loopback Test"
-          }
-        }
-      }
-    },
-    "settings.audioHaptics.loopbackDescription" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Loopback plays your voice back through the Opus codec pipeline for testing without a second device."
-          }
-        }
-      }
-    },
-    "settings.quickAccess.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quick Access"
-          }
-        }
-      }
-    },
-    "settings.quickAccess.actionButton" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Set Up Action Button"
-          }
-        }
-      }
-    },
-    "settings.quickAccess.siriShortcut" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Siri Shortcut"
-          }
-        }
-      }
-    },
-    "settings.quickAccess.siriShortcutHint" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\"Hey Siri, push to talk with ChirpChirp\""
-          }
-        }
-      }
-    },
-    "settings.emergency.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Emergency"
-          }
-        }
-      }
-    },
-    "settings.emergency.emergencyMode" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Emergency Mode"
-          }
-        }
-      }
-    },
-    "settings.emergency.emergencyModeDescription" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Optimizes for disaster scenarios: max mesh range, aggressive relay, low-bandwidth audio, and periodic location broadcasts."
-          }
-        }
-      }
-    },
-    "settings.privacySecurity.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Privacy & Security"
-          }
-        }
-      }
-    },
-    "settings.privacySecurity.e2eEncryption" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "End-to-End Encryption"
-          }
-        }
-      }
-    },
-    "settings.privacySecurity.yourFingerprint" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Your Fingerprint"
-          }
-        }
-      }
-    },
-    "settings.privacySecurity.zeroServers" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zero Servers"
-          }
-        }
-      }
-    },
-    "settings.privacySecurity.zeroServersDescription" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "All communication is device-to-device"
-          }
-        }
-      }
-    },
-    "settings.about.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "About"
-          }
-        }
-      }
-    },
-    "settings.about.howItWorks" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "How Chirp Works"
-          }
-        }
-      }
-    },
-    "settings.about.wifiAware.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wi-Fi Aware"
-          }
-        }
-      }
-    },
-    "settings.about.wifiAware.description" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connects devices directly without a router, cell tower, or internet."
-          }
-        }
-      }
-    },
-    "settings.about.pushToTalk.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Push-to-Talk"
-          }
-        }
-      }
-    },
-    "settings.about.pushToTalk.description" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hold to talk, release to listen. Like a real walkie-talkie."
-          }
-        }
-      }
-    },
-    "settings.about.channels.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Channels"
-          }
-        }
-      }
-    },
-    "settings.about.channels.description" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Create or join channels. Everyone on the same channel hears each other."
-          }
-        }
-      }
-    },
-    "settings.about.privacy.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Privacy"
-          }
-        }
-      }
-    },
-    "settings.about.privacy.description" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "All communication stays device-to-device. No servers. Ever."
-          }
-        }
-      }
-    },
-    "settings.about.rateApp" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rate ChirpChirp"
-          }
-        }
-      }
-    },
-    "settings.about.privacyPolicy" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Privacy Policy"
-          }
-        }
-      }
-    },
-    "settings.about.openSourceCredits" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open Source Credits"
-          }
-        }
-      }
-    },
-    "home.header.nodesInMesh %lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld node(s) in mesh"
-          }
-        }
-      }
-    },
-    "home.header.noMesh" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No mesh"
-          }
-        }
-      }
-    },
-    "home.emptyState.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Start your mesh network"
-          }
-        }
-      }
-    },
-    "home.emptyState.subtitle" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Create a channel and nearby devices\nwill connect automatically. No servers needed."
-          }
-        }
-      }
-    },
-    "home.emptyState.createChannel" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Create Channel"
-          }
-        }
-      }
-    },
-    "home.emptyState.createChannelSubtitle" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Infrastructure-free communication"
-          }
-        }
-      }
-    },
-    "home.quickAction.newChannel" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "New Channel"
-          }
-        }
-      }
-    },
-    "home.quickAction.gateway" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gateway"
-          }
-        }
-      }
-    },
-    "home.friends.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Friends"
-          }
-        }
-      }
-    },
-    "home.friends.online %lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld online"
-          }
-        }
-      }
-    },
-    "home.friends.seeAll" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "See All"
-          }
-        }
-      }
-    },
-    "home.sos.alertTitle" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Activate SOS Beacon?"
-          }
-        }
-      }
-    },
-    "home.sos.sendButton" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Send SOS"
-          }
-        }
-      }
-    },
-    "home.sos.alertMessage" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This will broadcast an emergency signal to all nearby mesh devices. Use only in a real emergency."
-          }
-        }
-      }
-    },
-    "home.channel.delete" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Delete Channel"
-          }
-        }
-      }
-    },
-    "channel.mode.talk" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Talk"
-          }
-        }
-      }
-    },
-    "channel.mode.chat" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chat"
-          }
-        }
-      }
-    },
-    "channel.status.ready" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ready"
-          }
-        }
-      }
-    },
-    "channel.status.listening" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "LISTENING"
-          }
-        }
-      }
-    },
-    "channel.status.busy" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Channel busy"
-          }
-        }
-      }
-    },
-    "channel.status.live" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "LIVE"
-          }
-        }
-      }
-    },
-    "channel.radar.scanning" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scanning..."
-          }
-        }
-      }
-    },
-    "channel.radar.peersHint" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Peers will orbit here"
-          }
-        }
-      }
-    },
-    "channel.loopback.on" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Loopback ON"
-          }
-        }
-      }
-    },
-    "channel.ptt.holdToTalk" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hold to Talk"
-          }
-        }
-      }
-    },
-    "channel.ptt.releaseToStop" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Release to stop"
-          }
-        }
-      }
-    },
-    "channel.quickAction.camera" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Camera"
-          }
-        }
-      }
-    },
-    "channel.quickAction.chat" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chat"
-          }
-        }
-      }
-    },
-    "channel.quickAction.location" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Location"
-          }
-        }
-      }
-    },
-    "channel.quickAction.sos" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "SOS"
-          }
-        }
-      }
-    },
-    "onboarding.page1.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No towers. No internet.\nNo problem."
-          }
-        }
-      }
-    },
-    "onboarding.page1.subtitle" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ChirpChirp works when nothing else does. Your phone connects directly to nearby devices."
-          }
-        }
-      }
-    },
-    "onboarding.page2.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Every phone extends\nthe network."
-          }
-        }
-      }
-    },
-    "onboarding.page2.subtitle" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Your phone helps others communicate, and theirs helps you. The mesh grows with every user."
-          }
-        }
-      }
-    },
-    "onboarding.page3.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Talk or text."
-          }
-        }
-      }
-    },
-    "onboarding.page3.subtitle" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Voice for speed. Text for stealth and efficiency. Both work across the mesh."
-          }
-        }
-      }
-    },
-    "onboarding.page4.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Private by default."
-          }
-        }
-      }
-    },
-    "onboarding.page4.subtitle" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "End-to-end encrypted. No servers. No accounts. No data collection. Ever."
-          }
-        }
-      }
-    },
-    "onboarding.page5.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Built for when\nit matters most."
-          }
-        }
-      }
-    },
-    "onboarding.page5.subtitle" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Natural disasters. Concerts. Protests. Off-grid adventures. Anywhere communication fails."
-          }
-        }
-      }
-    },
-    "onboarding.tagline" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Infrastructure-free communication."
-          }
-        }
-      }
-    },
-    "onboarding.getStarted" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Get Started"
-          }
-        }
-      }
-    },
-    "onboarding.noInternetRequired" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No internet required"
-          }
-        }
-      }
-    },
-    "onboarding.useCase.disasters" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Disasters"
-          }
-        }
-      }
-    },
-    "onboarding.useCase.concerts" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Concerts"
-          }
-        }
-      }
-    },
-    "onboarding.useCase.offGrid" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Off-Grid"
-          }
-        }
-      }
-    },
-    "onboarding.useCase.protests" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Protests"
-          }
-        }
-      }
-    },
-    "onboarding.useCase.adventures" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Adventures"
-          }
-        }
-      }
-    },
-    "onboarding.useCase.emergencies" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Emergencies"
-          }
-        }
-      }
-    },
-    "onboarding.talkChat.voice" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Voice"
-          }
-        }
-      }
-    },
-    "onboarding.talkChat.speed" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Speed"
-          }
-        }
-      }
-    },
-    "onboarding.talkChat.text" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Text"
-          }
-        }
-      }
-    },
-    "onboarding.talkChat.stealth" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stealth"
-          }
-        }
-      }
-    },
-    "emergency.countdown.activating" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ACTIVATING SOS"
-          }
-        }
-      }
-    },
-    "emergency.countdown.cancelHint" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Press cancel to abort"
-          }
-        }
-      }
-    },
-    "emergency.countdown.cancel" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CANCEL"
-          }
-        }
-      }
-    },
-    "emergency.sos.active" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ACTIVE"
-          }
-        }
-      }
-    },
-    "emergency.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Emergency SOS"
-          }
-        }
-      }
-    },
-    "emergency.deactivate" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deactivate"
-          }
-        }
-      }
-    },
-    "emergency.header.beacon" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "EMERGENCY BEACON"
-          }
-        }
-      }
-    },
-    "emergency.header.broadcasting" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Broadcasting SOS to mesh network"
-          }
-        }
-      }
-    },
-    "emergency.header.tapToActivate" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tap SOS to broadcast your location"
-          }
-        }
-      }
-    },
-    "emergency.status.broadcasts" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Broadcasts"
-          }
-        }
-      }
-    },
-    "emergency.status.meshNodes" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mesh Nodes"
-          }
-        }
-      }
-    },
-    "emergency.status.batteryRemaining %lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld%% battery remaining"
-          }
-        }
-      }
-    },
-    "emergency.status.broadcastingTo %lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Broadcasting to %lld mesh node(s)"
-          }
-        }
-      }
-    },
-    "emergency.info.broadcastFrequency" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Broadcasts every 5 seconds at max range (TTL 8)"
-          }
-        }
-      }
-    },
-    "emergency.info.includesGPS" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Includes your GPS coordinates and battery level"
-          }
-        }
-      }
-    },
-    "emergency.info.alertDevices" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "All mesh devices show an alert with your location"
-          }
-        }
-      }
-    },
-    "emergency.info.backgroundBroadcast" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Continues broadcasting even when app is backgrounded"
-          }
-        }
-      }
-    },
-    "emergency.coordinates.currentPosition" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CURRENT POSITION"
-          }
-        }
-      }
-    },
-    "emergency.coordinates.acquiringGPS" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Acquiring GPS signal..."
-          }
-        }
-      }
-    },
-    "emergency.alerts.incoming" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "INCOMING SOS ALERTS"
-          }
-        }
-      }
-    },
-    "emergency.holdForEmergencyMode" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hold for Emergency Mode"
-          }
-        }
-      }
-    },
-    "emergency.emergencyMode.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "EMERGENCY MODE"
-          }
-        }
-      }
-    },
-    "emergency.emergencyMode.maxTTL %lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Max TTL (%lld hops), relay everything"
-          }
-        }
-      }
-    },
-    "emergency.emergencyMode.lowBandwidth" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Low-bandwidth audio (8 kbps)"
-          }
-        }
-      }
-    },
-    "emergency.emergencyMode.locationBroadcast %lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Location broadcast every %llds"
-          }
-        }
-      }
-    },
-    "emergency.emergencyMode.beaconInterval %lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beacon interval %llds"
-          }
-        }
-      }
-    },
-    "emergency.emergencyMode.description" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Optimizes the app for disaster scenarios: max range, aggressive relay, low-bandwidth audio, and periodic location sharing."
-          }
-        }
-      }
-    },
-    "friends.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Friends"
-          }
-        }
-      }
-    },
-    "friends.addFriend" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add Friend"
-          }
-        }
-      }
-    },
-    "friends.action.startChannel" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Start Channel"
-          }
-        }
-      }
-    },
-    "friends.action.viewDetails" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "View Details"
-          }
-        }
-      }
-    },
-    "friends.action.remove" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Remove"
-          }
-        }
-      }
-    },
-    "friends.action.removeFriend" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Remove Friend"
-          }
-        }
-      }
-    },
-    "friends.emptyState.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Your flock awaits"
-          }
-        }
-      }
-    },
-    "friends.emptyState.subtitle" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add friends to start talking instantly.\nShare your ChirpChirp code or discover\npeople nearby on the same network."
-          }
-        }
-      }
-    },
-    "friends.emptyState.shareCodeTitle" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Share your unique code"
-          }
-        }
-      }
-    },
-    "friends.emptyState.shareCodeSubtitle" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Friends can add you with your ChirpChirp ID"
-          }
-        }
-      }
-    },
-    "friends.section.inRange" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "IN RANGE"
-          }
-        }
-      }
-    },
-    "friends.section.offline" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "OFFLINE"
-          }
-        }
-      }
-    },
-    "friends.status.neverSeen" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Never seen"
-          }
-        }
-      }
-    },
-    "friends.status.inRange" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "In Range"
-          }
-        }
-      }
-    },
-    "friends.status.lastSeen" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Last seen "
-          }
-        }
-      }
-    },
-    "friends.detail.talk" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Talk"
-          }
-        }
-      }
-    },
-    "friends.detail.message" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Message"
-          }
-        }
-      }
-    },
-    "gateway.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gateway Message"
-          }
-        }
-      }
-    },
-    "gateway.recipient.phonePlaceholder" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Phone number"
-          }
-        }
-      }
-    },
-    "gateway.recipient.emailPlaceholder" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Email address"
-          }
-        }
-      }
-    },
-    "gateway.recipient.phoneLabel" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Recipient Phone"
-          }
-        }
-      }
-    },
-    "gateway.recipient.emailLabel" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Recipient Email"
-          }
-        }
-      }
+    "  |  " : {
+
     },
-    "gateway.message.label" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Message"
-          }
-        }
-      }
+    "--%" : {
+
     },
-    "gateway.status.available" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gateway Available"
-          }
-        }
-      }
+    "\"%@\"" : {
+
     },
-    "gateway.status.noGateway" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No Gateway in Mesh"
-          }
-        }
-      }
+    "%@" : {
+
     },
-    "gateway.status.relayingForMesh" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This device has internet \u2014 relaying for mesh"
-          }
-        }
-      }
+    "%@ connected" : {
+
     },
-    "gateway.status.willQueue" : {
+    "%@ hop%@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Messages will queue until a gateway appears"
+            "state" : "new",
+            "value" : "%1$@ hop%2$@"
           }
         }
       }
     },
-    "gateway.send.sendVia" : {
+    "%@ node%@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Send via Gateway"
+            "state" : "new",
+            "value" : "%1$@ node%2$@"
           }
         }
       }
     },
-    "gateway.send.queue" : {
+    "%@ paired device%@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Queue for Gateway"
+            "state" : "new",
+            "value" : "%1$@ paired device%2$@"
           }
         }
       }
     },
-    "gateway.confirmation.sent" : {
+    "%@ peer%@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sent!"
+            "state" : "new",
+            "value" : "%1$@ peer%2$@"
           }
         }
       }
     },
-    "gateway.confirmation.queued" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Queued"
-          }
-        }
-      }
+    "%@ pending" : {
+
     },
-    "gateway.confirmation.deliveredMessage" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Message delivered via gateway"
-          }
-        }
-      }
+    "%@ sent" : {
+
     },
-    "gateway.confirmation.queuedMessage" : {
+    "%@/%@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Message queued for next gateway"
+            "state" : "new",
+            "value" : "%1$@/%2$@"
           }
         }
       }
     },
-    "gateway.countryCode.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Country Code"
-          }
-        }
-      }
+    "%@/160" : {
+
     },
-    "addFriend.title" : {
+    "%@%@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add Friend"
+            "state" : "new",
+            "value" : "%1$@%2$@"
           }
         }
       }
     },
-    "addFriend.yourCode.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "YOUR CHIRPCHIRP CODE"
-          }
-        }
-      }
+    "%@%%" : {
+
     },
-    "addFriend.yourCode.copied" : {
+    "%@Hz / %@ch" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copied!"
+            "state" : "new",
+            "value" : "%1$@Hz / %2$@ch"
           }
         }
       }
     },
-    "addFriend.yourCode.copy" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copy"
-          }
-        }
-      }
+    "%@m" : {
+
     },
-    "addFriend.yourCode.shareText %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add me on ChirpChirp! My code: %@"
-          }
-        }
-      }
+    "+%@" : {
+
     },
-    "addFriend.yourCode.share" : {
+    "~%@m | %@ hop%@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Share"
+            "state" : "new",
+            "value" : "~%1$@m | %2$@ hop%3$@"
           }
         }
       }
     },
-    "addFriend.yourCode.hint" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Share this code so friends can add you."
-          }
-        }
-      }
+    "~%@m range" : {
+
     },
-    "addFriend.add.title" : {
+    "addFriend.add.button" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ADD A FRIEND"
+            "value" : "Add"
           }
         }
       }
     },
     "addFriend.add.codePlaceholder" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1722,6 +140,7 @@
       }
     },
     "addFriend.add.namePlaceholder" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1731,7 +150,19 @@
         }
       }
     },
-    "addFriend.add.button" : {
+    "addFriend.add.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ADD A FRIEND"
+          }
+        }
+      }
+    },
+    "addFriend.nearby.add" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1741,37 +172,8 @@
         }
       }
     },
-    "addFriend.nearby.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "NEARBY"
-          }
-        }
-      }
-    },
-    "addFriend.nearby.scanning" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scanning"
-          }
-        }
-      }
-    },
-    "addFriend.nearby.lookingForPeople" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Looking for people nearby..."
-          }
-        }
-      }
-    },
     "addFriend.nearby.inRange" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1781,37 +183,297 @@
         }
       }
     },
-    "addFriend.nearby.add" : {
+    "addFriend.nearby.lookingForPeople" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Add"
+            "value" : "Looking for people nearby..."
           }
         }
       }
     },
-    "channelCreation.mode.create" : {
+    "addFriend.nearby.scanning" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Create Channel"
+            "value" : "Scanning"
           }
         }
       }
     },
-    "channelCreation.mode.join" : {
+    "addFriend.nearby.title" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Join with Code"
+            "value" : "NEARBY"
+          }
+        }
+      }
+    },
+    "addFriend.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Friend"
+          }
+        }
+      }
+    },
+    "addFriend.yourCode.copied" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied!"
+          }
+        }
+      }
+    },
+    "addFriend.yourCode.copy" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy"
+          }
+        }
+      }
+    },
+    "addFriend.yourCode.hint" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share this code so friends can add you."
+          }
+        }
+      }
+    },
+    "addFriend.yourCode.share" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share"
+          }
+        }
+      }
+    },
+    "addFriend.yourCode.shareText %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add me on ChirpChirp! My code: %@"
+          }
+        }
+      }
+    },
+    "addFriend.yourCode.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YOUR CHIRPCHIRP CODE"
+          }
+        }
+      }
+    },
+    "CH" : {
+
+    },
+    "channel.loopback.on" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loopback ON"
+          }
+        }
+      }
+    },
+    "channel.mode.chat" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chat"
+          }
+        }
+      }
+    },
+    "channel.mode.talk" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Talk"
+          }
+        }
+      }
+    },
+    "channel.ptt.holdToTalk" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold to Talk"
+          }
+        }
+      }
+    },
+    "channel.ptt.releaseToStop" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Release to stop"
+          }
+        }
+      }
+    },
+    "channel.quickAction.camera" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Camera"
+          }
+        }
+      }
+    },
+    "channel.quickAction.chat" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chat"
+          }
+        }
+      }
+    },
+    "channel.quickAction.location" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Location"
+          }
+        }
+      }
+    },
+    "channel.quickAction.sos" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SOS"
+          }
+        }
+      }
+    },
+    "channel.radar.peersHint" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Peers will orbit here"
+          }
+        }
+      }
+    },
+    "channel.radar.scanning" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scanning..."
+          }
+        }
+      }
+    },
+    "channel.status.busy" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Channel busy"
+          }
+        }
+      }
+    },
+    "channel.status.listening" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LISTENING"
+          }
+        }
+      }
+    },
+    "channel.status.live" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LIVE"
+          }
+        }
+      }
+    },
+    "channel.status.ready" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready"
+          }
+        }
+      }
+    },
+    "channelCreation.create.button" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create"
           }
         }
       }
     },
     "channelCreation.create.namePlaceholder" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1822,6 +484,7 @@
       }
     },
     "channelCreation.create.privateChannel" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1832,6 +495,7 @@
       }
     },
     "channelCreation.create.privateChannelHint" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1842,6 +506,7 @@
       }
     },
     "channelCreation.create.suggestions" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1851,17 +516,19 @@
         }
       }
     },
-    "channelCreation.create.button" : {
+    "channelCreation.join.button" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Create"
+            "value" : "Join"
           }
         }
       }
     },
     "channelCreation.join.codePlaceholder" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1872,6 +539,7 @@
       }
     },
     "channelCreation.join.hint" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1882,6 +550,7 @@
       }
     },
     "channelCreation.join.invalidCode" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1891,17 +560,36 @@
         }
       }
     },
-    "channelCreation.join.button" : {
+    "channelCreation.mode.create" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Join"
+            "value" : "Create Channel"
           }
         }
       }
     },
+    "channelCreation.mode.join" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Join with Code"
+          }
+        }
+      }
+    },
+    "ChirpChirp" : {
+
+    },
+    "ChirpChirp %@" : {
+
+    },
     "common.cancel" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1912,6 +600,7 @@
       }
     },
     "common.done" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1920,6 +609,1763 @@
           }
         }
       }
+    },
+    "DEACTIVATE EMERGENCY MODE" : {
+
+    },
+    "DEBUG" : {
+
+    },
+    "Debug Info" : {
+
+    },
+    "Delivered" : {
+
+    },
+    "EMERGENCY MODE" : {
+
+    },
+    "emergency.alerts.incoming" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "INCOMING SOS ALERTS"
+          }
+        }
+      }
+    },
+    "emergency.coordinates.acquiringGPS" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acquiring GPS signal..."
+          }
+        }
+      }
+    },
+    "emergency.coordinates.currentPosition" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CURRENT POSITION"
+          }
+        }
+      }
+    },
+    "emergency.countdown.activating" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ACTIVATING SOS"
+          }
+        }
+      }
+    },
+    "emergency.countdown.cancel" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CANCEL"
+          }
+        }
+      }
+    },
+    "emergency.countdown.cancelHint" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press cancel to abort"
+          }
+        }
+      }
+    },
+    "emergency.deactivate" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deactivate"
+          }
+        }
+      }
+    },
+    "emergency.emergencyMode.beaconInterval %lld" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beacon interval %llds"
+          }
+        }
+      }
+    },
+    "emergency.emergencyMode.description" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optimizes the app for disaster scenarios: max range, aggressive relay, low-bandwidth audio, and periodic location sharing."
+          }
+        }
+      }
+    },
+    "emergency.emergencyMode.locationBroadcast %lld" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Location broadcast every %llds"
+          }
+        }
+      }
+    },
+    "emergency.emergencyMode.lowBandwidth" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Low-bandwidth audio (8 kbps)"
+          }
+        }
+      }
+    },
+    "emergency.emergencyMode.maxTTL %lld" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max TTL (%lld hops), relay everything"
+          }
+        }
+      }
+    },
+    "emergency.emergencyMode.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "EMERGENCY MODE"
+          }
+        }
+      }
+    },
+    "emergency.header.beacon" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "EMERGENCY BEACON"
+          }
+        }
+      }
+    },
+    "emergency.header.broadcasting" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Broadcasting SOS to mesh network"
+          }
+        }
+      }
+    },
+    "emergency.header.tapToActivate" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap SOS to broadcast your location"
+          }
+        }
+      }
+    },
+    "emergency.holdForEmergencyMode" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold for Emergency Mode"
+          }
+        }
+      }
+    },
+    "emergency.info.alertDevices" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All mesh devices show an alert with your location"
+          }
+        }
+      }
+    },
+    "emergency.info.backgroundBroadcast" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continues broadcasting even when app is backgrounded"
+          }
+        }
+      }
+    },
+    "emergency.info.broadcastFrequency" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Broadcasts every 5 seconds at max range (TTL 8)"
+          }
+        }
+      }
+    },
+    "emergency.info.includesGPS" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Includes your GPS coordinates and battery level"
+          }
+        }
+      }
+    },
+    "emergency.sos.active" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ACTIVE"
+          }
+        }
+      }
+    },
+    "emergency.status.batteryRemaining %lld" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld%% battery remaining"
+          }
+        }
+      }
+    },
+    "emergency.status.broadcastingTo %lld" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Broadcasting to %lld mesh node(s)"
+          }
+        }
+      }
+    },
+    "emergency.status.broadcasts" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Broadcasts"
+          }
+        }
+      }
+    },
+    "emergency.status.meshNodes" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mesh Nodes"
+          }
+        }
+      }
+    },
+    "emergency.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emergency SOS"
+          }
+        }
+      }
+    },
+    "FMT" : {
+
+    },
+    "FPS" : {
+
+    },
+    "friends.action.remove" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove"
+          }
+        }
+      }
+    },
+    "friends.action.removeFriend" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove Friend"
+          }
+        }
+      }
+    },
+    "friends.action.startChannel" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start Channel"
+          }
+        }
+      }
+    },
+    "friends.action.viewDetails" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View Details"
+          }
+        }
+      }
+    },
+    "friends.addFriend" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Friend"
+          }
+        }
+      }
+    },
+    "friends.detail.message" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Message"
+          }
+        }
+      }
+    },
+    "friends.detail.talk" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Talk"
+          }
+        }
+      }
+    },
+    "friends.emptyState.shareCodeSubtitle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Friends can add you with your ChirpChirp ID"
+          }
+        }
+      }
+    },
+    "friends.emptyState.shareCodeTitle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share your unique code"
+          }
+        }
+      }
+    },
+    "friends.emptyState.subtitle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add friends to start talking instantly.\nShare your ChirpChirp code or discover\npeople nearby on the same network."
+          }
+        }
+      }
+    },
+    "friends.emptyState.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your flock awaits"
+          }
+        }
+      }
+    },
+    "friends.section.inRange" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "IN RANGE"
+          }
+        }
+      }
+    },
+    "friends.section.offline" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OFFLINE"
+          }
+        }
+      }
+    },
+    "friends.status.inRange" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In Range"
+          }
+        }
+      }
+    },
+    "friends.status.lastSeen" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last seen "
+          }
+        }
+      }
+    },
+    "friends.status.neverSeen" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Never seen"
+          }
+        }
+      }
+    },
+    "friends.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Friends"
+          }
+        }
+      }
+    },
+    "From: %@..." : {
+
+    },
+    "gateway.confirmation.deliveredMessage" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Message delivered via gateway"
+          }
+        }
+      }
+    },
+    "gateway.confirmation.queued" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Queued"
+          }
+        }
+      }
+    },
+    "gateway.confirmation.queuedMessage" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Message queued for next gateway"
+          }
+        }
+      }
+    },
+    "gateway.confirmation.sent" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sent!"
+          }
+        }
+      }
+    },
+    "gateway.countryCode.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Country Code"
+          }
+        }
+      }
+    },
+    "gateway.message.label" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Message"
+          }
+        }
+      }
+    },
+    "gateway.recipient.emailLabel" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recipient Email"
+          }
+        }
+      }
+    },
+    "gateway.recipient.emailPlaceholder" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Email address"
+          }
+        }
+      }
+    },
+    "gateway.recipient.phoneLabel" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recipient Phone"
+          }
+        }
+      }
+    },
+    "gateway.recipient.phonePlaceholder" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phone number"
+          }
+        }
+      }
+    },
+    "gateway.send.queue" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Queue for Gateway"
+          }
+        }
+      }
+    },
+    "gateway.send.sendVia" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send via Gateway"
+          }
+        }
+      }
+    },
+    "gateway.status.available" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gateway Available"
+          }
+        }
+      }
+    },
+    "gateway.status.noGateway" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Gateway in Mesh"
+          }
+        }
+      }
+    },
+    "gateway.status.relayingForMesh" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This device has internet — relaying for mesh"
+          }
+        }
+      }
+    },
+    "gateway.status.willQueue" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Messages will queue until a gateway appears"
+          }
+        }
+      }
+    },
+    "gateway.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gateway Message"
+          }
+        }
+      }
+    },
+    "HOLD TO TALK" : {
+
+    },
+    "home.channel.delete" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete Channel"
+          }
+        }
+      }
+    },
+    "home.emptyState.createChannel" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create Channel"
+          }
+        }
+      }
+    },
+    "home.emptyState.createChannelSubtitle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Infrastructure-free communication"
+          }
+        }
+      }
+    },
+    "home.emptyState.subtitle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create a channel and nearby devices\nwill connect automatically. No servers needed."
+          }
+        }
+      }
+    },
+    "home.emptyState.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start your mesh network"
+          }
+        }
+      }
+    },
+    "home.friends.online %lld" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld online"
+          }
+        }
+      }
+    },
+    "home.friends.seeAll" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See All"
+          }
+        }
+      }
+    },
+    "home.friends.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Friends"
+          }
+        }
+      }
+    },
+    "home.header.nodesInMesh %lld" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld node(s) in mesh"
+          }
+        }
+      }
+    },
+    "home.header.noMesh" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No mesh"
+          }
+        }
+      }
+    },
+    "home.quickAction.gateway" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gateway"
+          }
+        }
+      }
+    },
+    "home.quickAction.newChannel" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Channel"
+          }
+        }
+      }
+    },
+    "home.sos.alertMessage" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This will broadcast an emergency signal to all nearby mesh devices. Use only in a real emergency."
+          }
+        }
+      }
+    },
+    "home.sos.alertTitle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activate SOS Beacon?"
+          }
+        }
+      }
+    },
+    "home.sos.sendButton" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send SOS"
+          }
+        }
+      }
+    },
+    "IN" : {
+
+    },
+    "Input Level" : {
+
+    },
+    "LIVE" : {
+
+    },
+    "MESH HEALTH" : {
+
+    },
+    "Mesh Network" : {
+
+    },
+    "Nearby ChirpChirp devices will appear here" : {
+
+    },
+    "No messages yet.\nSend the first one!" : {
+
+    },
+    "none" : {
+
+    },
+    "onboarding.getStarted" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get Started"
+          }
+        }
+      }
+    },
+    "onboarding.noInternetRequired" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No internet required"
+          }
+        }
+      }
+    },
+    "onboarding.page1.subtitle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ChirpChirp works when nothing else does. Your phone connects directly to nearby devices."
+          }
+        }
+      }
+    },
+    "onboarding.page1.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No towers. No internet.\nNo problem."
+          }
+        }
+      }
+    },
+    "onboarding.page2.subtitle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your phone helps others communicate, and theirs helps you. The mesh grows with every user."
+          }
+        }
+      }
+    },
+    "onboarding.page2.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Every phone extends\nthe network."
+          }
+        }
+      }
+    },
+    "onboarding.page3.subtitle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voice for speed. Text for stealth and efficiency. Both work across the mesh."
+          }
+        }
+      }
+    },
+    "onboarding.page3.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Talk or text."
+          }
+        }
+      }
+    },
+    "onboarding.page4.subtitle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End-to-end encrypted. No servers. No accounts. No data collection. Ever."
+          }
+        }
+      }
+    },
+    "onboarding.page4.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Private by default."
+          }
+        }
+      }
+    },
+    "onboarding.page5.subtitle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Natural disasters. Concerts. Protests. Off-grid adventures. Anywhere communication fails."
+          }
+        }
+      }
+    },
+    "onboarding.page5.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Built for when\nit matters most."
+          }
+        }
+      }
+    },
+    "onboarding.tagline" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Infrastructure-free communication."
+          }
+        }
+      }
+    },
+    "onboarding.talkChat.speed" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speed"
+          }
+        }
+      }
+    },
+    "onboarding.talkChat.stealth" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stealth"
+          }
+        }
+      }
+    },
+    "onboarding.talkChat.text" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text"
+          }
+        }
+      }
+    },
+    "onboarding.talkChat.voice" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voice"
+          }
+        }
+      }
+    },
+    "onboarding.useCase.adventures" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adventures"
+          }
+        }
+      }
+    },
+    "onboarding.useCase.concerts" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Concerts"
+          }
+        }
+      }
+    },
+    "onboarding.useCase.disasters" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disasters"
+          }
+        }
+      }
+    },
+    "onboarding.useCase.emergencies" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emergencies"
+          }
+        }
+      }
+    },
+    "onboarding.useCase.offGrid" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off-Grid"
+          }
+        }
+      }
+    },
+    "onboarding.useCase.protests" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Protests"
+          }
+        }
+      }
+    },
+    "Open Chirp on the other device too" : {
+
+    },
+    "Open in Maps" : {
+
+    },
+    "Open Settings" : {
+
+    },
+    "PAIRED DEVICES" : {
+
+    },
+    "Peer ID" : {
+
+    },
+    "PEERS" : {
+
+    },
+    "PTT" : {
+
+    },
+    "PTT State" : {
+
+    },
+    "RECEIVING" : {
+
+    },
+    "Replying to %@" : {
+
+    },
+    "Scanning for mesh peers..." : {
+
+    },
+    "Searching for nearby devices..." : {
+
+    },
+    "Set Up Action Button" : {
+
+    },
+    "settings.about.channels.description" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create or join channels. Everyone on the same channel hears each other."
+          }
+        }
+      }
+    },
+    "settings.about.channels.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Channels"
+          }
+        }
+      }
+    },
+    "settings.about.howItWorks" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How Chirp Works"
+          }
+        }
+      }
+    },
+    "settings.about.openSourceCredits" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Source Credits"
+          }
+        }
+      }
+    },
+    "settings.about.privacy.description" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All communication stays device-to-device. No servers. Ever."
+          }
+        }
+      }
+    },
+    "settings.about.privacy.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy"
+          }
+        }
+      }
+    },
+    "settings.about.privacyPolicy" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy Policy"
+          }
+        }
+      }
+    },
+    "settings.about.pushToTalk.description" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hold to talk, release to listen. Like a real walkie-talkie."
+          }
+        }
+      }
+    },
+    "settings.about.pushToTalk.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Push-to-Talk"
+          }
+        }
+      }
+    },
+    "settings.about.rateApp" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rate ChirpChirp"
+          }
+        }
+      }
+    },
+    "settings.about.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About"
+          }
+        }
+      }
+    },
+    "settings.about.wifiAware.description" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connects devices directly without a router, cell tower, or internet."
+          }
+        }
+      }
+    },
+    "settings.about.wifiAware.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wi-Fi Aware"
+          }
+        }
+      }
+    },
+    "settings.audioHaptics.chirpSounds" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chirp Sounds"
+          }
+        }
+      }
+    },
+    "settings.audioHaptics.hapticFeedback" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haptic Feedback"
+          }
+        }
+      }
+    },
+    "settings.audioHaptics.loopbackDescription" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loopback plays your voice back through the Opus codec pipeline for testing without a second device."
+          }
+        }
+      }
+    },
+    "settings.audioHaptics.loopbackTest" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loopback Test"
+          }
+        }
+      }
+    },
+    "settings.audioHaptics.speakerOutput" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speaker Output"
+          }
+        }
+      }
+    },
+    "settings.audioHaptics.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio & Haptics"
+          }
+        }
+      }
+    },
+    "settings.emergency.emergencyMode" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emergency Mode"
+          }
+        }
+      }
+    },
+    "settings.emergency.emergencyModeDescription" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optimizes for disaster scenarios: max mesh range, aggressive relay, low-bandwidth audio, and periodic location broadcasts."
+          }
+        }
+      }
+    },
+    "settings.emergency.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emergency"
+          }
+        }
+      }
+    },
+    "settings.meshNetwork.deduplicated" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deduplicated"
+          }
+        }
+      }
+    },
+    "settings.meshNetwork.delivered" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delivered"
+          }
+        }
+      }
+    },
+    "settings.meshNetwork.estRange" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Est. Range"
+          }
+        }
+      }
+    },
+    "settings.meshNetwork.localNetworkHint" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ensure Local Network is enabled in Settings → Privacy → Local Network → ChirpChirp"
+          }
+        }
+      }
+    },
+    "settings.meshNetwork.localNetworkPermission" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local Network Permission"
+          }
+        }
+      }
+    },
+    "settings.meshNetwork.maxHops" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max Hops"
+          }
+        }
+      }
+    },
+    "settings.meshNetwork.nearbyPeers" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nearby Peers"
+          }
+        }
+      }
+    },
+    "settings.meshNetwork.packetsRelayed" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Packets Relayed"
+          }
+        }
+      }
+    },
+    "settings.meshNetwork.pairedDevices" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paired Devices"
+          }
+        }
+      }
+    },
+    "settings.meshNetwork.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mesh Network"
+          }
+        }
+      }
+    },
+    "settings.meshNetwork.wifiAware" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wi-Fi Aware"
+          }
+        }
+      }
+    },
+    "settings.privacySecurity.e2eEncryption" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End-to-End Encryption"
+          }
+        }
+      }
+    },
+    "settings.privacySecurity.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy & Security"
+          }
+        }
+      }
+    },
+    "settings.privacySecurity.yourFingerprint" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your Fingerprint"
+          }
+        }
+      }
+    },
+    "settings.privacySecurity.zeroServers" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zero Servers"
+          }
+        }
+      }
+    },
+    "settings.privacySecurity.zeroServersDescription" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All communication is device-to-device"
+          }
+        }
+      }
+    },
+    "settings.profile.callsign" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Callsign"
+          }
+        }
+      }
+    },
+    "settings.profile.copied" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied"
+          }
+        }
+      }
+    },
+    "settings.profile.copyID" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy ID"
+          }
+        }
+      }
+    },
+    "settings.quickAccess.actionButton" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set Up Action Button"
+          }
+        }
+      }
+    },
+    "settings.quickAccess.siriShortcut" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Siri Shortcut"
+          }
+        }
+      }
+    },
+    "settings.quickAccess.siriShortcutHint" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"Hey Siri, push to talk with ChirpChirp\""
+          }
+        }
+      }
+    },
+    "settings.quickAccess.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quick Access"
+          }
+        }
+      }
+    },
+    "settings.status.active" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Active"
+          }
+        }
+      }
+    },
+    "settings.status.on" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On"
+          }
+        }
+      }
+    },
+    "settings.status.unavailable" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unavailable"
+          }
+        }
+      }
+    },
+    "settings.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        }
+      }
+    },
+    "Shared Location" : {
+
+    },
+    "SOS" : {
+
+    },
+    "SOS ACTIVE" : {
+
+    },
+    "tap to close" : {
+
+    },
+    "This device doesn't support Wi-Fi Aware.\nChirp requires iOS 26+ and compatible hardware." : {
+
+    },
+    "Tip: You can also say \"Hey Siri, push to talk with ChirpChirp\" to start a session hands-free." : {
+
+    },
+    "Use your Action Button as a\nphysical push-to-talk trigger" : {
+
+    },
+    "Waiting for %@ to come in range..." : {
+
+    },
+    "Waiting for nearby devices..." : {
+
+    },
+    "Wi-Fi Aware Not Supported" : {
+
+    },
+    "Wi-Fi Aware pairing not supported on this device." : {
+
+    },
+    "You" : {
+
+    },
+    "YOU" : {
+
     }
   },
   "version" : "1.0"
