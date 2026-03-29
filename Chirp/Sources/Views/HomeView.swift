@@ -549,6 +549,9 @@ struct HomeView: View {
     @State private var toast: ToastItem?
     @State private var connectedPeerCount = 0
     @State private var isRefreshing = false
+    @State private var showSOSConfirm = false
+    @State private var sosHoldProgress: CGFloat = 0
+    @State private var pendingMessageCount: Int = 0
 
     private let amber = Color(hex: 0xFFB800)
     private let green = Color(hex: 0x30D158)
@@ -586,8 +589,32 @@ struct HomeView: View {
                 }
             }
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    // SOS Emergency Button — requires long press to activate
+                    SOSToolbarButton(showConfirm: $showSOSConfirm)
+                }
+
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 16) {
+                        // Voice messages indicator
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: "envelope.fill")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(pendingMessageCount > 0 ? amber : .secondary)
+
+                            if pendingMessageCount > 0 {
+                                Text("\(min(pendingMessageCount, 99))")
+                                    .font(.system(size: 9, weight: .black, design: .rounded))
+                                    .foregroundStyle(.white)
+                                    .frame(minWidth: 16, minHeight: 16)
+                                    .background(
+                                        Circle()
+                                            .fill(Color(hex: 0xFF3B30))
+                                    )
+                                    .offset(x: 8, y: -8)
+                            }
+                        }
+
                         NavigationLink {
                             MeshMapView()
                         } label: {
@@ -638,6 +665,14 @@ struct HomeView: View {
             .sheet(isPresented: $showPairing) {
                 PairingView()
                     .onAppearAnimations()
+            }
+            .alert("Activate SOS Beacon?", isPresented: $showSOSConfirm) {
+                Button("Send SOS", role: .destructive) {
+                    activateSOS()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will broadcast an emergency signal to all nearby mesh devices. Use only in a real emergency.")
             }
             .chirpToast($toast)
             .task {
@@ -739,5 +774,127 @@ struct HomeView: View {
         let peers = await appState.peerTracker.connectedPeers
         connectedPeerCount = peers.count
         isRefreshing = false
+    }
+
+    // MARK: - SOS
+
+    private func activateSOS() {
+        // Send an SOS control packet through the mesh with max TTL
+        let sosPayload: [String: String] = [
+            "type": "SOS",
+            "from": appState.callsign,
+            "peerID": appState.localPeerID,
+            "time": ISO8601DateFormatter().string(from: Date()),
+        ]
+        guard let data = try? JSONEncoder().encode(sosPayload) else { return }
+
+        Task {
+            let packet = await appState.meshRouter.createPacket(
+                type: .control,
+                payload: data,
+                channelID: "",  // Broadcast to all channels
+                sequenceNumber: 0
+            )
+            // Forward to all peers
+            appState.multipeerTransport.forwardPacket(packet.serialize(), excludePeer: "")
+        }
+
+        toast = ToastItem(message: "SOS beacon activated", type: .error)
+    }
+}
+
+// MARK: - SOS Toolbar Button
+
+/// A long-press-activated SOS button that prevents accidental triggers.
+/// Shows red only when held; requires deliberate press to confirm.
+private struct SOSToolbarButton: View {
+    @Binding var showConfirm: Bool
+
+    @State private var isHolding = false
+    @State private var holdProgress: CGFloat = 0
+    @State private var holdTimer: Timer?
+
+    private let holdDuration: TimeInterval = 1.5  // seconds to hold before confirming
+    private let sosRed = Color(hex: 0xFF3B30)
+
+    var body: some View {
+        Button {
+            // Tap does nothing -- must long press
+        } label: {
+            ZStack {
+                // Background fill that grows with hold progress
+                Circle()
+                    .trim(from: 0, to: holdProgress)
+                    .stroke(sosRed, lineWidth: 2.5)
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 30, height: 30)
+
+                Text("SOS")
+                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .foregroundStyle(isHolding ? .white : sosRed.opacity(0.6))
+            }
+            .frame(width: 34, height: 34)
+            .background(
+                Circle()
+                    .fill(isHolding ? sosRed.opacity(0.3) : Color.clear)
+            )
+        }
+        .simultaneousGesture(
+            LongPressGesture(minimumDuration: holdDuration)
+                .onChanged { _ in
+                    startHold()
+                }
+                .onEnded { _ in
+                    completeHold()
+                }
+        )
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onEnded { _ in
+                    cancelHold()
+                }
+        )
+        .accessibilityLabel("SOS Emergency Beacon")
+        .accessibilityHint("Long press for \(String(format: "%.1f", holdDuration)) seconds to activate emergency beacon")
+    }
+
+    private func startHold() {
+        isHolding = true
+        holdProgress = 0
+        holdTimer?.invalidate()
+
+        let interval: TimeInterval = 0.05
+        let steps = holdDuration / interval
+        nonisolated(unsafe) var currentStep: Double = 0
+
+        holdTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
+            currentStep += 1
+            let progress = CGFloat(currentStep / steps)
+            DispatchQueue.main.async {
+                withAnimation(.linear(duration: interval)) {
+                    holdProgress = progress
+                }
+            }
+            if currentStep >= steps {
+                timer.invalidate()
+            }
+        }
+    }
+
+    private func completeHold() {
+        holdTimer?.invalidate()
+        holdTimer = nil
+        isHolding = false
+        holdProgress = 0
+        showConfirm = true
+    }
+
+    private func cancelHold() {
+        holdTimer?.invalidate()
+        holdTimer = nil
+        withAnimation(.easeOut(duration: 0.2)) {
+            isHolding = false
+            holdProgress = 0
+        }
     }
 }

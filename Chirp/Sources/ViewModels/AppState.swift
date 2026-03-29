@@ -22,6 +22,8 @@ final class AppState {
     let multipeerTransport: MultipeerTransport
     let friendsManager: FriendsManager
     let meshRouter: MeshRouter
+    let meshIntelligence: MeshIntelligence
+    let backgroundService: BackgroundMeshService
 
     // MARK: - Identity
 
@@ -125,6 +127,8 @@ final class AppState {
         }
         let router = MeshRouter(localPeerID: originUUID)
         self.meshRouter = router
+        self.meshIntelligence = MeshIntelligence()
+        self.backgroundService = BackgroundMeshService.shared
         transport.meshRouter = router
 
         // Wire multipeer to PTT engine for real peer-to-peer audio
@@ -234,12 +238,16 @@ final class AppState {
         //     liveActivityManager.startActivity(channelName: channel.name)
         // }
 
-        // Periodically update mesh stats for UI
+        // Register background tasks to keep mesh alive
+        backgroundService.registerBackgroundTasks()
+
+        // Periodically update mesh stats and prune stale intelligence data
         Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(2))
                 guard let self else { break }
                 self.meshStats = await self.meshRouter.stats
+                await self.meshIntelligence.pruneStaleEntries()
             }
         }
 

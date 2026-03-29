@@ -28,8 +28,16 @@ struct ChirpApp: App {
                 await appState.start()
             }
             .onChange(of: scenePhase) { _, newPhase in
-                if newPhase == .active {
+                switch newPhase {
+                case .active:
                     Task { await appState.requestMicPermission() }
+                    appState.backgroundService.enterForeground()
+                case .background:
+                    appState.backgroundService.enterBackground()
+                case .inactive:
+                    break
+                @unknown default:
+                    break
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .chirpPTTShortcutTriggered)) { _ in
