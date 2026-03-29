@@ -71,25 +71,30 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
 
     // MARK: - CLLocationManagerDelegate
 
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let latest = locations.last else { return }
-        currentLocation = latest
-        logger.debug("Location updated: \(latest.coordinate.latitude, privacy: .private), \(latest.coordinate.longitude, privacy: .private)")
+        Task { @MainActor in
+            self.currentLocation = latest
+            self.logger.debug("Location updated: \(latest.coordinate.latitude, privacy: .private), \(latest.coordinate.longitude, privacy: .private)")
+        }
     }
 
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        authorizationStatus = manager.authorizationStatus
-        logger.info("Authorization changed: \(String(describing: manager.authorizationStatus.rawValue))")
+    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let status = manager.authorizationStatus
+        Task { @MainActor in
+            self.authorizationStatus = status
+            self.logger.info("Authorization changed: \(String(describing: status.rawValue))")
 
-        switch manager.authorizationStatus {
-        case .authorizedWhenInUse, .authorizedAlways:
-            manager.startUpdatingLocation()
-        case .denied, .restricted:
-            logger.warning("Location access denied or restricted")
-        case .notDetermined:
-            break
-        @unknown default:
-            break
+            switch status {
+            case .authorizedWhenInUse, .authorizedAlways:
+                manager.startUpdatingLocation()
+            case .denied, .restricted:
+                self.logger.warning("Location access denied or restricted")
+            case .notDetermined:
+                break
+            @unknown default:
+                break
+            }
         }
     }
 }
