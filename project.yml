@@ -29,6 +29,7 @@ targets:
       - path: Chirp/Resources
     dependencies:
       - package: Opus
+        product: Opus
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp
