@@ -9,6 +9,12 @@ packages:
   Opus:
     url: https://github.com/alta/swift-opus
     from: "0.0.1"
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: "7.0.0"
+  MapLibreNative:
+    url: https://github.com/maplibre/maplibre-gl-native-distribution
+    from: "6.9.0"
 
 settings:
   base:
@@ -30,6 +36,10 @@ targets:
     dependencies:
       - package: Opus
         product: Opus
+      - package: GRDB
+        product: GRDB
+      - package: MapLibreNative
+        product: MapLibre
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp
@@ -47,6 +57,9 @@ targets:
           - UIInterfaceOrientationLandscapeRight
           - UIInterfaceOrientationPortraitUpsideDown
         NSMicrophoneUsageDescription: "ChirpChirp needs microphone access to transmit your voice to nearby devices."
+        NSCameraUsageDescription: "ChirpChirp uses your camera to take photos and share them with nearby devices."
+        NSPhotoLibraryUsageDescription: "ChirpChirp accesses your photo library to share images with nearby devices."
+        NSPhotoLibraryAddUsageDescription: "ChirpChirp saves received images to your photo library."
         NSLocalNetworkUsageDescription: "ChirpChirp uses your local network to discover and connect to nearby devices for walkie-talkie communication."
         NSBonjourServices:
           - "_chirp-ptt._udp."

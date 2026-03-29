@@ -42,6 +42,8 @@ struct MessageBubbleView: View {
                                 text: message.text,
                                 viewerLocation: nil
                             )
+                        } else if attachment == .image {
+                            ImageAttachmentView(text: message.text)
                         } else {
                             attachmentBadge(attachment)
                             Text(message.text)

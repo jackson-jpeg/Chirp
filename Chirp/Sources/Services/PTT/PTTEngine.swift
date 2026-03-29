@@ -21,6 +21,9 @@ final class PTTEngine {
     var multipeerTransport: MultipeerTransport?
     var wifiAwareTransport: WiFiAwareTransport?
 
+    /// Provides the current peer list for transport preference decisions.
+    var peerListProvider: (() -> [ChirpPeer])?
+
     // MARK: - Private
 
     private let logger = Logger.ptt
@@ -69,10 +72,15 @@ final class PTTEngine {
                     timestamp: Self.currentTimestamp(),
                     opusData: opusData
                 )
-                // Send via both transports — MeshRouter dedup handles overlap
+                // Send via preferred transport(s) — skip MC if all peers on WA
                 let serialized = packet.serialize()
-                try? self.multipeerTransport?.sendAudio(serialized)
-                try? self.wifiAwareTransport?.sendAudio(serialized)
+                let peers = self.peerListProvider?() ?? []
+                if TransportPreference.shouldSendOnMC(peers: peers) {
+                    try? self.multipeerTransport?.sendAudio(serialized)
+                }
+                if TransportPreference.shouldSendOnWA(peers: peers) {
+                    try? self.wifiAwareTransport?.sendAudio(serialized)
+                }
             }
         }
 
@@ -81,8 +89,13 @@ final class PTTEngine {
         floorController.sendToAllPeers = { [weak self] message in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                try? self.multipeerTransport?.sendControl(message)
-                try? self.wifiAwareTransport?.sendControl(message)
+                let peers = self.peerListProvider?() ?? []
+                if TransportPreference.shouldSendOnMC(peers: peers) {
+                    try? self.multipeerTransport?.sendControl(message)
+                }
+                if TransportPreference.shouldSendOnWA(peers: peers) {
+                    try? self.wifiAwareTransport?.sendControl(message)
+                }
             }
         }
 
@@ -147,8 +160,13 @@ final class PTTEngine {
                 try? await Task.sleep(for: .seconds(5))
                 guard !Task.isCancelled, let self else { break }
                 let heartbeat = FloorControlMessage.heartbeat(peerID: self.localPeerID, timestamp: Date())
-                try? self.multipeerTransport?.sendControl(heartbeat)
-                try? self.wifiAwareTransport?.sendControl(heartbeat)
+                let peers = self.peerListProvider?() ?? []
+                if TransportPreference.shouldSendOnMC(peers: peers) {
+                    try? self.multipeerTransport?.sendControl(heartbeat)
+                }
+                if TransportPreference.shouldSendOnWA(peers: peers) {
+                    try? self.wifiAwareTransport?.sendControl(heartbeat)
+                }
             }
         }
     }

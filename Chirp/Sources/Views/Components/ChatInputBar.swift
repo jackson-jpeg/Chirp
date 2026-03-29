@@ -11,6 +11,8 @@ struct ChatInputBar: View {
     var onSend: () -> Void
     var onDismissReply: () -> Void
     var onShareLocation: () -> Void
+    var onTakePhoto: (() -> Void)?
+    var onPickPhoto: (() -> Void)?
 
     @FocusState private var isTextFieldFocused: Bool
 
@@ -119,6 +121,22 @@ struct ChatInputBar: View {
                 onShareLocation()
             } label: {
                 Label("Share Location", systemImage: "location.fill")
+            }
+
+            if let onTakePhoto {
+                Button {
+                    onTakePhoto()
+                } label: {
+                    Label("Take Photo", systemImage: "camera.fill")
+                }
+            }
+
+            if let onPickPhoto {
+                Button {
+                    onPickPhoto()
+                } label: {
+                    Label("Send Photo", systemImage: "photo.fill")
+                }
             }
         } label: {
             Image(systemName: "paperclip")

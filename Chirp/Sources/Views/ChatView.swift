@@ -1,4 +1,5 @@
 import SwiftUI
+import OSLog
 
 /// Full chat interface for a channel with iMessage-style layout.
 ///
@@ -13,11 +14,16 @@ struct ChatView: View {
     let messages: [MeshTextMessage]
     var onSend: (String, UUID?) -> Void
     var onShareLocation: () -> Void
+    var onSendImage: ((String) -> Void)?
 
     @State private var composedText: String = ""
     @State private var replyingTo: MeshTextMessage?
     @State private var showScrollToBottom: Bool = false
     @State private var isNearBottom: Bool = true
+    @State private var showImagePicker: Bool = false
+    @State private var imagePickerSource: ImagePickerSource = .library
+
+    private let logger = Logger(subsystem: Constants.subsystem, category: "ChatView")
 
     // MARK: - Body
 
@@ -38,7 +44,15 @@ struct ChatView: View {
                         replyingTo: replyingTo,
                         onSend: sendMessage,
                         onDismissReply: { replyingTo = nil },
-                        onShareLocation: onShareLocation
+                        onShareLocation: onShareLocation,
+                        onTakePhoto: {
+                            imagePickerSource = .camera
+                            showImagePicker = true
+                        },
+                        onPickPhoto: {
+                            imagePickerSource = .library
+                            showImagePicker = true
+                        }
                     )
                 }
 
@@ -53,6 +67,11 @@ struct ChatView: View {
         }
         .background(Color(hex: 0x0F172A))
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showScrollToBottom)
+        .sheet(isPresented: $showImagePicker) {
+            ImagePickerView(source: imagePickerSource) { image in
+                sendImage(image)
+            }
+        }
     }
 
     // MARK: - Empty State
@@ -240,6 +259,26 @@ struct ChatView: View {
         onSend(trimmed, replyingTo?.id)
         composedText = ""
         replyingTo = nil
+        isNearBottom = true
+        showScrollToBottom = false
+    }
+
+    /// Compress, base64-encode, and send an image through the mesh.
+    private func sendImage(_ image: UIImage) {
+        guard let compressed = ImageCompressor.compress(image) else {
+            logger.error("Image compression failed — not sending")
+            return
+        }
+
+        let base64 = compressed.base64EncodedString()
+        let payload = MeshTextMessage.imagePrefix + base64
+
+        guard payload.count <= MeshTextMessage.maxImagePayloadLength else {
+            logger.error("Image payload too large: \(payload.count) characters")
+            return
+        }
+
+        onSendImage?(payload)
         isNearBottom = true
         showScrollToBottom = false
     }

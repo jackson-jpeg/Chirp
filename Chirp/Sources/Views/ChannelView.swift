@@ -271,6 +271,16 @@ struct ChannelView: View {
                     attachmentType: .location
                 )
                 toast = ToastItem(message: "Location shared", type: .success)
+            },
+            onSendImage: { payload in
+                appState.textMessageService.send(
+                    text: payload,
+                    channelID: channel.id,
+                    senderID: appState.localPeerID,
+                    senderName: appState.callsign,
+                    attachmentType: .image
+                )
+                toast = ToastItem(message: "Image sent", type: .success)
             }
         )
     }

@@ -47,6 +47,25 @@ final class TextMessageService {
     /// Per-channel count of messages that arrived since the last ``markAsRead(channelID:)``.
     private var unreadCounts: [String: Int] = [:]
 
+    /// Encrypted message database. `nil` until ``setupDatabase()`` is called.
+    private var database: MessageDatabase?
+
+    /// Tracks which channels have been hydrated from DB into the in-memory cache.
+    private var hydratedChannels: Set<String> = []
+
+    // MARK: - Database Setup
+
+    /// Initialize the encrypted message database.
+    /// Call once during app startup, before any messages are processed.
+    func setupDatabase() {
+        do {
+            database = try MessageDatabase()
+            logger.info("Message database initialized")
+        } catch {
+            logger.error("Failed to open message database: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
     // MARK: - Sending
 
     /// Compose and send a text message on the given channel.
@@ -66,7 +85,10 @@ final class TextMessageService {
         replyToID: UUID? = nil,
         attachmentType: MeshTextMessage.AttachmentType? = nil
     ) {
-        let clampedText = String(text.prefix(MeshTextMessage.maxTextLength))
+        let maxLength = attachmentType == .image
+            ? MeshTextMessage.maxImagePayloadLength
+            : MeshTextMessage.maxTextLength
+        let clampedText = String(text.prefix(maxLength))
 
         let message = MeshTextMessage(
             id: UUID(),
@@ -139,8 +161,10 @@ final class TextMessageService {
     // MARK: - Accessors
 
     /// All messages for a channel, ordered by timestamp (oldest first).
+    /// Hydrates from the database on first access per channel.
     func messages(for channelID: String) -> [MeshTextMessage] {
-        messagesByChannel[channelID] ?? []
+        hydrateIfNeeded(channelID: channelID)
+        return messagesByChannel[channelID] ?? []
     }
 
     /// Number of unread messages on a channel since the last ``markAsRead(channelID:)``.
@@ -156,14 +180,43 @@ final class TextMessageService {
     /// Returns messages in a thread (all messages whose ``MeshTextMessage/replyToID``
     /// matches the given parent, plus the parent itself).
     func thread(for parentID: UUID, channelID: String) -> [MeshTextMessage] {
+        // Try database first for complete thread history
+        if let db = database {
+            let records = db.messagesInThread(parentID: parentID.uuidString, channelID: channelID)
+            let converted = records.compactMap { $0.toMeshTextMessage() }
+            if !converted.isEmpty { return converted }
+        }
+        // Fall back to in-memory
         let all = messages(for: channelID)
         return all.filter { $0.id == parentID || $0.replyToID == parentID }
     }
 
     // MARK: - Private
 
+    /// Hydrate the in-memory cache from the database for a channel, once per session.
+    private func hydrateIfNeeded(channelID: String) {
+        guard !hydratedChannels.contains(channelID) else { return }
+        hydratedChannels.insert(channelID)
+
+        guard let db = database else { return }
+
+        let records = db.messages(forChannel: channelID, limit: maxMessagesPerChannel)
+        let messages = records.compactMap { $0.toMeshTextMessage() }
+
+        if !messages.isEmpty {
+            messagesByChannel[channelID] = messages
+            logger.info("Hydrated \(messages.count) messages for channel \(channelID, privacy: .public)")
+        }
+    }
+
     /// Append a message to its channel history, enforcing the per-channel cap.
+    /// Persists to the database and updates the in-memory cache.
     private func storeMessage(_ message: MeshTextMessage) {
+        // Persist to database
+        database?.insert(MessageRecord(from: message))
+        database?.deleteOldest(forChannel: message.channelID, keepCount: maxMessagesPerChannel)
+
+        // Update in-memory cache
         var history = messagesByChannel[message.channelID] ?? []
         history.append(message)
 

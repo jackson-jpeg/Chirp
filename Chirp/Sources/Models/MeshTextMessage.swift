@@ -33,6 +33,12 @@ struct MeshTextMessage: Codable, Sendable, Identifiable {
     /// Maximum allowed characters in ``text``.
     static let maxTextLength = 1000
 
+    /// Maximum allowed characters for an image payload (base64-encoded JPEG).
+    static let maxImagePayloadLength = 100_000
+
+    /// Prefix for image attachment payloads.
+    static let imagePrefix = "IMG:"
+
     /// Magic bytes prepended to JSON before placing into ``MeshPacket/payload``.
     /// ASCII: `TXT!`
     static let magicPrefix: [UInt8] = [0x54, 0x58, 0x54, 0x21]
@@ -40,6 +46,9 @@ struct MeshTextMessage: Codable, Sendable, Identifiable {
     // MARK: - Wire helpers
 
     /// Encode this message as wire-ready data: magic prefix + JSON.
+    ///
+    /// Image attachments skip the normal text truncation; their payload is
+    /// clamped by ``maxImagePayloadLength`` in the send path instead.
     func wirePayload() throws -> Data {
         let json = try MeshCodable.encoder.encode(self)
         var data = Data(Self.magicPrefix)

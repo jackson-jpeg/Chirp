@@ -1,3 +1,4 @@
+import CoreLocation
 import SwiftUI
 
 // MARK: - Mesh Topology Node
@@ -614,10 +615,17 @@ private func nodePosition(
 
 // MARK: - Mesh Map View
 
+private enum MapTab: String, CaseIterable {
+    case topology = "Topology"
+    case map = "Map"
+}
+
 struct MeshMapView: View {
     @Environment(AppState.self) private var appState
     @State private var selectedNode: TopologyNode?
     @State private var cachedHealthScore: Double = 0
+    @State private var selectedTab: MapTab = .topology
+    @State private var showOfflineMapSheet: Bool = false
 
     private let amber = Constants.Colors.amber
     private let green = Constants.Colors.electricGreen
@@ -669,6 +677,29 @@ struct MeshMapView: View {
         EmergencyMode.shared.isActive
     }
 
+    /// Build peer pins from beacon data for the geographic map view.
+    private var peerPins: [PeerPin] {
+        let beaconNodes = appState.meshBeacon.sortedNodes
+        let peers = appState.channelManager.activeChannel?.peers ?? []
+        let peerTransport: [String: ChirpPeer.TransportType] = Dictionary(
+            peers.map { ($0.id, $0.transportType) },
+            uniquingKeysWith: { _, last in last }
+        )
+
+        return beaconNodes.compactMap { beacon in
+            guard let lat = beacon.latitude, let lon = beacon.longitude else { return nil }
+            let isStale = Date().timeIntervalSince(beacon.lastSeen) > 10
+            let transport = peerTransport[beacon.id] ?? (beacon.isDirect ? .multipeer : .multipeer)
+            return PeerPin(
+                id: beacon.id,
+                name: beacon.name,
+                coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
+                transportType: transport,
+                isStale: isStale
+            )
+        }
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -681,6 +712,84 @@ struct MeshMapView: View {
             )
             .ignoresSafeArea()
 
+            VStack(spacing: 0) {
+                // Segmented picker
+                Picker("View", selection: $selectedTab) {
+                    ForEach(MapTab.allCases, id: \.self) { tab in
+                        Text(tab.rawValue).tag(tab)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+
+                // Content
+                switch selectedTab {
+                case .topology:
+                    topologyContent
+                case .map:
+                    geoMapContent
+                }
+            }
+
+            // SOS badge at top (above picker)
+            if sosActive {
+                VStack {
+                    TimelineView(.animation(minimumInterval: 1.0 / 15.0)) { timeline in
+                        let phase = timeline.date.timeIntervalSinceReferenceDate
+                            .truncatingRemainder(dividingBy: 1.0)
+                        SOSBadge(pulsePhase: phase)
+                    }
+                    .padding(.top, 52)
+                    Spacer()
+                }
+            }
+        }
+        .accessibilityIdentifier(AccessibilityID.meshMap)
+        .navigationTitle("Mesh Network")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbar {
+            if selectedTab == .map {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showOfflineMapSheet = true
+                    } label: {
+                        Image(systemName: "arrow.down.circle")
+                            .foregroundStyle(amber)
+                    }
+                    .accessibilityLabel("Download offline maps")
+                }
+            }
+        }
+        .sheet(item: $selectedNode) { node in
+            NodeDetailSheet(node: node)
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.hidden)
+        }
+        .sheet(isPresented: $showOfflineMapSheet) {
+            OfflineMapDownloadSheet()
+                .environment(appState)
+        }
+        .task {
+            // Periodically fetch health score from MeshIntelligence (actor)
+            while !Task.isCancelled {
+                let score = await appState.meshIntelligence.meshHealthScore
+                await MainActor.run {
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                        cachedHealthScore = score
+                    }
+                }
+                try? await Task.sleep(for: .seconds(2))
+            }
+        }
+    }
+
+    // MARK: - Topology Content
+
+    private var topologyContent: some View {
+        ZStack {
             GeometryReader { geo in
                 let size = geo.size
                 let center = CGPoint(x: size.width / 2, y: size.height / 2)
@@ -788,19 +897,6 @@ struct MeshMapView: View {
                 }
             }
 
-            // SOS badge at top
-            if sosActive {
-                VStack {
-                    TimelineView(.animation(minimumInterval: 1.0 / 15.0)) { timeline in
-                        let phase = timeline.date.timeIntervalSinceReferenceDate
-                            .truncatingRemainder(dividingBy: 1.0)
-                        SOSBadge(pulsePhase: phase)
-                    }
-                    .padding(.top, 8)
-                    Spacer()
-                }
-            }
-
             // Stats bar at bottom
             VStack {
                 Spacer()
@@ -811,25 +907,26 @@ struct MeshMapView: View {
                 .accessibilityIdentifier(AccessibilityID.meshStatsBar)
             }
         }
-        .accessibilityIdentifier(AccessibilityID.meshMap)
-        .navigationTitle("Mesh Network")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
-        .sheet(item: $selectedNode) { node in
-            NodeDetailSheet(node: node)
-                .presentationDetents([.medium])
-                .presentationDragIndicator(.hidden)
-        }
-        .task {
-            // Periodically fetch health score from MeshIntelligence (actor)
-            while !Task.isCancelled {
-                let score = await appState.meshIntelligence.meshHealthScore
-                await MainActor.run {
-                    withAnimation(.easeInOut(duration: 0.5)) {
-                        cachedHealthScore = score
-                    }
-                }
-                try? await Task.sleep(for: .seconds(2))
+    }
+
+    // MARK: - Geographic Map Content
+
+    private var geoMapContent: some View {
+        ZStack {
+            GeoMapView(
+                userLocation: appState.locationService.currentLocation?.coordinate,
+                peers: peerPins
+            )
+            .ignoresSafeArea(edges: .bottom)
+
+            // Stats bar at bottom
+            VStack {
+                Spacer()
+                LiveStatsBar(
+                    stats: appState.meshStats,
+                    maxHops: maxHops
+                )
+                .accessibilityIdentifier(AccessibilityID.meshStatsBar)
             }
         }
     }

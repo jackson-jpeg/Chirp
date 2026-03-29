@@ -24,12 +24,16 @@ final class MeshBeacon {
         var lastSeen: Date
         /// IDs of this node's direct peers -- used to build topology in MeshIntelligence.
         var neighborIDs: [String]
+        /// GPS coordinates shared via location-share messages (nil if not shared).
+        var latitude: Double?
+        var longitude: Double?
 
         /// True if this node was heard directly (1 hop away).
         var isDirect: Bool { hopCount <= 1 }
 
         enum CodingKeys: String, CodingKey {
             case id, name, channels, hopCount, batteryLevel, timestamp, lastSeen, neighborIDs
+            case latitude, longitude
         }
 
         init(
@@ -40,7 +44,9 @@ final class MeshBeacon {
             batteryLevel: Float,
             timestamp: Date,
             lastSeen: Date,
-            neighborIDs: [String] = []
+            neighborIDs: [String] = [],
+            latitude: Double? = nil,
+            longitude: Double? = nil
         ) {
             self.id = id
             self.name = name
@@ -50,6 +56,8 @@ final class MeshBeacon {
             self.timestamp = timestamp
             self.lastSeen = lastSeen
             self.neighborIDs = neighborIDs
+            self.latitude = latitude
+            self.longitude = longitude
         }
 
         init(from decoder: Decoder) throws {
@@ -63,6 +71,9 @@ final class MeshBeacon {
             lastSeen = try container.decode(Date.self, forKey: .lastSeen)
             // Backwards compatible: older beacons may omit neighborIDs
             neighborIDs = try container.decodeIfPresent([String].self, forKey: .neighborIDs) ?? []
+            // Backwards compatible: older beacons may omit coordinates
+            latitude = try container.decodeIfPresent(Double.self, forKey: .latitude)
+            longitude = try container.decodeIfPresent(Double.self, forKey: .longitude)
         }
     }
 

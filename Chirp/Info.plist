@@ -33,6 +33,12 @@
 	<string>ChirpChirp uses your local network to discover and connect to nearby devices for walkie-talkie communication.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>ChirpChirp needs microphone access to transmit your voice to nearby devices.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>ChirpChirp uses your camera to take photos and share them with nearby devices.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ChirpChirp accesses your photo library to share images with nearby devices.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>ChirpChirp saves received images to your photo library.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIBackgroundModes</key>

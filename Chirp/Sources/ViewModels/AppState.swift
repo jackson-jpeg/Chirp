@@ -31,6 +31,7 @@ final class AppState {
     let liveTranscription: LiveTranscription
     let quickReplyManager: QuickReplyManager
     let proximityAlert: ProximityAlert
+    let offlineMapManager: OfflineMapManager
 
     // MARK: - Identity
 
@@ -143,6 +144,7 @@ final class AppState {
         self.liveTranscription = LiveTranscription()
         self.quickReplyManager = QuickReplyManager()
         self.proximityAlert = ProximityAlert()
+        self.offlineMapManager = OfflineMapManager()
 
         // Create MultipeerConnectivity transport (works on any iPhone, zero friction)
         let displayName = UserDefaults.standard.string(forKey: "com.chirpchirp.callsign") ?? UIDevice.current.name
@@ -164,10 +166,16 @@ final class AppState {
             self?.channelManager.getChannelCrypto(for: channelID)
         }
 
-        // Wire text message service to send on BOTH transports
+        // Wire text message service — prefer Wi-Fi Aware when available
+        let chanMgrRef = self.channelManager
         textMessageService.onSendPacket = { payload, channelID in
-            try? transport.sendControlData(payload, channelID: channelID)
-            try? waTransport?.sendControlData(payload, channelID: channelID)
+            let peers = chanMgrRef.activeChannel?.peers ?? []
+            if TransportPreference.shouldSendOnMC(peers: peers) {
+                try? transport.sendControlData(payload, channelID: channelID)
+            }
+            if TransportPreference.shouldSendOnWA(peers: peers) {
+                try? waTransport?.sendControlData(payload, channelID: channelID)
+            }
         }
 
         // Wire decoded PCM audio to live transcription
@@ -258,6 +266,9 @@ final class AppState {
 
     /// Call once from the app's root view `.task` modifier.
     func start() async {
+        // Initialize encrypted message database before any packets arrive
+        textMessageService.setupDatabase()
+
         // Load peer fingerprint
         self.peerFingerprint = await PeerIdentity.shared.fingerprint
 
@@ -283,6 +294,9 @@ final class AppState {
 
         pttEngine.multipeerTransport = multipeerTransport
         pttEngine.wifiAwareTransport = wifiAwareTransport
+        pttEngine.peerListProvider = { [weak self] in
+            self?.channelManager.activeChannel?.peers ?? []
+        }
         try? await pttEngine.start()
         await peerTracker.startHealthCheck()
 
