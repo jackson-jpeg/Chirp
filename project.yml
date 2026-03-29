@@ -53,6 +53,9 @@ targets:
         NSSupportsLiveActivities: true
         UIBackgroundModes:
           - audio
+          - fetch
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.chirpchirp.mesh.refresh
 
   ChirpLiveActivity:
     type: app-extension

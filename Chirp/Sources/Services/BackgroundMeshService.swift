@@ -116,6 +116,11 @@ final class BackgroundMeshService {
         }
         if backgroundTask != .invalid {
             logger.info("UIKit background task started (id: \(self.backgroundTask.rawValue))")
+            // End the UIKit task after 5 seconds — the silent audio loop
+            // is the real keep-alive mechanism, not this task.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+                self?.endBackgroundTask()
+            }
         }
     }
 

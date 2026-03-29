@@ -102,10 +102,15 @@ final class AudioEngine: @unchecked Sendable {
 
                 // Create converter lazily from actual buffer format
                 let fmt = buf.format
-                if self.converter == nil && fmt.sampleRate > 0 {
-                    if fmt.sampleRate != Constants.Opus.sampleRate || fmt.channelCount != 1 || fmt.commonFormat != .pcmFormatInt16 {
+                if self.converter == nil {
+                    if fmt.sampleRate > 0 && (fmt.sampleRate != Constants.Opus.sampleRate || fmt.channelCount != 1 || fmt.commonFormat != .pcmFormatInt16) {
                         self.converter = AVAudioConverter(from: fmt, to: self.targetFormat)
-                        Logger.audio.info("Converter: \(fmt.sampleRate)Hz/\(fmt.channelCount)ch -> 16000Hz/1ch")
+                        Logger.audio.info("Converter created: \(fmt.sampleRate)Hz/\(fmt.channelCount)ch/fmt\(fmt.commonFormat.rawValue) -> 16kHz/1ch/Int16")
+                    } else if fmt.sampleRate == 0 {
+                        Logger.audio.warning("Buffer has 0Hz format — skipping")
+                        return
+                    } else {
+                        Logger.audio.info("No converter needed — buffer already 16kHz/1ch/Int16")
                     }
                 }
 
