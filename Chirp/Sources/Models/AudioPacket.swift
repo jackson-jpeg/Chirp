@@ -19,10 +19,11 @@ struct AudioPacket: Sendable {
     func serialize() -> Data {
         var data = Data(capacity: Self.headerSize + opusData.count)
         data.append(type)
-        var seqBE = sequenceNumber.bigEndian
-        data.append(Data(bytes: &seqBE, count: 4))
-        var tsBE = timestamp.bigEndian
-        data.append(Data(bytes: &tsBE, count: 8))
+        // Write big-endian bytes directly to avoid alignment issues
+        let seq = sequenceNumber.bigEndian
+        withUnsafeBytes(of: seq) { data.append(contentsOf: $0) }
+        let ts = timestamp.bigEndian
+        withUnsafeBytes(of: ts) { data.append(contentsOf: $0) }
         data.append(opusData)
         return data
     }
@@ -32,11 +33,17 @@ struct AudioPacket: Sendable {
         let typeByte = data[data.startIndex]
         guard typeByte == typeAudio else { return nil }
 
-        let seqBytes = data[data.startIndex + 1 ..< data.startIndex + 5]
-        let sequenceNumber = seqBytes.withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        // Read big-endian integers byte-by-byte to avoid misaligned pointer access
+        let s = data.startIndex
+        let sequenceNumber: UInt32 =
+            UInt32(data[s + 1]) << 24 | UInt32(data[s + 2]) << 16 |
+            UInt32(data[s + 3]) << 8  | UInt32(data[s + 4])
 
-        let tsBytes = data[data.startIndex + 5 ..< data.startIndex + 13]
-        let timestamp = tsBytes.withUnsafeBytes { $0.load(as: UInt64.self).bigEndian }
+        let timestamp: UInt64 =
+            UInt64(data[s + 5])  << 56 | UInt64(data[s + 6])  << 48 |
+            UInt64(data[s + 7])  << 40 | UInt64(data[s + 8])  << 32 |
+            UInt64(data[s + 9])  << 24 | UInt64(data[s + 10]) << 16 |
+            UInt64(data[s + 11]) << 8  | UInt64(data[s + 12])
 
         let opusData = data[(data.startIndex + headerSize)...]
         return AudioPacket(

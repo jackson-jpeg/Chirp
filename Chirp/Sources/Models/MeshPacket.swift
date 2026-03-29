@@ -269,12 +269,13 @@ struct MeshPacket: Sendable {
     }
 
     /// Read a fixed-width big-endian integer from `data` at `offset`.
+    /// Uses byte-by-byte reading to avoid misaligned pointer access.
     private static func readBigEndian<T: FixedWidthInteger>(_ data: Data, at offset: Int) -> T {
         let size = MemoryLayout<T>.size
         var value: T = 0
-        _ = withUnsafeMutableBytes(of: &value) { dest in
-            data[offset ..< offset + size].copyBytes(to: dest)
+        for i in 0..<size {
+            value = (value << 8) | T(data[offset + i])
         }
-        return T(bigEndian: value)
+        return value
     }
 }

@@ -79,12 +79,8 @@ struct FileChunk: Sendable {
         ))
         offset += 16
 
-        // chunkIndex
-        var rawIndex: UInt16 = 0
-        _ = withUnsafeMutableBytes(of: &rawIndex) { dest in
-            payload[offset..<offset+2].copyBytes(to: dest)
-        }
-        let chunkIndex = UInt16(bigEndian: rawIndex)
+        // chunkIndex (big-endian, byte-by-byte to avoid misaligned pointer access)
+        let chunkIndex = UInt16(payload[offset]) << 8 | UInt16(payload[offset + 1])
         offset += 2
 
         let data = Data(payload[offset...])
