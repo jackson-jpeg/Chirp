@@ -98,7 +98,9 @@ final class OfflineMapManager: NSObject {
         downloadProgress = 0.0
 
         MLNOfflineStorage.shared.addPack(for: region, withContext: metadataData) { [weak self] pack, error in
-            Task { @MainActor [weak self] in
+            // MLNOfflineStorage calls this on the main queue.
+            // Transfer the non-Sendable MLNOfflinePack safely via MainActor.assumeIsolated.
+            MainActor.assumeIsolated {
                 guard let self else { return }
                 if let error {
                     self.logger.error("Failed to create offline pack: \(error.localizedDescription)")
