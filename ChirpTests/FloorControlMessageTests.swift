@@ -12,7 +12,7 @@ final class FloorControlMessageTests: XCTestCase {
         let message = FloorControlMessage.floorRequest(
             senderID: "peer-1",
             senderName: "Alice",
-            timestamp: 1_700_000_000
+            timestamp: Date(timeIntervalSince1970: 1_700_000_000)
         )
         let data = try encoder.encode(message)
         let decoded = try decoder.decode(FloorControlMessage.self, from: data)
@@ -48,7 +48,7 @@ final class FloorControlMessageTests: XCTestCase {
     }
 
     func testHeartbeatRoundTrip() throws {
-        let message = FloorControlMessage.heartbeat(peerID: "peer-6", timestamp: 9_999_999)
+        let message = FloorControlMessage.heartbeat(peerID: "peer-6", timestamp: Date(timeIntervalSince1970: 9_999_999))
         let data = try encoder.encode(message)
         let decoded = try decoder.decode(FloorControlMessage.self, from: data)
         XCTAssertEqual(decoded, message)
@@ -60,7 +60,7 @@ final class FloorControlMessageTests: XCTestCase {
         let message = FloorControlMessage.floorRequest(
             senderID: "id-1",
             senderName: "Tester",
-            timestamp: 12345
+            timestamp: Date(timeIntervalSince1970: 12345)
         )
         let data = try encoder.encode(message)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -68,7 +68,7 @@ final class FloorControlMessageTests: XCTestCase {
     }
 
     func testHeartbeatEncodesToValidJSON() throws {
-        let message = FloorControlMessage.heartbeat(peerID: "hb-1", timestamp: 42)
+        let message = FloorControlMessage.heartbeat(peerID: "hb-1", timestamp: Date(timeIntervalSince1970: 42))
         let data = try encoder.encode(message)
         let json = try JSONSerialization.jsonObject(with: data)
         XCTAssertNotNil(json, "Encoded data should be valid JSON")
@@ -89,7 +89,7 @@ final class FloorControlMessageTests: XCTestCase {
     // MARK: - Cross-case inequality
 
     func testDifferentCasesAreNotEqual() {
-        let request = FloorControlMessage.floorRequest(senderID: "p", senderName: "P", timestamp: 0)
+        let request = FloorControlMessage.floorRequest(senderID: "p", senderName: "P", timestamp: Date(timeIntervalSince1970: 0))
         let release = FloorControlMessage.floorRelease(senderID: "p")
         XCTAssertNotEqual(request, release)
     }

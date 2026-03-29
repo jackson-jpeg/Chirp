@@ -1,6 +1,6 @@
 import Foundation
 
-enum FloorControlMessage: Codable, Sendable {
+enum FloorControlMessage: Codable, Sendable, Equatable {
     case floorRequest(senderID: String, senderName: String, timestamp: Date)
     case floorGranted(speakerID: String)
     case floorRelease(senderID: String)
