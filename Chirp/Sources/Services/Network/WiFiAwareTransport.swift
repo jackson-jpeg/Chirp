@@ -40,7 +40,7 @@ final class WiFiAwareTransport {
     // MARK: - Private State
 
     /// Active connections keyed by a stable peer identifier.
-    private var connections: [String: NetworkConnection] = [:]
+    private var connections: [String: NetworkConnection<Never>] = [:]
 
     /// Lifecycle tasks.
     private var listenerTask: Task<Void, Never>?
@@ -217,7 +217,7 @@ final class WiFiAwareTransport {
 
     // MARK: - Connection Handling
 
-    private func handleEstablishedConnection(_ connection: NetworkConnection, peerID: String) {
+    private func handleEstablishedConnection(_ connection: NetworkConnection<Never>, peerID: String) {
         connections[peerID] = connection
         updatePeerList()
 
