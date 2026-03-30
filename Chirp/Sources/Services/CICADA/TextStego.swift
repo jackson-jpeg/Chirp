@@ -63,9 +63,12 @@ enum TextStego {
         return decryptPayload(encrypted, key: key)
     }
 
+    /// Invisible Unicode scalars used for encoding.
+    private static let stegoScalars: Set<Unicode.Scalar> = ["\u{200B}", "\u{200C}"]
+
     /// Quick check: does this text contain invisible stego characters?
     static func hasHiddenContent(_ text: String) -> Bool {
-        text.contains { Constants.CICADA.invisibleChars.contains($0) }
+        text.unicodeScalars.contains { stegoScalars.contains($0) }
     }
 
     /// Calculate the maximum number of hidden bytes a cover text of this length can carry.
@@ -80,7 +83,13 @@ enum TextStego {
 
     /// Extract only the visible text (strip invisible chars).
     static func visibleText(_ text: String) -> String {
-        String(text.filter { !Constants.CICADA.invisibleChars.contains($0) })
+        var result = ""
+        for scalar in text.unicodeScalars {
+            if !stegoScalars.contains(scalar) {
+                result.append(Character(scalar))
+            }
+        }
+        return result
     }
 
     // MARK: - Encryption
@@ -130,18 +139,20 @@ enum TextStego {
 
     /// Extract bit pairs from invisible characters in a text string.
     private static func extractBitPairs(from text: String) -> [(Bool, Bool)] {
+        let zwsp: Unicode.Scalar = "\u{200B}"
+        let zwnj: Unicode.Scalar = "\u{200C}"
         var pairs: [(Bool, Bool)] = []
         var pendingBit: Bool? = nil
 
-        for char in text {
-            if char == Constants.CICADA.bit0 {
+        for scalar in text.unicodeScalars {
+            if scalar == zwsp {
                 if let first = pendingBit {
                     pairs.append((first, false))
                     pendingBit = nil
                 } else {
                     pendingBit = false
                 }
-            } else if char == Constants.CICADA.bit1 {
+            } else if scalar == zwnj {
                 if let first = pendingBit {
                     pairs.append((first, true))
                     pendingBit = nil
