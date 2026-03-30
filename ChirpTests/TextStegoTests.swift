@@ -9,16 +9,19 @@ final class TextStegoTests: XCTestCase {
 
     // MARK: - Roundtrip
 
+    /// Cover text must be long enough to hold: hidden bytes + 31 crypto overhead.
+    /// "secret" = 6 bytes → ~37 encrypted → 148 positions → 149+ visible chars.
+    private let longCover = "The weather is absolutely beautiful today and I was thinking we should go for a walk in the park later this afternoon. What do you think about meeting at three? I could bring some sandwiches and we could have a nice little picnic by the lake."
+
     func testBasicRoundtrip() {
-        let cover = "Hello, how are you doing today?"
         let hidden = Data("secret".utf8)
 
-        let encoded = TextStego.encode(cover: cover, hidden: hidden, key: testKey)
-        XCTAssertNotNil(encoded)
+        let encoded = TextStego.encode(cover: longCover, hidden: hidden, key: testKey)
+        XCTAssertNotNil(encoded, "Encode failed — capacity: \(TextStego.capacity(coverLength: longCover.count))")
 
         // Visible text should look the same
         let visible = TextStego.visibleText(encoded!)
-        XCTAssertEqual(visible, cover)
+        XCTAssertEqual(visible, longCover)
 
         // Decode should recover hidden data
         let decoded = TextStego.decode(encoded!, key: testKey)
@@ -26,24 +29,22 @@ final class TextStegoTests: XCTestCase {
     }
 
     func testRoundtripUTF8Hidden() {
-        let cover = "Just a normal message about the weather today."
-        let hidden = Data("Coordinates: 27.9506° N, 82.4572° W".utf8)
+        let hidden = Data("GPS:27.95,82.45".utf8) // Short to fit capacity
 
-        let encoded = TextStego.encode(cover: cover, hidden: hidden, key: testKey)
+        let encoded = TextStego.encode(cover: longCover, hidden: hidden, key: testKey)
         XCTAssertNotNil(encoded)
 
         let decoded = TextStego.decode(encoded!, key: testKey)
         XCTAssertNotNil(decoded)
-        XCTAssertEqual(String(data: decoded!, encoding: .utf8), "Coordinates: 27.9506° N, 82.4572° W")
+        XCTAssertEqual(String(data: decoded!, encoding: .utf8), "GPS:27.95,82.45")
     }
 
     // MARK: - Wrong Key
 
     func testWrongKeyReturnsNil() {
-        let cover = "This is a perfectly normal message."
         let hidden = Data("top secret".utf8)
 
-        let encoded = TextStego.encode(cover: cover, hidden: hidden, key: testKey)
+        let encoded = TextStego.encode(cover: longCover, hidden: hidden, key: testKey)
         XCTAssertNotNil(encoded)
 
         let decoded = TextStego.decode(encoded!, key: wrongKey)
