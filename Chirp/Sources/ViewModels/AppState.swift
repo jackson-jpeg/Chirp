@@ -550,6 +550,9 @@ final class AppState {
         clearActiveState()
         pttEngine.stop()
         liveActivityManager.endActivity()
+        bleScanner.stopScanning()
+        soundAlertService.stopListening()
+        meshShield.stop()
         Task { await peerTracker.stopHealthCheck() }
         logger.info("AppState stopped")
     }

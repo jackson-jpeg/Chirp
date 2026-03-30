@@ -572,7 +572,9 @@ struct SettingsView: View {
                 // Rate
                 glassRow {
                     Button {
-                        // TODO: Open App Store review URL
+                        if let url = URL(string: "https://apps.apple.com/app/id\(appID)?action=write-review") {
+                            UIApplication.shared.open(url)
+                        }
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "star.fill")
@@ -592,7 +594,9 @@ struct SettingsView: View {
                 // Privacy Policy
                 glassRow {
                     Button {
-                        // TODO: Open privacy policy URL
+                        if let url = URL(string: "https://chirpchirp.app/privacy") {
+                            UIApplication.shared.open(url)
+                        }
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "hand.raised.fill")
@@ -612,7 +616,9 @@ struct SettingsView: View {
                 // Open Source
                 glassRow {
                     Button {
-                        // TODO: Open credits / licenses
+                        if let url = URL(string: "https://chirpchirp.app/credits") {
+                            UIApplication.shared.open(url)
+                        }
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "chevron.left.forwardslash.chevron.right")
@@ -796,6 +802,9 @@ struct SettingsView: View {
         }
         return result.joined(separator: ":")
     }
+
+    // Replace with actual App Store ID after creating the listing
+    private let appID = "6743210000"
 
     private var appVersion: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
