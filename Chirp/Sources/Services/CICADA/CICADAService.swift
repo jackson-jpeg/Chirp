@@ -2,6 +2,7 @@ import CryptoKit
 import Foundation
 import Observation
 import OSLog
+import UIKit
 
 /// Orchestrates CICADA steganographic communication.
 ///
@@ -82,6 +83,40 @@ final class CICADAService {
     /// Calculate capacity for a cover text on a channel.
     func capacity(coverLength: Int) -> Int {
         TextStego.capacity(coverLength: coverLength)
+    }
+
+    // MARK: - Image Stego
+
+    /// Encode hidden data into an image, returning PNG data.
+    func encodeImage(_ image: UIImage, hidden: String, channelID: String) -> Data? {
+        guard isEnabled, !hidden.isEmpty else { return nil }
+        guard let key = cicadaKey(for: channelID) else { return nil }
+        let hiddenData = Data(hidden.utf8)
+        return ImageStego.encode(image: image, hidden: hiddenData, key: key)
+    }
+
+    /// Decode hidden data from PNG image data.
+    func decodeImage(pngData: Data, channelID: String) -> String? {
+        guard isEnabled, ImageStego.isPNG(pngData) else { return nil }
+        guard let key = cicadaKey(for: channelID) else { return nil }
+        guard let data = ImageStego.decode(pngData: pngData, key: key) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    // MARK: - Audio Stego
+
+    /// Create a timing schedule for encoding hidden data in audio packet timing.
+    func createAudioSchedule(hidden: String, channelID: String) -> AudioStego.TimingSchedule? {
+        guard isEnabled, !hidden.isEmpty else { return nil }
+        guard let key = cicadaKey(for: channelID) else { return nil }
+        return AudioStego.TimingSchedule(hidden: Data(hidden.utf8), key: key)
+    }
+
+    /// Create a timing decoder for extracting hidden data from audio packet timing.
+    func createAudioDecoder(channelID: String) -> AudioStego.TimingDecoder? {
+        guard isEnabled else { return nil }
+        guard let key = cicadaKey(for: channelID) else { return nil }
+        return AudioStego.TimingDecoder(key: key)
     }
 
     // MARK: - Key Derivation
