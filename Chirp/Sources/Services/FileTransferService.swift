@@ -141,9 +141,9 @@ final class FileTransferService {
             logger.info("Sent file \(fileName) (\(fileData.count) bytes, \(chunkCount) chunks)")
 
             // Clean up outbound data after 60s (keep for NACKs)
-            Task {
+            Task { [weak self] in
                 try? await Task.sleep(for: .seconds(60))
-                outboundData.removeValue(forKey: transferID)
+                self?.outboundData.removeValue(forKey: transferID)
             }
         }
     }

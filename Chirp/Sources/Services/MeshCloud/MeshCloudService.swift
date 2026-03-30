@@ -301,7 +301,7 @@ final class MeshCloudService {
         }
 
         // Update progress
-        let totalChunks = Int(metadata.chunkCount)
+        let totalChunks = max(1, Int(metadata.chunkCount))
         retrievalProgress = Float(retrievalChunks.count) / Float(totalChunks)
 
         logger.info("Retrieval progress: \(self.retrievalChunks.count)/\(totalChunks) chunks, \(self.retrievalShards.count)/\(metadata.threshold) shards")
