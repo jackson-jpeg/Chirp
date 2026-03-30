@@ -6,34 +6,35 @@ final class DualTransportTests: XCTestCase {
     private var router: MeshRouter!
     private let localPeerID = UUID()
     private let remotePeerID = UUID()
-    private var deliveredPackets: [MeshPacket]!
-    private var forwardedPackets: [(MeshPacket, String)]!
+    // Reference-type wrappers for Sendable closure capture
+    private final class PacketBox: @unchecked Sendable {
+        var delivered: [MeshPacket] = []
+        var forwarded: [(MeshPacket, String)] = []
+    }
+    private var box: PacketBox!
 
     override func setUp() {
         super.setUp()
-        deliveredPackets = []
-        forwardedPackets = []
+        box = PacketBox()
         router = MeshRouter(localPeerID: localPeerID)
     }
 
     override func tearDown() {
         router = nil
-        deliveredPackets = nil
-        forwardedPackets = nil
+        box = nil
         super.tearDown()
     }
 
     // MARK: - Helpers
 
     private func installCallbacks() async {
-        nonisolated(unsafe) var delivered = self.deliveredPackets!
-        nonisolated(unsafe) var forwarded = self.forwardedPackets!
+        let b = box!
         await router.setCallbacks(
             onLocalDelivery: { packet in
-                delivered.append(packet)
+                b.delivered.append(packet)
             },
             onForward: { packet, fromPeer in
-                forwarded.append((packet, fromPeer))
+                b.forwarded.append((packet, fromPeer))
             }
         )
     }
@@ -64,8 +65,8 @@ final class DualTransportTests: XCTestCase {
         let accepted = await router.handleIncoming(packet: packet, fromPeer: "peer-ble")
 
         XCTAssertTrue(accepted)
-        XCTAssertEqual(deliveredPackets.count, 1)
-        XCTAssertEqual(deliveredPackets.first?.packetID, packet.packetID)
+        XCTAssertEqual(box.delivered.count, 1)
+        XCTAssertEqual(box.delivered.first?.packetID, packet.packetID)
         let delivered = await router.packetsDelivered
         XCTAssertEqual(delivered, 1)
     }
@@ -79,7 +80,7 @@ final class DualTransportTests: XCTestCase {
 
         XCTAssertTrue(first)
         XCTAssertFalse(second)
-        XCTAssertEqual(deliveredPackets.count, 1, "Duplicate packet should not be delivered a second time")
+        XCTAssertEqual(box.delivered.count, 1, "Duplicate packet should not be delivered a second time")
         let deduped = await router.packetsDeduplicated
         XCTAssertEqual(deduped, 1)
     }
@@ -90,8 +91,8 @@ final class DualTransportTests: XCTestCase {
 
         _ = await router.handleIncoming(packet: packet, fromPeer: "peer-ble")
 
-        XCTAssertEqual(forwardedPackets.count, 1)
-        let forwarded = forwardedPackets.first?.0
+        XCTAssertEqual(box.forwarded.count, 1)
+        let forwarded = box.forwarded.first?.0
         XCTAssertEqual(forwarded?.ttl, 3, "Forwarded packet should have TTL decremented by 1")
         XCTAssertEqual(forwarded?.packetID, packet.packetID, "Forwarded packet should retain the same packetID")
     }
@@ -103,8 +104,8 @@ final class DualTransportTests: XCTestCase {
         let accepted = await router.handleIncoming(packet: packet, fromPeer: "peer-ble")
 
         XCTAssertTrue(accepted)
-        XCTAssertEqual(deliveredPackets.count, 1, "TTL-1 packet should still be delivered locally")
-        XCTAssertTrue(forwardedPackets.isEmpty, "TTL-1 packet should NOT be forwarded")
+        XCTAssertEqual(box.delivered.count, 1, "TTL-1 packet should still be delivered locally")
+        XCTAssertTrue(box.forwarded.isEmpty, "TTL-1 packet should NOT be forwarded")
         let relayed = await router.packetsRelayed
         XCTAssertEqual(relayed, 0)
     }
@@ -116,7 +117,7 @@ final class DualTransportTests: XCTestCase {
         let accepted = await router.handleIncoming(packet: packet, fromPeer: "peer-ble")
 
         XCTAssertFalse(accepted)
-        XCTAssertTrue(deliveredPackets.isEmpty, "Own packets should be dropped, not delivered")
-        XCTAssertTrue(forwardedPackets.isEmpty, "Own packets should be dropped, not forwarded")
+        XCTAssertTrue(box.delivered.isEmpty, "Own packets should be dropped, not delivered")
+        XCTAssertTrue(box.forwarded.isEmpty, "Own packets should be dropped, not forwarded")
     }
 }
