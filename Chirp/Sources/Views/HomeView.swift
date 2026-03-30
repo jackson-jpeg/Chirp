@@ -53,18 +53,26 @@ private struct GlassHeaderBar: View {
                 .padding(.vertical, 6)
                 .background(
                     Capsule()
-                        .fill(.ultraThinMaterial)
-                        .environment(\.colorScheme, .dark)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.black.opacity(0.4), Color.black.opacity(0.15)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
                         .overlay(
                             Capsule()
-                                .stroke(
-                                    peerCount > 0
-                                        ? Constants.Colors.electricGreen.opacity(0.2)
-                                        : Color.white.opacity(0.06),
-                                    lineWidth: 0.5
+                                .fill(peerCount > 0 ? Constants.Colors.electricGreen.opacity(0.1) : Color.clear)
+                        )
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(
+                                    peerCount > 0 ? Constants.Colors.electricGreen.opacity(0.3) : Color.white.opacity(0.06),
+                                    lineWidth: 1
                                 )
                         )
                 )
+                .shadow(color: peerCount > 0 ? Constants.Colors.electricGreen.opacity(0.2) : Color.clear, radius: 8)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
@@ -211,6 +219,11 @@ private struct ChannelCard: View {
                         }
                     }
 
+                    // Monospaced frequency readout
+                    Text("CH-\(String(format: "%03d", abs(channel.name.hashValue) % 999))")
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .foregroundStyle(Constants.Colors.amber.opacity(0.6))
+
                     // Time since creation + hop indicator
                     HStack(spacing: 10) {
                         Text(channel.createdAt.relativeDisplay)
@@ -219,10 +232,10 @@ private struct ChannelCard: View {
 
                         // Mesh hop reach indicator
                         HStack(spacing: 3) {
-                            Image(systemName: "point.3.connected.trianglepath.dotted")
+                            Image(systemName: "antenna.radiowaves.left.and.right")
                                 .font(.system(size: 9, weight: .bold))
                             Text("\(channel.activePeerCount) peer\(channel.activePeerCount == 1 ? "" : "s")")
-                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
                         }
                         .foregroundStyle(Constants.Colors.amber.opacity(0.5))
                     }
@@ -259,33 +272,40 @@ private struct ChannelCard: View {
         .accessibilityIdentifier(AccessibilityID.channelCard)
         .padding(20)
         .background(
-            RoundedRectangle(cornerRadius: 22)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: gradientColors,
+                        colors: [Color.black.opacity(0.55), Color.black.opacity(0.2)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 22)
-                        .fill(.ultraThinMaterial.opacity(0.3))
-                        .environment(\.colorScheme, .dark)
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Constants.Colors.amber.opacity(isActive ? 0.12 : 0.06))
                 )
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 22)
-                .stroke(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(
                     isActive
-                        ? Constants.Colors.amber.opacity(0.6 + glowIntensity * 0.3)
-                        : Color.white.opacity(0.06),
-                    lineWidth: isActive ? 2.0 : 0.5
+                        ? LinearGradient(
+                            colors: [Constants.Colors.amber.opacity(0.6), Constants.Colors.amber.opacity(0.2), Constants.Colors.amber.opacity(0.5)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        : LinearGradient(
+                            colors: [Color.white.opacity(0.08), Color.white.opacity(0.03)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                    lineWidth: isActive ? 2 : 1
                 )
         )
         .shadow(
-            color: isActive ? Constants.Colors.amber.opacity(0.2 + glowIntensity * 0.15) : Color.black.opacity(0.3),
-            radius: isActive ? 24 : 10,
-            y: 6
+            color: isActive ? Constants.Colors.amber.opacity(0.25) : Color.black.opacity(0.3),
+            radius: isActive ? 20 : 8,
+            y: 4
         )
         .onAppear {
             guard isActive else { return }
@@ -583,21 +603,32 @@ private struct QuickActionButton: View {
             VStack(spacing: 6) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 14)
-                        .fill(color.opacity(0.12))
-                        .frame(width: 50, height: 50)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.black.opacity(0.5), Color.black.opacity(0.2)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
                         .overlay(
                             RoundedRectangle(cornerRadius: 14)
-                                .stroke(color.opacity(0.15), lineWidth: 0.5)
+                                .fill(color.opacity(0.1))
                         )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .strokeBorder(color.opacity(0.25), lineWidth: 1)
+                        )
+                        .frame(width: 50, height: 50)
 
                     Image(systemName: icon)
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundStyle(color)
                 }
+                .shadow(color: color.opacity(0.2), radius: 8, y: 2)
 
                 Text(label)
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.5))
             }
         }
         .accessibilityLabel(label)
@@ -645,21 +676,20 @@ private struct BottomQuickActions: View {
         .padding(.vertical, 14)
         .background(
             Rectangle()
-                .fill(.ultraThinMaterial)
-                .environment(\.colorScheme, .dark)
+                .fill(
+                    LinearGradient(
+                        colors: [Color.black.opacity(0.5), Color.black.opacity(0.3)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .overlay(
                     Rectangle()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.clear, Color.white.opacity(0.03)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
+                        .fill(Color.white.opacity(0.03))
                 )
                 .overlay(alignment: .top) {
                     Rectangle()
-                        .fill(Color.white.opacity(0.06))
+                        .fill(Color.white.opacity(0.08))
                         .frame(height: 0.5)
                 }
         )

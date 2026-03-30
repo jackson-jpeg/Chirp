@@ -46,6 +46,8 @@ struct StatusPillView: View {
     @State private var pulseOpacity: Double = 1.0
     @State private var previousStatus: String = ""
 
+    private var statusColor: Color { status.dotColor }
+
     var body: some View {
         HStack(spacing: 6) {
             // Animated status dot
@@ -76,23 +78,23 @@ struct StatusPillView: View {
         .padding(.vertical, 6)
         .background(
             Capsule()
-                .fill(.ultraThinMaterial)
+                .fill(
+                    LinearGradient(
+                        colors: [Color.black.opacity(0.5), Color.black.opacity(0.2)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .overlay(
                     Capsule()
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.15),
-                                    Color.white.opacity(0.05)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ),
-                            lineWidth: 0.5
-                        )
+                        .fill(statusColor.opacity(0.1))
                 )
-                .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
+                .overlay(
+                    Capsule()
+                        .strokeBorder(statusColor.opacity(0.3), lineWidth: 1.5)
+                )
         )
+        .shadow(color: statusColor.opacity(0.2), radius: 10, y: 3)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Connection: \(status.text)")
         .animation(.easeInOut(duration: 0.3), value: statusKey)

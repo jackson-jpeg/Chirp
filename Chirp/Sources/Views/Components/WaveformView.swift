@@ -6,7 +6,7 @@ struct WaveformView: View {
 
     private let barCount = 9
     private let maxBarHeight: CGFloat = 55
-    private let barWidth: CGFloat = 5
+    private let barWidth: CGFloat = 8
     private let barSpacing: CGFloat = 4
 
     private var activeColor: Color {
@@ -55,22 +55,22 @@ struct WaveformView: View {
 
                     // Glow behind bar
                     let glowRect = CGRect(
-                        x: x - 3,
-                        y: centerY - halfH - 3,
-                        width: barWidth + 6,
-                        height: height + 6
+                        x: x - 4.5,
+                        y: centerY - halfH - 4.5,
+                        width: barWidth + 9,
+                        height: height + 9
                     )
                     let glowOpacity = Double(level) * 0.4
                     if glowOpacity > 0.05 {
-                        let glowPath = RoundedRectangle(cornerRadius: barWidth / 2 + 3)
+                        let glowPath = RoundedRectangle(cornerRadius: barWidth / 2 + 4.5)
                             .path(in: glowRect)
                         context.fill(
                             glowPath,
                             with: .color(activeColor.opacity(glowOpacity))
                         )
                         // Apply blur via layering multiple slightly offset fills
-                        let glowRect2 = glowRect.insetBy(dx: -2, dy: -2)
-                        let glowPath2 = RoundedRectangle(cornerRadius: barWidth / 2 + 5)
+                        let glowRect2 = glowRect.insetBy(dx: -3, dy: -3)
+                        let glowPath2 = RoundedRectangle(cornerRadius: barWidth / 2 + 7.5)
                             .path(in: glowRect2)
                         context.fill(
                             glowPath2,
@@ -130,7 +130,7 @@ struct WaveformView: View {
             let wave3 = sin(time * speed * 0.6 + phaseOffset * 0.5) * 0.15
             let combined = 0.5 + wave1 + wave2 + wave3
             let height = maxBarHeight * level * baseEnvelope * CGFloat(combined) * 1.6
-            return max(4, min(maxBarHeight, height))
+            return max(8, min(maxBarHeight, height))
 
         case .receiving:
             // Smoother incoming signal pattern
@@ -139,17 +139,17 @@ struct WaveformView: View {
             let wave2 = sin(time * speed * 0.8 + phaseOffset * 1.5) * 0.15
             let combined = 0.55 + wave1 + wave2
             let height = maxBarHeight * level * baseEnvelope * CGFloat(combined) * 1.4
-            return max(4, min(maxBarHeight, height))
+            return max(8, min(maxBarHeight, height))
 
         case .idle:
             // Gentle idle breathing
             speed = 1.2 + Double(index) * 0.15
             let wave = sin(time * speed + phaseOffset) * 0.15
-            let height = maxBarHeight * 0.12 * baseEnvelope * CGFloat(0.6 + wave)
-            return max(4, min(maxBarHeight * 0.25, height))
+            let height = maxBarHeight * 0.18 * baseEnvelope * CGFloat(0.6 + wave)
+            return max(8, min(maxBarHeight * 0.3, height))
 
         case .denied:
-            return 4
+            return 8
         }
     }
 }

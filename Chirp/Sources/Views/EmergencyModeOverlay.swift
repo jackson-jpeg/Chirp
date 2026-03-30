@@ -80,12 +80,22 @@ struct EmergencyModeOverlay: View {
         .padding(.vertical, 10)
         .background(
             Rectangle()
-                .fill(red.opacity(0.15))
+                .fill(
+                    LinearGradient(
+                        colors: [Color.black.opacity(0.6), Color.black.opacity(0.3)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
                 .overlay(
                     Rectangle()
-                        .fill(.ultraThinMaterial.opacity(0.4))
-                        .environment(\.colorScheme, .dark)
+                        .fill(Constants.Colors.hotRed.opacity(0.15))
                 )
+                .overlay(alignment: .bottom) {
+                    Rectangle()
+                        .fill(Constants.Colors.hotRed.opacity(0.3))
+                        .frame(height: 1)
+                }
         )
         .overlay(
             Rectangle()

@@ -35,7 +35,7 @@ struct PTTButtonView: View {
     @State private var transmitProgress: CGFloat = 0.0
     @State private var transmitTimer: Timer?
 
-    private let buttonSize: CGFloat = 140
+    private let buttonSize: CGFloat = 160
 
     // MARK: - Computed Properties
 
@@ -115,9 +115,9 @@ struct PTTButtonView: View {
 
                 // --- Transmit: expanding radio wave rings ---
                 if isTransmitting {
-                    transmitRing(scale: ring1Scale, opacity: ring1Opacity, lineWidth: 3)
-                    transmitRing(scale: ring2Scale, opacity: ring2Opacity, lineWidth: 2.5)
-                    transmitRing(scale: ring3Scale, opacity: ring3Opacity, lineWidth: 2)
+                    transmitRing(scale: ring1Scale, opacity: ring1Opacity, lineWidth: 4)
+                    transmitRing(scale: ring2Scale, opacity: ring2Opacity, lineWidth: 3.5)
+                    transmitRing(scale: ring3Scale, opacity: ring3Opacity, lineWidth: 3)
                 }
 
                 // --- Receiving: contracting wave rings ---
@@ -149,46 +149,50 @@ struct PTTButtonView: View {
 
                 // --- Outer shadow for depth ---
                 Circle()
-                    .fill(primaryColor.opacity(0.15))
+                    .fill(primaryColor.opacity(isTransmitting ? 0.35 : (isReceiving ? 0.25 : 0.2)))
                     .frame(width: buttonSize + 10, height: buttonSize + 10)
-                    .blur(radius: 16)
+                    .blur(radius: isTransmitting ? 30 : (isReceiving ? 24 : 20))
+                    .offset(y: isTransmitting ? 8 : 6)
 
-                // --- Main button body: CHUNKY INDUSTRIAL ---
+                // --- Main button body: FROSTED LIQUID GLASS ---
                 ZStack {
                     // Base layer — dark ring for depth
                     Circle()
                         .fill(Color.black.opacity(0.5))
                         .frame(width: buttonSize + 4, height: buttonSize + 4)
 
-                    // Button face
+                    // Button face — dark frosted glass base
                     Circle()
                         .fill(
-                            RadialGradient(
+                            LinearGradient(
                                 colors: [
-                                    primaryColor.opacity(isPressed ? 0.85 : 0.65),
-                                    primaryColor.opacity(isPressed ? 0.6 : 0.35),
-                                    primaryColor.opacity(0.12)
+                                    Color.black.opacity(0.6),
+                                    Color.black.opacity(0.2)
                                 ],
-                                center: .init(x: 0.45, y: 0.4), // Slight off-center for realism
-                                startRadius: 5,
-                                endRadius: buttonSize / 2
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
                             )
                         )
                         .frame(width: buttonSize, height: buttonSize)
 
-                    // Outer border — thick industrial ring
+                    // Color tint overlay
+                    Circle()
+                        .fill(primaryColor.opacity(0.1))
+                        .frame(width: buttonSize, height: buttonSize)
+
+                    // Outer border — thick machined ring
                     Circle()
                         .stroke(
                             LinearGradient(
                                 colors: [
                                     primaryColor.opacity(0.9),
-                                    primaryColor.opacity(0.4),
+                                    primaryColor.opacity(0.3),
                                     primaryColor.opacity(0.7)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             ),
-                            lineWidth: isPressed ? 4 : 3
+                            lineWidth: isPressed ? 5 : 4
                         )
                         .frame(width: buttonSize, height: buttonSize)
 
@@ -208,12 +212,12 @@ struct PTTButtonView: View {
                         )
                         .frame(width: buttonSize - 10, height: buttonSize - 10)
 
-                    // Top highlight — convex look
+                    // Top highlight — convex look (increased opacity)
                     Circle()
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    primaryColor.opacity(isPressed ? 0.1 : 0.3),
+                                    primaryColor.opacity(isPressed ? 0.15 : 0.4),
                                     Color.clear
                                 ],
                                 startPoint: .top,
@@ -232,13 +236,13 @@ struct PTTButtonView: View {
 
                 // --- Icon ---
                 Image(systemName: iconName)
-                    .font(.system(size: 40, weight: .heavy))
+                    .font(.system(size: 44, weight: .heavy))
                     .foregroundStyle(primaryColor)
-                    .shadow(color: primaryColor.opacity(0.6), radius: 10)
+                    .shadow(color: primaryColor.opacity(0.8), radius: 12)
                     .shadow(color: primaryColor.opacity(0.3), radius: 4)
             }
             .frame(width: buttonSize + 80, height: buttonSize + 80)
-            .scaleEffect(isPressed ? 0.90 : 1.0)
+            .scaleEffect(isPressed ? 0.87 : 1.0)
             .offset(x: shakeOffset)
             .animation(.spring(response: 0.15, dampingFraction: 0.55), value: isPressed)
             .allowsHitTesting(canInteract)
@@ -264,20 +268,20 @@ struct PTTButtonView: View {
             // --- "HOLD TO TALK" label ---
             if isIdle {
                 Text("HOLD TO TALK")
-                    .font(.system(size: 13, weight: .bold, design: .monospaced))
-                    .tracking(3)
+                    .font(.system(size: 13, weight: .black, design: .monospaced))
+                    .tracking(4)
                     .foregroundStyle(Color(hex: 0xFFB800).opacity(0.5))
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
             } else if isTransmitting {
                 Text("LIVE")
-                    .font(.system(size: 13, weight: .heavy, design: .monospaced))
+                    .font(.system(size: 13, weight: .black, design: .monospaced))
                     .tracking(4)
                     .foregroundStyle(Color(hex: 0xFF3B30).opacity(0.8))
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
             } else if isReceiving {
                 Text("RECEIVING")
-                    .font(.system(size: 13, weight: .bold, design: .monospaced))
-                    .tracking(3)
+                    .font(.system(size: 13, weight: .black, design: .monospaced))
+                    .tracking(4)
                     .foregroundStyle(Color(hex: 0x30D158).opacity(0.7))
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
@@ -340,10 +344,10 @@ struct PTTButtonView: View {
 
     private func startIdleBreathing() {
         breatheScale = 1.0
-        breatheOpacity = 0.3
+        breatheOpacity = 0.15
         withAnimation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true)) {
-            breatheScale = 1.08
-            breatheOpacity = 0.6
+            breatheScale = 1.15
+            breatheOpacity = 0.7
         }
     }
 
@@ -364,7 +368,7 @@ struct PTTButtonView: View {
 
         // Ring 1 — immediate
         withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) {
-            ring1Scale = 2.0
+            ring1Scale = 2.3
             ring1Opacity = 0.0
         }
         withAnimation(.easeIn(duration: 0.15)) {
@@ -374,7 +378,7 @@ struct PTTButtonView: View {
         // Ring 2 — 0.35s delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) {
-                ring2Scale = 2.0
+                ring2Scale = 2.3
                 ring2Opacity = 0.0
             }
             withAnimation(.easeIn(duration: 0.15)) {
@@ -385,7 +389,7 @@ struct PTTButtonView: View {
         // Ring 3 — 0.7s delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
             withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) {
-                ring3Scale = 2.0
+                ring3Scale = 2.3
                 ring3Opacity = 0.0
             }
             withAnimation(.easeIn(duration: 0.15)) {

@@ -52,6 +52,19 @@ enum Constants {
         static let meshHealthGood = Color(hex: 0x30D158)
         static let meshHealthFair = Color(hex: 0xFFB800)
         static let meshHealthPoor = Color(hex: 0xFF3B30)
+
+        // Frosted Glass Tints
+        static let glassAmber = Color(hex: 0xFFB800).opacity(0.15)
+        static let glassAmberBorder = Color(hex: 0xFFB800).opacity(0.4)
+        static let glassAmberGlow = Color(hex: 0xFFB800).opacity(0.35)
+
+        static let glassGreen = Color(hex: 0x30D158).opacity(0.12)
+        static let glassGreenBorder = Color(hex: 0x30D158).opacity(0.35)
+        static let glassGreenGlow = Color(hex: 0x30D158).opacity(0.3)
+
+        static let glassRed = Color(hex: 0xFF3B30).opacity(0.15)
+        static let glassRedBorder = Color(hex: 0xFF3B30).opacity(0.4)
+        static let glassRedGlow = Color(hex: 0xFF3B30).opacity(0.35)
     }
 
     enum Typography {
@@ -63,6 +76,10 @@ enum Constants {
         static let mono = Font.system(size: 13, weight: .medium, design: .monospaced)
         static let monoSmall = Font.system(size: 11, weight: .medium, design: .monospaced)
         static let badge = Font.system(size: 10, weight: .bold, design: .rounded)
+        static let monoDisplay = Font.system(size: 20, weight: .black, design: .monospaced)
+        static let monoLarge = Font.system(size: 16, weight: .bold, design: .monospaced)
+        static let monoStatus = Font.system(size: 14, weight: .bold, design: .monospaced)
+        static let headline = Font.system(size: 22, weight: .heavy, design: .rounded)
     }
 
     enum Layout {
@@ -73,6 +90,9 @@ enum Constants {
         static let cardPadding: CGFloat = 18
         static let spacing: CGFloat = 16
         static let smallSpacing: CGFloat = 8
+        static let pttButtonSize: CGFloat = 160
+        static let glassCornerRadius: CGFloat = 14
+        static let glassBorderWidth: CGFloat = 1.5
     }
 
     enum Animations {

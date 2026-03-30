@@ -6,7 +6,7 @@ struct CircularWaveformView: View {
     var radius: CGFloat
 
     private let barCount = 24
-    private let barWidth: CGFloat = 3.5
+    private let barWidth: CGFloat = 5.5
     private let maxBarLength: CGFloat = 28
     private let baseBarLength: CGFloat = 4
 
@@ -35,6 +35,25 @@ struct CircularWaveformView: View {
                 let center = CGPoint(x: size.width / 2, y: size.height / 2)
                 let level = CGFloat(max(0.0, min(1.0, inputLevel)))
 
+                // Degree markers at 0, 90, 180, 270
+                let tickAngles: [Double] = [-.pi / 2.0, 0, .pi / 2.0, .pi]
+                let tickInnerRadius = radius - 6
+                let tickOuterRadius = radius - 1
+                for tickAngle in tickAngles {
+                    let tInnerX = center.x + cos(tickAngle) * tickInnerRadius
+                    let tInnerY = center.y + sin(tickAngle) * tickInnerRadius
+                    let tOuterX = center.x + cos(tickAngle) * tickOuterRadius
+                    let tOuterY = center.y + sin(tickAngle) * tickOuterRadius
+                    var tickPath = Path()
+                    tickPath.move(to: CGPoint(x: tInnerX, y: tInnerY))
+                    tickPath.addLine(to: CGPoint(x: tOuterX, y: tOuterY))
+                    context.stroke(
+                        tickPath,
+                        with: .color(Constants.Colors.amber.opacity(0.5)),
+                        style: StrokeStyle(lineWidth: 2, lineCap: .round)
+                    )
+                }
+
                 for i in 0..<barCount {
                     let angle = (Double(i) / Double(barCount)) * .pi * 2.0 - .pi / 2.0
                     let barLength = computeBarLength(
@@ -60,12 +79,12 @@ struct CircularWaveformView: View {
                         context.stroke(
                             glowPath,
                             with: .color(activeColor.opacity(glowOpacity * 0.5)),
-                            style: StrokeStyle(lineWidth: barWidth + 6, lineCap: .round)
+                            style: StrokeStyle(lineWidth: barWidth + 9, lineCap: .round)
                         )
                         context.stroke(
                             glowPath,
                             with: .color(activeColor.opacity(glowOpacity * 0.25)),
-                            style: StrokeStyle(lineWidth: barWidth + 12, lineCap: .round)
+                            style: StrokeStyle(lineWidth: barWidth + 18, lineCap: .round)
                         )
                     }
 

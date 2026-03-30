@@ -137,7 +137,7 @@ struct ChannelView: View {
         HStack(spacing: 0) {
             ForEach(ChannelMode.allCases, id: \.self) { mode in
                 Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(.easeInOut(duration: 0.25)) {
                         channelMode = mode
                     }
                     if mode == .chat {
@@ -145,22 +145,25 @@ struct ChannelView: View {
                     }
                 } label: {
                     ZStack(alignment: .topTrailing) {
-                        Text(mode.label)
-                            .font(.system(.subheadline, weight: channelMode == mode ? .bold : .semibold))
-                            .foregroundStyle(channelMode == mode ? .white : .white.opacity(0.35))
+                        Text(mode.label.uppercased())
+                            .font(.system(size: 13, weight: .black, design: .monospaced))
+                            .tracking(2)
+                            .foregroundStyle(channelMode == mode ? .black : .white.opacity(0.45))
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-                            .background(
-                                channelMode == mode
-                                    ? RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(Color.white.opacity(0.15))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                                .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
+                            .padding(.vertical, 11)
+                            .background {
+                                if channelMode == mode {
+                                    Capsule()
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [Constants.Colors.amber, Constants.Colors.amberLight],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
                                         )
-                                        .shadow(color: Color.white.opacity(0.05), radius: 4)
-                                    : nil
-                            )
+                                        .shadow(color: Constants.Colors.amber.opacity(0.4), radius: 8)
+                                }
+                            }
 
                         // Unread badge on Chat tab
                         if mode == .chat && channelMode != .chat && chatUnreadCount > 0 {
@@ -174,19 +177,19 @@ struct ChannelView: View {
                         }
                     }
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel("\(mode.label) mode\(channelMode == mode ? ", selected" : "")")
                 .accessibilityHint(mode == .chat && chatUnreadCount > 0 ? "\(chatUnreadCount) unread message\(chatUnreadCount == 1 ? "" : "s")" : "")
             }
         }
         .padding(3)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .opacity(0.5)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.5)
+            Capsule()
+                .fill(Color.black.opacity(0.4))
+                .overlay(
+                    Capsule()
+                        .strokeBorder(Constants.Colors.amber.opacity(0.2), lineWidth: 1.5)
+                )
         )
     }
 
@@ -540,19 +543,38 @@ struct ChannelView: View {
     // MARK: - Status Pill (Floating Glass)
 
     private var statusPill: some View {
-        statusPillContent
-            .padding(.horizontal, 18)
-            .padding(.vertical, 10)
+        let stateColor = statusAccentColor
+        let isActive = pttState != .idle
+
+        return statusPillContent
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
             .background(
                 Capsule()
-                    .fill(.ultraThinMaterial)
-                    .opacity(0.7)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.black.opacity(0.55), Color.black.opacity(0.25)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        Capsule()
+                            .fill(stateColor.opacity(0.12))
+                    )
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(
+                                LinearGradient(
+                                    colors: [stateColor.opacity(0.5), stateColor.opacity(0.15), stateColor.opacity(0.35)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1.5
+                            )
+                    )
             )
-            .overlay(
-                Capsule()
-                    .strokeBorder(statusAccentColor.opacity(0.25), lineWidth: 0.5)
-            )
-            .shadow(color: statusAccentColor.opacity(isReceiving ? 0.3 : 0.1), radius: 12)
+            .shadow(color: stateColor.opacity(isActive ? 0.4 : 0.15), radius: 16, y: 4)
             .animation(.easeInOut(duration: 0.2), value: pttState)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(statusAccessibilityLabel)
@@ -878,12 +900,22 @@ struct ChannelView: View {
 
     private var quickActionBar: some View {
         HStack(spacing: 20) {
-            quickActionButton(icon: "camera.fill", label: String(localized: "channel.quickAction.camera")) {
+            quickActionButton(
+                icon: "camera.fill",
+                label: String(localized: "channel.quickAction.camera"),
+                color: .white.opacity(0.7),
+                size: 52
+            ) {
                 toast = ToastItem(message: "Camera sharing coming soon", type: .info)
             }
             .accessibilityIdentifier(AccessibilityID.quickActionCamera)
 
-            quickActionButton(icon: "text.bubble.fill", label: String(localized: "channel.quickAction.chat")) {
+            quickActionButton(
+                icon: "text.bubble.fill",
+                label: String(localized: "channel.quickAction.chat"),
+                color: .white.opacity(0.7),
+                size: 52
+            ) {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     channelMode = .chat
                 }
@@ -891,7 +923,12 @@ struct ChannelView: View {
             }
             .accessibilityIdentifier(AccessibilityID.quickActionChat)
 
-            quickActionButton(icon: "location.fill", label: String(localized: "channel.quickAction.location")) {
+            quickActionButton(
+                icon: "location.fill",
+                label: String(localized: "channel.quickAction.location"),
+                color: .white.opacity(0.7),
+                size: 52
+            ) {
                 guard let location = appState.locationService.currentLocation else {
                     toast = ToastItem(message: "Location unavailable", type: .warning)
                     return
@@ -908,7 +945,12 @@ struct ChannelView: View {
             }
             .accessibilityIdentifier(AccessibilityID.quickActionLocation)
 
-            quickActionButton(icon: "sos", label: String(localized: "channel.quickAction.sos")) {
+            quickActionButton(
+                icon: "sos",
+                label: String(localized: "channel.quickAction.sos"),
+                color: Constants.Colors.hotRed,
+                size: 60
+            ) {
                 toast = ToastItem(message: "SOS beacon coming soon", type: .info)
             }
             .accessibilityIdentifier(AccessibilityID.quickActionSOS)
@@ -916,26 +958,43 @@ struct ChannelView: View {
         .padding(.horizontal, 24)
     }
 
-    private func quickActionButton(icon: String, label: String, action: @escaping () -> Void) -> some View {
+    private func quickActionButton(
+        icon: String,
+        label: String,
+        color: Color,
+        size: CGFloat,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
-            VStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.5))
-                    .frame(width: 44, height: 44)
-                    .background(
-                        Circle()
-                            .fill(.ultraThinMaterial)
-                            .opacity(0.4)
-                    )
-                    .overlay(
-                        Circle()
-                            .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.5)
-                    )
+            VStack(spacing: 6) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.black.opacity(0.5), Color.black.opacity(0.2)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(color.opacity(0.1))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .strokeBorder(color.opacity(0.25), lineWidth: 1)
+                        )
+                        .frame(width: size, height: size)
+
+                    Image(systemName: icon)
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(color)
+                }
+                .shadow(color: color.opacity(0.2), radius: 8, y: 2)
 
                 Text(label)
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.3))
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.5))
             }
         }
         .accessibilityLabel(label)

@@ -11,6 +11,7 @@ struct PeerAvatarView: View {
     @State private var waveOpacity2: Double = 0.0
     @State private var waveOpacity3: Double = 0.0
     @State private var previousLevel: Int = 0
+    @State private var haloOpacity: Double = 0.3
 
     private let size: CGFloat = 56
 
@@ -58,6 +59,11 @@ struct PeerAvatarView: View {
                 waveRing(scale: $waveScale1, opacity: $waveOpacity1)
                 waveRing(scale: $waveScale2, opacity: $waveOpacity2)
                 waveRing(scale: $waveScale3, opacity: $waveOpacity3)
+
+                // Outer pulsing halo ring
+                Circle()
+                    .stroke(Color(hex: 0x30D158).opacity(haloOpacity), lineWidth: 2)
+                    .frame(width: size + 14, height: size + 14)
             }
 
             // Avatar circle with gradient
@@ -75,16 +81,18 @@ struct PeerAvatarView: View {
                         .stroke(
                             isActiveSpeaker
                                 ? Color(hex: 0x30D158).opacity(0.9)
-                                : Color.white.opacity(0.1),
-                            lineWidth: isActiveSpeaker ? 2.5 : 1
+                                : Color.white.opacity(0.15),
+                            lineWidth: isActiveSpeaker ? 3 : 2.5
                         )
                 )
                 .shadow(
                     color: isActiveSpeaker
-                        ? Color(hex: 0x30D158).opacity(0.3)
+                        ? Color(hex: 0x30D158).opacity(0.4)
                         : Color.clear,
-                    radius: 8
+                    radius: 12
                 )
+                .scaleEffect(isActiveSpeaker ? 1.4 : 1.0)
+                .animation(.spring(response: 0.4, dampingFraction: 0.7), value: isActiveSpeaker)
                 .saturation(peer.isConnected ? 1.0 : 0.0)
                 .opacity(peer.isConnected ? 1.0 : 0.5)
 
@@ -131,11 +139,16 @@ struct PeerAvatarView: View {
                 HStack {
                     Spacer()
                     SignalStrengthIndicator(level: peer.signalStrength)
-                        .scaleEffect(0.65)
+                        .scaleEffect(0.8)
                         .background(
                             Circle()
-                                .fill(Color.black.opacity(0.5))
-                                .frame(width: 20, height: 20)
+                                .fill(Color.black.opacity(0.7))
+                                .frame(width: 24, height: 24)
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
+                                .frame(width: 24, height: 24)
                         )
                 }
             }
@@ -192,6 +205,11 @@ struct PeerAvatarView: View {
             }
             waveOpacity3 = 0.6
         }
+
+        // Pulsing halo
+        withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
+            haloOpacity = 0.7
+        }
     }
 
     private func stopWaveAnimation() {
@@ -202,6 +220,7 @@ struct PeerAvatarView: View {
             waveOpacity1 = 0.0
             waveOpacity2 = 0.0
             waveOpacity3 = 0.0
+            haloOpacity = 0.3
         }
     }
 }
