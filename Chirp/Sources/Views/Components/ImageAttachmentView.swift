@@ -70,7 +70,7 @@ struct ImageAttachmentView: View {
                         .foregroundStyle(Constants.Colors.hotRed)
                     Text("Unable to decode image")
                         .font(.caption)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(Constants.Colors.textSecondary)
                 }
             }
 
@@ -78,20 +78,20 @@ struct ImageAttachmentView: View {
             if let dims = dimensionText, let size = sizeText {
                 HStack(spacing: 8) {
                     Text(dims)
-                        .font(.system(.caption2, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .font(Constants.Typography.badge)
+                        .foregroundStyle(Constants.Colors.textSecondary)
                     Text(size)
-                        .font(.system(.caption2, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.4))
+                        .font(Constants.Typography.badge)
+                        .foregroundStyle(Constants.Colors.textTertiary)
                 }
             }
         }
         .padding(12)
-        .background(Color.white.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .background(Constants.Colors.surfaceGlass)
+        .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius))
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(Constants.Colors.amber.opacity(0.25), lineWidth: 1)
+            RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius)
+                .strokeBorder(Constants.Colors.glassAmberBorder.opacity(0.5), lineWidth: Constants.Layout.glassBorderWidth)
         )
         .fullScreenCover(isPresented: $showPreview) {
             if let image = uiImage {

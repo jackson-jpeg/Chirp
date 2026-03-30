@@ -37,16 +37,16 @@ struct SettingsView: View {
 
                 // Version footer
                 Text("ChirpChirp \(appVersion)")
-                    .font(.system(.caption2, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.25))
+                    .font(Constants.Typography.monoSmall)
+                    .foregroundStyle(Constants.Colors.textTertiary)
                     .padding(.top, 4)
                     .padding(.bottom, 32)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
+            .padding(.horizontal, Constants.Layout.horizontalPadding)
+            .padding(.top, Constants.Layout.smallSpacing)
         }
         .scrollContentBackground(.hidden)
-        .background(Color.black)
+        .background(Constants.Colors.backgroundPrimary)
         .accessibilityIdentifier(AccessibilityID.settingsView)
         .navigationTitle(String(localized: "settings.title"))
         .navigationBarTitleDisplayMode(.inline)
@@ -64,7 +64,7 @@ struct SettingsView: View {
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [amber, amber.opacity(0.4)],
+                            colors: [Constants.Colors.blue500, Constants.Colors.blue600.opacity(0.4)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -73,15 +73,15 @@ struct SettingsView: View {
 
                 Text(avatarInitial)
                     .font(.system(size: 30, weight: .bold, design: .rounded))
-                    .foregroundStyle(.black)
+                    .foregroundStyle(Constants.Colors.textPrimary)
             }
-            .shadow(color: amber.opacity(0.3), radius: 12, y: 4)
+            .shadow(color: Constants.Colors.blue500.opacity(0.3), radius: 12, y: 4)
 
             // Callsign (editable)
             VStack(spacing: 6) {
                 TextField(String(localized: "settings.profile.callsign"), text: Bindable(appState).callsign)
-                    .font(.system(.title2, design: .rounded, weight: .bold))
-                    .foregroundStyle(.white)
+                    .font(Constants.Typography.sectionTitle)
+                    .foregroundStyle(Constants.Colors.textPrimary)
                     .multilineTextAlignment(.center)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.words)
@@ -90,15 +90,15 @@ struct SettingsView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "fingerprint")
                         .font(.system(size: 11))
-                        .foregroundStyle(.white.opacity(0.4))
+                        .foregroundStyle(Constants.Colors.textTertiary)
 
                     Text(truncatedPeerID)
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.4))
+                        .font(Constants.Typography.mono)
+                        .foregroundStyle(Constants.Colors.textTertiary)
 
                     Button {
                         UIPasteboard.general.string = appState.localPeerID
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(.easeInOut(duration: Constants.Animations.quickFade)) {
                             copiedID = true
                         }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
@@ -109,14 +109,14 @@ struct SettingsView: View {
                             Image(systemName: copiedID ? "checkmark" : "doc.on.doc")
                                 .font(.system(size: 10, weight: .semibold))
                             Text(copiedID ? String(localized: "settings.profile.copied") : String(localized: "settings.profile.copyID"))
-                                .font(.system(.caption2, weight: .semibold))
+                                .font(Constants.Typography.badge)
                         }
-                        .foregroundStyle(copiedID ? green : amber)
+                        .foregroundStyle(copiedID ? green : Constants.Colors.blue500)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
                         .background(
                             Capsule()
-                                .fill((copiedID ? green : amber).opacity(0.12))
+                                .fill((copiedID ? green : Constants.Colors.blue500).opacity(0.12))
                         )
                     }
                     .buttonStyle(.plain)
@@ -125,9 +125,9 @@ struct SettingsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Constants.Layout.cardPadding)
         .background(glassBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.cardCornerRadius, style: .continuous))
     }
 
     // MARK: - Mesh Network
@@ -144,7 +144,7 @@ struct SettingsView: View {
                             .foregroundStyle(appState.wifiAwareTransport != nil ? green : .secondary)
                             .frame(width: 24)
                         Text(String(localized: "settings.meshNetwork.wifiAware"))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Constants.Colors.textPrimary)
                         Spacer()
                         statusBadge(
                             text: appState.wifiAwareTransport != nil ? String(localized: "settings.status.active") : String(localized: "settings.status.unavailable"),
@@ -160,7 +160,7 @@ struct SettingsView: View {
                             .foregroundStyle(appState.connectedPeerCount > 0 ? green : amber)
                             .frame(width: 24)
                         Text(String(localized: "settings.meshNetwork.nearbyPeers"))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Constants.Colors.textPrimary)
                         Spacer()
                         Text("\(appState.connectedPeerCount)")
                             .font(.system(.body, design: .monospaced, weight: .semibold))
@@ -175,11 +175,11 @@ struct SettingsView: View {
                             .foregroundStyle(amber)
                             .frame(width: 24)
                         Text(String(localized: "settings.meshNetwork.pairedDevices"))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Constants.Colors.textPrimary)
                         Spacer()
                         Text("\(appState.wifiAwareTransport?.pairedDeviceCount ?? 0)")
                             .font(.system(.body, design: .monospaced, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.6))
+                            .foregroundStyle(Constants.Colors.textSecondary)
                     }
                 }
 
@@ -198,7 +198,7 @@ struct SettingsView: View {
                                 .foregroundStyle(amber)
                                 .frame(width: 24)
                             Text(String(localized: "settings.meshNetwork.localNetworkPermission"))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Constants.Colors.textPrimary)
                             Spacer()
                             Image(systemName: "arrow.up.forward.app.fill")
                                 .font(.system(size: 12))
@@ -208,11 +208,11 @@ struct SettingsView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous))
 
             Text(String(localized: "settings.meshNetwork.localNetworkHint"))
                 .font(.system(.caption2))
-                .foregroundStyle(.white.opacity(0.3))
+                .foregroundStyle(Constants.Colors.textTertiary)
                 .padding(.horizontal, 4)
                 .padding(.top, 8)
         }
@@ -228,7 +228,7 @@ struct SettingsView: View {
                     .foregroundStyle(amber)
                     .frame(width: 24)
                 Text(String(localized: "settings.meshNetwork.packetsRelayed"))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Constants.Colors.textPrimary)
                 Spacer()
                 meshStatValue(stats.map { "\($0.relayed)" } ?? "\u{2014}",
                               color: stats.map { $0.relayed > 0 ? green : amber } ?? .secondary)
@@ -241,7 +241,7 @@ struct SettingsView: View {
                     .foregroundStyle(amber)
                     .frame(width: 24)
                 Text(String(localized: "settings.meshNetwork.delivered"))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Constants.Colors.textPrimary)
                 Spacer()
                 meshStatValue(stats.map { "\($0.delivered)" } ?? "\u{2014}",
                               color: stats.map { $0.delivered > 0 ? green : amber } ?? .secondary)
@@ -254,7 +254,7 @@ struct SettingsView: View {
                     .foregroundStyle(amber)
                     .frame(width: 24)
                 Text(String(localized: "settings.meshNetwork.deduplicated"))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Constants.Colors.textPrimary)
                 Spacer()
                 meshStatValue(stats.map { "\($0.deduplicated)" } ?? "\u{2014}",
                               color: .secondary)
@@ -267,7 +267,7 @@ struct SettingsView: View {
                     .foregroundStyle(amber)
                     .frame(width: 24)
                 Text(String(localized: "settings.meshNetwork.maxHops"))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Constants.Colors.textPrimary)
                 Spacer()
                 meshStatValue(stats.map { "\($0.maxHops)" } ?? "\u{2014}",
                               color: stats.map { $0.maxHops > 1 ? green : amber } ?? .secondary)
@@ -280,7 +280,7 @@ struct SettingsView: View {
                     .foregroundStyle(amber)
                     .frame(width: 24)
                 Text(String(localized: "settings.meshNetwork.estRange"))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Constants.Colors.textPrimary)
                 Spacer()
                 meshStatValue(stats.map { "\($0.estimatedRangeMeters)m" } ?? "\u{2014}",
                               color: stats.map { $0.estimatedRangeMeters > 100 ? green : amber } ?? .secondary)
@@ -305,21 +305,21 @@ struct SettingsView: View {
                     Toggle(isOn: $speakerOutput) {
                         settingsRow(icon: "speaker.wave.2.fill", title: String(localized: "settings.audioHaptics.speakerOutput"))
                     }
-                    .tint(amber)
+                    .tint(Constants.Colors.blue500)
                 }
 
                 glassRow {
                     Toggle(isOn: $hapticFeedback) {
                         settingsRow(icon: "hand.tap.fill", title: String(localized: "settings.audioHaptics.hapticFeedback"))
                     }
-                    .tint(amber)
+                    .tint(Constants.Colors.blue500)
                 }
 
                 glassRow {
                     Toggle(isOn: $chirpSounds) {
                         settingsRow(icon: "waveform", title: String(localized: "settings.audioHaptics.chirpSounds"))
                     }
-                    .tint(amber)
+                    .tint(Constants.Colors.blue500)
                 }
 
                 glassRow {
@@ -329,14 +329,14 @@ struct SettingsView: View {
                     )) {
                         settingsRow(icon: "arrow.triangle.2.circlepath", title: String(localized: "settings.audioHaptics.loopbackTest"))
                     }
-                    .tint(amber)
+                    .tint(Constants.Colors.blue500)
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous))
 
             Text(String(localized: "settings.audioHaptics.loopbackDescription"))
                 .font(.system(.caption2))
-                .foregroundStyle(.white.opacity(0.3))
+                .foregroundStyle(Constants.Colors.textTertiary)
                 .padding(.horizontal, 4)
                 .padding(.top, 8)
         }
@@ -358,7 +358,7 @@ struct SettingsView: View {
                                 .foregroundStyle(amber)
                                 .frame(width: 24)
                             Text(String(localized: "settings.quickAccess.actionButton"))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Constants.Colors.textPrimary)
                             Spacer()
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 12, weight: .semibold))
@@ -375,16 +375,16 @@ struct SettingsView: View {
                             .frame(width: 24)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(String(localized: "settings.quickAccess.siriShortcut"))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Constants.Colors.textPrimary)
                             Text(String(localized: "settings.quickAccess.siriShortcutHint"))
                                 .font(.system(.caption2))
-                                .foregroundStyle(.white.opacity(0.4))
+                                .foregroundStyle(Constants.Colors.textTertiary)
                         }
                         Spacer()
                     }
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous))
         }
     }
 
@@ -411,11 +411,11 @@ struct SettingsView: View {
                     .tint(Constants.Colors.emergencyRed)
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous))
 
             Text(String(localized: "settings.emergency.emergencyModeDescription"))
                 .font(.system(.caption2))
-                .foregroundStyle(.white.opacity(0.3))
+                .foregroundStyle(Constants.Colors.textTertiary)
                 .padding(.horizontal, 4)
                 .padding(.top, 8)
         }
@@ -435,7 +435,7 @@ struct SettingsView: View {
                             .foregroundStyle(green)
                             .frame(width: 24)
                         Text(String(localized: "settings.privacySecurity.e2eEncryption"))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Constants.Colors.textPrimary)
                         Spacer()
                         statusBadge(text: String(localized: "settings.status.on"), color: green)
                     }
@@ -448,10 +448,10 @@ struct SettingsView: View {
                             .frame(width: 24)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(String(localized: "settings.privacySecurity.yourFingerprint"))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Constants.Colors.textPrimary)
                             Text(formattedFingerprint)
                                 .font(.system(.caption2, design: .monospaced))
-                                .foregroundStyle(.white.opacity(0.4))
+                                .foregroundStyle(Constants.Colors.textTertiary)
                                 .lineLimit(1)
                         }
                         Spacer()
@@ -465,10 +465,10 @@ struct SettingsView: View {
                             .frame(width: 24)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(String(localized: "settings.privacySecurity.zeroServers"))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Constants.Colors.textPrimary)
                             Text(String(localized: "settings.privacySecurity.zeroServersDescription"))
                                 .font(.system(.caption2))
-                                .foregroundStyle(.white.opacity(0.4))
+                                .foregroundStyle(Constants.Colors.textTertiary)
                         }
                         Spacer()
                     }
@@ -485,17 +485,17 @@ struct SettingsView: View {
                                 .frame(width: 24)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("CICADA")
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(Constants.Colors.textPrimary)
                                 Text("Hidden messages in plain sight")
                                     .font(.system(.caption2))
-                                    .foregroundStyle(.white.opacity(0.4))
+                                    .foregroundStyle(Constants.Colors.textTertiary)
                             }
                         }
                     }
-                    .tint(amber)
+                    .tint(Constants.Colors.blue500)
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous))
         }
     }
 
@@ -516,10 +516,10 @@ struct SettingsView: View {
                                 .frame(width: 24)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Distributed Backup")
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(Constants.Colors.textPrimary)
                                 Text(meshCloudStatusText)
                                     .font(.system(.caption2))
-                                    .foregroundStyle(.white.opacity(0.4))
+                                    .foregroundStyle(Constants.Colors.textTertiary)
                             }
                             Spacer()
                             Image(systemName: "chevron.right")
@@ -530,7 +530,7 @@ struct SettingsView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous))
         }
     }
 
@@ -563,7 +563,7 @@ struct SettingsView: View {
                                 .foregroundStyle(amber)
                                 .frame(width: 24)
                             Text(String(localized: "settings.about.howItWorks"))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Constants.Colors.textPrimary)
                             Spacer()
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 12, weight: .semibold))
@@ -603,7 +603,7 @@ struct SettingsView: View {
                                 .foregroundStyle(amber)
                                 .frame(width: 24)
                             Text(String(localized: "settings.about.rateApp"))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Constants.Colors.textPrimary)
                             Spacer()
                             Image(systemName: "arrow.up.forward")
                                 .font(.system(size: 12, weight: .semibold))
@@ -625,7 +625,7 @@ struct SettingsView: View {
                                 .foregroundStyle(amber)
                                 .frame(width: 24)
                             Text(String(localized: "settings.about.privacyPolicy"))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Constants.Colors.textPrimary)
                             Spacer()
                             Image(systemName: "arrow.up.forward")
                                 .font(.system(size: 12, weight: .semibold))
@@ -647,7 +647,7 @@ struct SettingsView: View {
                                 .foregroundStyle(amber)
                                 .frame(width: 24)
                             Text(String(localized: "settings.about.openSourceCredits"))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Constants.Colors.textPrimary)
                             Spacer()
                             Image(systemName: "arrow.up.forward")
                                 .font(.system(size: 12, weight: .semibold))
@@ -657,7 +657,7 @@ struct SettingsView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous))
         }
     }
 
@@ -679,7 +679,7 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                                 .frame(width: 24)
                             Text("Debug Info")
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Constants.Colors.textPrimary)
                             Spacer()
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 12, weight: .semibold))
@@ -763,7 +763,7 @@ struct SettingsView: View {
                                         .foregroundStyle(amber)
                                         .font(.system(size: 10))
                                     Text("Mesh Network")
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(Constants.Colors.textPrimary)
                                         .font(.system(.caption, weight: .semibold))
                                 }
 
@@ -783,7 +783,7 @@ struct SettingsView: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous))
         }
     }
 
@@ -855,14 +855,14 @@ struct SettingsView: View {
     // MARK: - Reusable Components
 
     private func sectionHeader(icon: String, title: String, dimmed: Bool = false) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Constants.Layout.smallSpacing) {
             Image(systemName: icon)
-                .font(.system(size: 13, weight: .semibold))
+                .font(Constants.Typography.caption)
                 .foregroundStyle(dimmed ? .secondary : amber)
 
             Text(title.uppercased())
-                .font(.system(.caption, design: .rounded, weight: .bold))
-                .foregroundStyle(Color.white.opacity(dimmed ? 0.35 : 0.6))
+                .font(Constants.Typography.badge)
+                .foregroundStyle(dimmed ? Constants.Colors.textTertiary : Constants.Colors.textSecondary)
         }
         .padding(.horizontal, 4)
         .padding(.bottom, 10)
@@ -870,18 +870,18 @@ struct SettingsView: View {
 
     private func glassRow<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Constants.Layout.cardPadding)
             .padding(.vertical, 13)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.white.opacity(0.05))
+            .background(Constants.Colors.surfaceGlass)
     }
 
     private var glassBackground: some View {
         ZStack {
-            Color.white.opacity(0.06)
+            Constants.Colors.surfaceGlass
             // Subtle inner glow at top
             LinearGradient(
-                colors: [.white.opacity(0.08), .clear],
+                colors: [Constants.Colors.surfaceHover, .clear],
                 startPoint: .top,
                 endPoint: .center
             )
@@ -906,7 +906,7 @@ struct SettingsView: View {
                 .foregroundStyle(amber)
                 .frame(width: 24)
             Text(title)
-                .foregroundStyle(.white)
+                .foregroundStyle(Constants.Colors.textPrimary)
         }
     }
 
@@ -922,7 +922,7 @@ struct SettingsView: View {
 
     private var thinDivider: some View {
         Rectangle()
-            .fill(.white.opacity(0.06))
+            .fill(Constants.Colors.surfaceGlass)
             .frame(height: 1)
     }
 
@@ -930,7 +930,7 @@ struct SettingsView: View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.white.opacity(0.1))
+                    .fill(Constants.Colors.surfaceBorder)
 
                 RoundedRectangle(cornerRadius: 4)
                     .fill(inputLevelGradient)
@@ -957,7 +957,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.system(.caption, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Constants.Colors.textPrimary)
 
                 Text(text)
                     .font(.system(.caption2))

@@ -84,8 +84,8 @@ struct TranscriptOverlayView: View {
 
             // Transcript text
             Text(displayTranscript)
-                .font(.system(.subheadline, weight: .medium))
-                .foregroundStyle(.white)
+                .font(Constants.Typography.body)
+                .foregroundStyle(Constants.Colors.textPrimary)
                 .lineLimit(isExpanded ? 4 : 2)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentTransition(.numericText())
@@ -94,7 +94,7 @@ struct TranscriptOverlayView: View {
             // Expand chevron
             Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.4))
+                .foregroundStyle(Constants.Colors.textTertiary)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -149,17 +149,17 @@ struct TranscriptOverlayView: View {
                     .foregroundStyle(Constants.Colors.amber)
 
                 Text(entry.timestamp, style: .time)
-                    .font(.system(.caption2, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.3))
+                    .font(Constants.Typography.monoSmall)
+                    .foregroundStyle(Constants.Colors.textTertiary)
 
                 Text(String(format: "%.0fs", entry.duration))
-                    .font(.system(.caption2, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.25))
+                    .font(Constants.Typography.monoSmall)
+                    .foregroundStyle(Constants.Colors.textTertiary)
             }
 
             Text(entry.text)
-                .font(.system(.caption, weight: .regular))
-                .foregroundStyle(.white.opacity(0.8))
+                .font(Constants.Typography.caption)
+                .foregroundStyle(Constants.Colors.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.vertical, 4)
@@ -190,12 +190,12 @@ struct TranscriptOverlayView: View {
                                 ? Constants.Colors.electricGreen
                                 : Color.white
                             ).opacity(0.2),
-                            Color.white.opacity(0.05)
+                            Constants.Colors.surfaceBorder
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
-                    lineWidth: 0.5
+                    lineWidth: Constants.Layout.glassBorderWidth
                 )
         }
     }

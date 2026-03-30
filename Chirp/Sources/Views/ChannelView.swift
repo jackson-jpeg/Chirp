@@ -55,14 +55,14 @@ struct ChannelView: View {
             VStack(spacing: 0) {
                 // Minimal channel header
                 channelHeader
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
+                    .padding(.horizontal, Constants.Layout.horizontalPadding)
+                    .padding(.top, Constants.Layout.smallSpacing)
 
                 // Mode picker: Talk | Chat
                 modePicker
                     .padding(.horizontal, 40)
                     .padding(.top, 12)
-                    .padding(.bottom, 8)
+                    .padding(.bottom, Constants.Layout.smallSpacing)
 
                 Group {
                     if channelMode == .talk {
@@ -90,7 +90,7 @@ struct ChannelView: View {
                 } label: {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(Constants.Colors.textSecondary)
                 }
                 .accessibilityLabel("Back")
             }
@@ -152,9 +152,9 @@ struct ChannelView: View {
                 } label: {
                     ZStack(alignment: .topTrailing) {
                         Text(mode.label.uppercased())
-                            .font(.system(size: 13, weight: .black, design: .monospaced))
+                            .font(Constants.Typography.caption)
                             .tracking(2)
-                            .foregroundStyle(channelMode == mode ? .black : .white.opacity(0.45))
+                            .foregroundStyle(channelMode == mode ? .white : Constants.Colors.textTertiary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 11)
                             .background {
@@ -162,19 +162,19 @@ struct ChannelView: View {
                                     Capsule()
                                         .fill(
                                             LinearGradient(
-                                                colors: [Constants.Colors.amber, Constants.Colors.amberLight],
+                                                colors: [Constants.Colors.blue500, Constants.Colors.blue600],
                                                 startPoint: .topLeading,
                                                 endPoint: .bottomTrailing
                                             )
                                         )
-                                        .shadow(color: Constants.Colors.amber.opacity(0.4), radius: 8)
+                                        .shadow(color: Constants.Colors.blue500.opacity(0.4), radius: 8)
                                 }
                             }
 
                         // Unread badge on Chat tab
                         if mode == .chat && channelMode != .chat && chatUnreadCount > 0 {
                             Text("\(min(chatUnreadCount, 99))")
-                                .font(.system(size: 10, weight: .bold))
+                                .font(Constants.Typography.badge)
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 1)
@@ -191,10 +191,10 @@ struct ChannelView: View {
         .padding(3)
         .background(
             Capsule()
-                .fill(Color.black.opacity(0.4))
+                .fill(Constants.Colors.surfaceGlass)
                 .overlay(
                     Capsule()
-                        .strokeBorder(Constants.Colors.amber.opacity(0.2), lineWidth: 1.5)
+                        .strokeBorder(Constants.Colors.surfaceBorder, lineWidth: Constants.Layout.glassBorderWidth)
                 )
         )
     }
@@ -207,7 +207,7 @@ struct ChannelView: View {
 
             // Status pill — floats higher
             statusPill
-                .padding(.bottom, 12)
+                .padding(.bottom, Constants.Layout.spacing)
 
             // Quick replies — tap to send as text message
             QuickReplyBar(replies: appState.quickReplyManager.replies) { reply in
@@ -219,26 +219,26 @@ struct ChannelView: View {
                 )
                 toast = ToastItem(message: "Sent: \(reply.label)", type: .success)
             }
-            .padding(.bottom, 12)
+            .padding(.bottom, Constants.Layout.spacing)
 
             // Idle birds — friendly waiting state above waveform
             if pttState == .idle {
                 PerchBirdsView(size: 100, isAnimating: true)
                     .transition(.opacity.combined(with: .scale(scale: 0.8)))
-                    .padding(.bottom, 8)
+                    .padding(.bottom, Constants.Layout.smallSpacing)
             }
 
             // Central composition: peers around waveform around PTT
             centralComposition
-                .padding(.bottom, 8)
+                .padding(.bottom, Constants.Layout.smallSpacing)
 
             // "Hold to Talk" / "Release to stop" hint
             pttHintText
-                .padding(.bottom, 12)
+                .padding(.bottom, Constants.Layout.spacing)
 
             // Quick action icons
             quickActionBar
-                .padding(.bottom, 12)
+                .padding(.bottom, Constants.Layout.spacing)
 
             // Loopback indicator
             loopbackIndicator
@@ -473,26 +473,26 @@ struct ChannelView: View {
     // MARK: - Channel Header (Minimal)
 
     private var channelHeader: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Constants.Layout.smallSpacing) {
             Text(channel.name)
                 .font(.system(.title3, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(Constants.Colors.textPrimary)
 
             if channel.accessMode == .locked {
                 HStack(spacing: 3) {
                     Image(systemName: "lock.fill")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(Constants.Typography.badge)
                 }
                 .foregroundStyle(Constants.Colors.amber)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)
                 .background(
                     Capsule()
-                        .fill(Constants.Colors.amber.opacity(0.15))
+                        .fill(Constants.Colors.glassAmber)
                 )
                 .overlay(
                     Capsule()
-                        .strokeBorder(Constants.Colors.amber.opacity(0.3), lineWidth: 0.5)
+                        .strokeBorder(Constants.Colors.glassAmberBorder, lineWidth: 0.5)
                 )
                 .accessibilityLabel("Locked channel")
             }
@@ -514,8 +514,8 @@ struct ChannelView: View {
         let range = beacon.estimatedRange > 0 ? beacon.estimatedRange : 80
 
         return Text("~\(range)m | \(hops) hop\(hops == 1 ? "" : "s")")
-            .font(.system(size: 11, weight: .medium, design: .monospaced))
-            .foregroundStyle(.white.opacity(0.35))
+            .font(Constants.Typography.monoSmall)
+            .foregroundStyle(Constants.Colors.textTertiary)
     }
 
     private var peerCountPill: some View {
@@ -528,18 +528,17 @@ struct ChannelView: View {
 
             Text("\(count) peer\(count == 1 ? "" : "s")")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.6))
+                .foregroundStyle(Constants.Colors.textSecondary)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
         .background(
             Capsule()
-                .fill(.ultraThinMaterial)
-                .opacity(0.5)
+                .fill(Constants.Colors.surfaceGlass)
         )
         .overlay(
             Capsule()
-                .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.5)
+                .strokeBorder(Constants.Colors.surfaceBorder, lineWidth: 0.5)
         )
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(appState.channelManager.activeChannel?.activePeerCount ?? 0) peer\((appState.channelManager.activeChannel?.activePeerCount ?? 0) == 1 ? "" : "s") connected")
@@ -553,34 +552,28 @@ struct ChannelView: View {
         let isActive = pttState != .idle
 
         return statusPillContent
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Constants.Layout.horizontalPadding)
             .padding(.vertical, 12)
             .background(
                 Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: [Color.black.opacity(0.55), Color.black.opacity(0.25)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .fill(Constants.Colors.surfaceGlass)
                     .overlay(
                         Capsule()
-                            .fill(stateColor.opacity(0.12))
+                            .fill(stateColor.opacity(0.08))
                     )
                     .overlay(
                         Capsule()
                             .strokeBorder(
                                 LinearGradient(
-                                    colors: [stateColor.opacity(0.5), stateColor.opacity(0.15), stateColor.opacity(0.35)],
+                                    colors: [stateColor.opacity(0.4), Constants.Colors.surfaceBorder, stateColor.opacity(0.25)],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
-                                lineWidth: 1.5
+                                lineWidth: Constants.Layout.glassBorderWidth
                             )
                     )
             )
-            .shadow(color: stateColor.opacity(isActive ? 0.4 : 0.15), radius: 16, y: 4)
+            .shadow(color: stateColor.opacity(isActive ? 0.3 : 0.1), radius: 16, y: 4)
             .animation(.easeInOut(duration: 0.2), value: pttState)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(statusAccessibilityLabel)
@@ -604,41 +597,41 @@ struct ChannelView: View {
     private var statusPillContent: some View {
         switch pttState {
         case .idle:
-            HStack(spacing: 8) {
+            HStack(spacing: Constants.Layout.smallSpacing) {
                 Circle()
-                    .fill(Constants.Colors.amber)
+                    .fill(Constants.Colors.blue500)
                     .frame(width: 6, height: 6)
                 Text(String(localized: "channel.status.ready"))
-                    .font(.system(.subheadline, weight: .semibold))
-                    .foregroundStyle(Constants.Colors.amber)
+                    .font(Constants.Typography.body)
+                    .foregroundStyle(Constants.Colors.blue500)
             }
 
         case .transmitting:
             transmittingPillContent
 
         case .receiving(let name, _):
-            HStack(spacing: 8) {
+            HStack(spacing: Constants.Layout.smallSpacing) {
                 Circle()
                     .fill(Constants.Colors.electricGreen)
                     .frame(width: 8, height: 8)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(String(localized: "channel.status.listening"))
-                        .font(.system(size: 9, weight: .heavy))
+                        .font(Constants.Typography.badge)
                         .foregroundStyle(Constants.Colors.electricGreen.opacity(0.6))
                     Text(name)
-                        .font(.system(.subheadline, weight: .bold))
+                        .font(Constants.Typography.body)
                         .foregroundStyle(Constants.Colors.electricGreen)
                 }
             }
 
         case .denied:
-            HStack(spacing: 8) {
+            HStack(spacing: Constants.Layout.smallSpacing) {
                 Circle()
                     .fill(Color.gray)
                     .frame(width: 6, height: 6)
                 Text(String(localized: "channel.status.busy"))
-                    .font(.system(.subheadline, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .font(Constants.Typography.body)
+                    .foregroundStyle(Constants.Colors.textSecondary)
             }
         }
     }
@@ -662,8 +655,8 @@ struct ChannelView: View {
                     .contentTransition(.numericText())
 
                 Text(String(localized: "channel.status.live"))
-                    .font(.system(size: 10, weight: .black))
-                    .foregroundStyle(.white)
+                    .font(Constants.Typography.badge)
+                    .foregroundStyle(Constants.Colors.textPrimary)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(Capsule().fill(Constants.Colors.hotRed))
@@ -673,7 +666,7 @@ struct ChannelView: View {
 
     private var statusAccentColor: Color {
         switch pttState {
-        case .idle: Constants.Colors.amber
+        case .idle: Constants.Colors.blue500
         case .transmitting: Constants.Colors.hotRed
         case .receiving: Constants.Colors.electricGreen
         case .denied: Color.gray
@@ -779,7 +772,7 @@ struct ChannelView: View {
                     .foregroundStyle(
                         isActive
                             ? Constants.Colors.electricGreen
-                            : .white.opacity(0.6)
+                            : Constants.Colors.textSecondary
                     )
                     .lineLimit(1)
             }
@@ -827,7 +820,7 @@ struct ChannelView: View {
 
                     Circle()
                         .strokeBorder(
-                            Constants.Colors.amber.opacity(opacity),
+                            Constants.Colors.blue500.opacity(opacity),
                             lineWidth: 0.8
                         )
                         .frame(width: peerCircleRadius * 2, height: peerCircleRadius * 2)
@@ -839,7 +832,7 @@ struct ChannelView: View {
                 Circle()
                     .trim(from: 0, to: 0.08)
                     .stroke(
-                        Constants.Colors.amber.opacity(0.3),
+                        Constants.Colors.blue500.opacity(0.3),
                         style: StrokeStyle(lineWidth: 1.5, lineCap: .round)
                     )
                     .frame(width: peerCircleRadius * 1.6, height: peerCircleRadius * 1.6)
@@ -847,12 +840,12 @@ struct ChannelView: View {
 
                 VStack(spacing: 6) {
                     Text(String(localized: "channel.radar.scanning"))
-                        .font(.system(.caption, weight: .medium))
-                        .foregroundStyle(Constants.Colors.amber.opacity(0.6))
+                        .font(Constants.Typography.caption)
+                        .foregroundStyle(Constants.Colors.blue500.opacity(0.6))
 
                     Text(String(localized: "channel.radar.peersHint"))
-                        .font(.system(size: 10))
-                        .foregroundStyle(.white.opacity(0.3))
+                        .font(Constants.Typography.badge)
+                        .foregroundStyle(Constants.Colors.textTertiary)
                 }
                 .offset(y: -peerCircleRadius - 20)
             }
@@ -875,14 +868,13 @@ struct ChannelView: View {
             .padding(.vertical, 6)
             .background(
                 Capsule()
-                    .fill(.ultraThinMaterial)
-                    .opacity(0.4)
+                    .fill(Constants.Colors.surfaceGlass)
             )
             .overlay(
                 Capsule()
-                    .strokeBorder(Constants.Colors.amber.opacity(0.15), lineWidth: 0.5)
+                    .strokeBorder(Constants.Colors.surfaceBorder, lineWidth: 0.5)
             )
-            .padding(.bottom, 8)
+            .padding(.bottom, Constants.Layout.smallSpacing)
         }
     }
 
@@ -892,13 +884,13 @@ struct ChannelView: View {
     private var pttHintText: some View {
         if pttState == .idle && showHoldHint && !hasUsedPTT {
             Text(String(localized: "channel.ptt.holdToTalk"))
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(.white.opacity(0.35))
+                .font(.system(size: 12, weight: .regular))
+                .foregroundStyle(Constants.Colors.textTertiary)
                 .transition(.opacity)
         } else if pttState == .transmitting {
             Text(String(localized: "channel.ptt.releaseToStop"))
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(Constants.Colors.hotRed.opacity(0.5))
+                .font(.system(size: 12, weight: .regular))
+                .foregroundStyle(Constants.Colors.hotRed.opacity(0.45))
                 .transition(.opacity)
         }
     }
@@ -927,12 +919,12 @@ struct ChannelView: View {
     }
 
     private var quickActionBar: some View {
-        HStack(spacing: 20) {
+        HStack(spacing: Constants.Layout.horizontalPadding) {
             quickActionButton(
                 icon: "camera.fill",
                 label: String(localized: "channel.quickAction.camera"),
-                color: .white.opacity(0.7),
-                size: 52
+                color: Constants.Colors.slate400,
+                size: 48
             ) {
                 showCameraPicker = true
             }
@@ -941,8 +933,8 @@ struct ChannelView: View {
             quickActionButton(
                 icon: "text.bubble.fill",
                 label: String(localized: "channel.quickAction.chat"),
-                color: .white.opacity(0.7),
-                size: 52
+                color: Constants.Colors.slate400,
+                size: 48
             ) {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     channelMode = .chat
@@ -954,8 +946,8 @@ struct ChannelView: View {
             quickActionButton(
                 icon: "location.fill",
                 label: String(localized: "channel.quickAction.location"),
-                color: .white.opacity(0.7),
-                size: 52
+                color: Constants.Colors.blue500,
+                size: 48
             ) {
                 guard let location = appState.locationService.currentLocation else {
                     toast = ToastItem(message: "Location unavailable", type: .warning)
@@ -977,7 +969,7 @@ struct ChannelView: View {
                 icon: EmergencyBeacon.shared.isActive ? "xmark.circle.fill" : "sos",
                 label: EmergencyBeacon.shared.isActive ? "STOP SOS" : String(localized: "channel.quickAction.sos"),
                 color: Constants.Colors.hotRed,
-                size: 60
+                size: 48
             ) {
                 if EmergencyBeacon.shared.isActive {
                     EmergencyBeacon.shared.deactivate()
@@ -992,7 +984,7 @@ struct ChannelView: View {
             }
             .accessibilityIdentifier(AccessibilityID.quickActionSOS)
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, Constants.Layout.horizontalPadding)
     }
 
     private func quickActionButton(
@@ -1005,33 +997,27 @@ struct ChannelView: View {
         Button(action: action) {
             VStack(spacing: 6) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.black.opacity(0.5), Color.black.opacity(0.2)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+                    RoundedRectangle(cornerRadius: Constants.Layout.buttonCornerRadius)
+                        .fill(Constants.Colors.surfaceGlass)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Constants.Layout.buttonCornerRadius)
+                                .fill(color.opacity(0.08))
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(color.opacity(0.1))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .strokeBorder(color.opacity(0.25), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: Constants.Layout.buttonCornerRadius)
+                                .strokeBorder(color.opacity(0.2), lineWidth: Constants.Layout.glassBorderWidth)
                         )
                         .frame(width: size, height: size)
 
                     Image(systemName: icon)
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(color)
                 }
-                .shadow(color: color.opacity(0.2), radius: 8, y: 2)
+                .shadow(color: color.opacity(0.15), radius: 8, y: 2)
 
                 Text(label)
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .font(Constants.Typography.badge)
+                    .foregroundStyle(Constants.Colors.textTertiary)
             }
         }
         .accessibilityLabel(label)

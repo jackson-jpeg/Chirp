@@ -71,7 +71,7 @@ struct ProtectTabView: View {
                         // Mini circular score gauge
                         ZStack {
                             Circle()
-                                .stroke(Color.white.opacity(0.1), lineWidth: 3)
+                                .stroke(Constants.Colors.surfaceBorder, lineWidth: 3)
                                 .frame(width: 24, height: 24)
 
                             Circle()
@@ -81,7 +81,7 @@ struct ProtectTabView: View {
                                 .rotationEffect(.degrees(-90))
 
                             Text("\(score)")
-                                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                .font(Constants.Typography.badge)
                                 .foregroundStyle(scoreColor(score))
                         }
 
@@ -95,7 +95,7 @@ struct ProtectTabView: View {
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.3))
+                    .foregroundStyle(Constants.Colors.textTertiary)
             }
             .padding(Constants.Layout.cardPadding)
             .background(
@@ -103,8 +103,7 @@ struct ProtectTabView: View {
                     .fill(Constants.Colors.cardBackground)
                     .overlay(
                         RoundedRectangle(cornerRadius: Constants.Layout.cardCornerRadius)
-                            .fill(.ultraThinMaterial.opacity(0.3))
-                            .environment(\.colorScheme, .dark)
+                            .fill(Constants.Colors.surfaceGlass)
                     )
             )
             .overlay(
@@ -151,7 +150,7 @@ struct ProtectTabView: View {
     ) -> some View {
         HStack(spacing: 14) {
             ZStack {
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius)
                     .fill(Constants.Colors.amber.opacity(0.12))
                     .frame(width: 50, height: 50)
 
@@ -185,7 +184,7 @@ struct ProtectTabView: View {
 
             Image(systemName: "chevron.right")
                 .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(.white.opacity(0.3))
+                .foregroundStyle(Constants.Colors.textTertiary)
         }
         .padding(Constants.Layout.cardPadding)
         .background(

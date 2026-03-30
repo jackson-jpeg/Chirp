@@ -38,8 +38,8 @@ struct ChatInputBar: View {
                 // Text input area
                 VStack(alignment: .trailing, spacing: 2) {
                     TextField("Message...", text: $text, axis: .vertical)
-                        .font(.system(.body, weight: .regular))
-                        .foregroundStyle(.white)
+                        .font(Constants.Typography.body)
+                        .foregroundStyle(Constants.Colors.textPrimary)
                         .lineLimit(1...5)
                         .focused($isTextFieldFocused)
                         .onChange(of: text) { _, newValue in
@@ -54,15 +54,19 @@ struct ChatInputBar: View {
                     // Character counter (visible near limit)
                     if text.count >= characterWarningThreshold {
                         Text("\(text.count)/\(maxCharacters)")
-                            .font(.system(size: 10, weight: .medium, design: .monospaced))
-                            .foregroundStyle(text.count >= maxCharacters ? Constants.Colors.hotRed : .white.opacity(0.4))
+                            .font(Constants.Typography.badge)
+                            .foregroundStyle(text.count >= maxCharacters ? Constants.Colors.hotRed : Constants.Colors.textTertiary)
                             .transition(.opacity)
                     }
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .background(Color.white.opacity(0.08))
+                .background(Constants.Colors.surfaceGlass)
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .strokeBorder(Constants.Colors.surfaceBorder, lineWidth: Constants.Layout.glassBorderWidth)
+                )
 
                 // Send button
                 sendButton
@@ -72,7 +76,13 @@ struct ChatInputBar: View {
         }
         .background(
             Rectangle()
-                .fill(.ultraThinMaterial)
+                .fill(Constants.Colors.backgroundPrimary)
+                .overlay(
+                    Rectangle()
+                        .fill(Constants.Colors.surfaceBorder)
+                        .frame(height: Constants.Layout.glassBorderWidth),
+                    alignment: .top
+                )
                 .ignoresSafeArea(edges: .bottom)
         )
         .animation(.easeInOut(duration: 0.15), value: replyingTo?.id)
@@ -84,17 +94,17 @@ struct ChatInputBar: View {
     private func replyBanner(_ reply: MeshTextMessage) -> some View {
         HStack(spacing: 8) {
             RoundedRectangle(cornerRadius: 1.5)
-                .fill(Constants.Colors.amber)
+                .fill(Constants.Colors.blue500)
                 .frame(width: 3, height: 28)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text("Replying to \(reply.senderName)")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Constants.Colors.amber)
+                    .font(Constants.Typography.monoSmall)
+                    .foregroundStyle(Constants.Colors.blue500)
 
                 Text(reply.text)
-                    .font(.system(size: 12, weight: .regular))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .font(Constants.Typography.caption)
+                    .foregroundStyle(Constants.Colors.textSecondary)
                     .lineLimit(1)
             }
 
@@ -105,13 +115,13 @@ struct ChatInputBar: View {
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 18))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .foregroundStyle(Constants.Colors.textTertiary)
             }
             .accessibilityLabel("Dismiss reply")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(Color.white.opacity(0.05))
+        .background(Constants.Colors.surfaceGlass)
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
@@ -149,9 +159,9 @@ struct ChatInputBar: View {
                 }
             }
         } label: {
-            Image(systemName: "paperclip")
-                .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(.white.opacity(0.5))
+            Image(systemName: "plus.circle.fill")
+                .font(.system(size: 28, weight: .medium))
+                .foregroundStyle(Constants.Colors.textTertiary)
                 .frame(width: 36, height: 36)
         }
         .accessibilityLabel("Attachments")
@@ -169,7 +179,7 @@ struct ChatInputBar: View {
         } label: {
             Image(systemName: "arrow.up.circle.fill")
                 .font(.system(size: 32, weight: .medium))
-                .foregroundStyle(canSend ? Constants.Colors.amber : Color.white.opacity(0.15))
+                .foregroundStyle(canSend ? Constants.Colors.blue500 : Constants.Colors.textTertiary)
         }
         .disabled(!canSend)
         .accessibilityLabel("Send message")

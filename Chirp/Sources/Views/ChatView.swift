@@ -96,7 +96,7 @@ struct ChatView: View {
                 }
             }
         }
-        .background(Color(hex: 0x0F172A))
+        .background(Constants.Colors.backgroundPrimary)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showScrollToBottom)
         .sheet(isPresented: $showImagePicker) {
             ImagePickerView(source: imagePickerSource) { image in
@@ -136,12 +136,17 @@ struct ChatView: View {
 
             Image(systemName: "bubble.left.and.bubble.right")
                 .font(.system(size: 48, weight: .thin))
-                .foregroundStyle(.white.opacity(0.2))
+                .foregroundStyle(Constants.Colors.textTertiary)
 
-            Text("No messages yet.\nSend the first one!")
-                .font(.system(.body, weight: .medium))
-                .foregroundStyle(.white.opacity(0.4))
+            Text("No messages yet")
+                .font(Constants.Typography.cardTitle)
+                .foregroundStyle(Constants.Colors.textTertiary)
+
+            Text("Send the first chirp to get the conversation started.")
+                .font(Constants.Typography.caption)
+                .foregroundStyle(Constants.Colors.textTertiary.opacity(0.7))
                 .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
 
             Spacer()
         }
@@ -264,13 +269,13 @@ struct ChatView: View {
 
     private func dateSeparator(for date: Date) -> some View {
         Text(formattedDateSeparator(date))
-            .font(.system(size: 11, weight: .semibold, design: .monospaced))
-            .foregroundStyle(.white.opacity(0.3))
+            .font(Constants.Typography.monoSmall)
+            .foregroundStyle(Constants.Colors.textTertiary)
             .padding(.horizontal, 12)
             .padding(.vertical, 4)
             .background(
                 Capsule()
-                    .fill(Color.white.opacity(0.05))
+                    .fill(Constants.Colors.surfaceGlass)
             )
             .padding(.vertical, 8)
     }

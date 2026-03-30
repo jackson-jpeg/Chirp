@@ -59,17 +59,16 @@ struct LocationAttachmentView: View {
 
             // Coordinates
             Text(coordinateText)
-                .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.7))
+                .font(Constants.Typography.mono)
+                .foregroundStyle(Constants.Colors.textSecondary)
                 .accessibilityLabel("Coordinates: \(coordinateText)")
 
             // Distance and bearing row
             if let dist = formattedDistance {
                 HStack(spacing: 8) {
                     Text(dist)
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.white.opacity(0.9))
+                        .font(Constants.Typography.caption)
+                        .foregroundStyle(Constants.Colors.textPrimary)
 
                     if let bearing = bearingDegrees {
                         Image(systemName: "location.north.fill")
@@ -86,8 +85,8 @@ struct LocationAttachmentView: View {
             // Accuracy if available
             if let acc = accuracy {
                 Text(String(format: "Accuracy: ±%.0fm", acc))
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.4))
+                    .font(Constants.Typography.badge)
+                    .foregroundStyle(Constants.Colors.textTertiary)
             }
 
             // Open in Maps button
@@ -105,18 +104,18 @@ struct LocationAttachmentView: View {
                     .foregroundStyle(Constants.Colors.amber)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Constants.Colors.amber.opacity(0.15))
+                    .background(Constants.Colors.glassAmber)
                     .clipShape(Capsule())
                 }
                 .accessibilityLabel("Open location in Maps")
             }
         }
         .padding(12)
-        .background(Color.white.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .background(Constants.Colors.surfaceGlass)
+        .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius))
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(Constants.Colors.amber.opacity(0.25), lineWidth: 1)
+            RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius)
+                .strokeBorder(Constants.Colors.glassAmberBorder.opacity(0.5), lineWidth: Constants.Layout.glassBorderWidth)
         )
     }
 }

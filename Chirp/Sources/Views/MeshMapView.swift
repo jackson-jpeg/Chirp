@@ -32,10 +32,10 @@ private struct NodeDetailSheet: View {
     private let green = Constants.Colors.electricGreen
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: Constants.Layout.horizontalPadding) {
             // Drag indicator
             Capsule()
-                .fill(Color.white.opacity(0.3))
+                .fill(Constants.Colors.textTertiary)
                 .frame(width: 36, height: 5)
                 .padding(.top, 10)
 
@@ -55,42 +55,45 @@ private struct NodeDetailSheet: View {
                     .frame(width: 48, height: 48)
                     .overlay(
                         Text(String(node.name.prefix(1)).uppercased())
-                            .font(.system(size: 22, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
+                            .font(Constants.Typography.sectionTitle)
+                            .foregroundStyle(Constants.Colors.textPrimary)
                     )
                     .shadow(color: nodeColor.opacity(0.5), radius: 10)
             }
 
             Text(node.name)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .font(Constants.Typography.sectionTitle)
+                .foregroundStyle(Constants.Colors.textPrimary)
 
             // Detail rows
-            VStack(spacing: 14) {
+            VStack(spacing: Constants.Layout.glassCornerRadius) {
                 detailRow(icon: "arrow.triangle.branch", label: "Hop Count", value: "\(node.hopCount)")
                 detailRow(icon: "battery.75percent", label: "Battery", value: batteryString)
                 detailRow(icon: "wifi", label: "Signal Quality", value: qualityString)
                 detailRow(icon: "clock", label: "Last Seen", value: lastSeenString)
             }
             .padding(.horizontal, 24)
-            .padding(.vertical, 16)
+            .padding(.vertical, Constants.Layout.spacing)
             .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(.ultraThinMaterial)
-                    .environment(\.colorScheme, .dark)
+                RoundedRectangle(cornerRadius: Constants.Layout.cornerRadius)
+                    .fill(Constants.Colors.cardBackground)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                        RoundedRectangle(cornerRadius: Constants.Layout.cornerRadius)
+                            .fill(Constants.Colors.surfaceGlass)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Constants.Layout.cornerRadius)
+                            .stroke(Constants.Colors.surfaceBorder, lineWidth: 0.5)
                     )
             )
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Constants.Layout.horizontalPadding)
 
             Spacer()
         }
         .frame(maxWidth: .infinity)
         .background(
             LinearGradient(
-                colors: [Color(white: 0.08), Color(red: 0.02, green: 0.02, blue: 0.12)],
+                colors: [Constants.Colors.backgroundTertiary, Constants.Colors.slate900],
                 startPoint: .top,
                 endPoint: .bottom
             )
@@ -126,16 +129,16 @@ private struct NodeDetailSheet: View {
     private func detailRow(icon: String, label: String, value: String) -> some View {
         HStack {
             Image(systemName: icon)
-                .font(.system(size: 14, weight: .medium))
+                .font(Constants.Typography.caption)
                 .foregroundStyle(amber.opacity(0.7))
                 .frame(width: 24)
             Text(label)
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.5))
+                .font(Constants.Typography.caption)
+                .foregroundStyle(Constants.Colors.textSecondary)
             Spacer()
             Text(value)
-                .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.9))
+                .font(Constants.Typography.monoStatus)
+                .foregroundStyle(Constants.Colors.textPrimary.opacity(0.9))
         }
     }
 }
@@ -189,7 +192,7 @@ private struct TopologyCanvas: View {
             var path = Path()
             path.move(to: CGPoint(x: x, y: 0))
             path.addLine(to: CGPoint(x: x, y: size.height))
-            context.stroke(path, with: .color(Color.white.opacity(0.015)), lineWidth: 0.5)
+            context.stroke(path, with: .color(Constants.Colors.surfaceBorder.opacity(0.2)), lineWidth: 0.5)
         }
 
         for row in 0...rows {
@@ -197,19 +200,19 @@ private struct TopologyCanvas: View {
             var path = Path()
             path.move(to: CGPoint(x: 0, y: y))
             path.addLine(to: CGPoint(x: size.width, y: y))
-            context.stroke(path, with: .color(Color.white.opacity(0.015)), lineWidth: 0.5)
+            context.stroke(path, with: .color(Constants.Colors.surfaceBorder.opacity(0.2)), lineWidth: 0.5)
         }
 
         // Crosshair
         var hLine = Path()
         hLine.move(to: CGPoint(x: 0, y: center.y))
         hLine.addLine(to: CGPoint(x: size.width, y: center.y))
-        context.stroke(hLine, with: .color(Color.white.opacity(0.03)), lineWidth: 0.5)
+        context.stroke(hLine, with: .color(Constants.Colors.surfaceBorder.opacity(0.4)), lineWidth: 0.5)
 
         var vLine = Path()
         vLine.move(to: CGPoint(x: center.x, y: 0))
         vLine.addLine(to: CGPoint(x: center.x, y: size.height))
-        context.stroke(vLine, with: .color(Color.white.opacity(0.03)), lineWidth: 0.5)
+        context.stroke(vLine, with: .color(Constants.Colors.surfaceBorder.opacity(0.4)), lineWidth: 0.5)
     }
 
     // MARK: - Range Rings
@@ -350,9 +353,9 @@ private struct TopologyCanvas: View {
     }
 
     private func colorForQuality(_ quality: Double) -> Color {
-        if quality > 0.7 { return green }
-        if quality > 0.3 { return amber }
-        return red
+        if quality > 0.7 { return Constants.Colors.meshHealthGood }
+        if quality > 0.3 { return Constants.Colors.meshHealthFair }
+        return Constants.Colors.meshHealthPoor
     }
 
     // MARK: - Self Glow
@@ -490,12 +493,12 @@ private struct HealthScoreView: View {
     var body: some View {
         VStack(spacing: 2) {
             Text("\(Int(score * 100))")
-                .font(.system(size: 28, weight: .heavy, design: .rounded))
+                .font(Constants.Typography.headline)
                 .foregroundStyle(scoreColor)
                 .contentTransition(.numericText())
 
             Text("MESH HEALTH")
-                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                .font(Constants.Typography.badge)
                 .foregroundStyle(scoreColor.opacity(0.6))
                 .tracking(1.5)
         }
@@ -526,30 +529,33 @@ private struct LiveStatsBar: View {
             divider
             statCounter(label: "MAX HOPS", value: "\(maxHops)")
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Constants.Layout.spacing)
         .padding(.vertical, 12)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
-                .environment(\.colorScheme, .dark)
+            RoundedRectangle(cornerRadius: Constants.Layout.cornerRadius)
+                .fill(Constants.Colors.cardBackground)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(amber.opacity(0.12), lineWidth: 0.5)
+                    RoundedRectangle(cornerRadius: Constants.Layout.cornerRadius)
+                        .fill(Constants.Colors.surfaceGlass)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: Constants.Layout.cornerRadius)
+                        .stroke(Constants.Colors.surfaceBorder, lineWidth: 0.5)
                 )
         )
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Constants.Layout.spacing)
         .padding(.bottom, 12)
     }
 
     private func statCounter(label: String, value: String) -> some View {
         VStack(spacing: 3) {
             Text(value)
-                .font(.system(size: 15, weight: .bold, design: .monospaced))
+                .font(Constants.Typography.monoStatus)
                 .foregroundStyle(amber)
                 .contentTransition(.numericText())
             Text(label)
-                .font(.system(size: 8, weight: .semibold, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.35))
+                .font(Constants.Typography.badge)
+                .foregroundStyle(Constants.Colors.textTertiary)
                 .tracking(0.5)
         }
         .frame(maxWidth: .infinity)
@@ -557,7 +563,7 @@ private struct LiveStatsBar: View {
 
     private var divider: some View {
         Rectangle()
-            .fill(.white.opacity(0.08))
+            .fill(Constants.Colors.surfaceBorder)
             .frame(width: 1, height: 28)
     }
 }
@@ -627,6 +633,7 @@ struct MeshMapView: View {
     @State private var selectedTab: MapTab = .topology
     @State private var showOfflineMapSheet: Bool = false
 
+    @Namespace private var meshUnderline
     private let amber = Constants.Colors.amber
     private let green = Constants.Colors.electricGreen
 
@@ -704,24 +711,48 @@ struct MeshMapView: View {
 
     var body: some View {
         ZStack {
-            // Dark background gradient (black to navy)
+            // Dark background gradient
             LinearGradient(
-                colors: [.black, Color(red: 0.02, green: 0.02, blue: 0.12)],
+                colors: [Constants.Colors.backgroundPrimary, Constants.Colors.slate900],
                 startPoint: .top,
                 endPoint: .bottom
             )
             .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Segmented picker
-                Picker("View", selection: $selectedTab) {
+                // Underline tab picker
+                HStack(spacing: 0) {
                     ForEach(MapTab.allCases, id: \.self) { tab in
-                        Text(tab.rawValue).tag(tab)
+                        Button {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                selectedTab = tab
+                            }
+                        } label: {
+                            VStack(spacing: Constants.Layout.smallSpacing) {
+                                Text(tab.rawValue)
+                                    .font(.system(size: 15, weight: selectedTab == tab ? .semibold : .medium))
+                                    .foregroundStyle(selectedTab == tab ? Constants.Colors.textPrimary : Constants.Colors.slate500)
+
+                                ZStack {
+                                    Rectangle()
+                                        .fill(Color.clear)
+                                        .frame(height: 2)
+
+                                    if selectedTab == tab {
+                                        Rectangle()
+                                            .fill(Constants.Colors.blue500)
+                                            .frame(height: 2)
+                                            .matchedGeometryEffect(id: "meshUnderline", in: meshUnderline)
+                                    }
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
+                .padding(.horizontal, Constants.Layout.horizontalPadding)
+                .padding(.top, Constants.Layout.smallSpacing)
                 .padding(.bottom, 4)
 
                 // Content
@@ -840,7 +871,7 @@ struct MeshMapView: View {
 
                 // "You" label
                 Text("You")
-                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                    .font(Constants.Typography.badge)
                     .foregroundStyle(amber.opacity(0.6))
                     .position(x: center.x, y: center.y + 80)
 
@@ -858,8 +889,8 @@ struct MeshMapView: View {
                         NodeBubble(node: node, isCenter: false)
 
                         Text(node.name.split(separator: " ").first.map(String.init) ?? node.name)
-                            .font(.system(size: 9, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(node.isDirect ? 0.6 : 0.4))
+                            .font(Constants.Typography.badge)
+                            .foregroundStyle(node.isDirect ? Constants.Colors.textSecondary : Constants.Colors.textTertiary)
                             .lineLimit(1)
                     }
                     .position(point)
@@ -883,12 +914,12 @@ struct MeshMapView: View {
                             .frame(height: 120)
 
                         Text("Scanning for mesh peers...")
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.5))
+                            .font(Constants.Typography.body)
+                            .foregroundStyle(Constants.Colors.textSecondary)
 
                         Text("Nearby ChirpChirp devices will appear here")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.25))
+                            .font(Constants.Typography.caption)
+                            .foregroundStyle(Constants.Colors.textTertiary)
 
                         Spacer()
                             .frame(height: 100)

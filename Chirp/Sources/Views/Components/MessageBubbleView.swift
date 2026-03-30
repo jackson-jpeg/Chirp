@@ -24,8 +24,8 @@ struct MessageBubbleView: View {
                 // Sender name (others only)
                 if !isFromSelf {
                     Text(message.senderName)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .font(Constants.Typography.monoSmall)
+                        .foregroundStyle(Constants.Colors.textSecondary)
                         .padding(.leading, 8)
                 }
 
@@ -49,21 +49,21 @@ struct MessageBubbleView: View {
                         } else if attachment == .file || attachment == .voiceNote {
                             attachmentBadge(attachment)
                             Text(message.text)
-                                .font(.system(.body, weight: .regular))
-                                .foregroundStyle(.white)
+                                .font(Constants.Typography.body)
+                                .foregroundStyle(Constants.Colors.textPrimary)
                                 .multilineTextAlignment(.leading)
                         } else {
                             attachmentBadge(attachment)
                             Text(message.text)
-                                .font(.system(.body, weight: .regular))
-                                .foregroundStyle(.white)
+                                .font(Constants.Typography.body)
+                                .foregroundStyle(Constants.Colors.textPrimary)
                                 .multilineTextAlignment(.leading)
                         }
                     } else {
                         // Plain text message
                         Text(message.text)
-                            .font(.system(.body, weight: .regular))
-                            .foregroundStyle(.white)
+                            .font(Constants.Typography.body)
+                            .foregroundStyle(Constants.Colors.textPrimary)
                             .multilineTextAlignment(.leading)
                     }
 
@@ -71,14 +71,14 @@ struct MessageBubbleView: View {
                     HStack(spacing: 4) {
                         Spacer()
                         Text(formattedTime)
-                            .font(.system(size: 10, weight: .medium, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.4))
+                            .font(Constants.Typography.badge)
+                            .foregroundStyle(Constants.Colors.textTertiary)
 
                         if hasHiddenContent {
                             Button(action: { onRevealHidden?() }) {
                                 Image(systemName: "eye.slash.circle.fill")
                                     .font(.system(size: 12))
-                                    .foregroundStyle(Constants.Colors.amber.opacity(0.6))
+                                    .foregroundStyle(Constants.Colors.glassAmberBorder)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Reveal hidden message")
@@ -88,8 +88,14 @@ struct MessageBubbleView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(bubbleBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+                .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.cornerRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Constants.Layout.cornerRadius, style: .continuous)
+                        .strokeBorder(
+                            isFromSelf ? Constants.Colors.amber.opacity(0.3) : Constants.Colors.surfaceBorder,
+                            lineWidth: Constants.Layout.glassBorderWidth
+                        )
+                )
             }
 
             if !isFromSelf { Spacer(minLength: 60) }
@@ -103,22 +109,22 @@ struct MessageBubbleView: View {
     private func replyPreview(_ reply: MeshTextMessage) -> some View {
         HStack(spacing: 6) {
             RoundedRectangle(cornerRadius: 1.5)
-                .fill(Constants.Colors.amber.opacity(0.6))
+                .fill(Constants.Colors.amber)
                 .frame(width: 3)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(reply.senderName)
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(Constants.Colors.amber.opacity(0.8))
+                    .font(Constants.Typography.badge)
+                    .foregroundStyle(Constants.Colors.amber)
 
                 Text(reply.text)
-                    .font(.system(size: 11, weight: .regular))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .font(Constants.Typography.monoSmall)
+                    .foregroundStyle(Constants.Colors.textSecondary)
                     .lineLimit(2)
             }
         }
         .padding(6)
-        .background(Color.white.opacity(0.05))
+        .background(Constants.Colors.surfaceGlass)
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
@@ -127,14 +133,14 @@ struct MessageBubbleView: View {
     private func attachmentBadge(_ type: MeshTextMessage.AttachmentType) -> some View {
         HStack(spacing: 4) {
             Image(systemName: attachmentIcon(type))
-                .font(.system(size: 11, weight: .semibold))
+                .font(Constants.Typography.monoSmall)
             Text(attachmentLabel(type))
-                .font(.system(size: 11, weight: .medium))
+                .font(Constants.Typography.monoSmall)
         }
         .foregroundStyle(Constants.Colors.amber)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(Constants.Colors.amber.opacity(0.15))
+        .background(Constants.Colors.glassAmber)
         .clipShape(Capsule())
     }
 
@@ -162,8 +168,8 @@ struct MessageBubbleView: View {
 
     private var bubbleBackground: Color {
         isFromSelf
-            ? Constants.Colors.amber.opacity(0.85)
-            : Color.white.opacity(0.1)
+            ? Constants.Colors.amber.opacity(0.15)
+            : Constants.Colors.cardBackground
     }
 
     // MARK: - Formatting
