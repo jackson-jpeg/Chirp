@@ -56,69 +56,219 @@ private struct MeshGradientBackground: View {
     }
 }
 
-// MARK: - Spring Letter Wordmark
+// MARK: - Animated Network Nodes Background
 
-private struct SpringWordmark: View {
-    let text: String = "ChirpChirp"
-    @State private var letterVisible: [Bool] = Array(repeating: false, count: 10)
+private struct NetworkNodesBackground: View {
+    @State private var nodePositions: [(x: CGFloat, y: CGFloat)] = []
+    @State private var lineOpacities: [Double] = []
+    @State private var phase: CGFloat = 0
+
+    private let nodeCount = 12
 
     var body: some View {
-        HStack(spacing: -2) {
-            ForEach(Array(text.enumerated()), id: \.offset) { index, char in
-                Text(String(char))
-                    .font(.system(size: 56, weight: .heavy, design: .rounded))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [
-                                Color(hex: 0xFFB800),
-                                Color(hex: 0xFFD060),
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
+        TimelineView(.animation(minimumInterval: 1.0 / 20.0)) { timeline in
+            let t = timeline.date.timeIntervalSinceReferenceDate
+            Canvas { context, size in
+                let w = size.width
+                let h = size.height
+
+                // Generate stable animated positions
+                var positions: [(CGFloat, CGFloat)] = []
+                for i in 0..<nodeCount {
+                    let baseX = (CGFloat(i % 4) + 0.5) / 4.0
+                    let baseY = (CGFloat(i / 4) + 0.5) / 3.0
+                    let dx = sin(t * 0.3 + Double(i) * 1.7) * 0.06
+                    let dy = cos(t * 0.25 + Double(i) * 2.1) * 0.05
+                    positions.append(((baseX + dx) * w, (baseY + dy) * h))
+                }
+
+                // Draw connections between nearby nodes
+                let connectDist = w * 0.35
+                for i in 0..<positions.count {
+                    for j in (i+1)..<positions.count {
+                        let dx = positions[i].0 - positions[j].0
+                        let dy = positions[i].1 - positions[j].1
+                        let dist = sqrt(dx * dx + dy * dy)
+                        if dist < connectDist {
+                            let alpha = (1.0 - dist / connectDist) * 0.15
+                            var path = Path()
+                            path.move(to: CGPoint(x: positions[i].0, y: positions[i].1))
+                            path.addLine(to: CGPoint(x: positions[j].0, y: positions[j].1))
+                            context.stroke(path, with: .color(.white.opacity(alpha)), lineWidth: 0.8)
+                        }
+                    }
+                }
+
+                // Draw nodes
+                for (i, pos) in positions.enumerated() {
+                    let pulse = sin(t * 1.5 + Double(i) * 0.8) * 0.5 + 0.5
+                    let nodeSize: CGFloat = 3 + pulse * 2
+                    let glowSize: CGFloat = nodeSize * 4
+
+                    // Glow
+                    let glowRect = CGRect(
+                        x: pos.0 - glowSize / 2,
+                        y: pos.1 - glowSize / 2,
+                        width: glowSize,
+                        height: glowSize
                     )
-                    .scaleEffect(letterVisible[index] ? 1.0 : 0.0)
-                    .opacity(letterVisible[index] ? 1.0 : 0.0)
+                    context.fill(
+                        Path(ellipseIn: glowRect),
+                        with: .color(.white.opacity(0.04 + pulse * 0.03))
+                    )
+
+                    // Core
+                    let rect = CGRect(
+                        x: pos.0 - nodeSize / 2,
+                        y: pos.1 - nodeSize / 2,
+                        width: nodeSize,
+                        height: nodeSize
+                    )
+                    context.fill(
+                        Path(ellipseIn: rect),
+                        with: .color(.white.opacity(0.2 + pulse * 0.15))
+                    )
+                }
             }
         }
+        .ignoresSafeArea()
+    }
+}
+
+// MARK: - Typewriter Text
+
+private struct TypewriterText: View {
+    let fullText: String
+    let fontSize: CGFloat
+    @State private var displayedCount: Int = 0
+    @State private var cursorVisible = true
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Text(String(fullText.prefix(displayedCount)))
+                .font(.system(size: fontSize, weight: .heavy, design: .rounded))
+                .foregroundStyle(.white)
+
+            // Cursor
+            Rectangle()
+                .fill(.white)
+                .frame(width: 3, height: fontSize * 0.85)
+                .opacity(cursorVisible ? 1 : 0)
+                .padding(.leading, 2)
+        }
         .onAppear {
-            for i in 0..<text.count {
-                withAnimation(
-                    .spring(response: 0.5, dampingFraction: 0.55)
-                    .delay(Double(i) * 0.05 + 0.3)
-                ) {
-                    letterVisible[i] = true
+            // Typewriter effect
+            for i in 1...fullText.count {
+                DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.06) {
+                    withAnimation(.easeOut(duration: 0.05)) {
+                        displayedCount = i
+                    }
                 }
+            }
+
+            // Blinking cursor
+            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
+                cursorVisible.toggle()
             }
         }
     }
 }
 
-// MARK: - Animated Mesh Network Illustration
+// MARK: - Tower Down Illustration (Scaled Up)
+
+private struct TowerDownIllustration: View {
+    @State private var towerOpacity: Double = 1.0
+    @State private var slashOpacity: Double = 0.0
+    @State private var phoneGlow: Double = 0.0
+    @State private var signalPulse: CGFloat = 0
+
+    var body: some View {
+        let blue = Constants.Colors.blue500
+        let red = Constants.Colors.hotRed
+
+        GeometryReader { geo in
+            let centerX = geo.size.width / 2
+            let centerY = geo.size.height / 2
+
+            ZStack {
+                // Cell tower (fading out)
+                Image(systemName: "antenna.radiowaves.left.and.right")
+                    .font(.system(size: 72, weight: .medium))
+                    .foregroundStyle(red.opacity(towerOpacity * 0.6))
+                    .overlay(
+                        Image(systemName: "xmark")
+                            .font(.system(size: 52, weight: .bold))
+                            .foregroundStyle(red)
+                            .opacity(slashOpacity)
+                    )
+                    .position(x: centerX, y: centerY)
+
+                // Phones lighting up around the dead tower
+                ForEach(0..<6, id: \.self) { i in
+                    let angle = Double(i) * 60.0 + 30.0
+                    let rad = angle * .pi / 180
+                    let dist: CGFloat = 110
+                    ZStack {
+                        // Signal rings
+                        Circle()
+                            .stroke(blue.opacity(0.2), lineWidth: 1)
+                            .frame(width: 30 + signalPulse * 12, height: 30 + signalPulse * 12)
+                            .opacity(Double(1.0 - signalPulse * 0.7))
+
+                        Image(systemName: "iphone.radiowaves.left.and.right")
+                            .font(.system(size: 26, weight: .medium))
+                            .foregroundStyle(blue)
+                    }
+                    .opacity(phoneGlow)
+                    .position(
+                        x: centerX + cos(rad) * dist,
+                        y: centerY + sin(rad) * dist
+                    )
+                }
+            }
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 1.0).delay(0.3)) {
+                towerOpacity = 0.2
+                slashOpacity = 1.0
+            }
+            withAnimation(.easeIn(duration: 0.8).delay(1.0)) {
+                phoneGlow = 1.0
+            }
+            withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true).delay(1.5)) {
+                signalPulse = 1.0
+            }
+        }
+    }
+}
+
+// MARK: - Animated Mesh Network Illustration (Scaled Up)
 
 private struct MeshNetworkIllustration: View {
-    @State private var nodeScales: [CGFloat] = Array(repeating: 0, count: 7)
-    @State private var lineOpacities: [Double] = Array(repeating: 0, count: 8)
+    @State private var nodeScales: [CGFloat] = Array(repeating: 0, count: 9)
+    @State private var lineOpacities: [Double] = Array(repeating: 0, count: 12)
     @State private var pulsePhase: CGFloat = 0
+    @State private var dataPacketProgress: CGFloat = 0
 
-    // Node positions (normalized 0-1)
     private let nodes: [(x: CGFloat, y: CGFloat)] = [
-        (0.5, 0.3),   // center top
-        (0.2, 0.5),   // left
-        (0.8, 0.5),   // right
-        (0.35, 0.75), // bottom left
-        (0.65, 0.75), // bottom right
-        (0.1, 0.3),   // far left
-        (0.9, 0.3),   // far right
+        (0.5, 0.15),   // top center
+        (0.2, 0.35),   // left upper
+        (0.8, 0.35),   // right upper
+        (0.1, 0.6),    // far left
+        (0.35, 0.55),  // center left
+        (0.65, 0.55),  // center right
+        (0.9, 0.6),    // far right
+        (0.3, 0.8),    // bottom left
+        (0.7, 0.8),    // bottom right
     ]
 
-    // Connections between nodes (index pairs)
     private let connections: [(Int, Int)] = [
-        (0, 1), (0, 2), (1, 3), (2, 4), (1, 5), (2, 6), (3, 4), (0, 4)
+        (0, 1), (0, 2), (1, 3), (1, 4), (2, 5), (2, 6),
+        (3, 7), (4, 5), (4, 7), (5, 8), (6, 8), (7, 8)
     ]
 
     var body: some View {
-        let amber = Constants.Colors.amber
+        let blue = Constants.Colors.blue500
 
         GeometryReader { geo in
             let w = geo.size.width
@@ -133,8 +283,30 @@ private struct MeshNetworkIllustration: View {
                         path.move(to: CGPoint(x: from.x * w, y: from.y * h))
                         path.addLine(to: CGPoint(x: to.x * w, y: to.y * h))
                     }
-                    .stroke(amber.opacity(lineOpacities[i] * 0.4), lineWidth: 1.5)
+                    .stroke(blue.opacity(lineOpacities[i] * 0.35), lineWidth: 1.5)
                 }
+
+                // Data packet traveling along a path
+                let pathFrom = nodes[0]
+                let pathMid = nodes[4]
+                let pathTo = nodes[7]
+                Circle()
+                    .fill(blue)
+                    .frame(width: 6, height: 6)
+                    .shadow(color: blue, radius: 6)
+                    .position(
+                        x: lerp(
+                            from: lerp(from: pathFrom.x, to: pathMid.x, t: dataPacketProgress),
+                            to: lerp(from: pathMid.x, to: pathTo.x, t: dataPacketProgress),
+                            t: dataPacketProgress
+                        ) * w,
+                        y: lerp(
+                            from: lerp(from: pathFrom.y, to: pathMid.y, t: dataPacketProgress),
+                            to: lerp(from: pathMid.y, to: pathTo.y, t: dataPacketProgress),
+                            t: dataPacketProgress
+                        ) * h
+                    )
+                    .opacity(lineOpacities.first.map { $0 > 0 ? 1 : 0 } ?? 0)
 
                 // Nodes
                 ForEach(0..<nodes.count, id: \.self) { i in
@@ -142,19 +314,24 @@ private struct MeshNetworkIllustration: View {
                     ZStack {
                         // Glow
                         Circle()
-                            .fill(amber.opacity(0.15))
-                            .frame(width: 32, height: 32)
+                            .fill(blue.opacity(0.12))
+                            .frame(width: 40, height: 40)
 
                         // Core
                         Circle()
-                            .fill(amber)
-                            .frame(width: 12, height: 12)
+                            .fill(blue)
+                            .frame(width: 14, height: 14)
 
                         // Pulse ring
                         Circle()
-                            .stroke(amber.opacity(0.3), lineWidth: 1)
-                            .frame(width: 12 + pulsePhase * 20, height: 12 + pulsePhase * 20)
+                            .stroke(blue.opacity(0.25), lineWidth: 1)
+                            .frame(width: 14 + pulsePhase * 24, height: 14 + pulsePhase * 24)
                             .opacity(1 - pulsePhase)
+
+                        // Phone icon inside
+                        Image(systemName: "iphone")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(.white)
                     }
                     .scaleEffect(nodeScales[i])
                     .position(x: node.x * w, y: node.y * h)
@@ -162,123 +339,207 @@ private struct MeshNetworkIllustration: View {
             }
         }
         .onAppear {
-            // Stagger node appearance
             for i in 0..<nodes.count {
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(Double(i) * 0.12)) {
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(Double(i) * 0.08)) {
                     nodeScales[i] = 1.0
                 }
             }
-            // Stagger line appearance
             for i in 0..<connections.count {
-                withAnimation(.easeOut(duration: 0.5).delay(0.3 + Double(i) * 0.1)) {
+                withAnimation(.easeOut(duration: 0.5).delay(0.2 + Double(i) * 0.06)) {
                     lineOpacities[i] = 1.0
                 }
             }
-            // Pulse
             withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true).delay(1.0)) {
                 pulsePhase = 1.0
             }
+            withAnimation(.easeInOut(duration: 2.5).repeatForever(autoreverses: false).delay(1.2)) {
+                dataPacketProgress = 1.0
+            }
         }
+    }
+
+    private func lerp(from: CGFloat, to: CGFloat, t: CGFloat) -> CGFloat {
+        from + (to - from) * t
     }
 }
 
-// MARK: - Tower Down Illustration
+// MARK: - Lock Shield Illustration (Scaled Up)
 
-private struct TowerDownIllustration: View {
-    @State private var towerOpacity: Double = 1.0
-    @State private var slashOpacity: Double = 0.0
-    @State private var phoneGlow: Double = 0.0
+private struct EncryptionIllustration: View {
+    @State private var shieldScale: CGFloat = 0.5
+    @State private var lockOpacity: Double = 0.0
+    @State private var ringRotation: Double = 0
+    @State private var layerOpacities: [Double] = [0, 0, 0, 0]
+
+    private let layerLabels = ["WiFi", "TLS", "AES-256", "Stego"]
 
     var body: some View {
-        let amber = Constants.Colors.amber
-        let red = Constants.Colors.hotRed
+        let green = Constants.Colors.electricGreen
 
-        ZStack {
-            // Cell tower (fading out)
-            Image(systemName: "antenna.radiowaves.left.and.right")
-                .font(.system(size: 52, weight: .medium))
-                .foregroundStyle(red.opacity(towerOpacity * 0.5))
-                .overlay(
-                    // Red X over tower
-                    Image(systemName: "xmark")
-                        .font(.system(size: 36, weight: .bold))
-                        .foregroundStyle(red)
-                        .opacity(slashOpacity)
-                )
+        GeometryReader { geo in
+            let centerX = geo.size.width / 2
+            let centerY = geo.size.height * 0.45
 
-            // Phones lighting up around the dead tower
-            ForEach(0..<4, id: \.self) { i in
-                let angle = Double(i) * 90.0 + 45.0
-                let rad = angle * .pi / 180
-                let dist: CGFloat = 80
-                Image(systemName: "iphone.radiowaves.left.and.right")
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(amber)
-                    .opacity(phoneGlow)
-                    .offset(x: cos(rad) * dist, y: sin(rad) * dist)
+            ZStack {
+                // Concentric rings for 4 layers
+                ForEach(0..<4, id: \.self) { i in
+                    let size: CGFloat = CGFloat(180 + i * 40)
+                    Circle()
+                        .stroke(
+                            green.opacity(0.08 + Double(3 - i) * 0.05),
+                            lineWidth: 1.5
+                        )
+                        .frame(width: size, height: size)
+                        .opacity(layerOpacities[i])
+                        .position(x: centerX, y: centerY)
+                }
+
+                // Rotating outer ring
+                Circle()
+                    .stroke(
+                        AngularGradient(
+                            colors: [green.opacity(0.4), green.opacity(0.05), green.opacity(0.4)],
+                            center: .center
+                        ),
+                        lineWidth: 2
+                    )
+                    .frame(width: 160, height: 160)
+                    .rotationEffect(.degrees(ringRotation))
+                    .position(x: centerX, y: centerY)
+
+                // Inner glow
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [green.opacity(0.15), .clear],
+                            center: .center,
+                            startRadius: 10,
+                            endRadius: 80
+                        )
+                    )
+                    .frame(width: 160, height: 160)
+                    .position(x: centerX, y: centerY)
+
+                // Shield with lock
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 72, weight: .medium))
+                    .foregroundStyle(green)
+                    .symbolRenderingMode(.hierarchical)
+                    .scaleEffect(shieldScale)
+                    .opacity(lockOpacity)
+                    .position(x: centerX, y: centerY)
+
+                // Layer labels around the shield
+                ForEach(0..<4, id: \.self) { i in
+                    let angle = Double(i) * 90.0 - 45.0
+                    let rad = angle * .pi / 180
+                    let dist: CGFloat = 130
+                    Text(layerLabels[i])
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundStyle(green.opacity(0.6))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(green.opacity(0.08))
+                        )
+                        .opacity(layerOpacities[i])
+                        .position(
+                            x: centerX + cos(rad) * dist,
+                            y: centerY + sin(rad) * dist
+                        )
+                }
             }
         }
         .onAppear {
-            // Tower fades and gets X
-            withAnimation(.easeOut(duration: 1.0).delay(0.3)) {
-                towerOpacity = 0.3
-                slashOpacity = 1.0
+            withAnimation(.spring(response: 0.7, dampingFraction: 0.6).delay(0.2)) {
+                shieldScale = 1.0
+                lockOpacity = 1.0
             }
-            // Phones light up
-            withAnimation(.easeIn(duration: 0.8).delay(1.0)) {
-                phoneGlow = 1.0
+            withAnimation(.linear(duration: 8).repeatForever(autoreverses: false)) {
+                ringRotation = 360
+            }
+            for i in 0..<4 {
+                withAnimation(.easeOut(duration: 0.5).delay(0.5 + Double(i) * 0.15)) {
+                    layerOpacities[i] = 1.0
+                }
             }
         }
     }
 }
 
-// MARK: - Onboarding V2 Page
+// MARK: - Use Cases Illustration (Redesigned)
 
-private struct OnboardingV2Page: View {
-    let title: String
-    let subtitle: String
-    let accentColor: Color
-    let illustration: AnyView
+private struct UseCasesIllustration: View {
+    @State private var visibleCount = 0
 
-    @State private var textOpacity: Double = 0.0
+    private let useCases: [(icon: String, label: String)] = [
+        ("waveform", "Push-to-Talk"),
+        ("bubble.left.and.bubble.right.fill", "Messaging"),
+        ("photo.fill", "Photo Sharing"),
+        ("location.fill", "GPS Drops"),
+        ("sos", "SOS Beacons"),
+        ("lock.shield.fill", "Encrypted"),
+    ]
 
     var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
+        let blue = Constants.Colors.blue500
 
-            // Illustration
-            illustration
-                .frame(width: 260, height: 180)
+        GeometryReader { geo in
+            let columns = 3
+            let spacing: CGFloat = 16
+            let hPadding: CGFloat = 24
+            let available = geo.size.width - hPadding * 2 - spacing * CGFloat(columns - 1)
+            let itemWidth = available / CGFloat(columns)
 
-            // Title
-            Text(title)
-                .font(.system(size: 26, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
-                .opacity(textOpacity)
+            let items = useCases.enumerated().map { ($0.offset, $0.element) }
 
-            // Subtitle
-            Text(subtitle)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(.white.opacity(0.55))
-                .multilineTextAlignment(.center)
-                .lineSpacing(4)
-                .padding(.horizontal, 40)
-                .opacity(textOpacity)
+            VStack(spacing: 20) {
+                Spacer()
+                ForEach(0..<2, id: \.self) { row in
+                    HStack(spacing: spacing) {
+                        ForEach(0..<3, id: \.self) { col in
+                            let idx = row * 3 + col
+                            let item = items[idx]
+                            VStack(spacing: 10) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(blue.opacity(0.08))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 16)
+                                                .stroke(blue.opacity(0.15), lineWidth: 1)
+                                        )
+                                        .frame(width: itemWidth, height: itemWidth * 0.85)
 
-            Spacer()
-            Spacer()
+                                    Image(systemName: item.1.icon)
+                                        .font(.system(size: 28, weight: .medium))
+                                        .foregroundStyle(blue)
+                                }
+                                Text(item.1.label)
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(.white.opacity(0.6))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .scaleEffect(idx < visibleCount ? 1.0 : 0.5)
+                            .opacity(idx < visibleCount ? 1.0 : 0.0)
+                        }
+                    }
+                }
+                Spacer()
+            }
+            .padding(.horizontal, hPadding)
         }
         .onAppear {
-            withAnimation(.easeOut(duration: 0.6).delay(0.2)) {
-                textOpacity = 1.0
+            for i in 0..<useCases.count {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(Double(i) * 0.1)) {
+                    visibleCount = i + 1
+                }
             }
         }
     }
 }
 
-// MARK: - Shimmer Button
+// MARK: - Shimmer Get Started Button (Blue)
 
 private struct ShimmerGetStartedButton: View {
     let action: () -> Void
@@ -286,9 +547,9 @@ private struct ShimmerGetStartedButton: View {
 
     var body: some View {
         Button(action: action) {
-            Text(String(localized: "onboarding.getStarted"))
+            Text("Get Started")
                 .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundStyle(.black)
+                .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .frame(height: 58)
                 .background(
@@ -297,8 +558,8 @@ private struct ShimmerGetStartedButton: View {
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color(hex: 0xFFB800),
-                                        Color(hex: 0xFFC830),
+                                        Constants.Colors.blue600,
+                                        Constants.Colors.blue500,
                                     ],
                                     startPoint: .leading,
                                     endPoint: .trailing
@@ -310,7 +571,7 @@ private struct ShimmerGetStartedButton: View {
                                 LinearGradient(
                                     colors: [
                                         .white.opacity(0.0),
-                                        .white.opacity(0.35),
+                                        .white.opacity(0.25),
                                         .white.opacity(0.0),
                                     ],
                                     startPoint: UnitPoint(x: shimmerOffset - 0.3, y: 0.5),
@@ -320,7 +581,7 @@ private struct ShimmerGetStartedButton: View {
                     }
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 18))
-                .shadow(color: Color(hex: 0xFFB800).opacity(0.4), radius: 20, y: 8)
+                .shadow(color: Constants.Colors.blue500.opacity(0.4), radius: 20, y: 8)
         }
         .onAppear {
             withAnimation(
@@ -336,179 +597,174 @@ private struct ShimmerGetStartedButton: View {
     }
 }
 
-// MARK: - Lock Shield Illustration
+// MARK: - Next Button
 
-private struct EncryptionIllustration: View {
-    @State private var shieldScale: CGFloat = 0.5
-    @State private var lockOpacity: Double = 0.0
-    @State private var ringRotation: Double = 0
+private struct NextArrowButton: View {
+    let action: () -> Void
 
     var body: some View {
-        let green = Constants.Colors.electricGreen
-
-        ZStack {
-            // Rotating ring
-            Circle()
-                .stroke(
-                    AngularGradient(
-                        colors: [green.opacity(0.4), green.opacity(0.05), green.opacity(0.4)],
-                        center: .center
-                    ),
-                    lineWidth: 2
-                )
-                .frame(width: 140, height: 140)
-                .rotationEffect(.degrees(ringRotation))
-
-            // Inner glow
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [green.opacity(0.15), .clear],
-                        center: .center,
-                        startRadius: 10,
-                        endRadius: 70
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Text("Next")
+                    .font(.system(size: 17, weight: .semibold))
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 15, weight: .semibold))
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 28)
+            .frame(height: 50)
+            .background(
+                Capsule()
+                    .fill(.white.opacity(0.12))
+                    .overlay(
+                        Capsule()
+                            .stroke(.white.opacity(0.2), lineWidth: 1)
                     )
-                )
-                .frame(width: 140, height: 140)
-
-            // Shield with lock
-            Image(systemName: "lock.shield.fill")
-                .font(.system(size: 56, weight: .medium))
-                .foregroundStyle(green)
-                .symbolRenderingMode(.hierarchical)
-                .scaleEffect(shieldScale)
-                .opacity(lockOpacity)
+            )
         }
-        .onAppear {
-            withAnimation(.spring(response: 0.7, dampingFraction: 0.6).delay(0.2)) {
-                shieldScale = 1.0
-                lockOpacity = 1.0
-            }
-            withAnimation(.linear(duration: 8).repeatForever(autoreverses: false)) {
-                ringRotation = 360
+    }
+}
+
+// MARK: - Page Indicator Dots
+
+private struct PageDots: View {
+    let count: Int
+    let current: Int
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(0..<count, id: \.self) { index in
+                Capsule()
+                    .fill(
+                        index == current
+                            ? Color.white
+                            : Color.white.opacity(0.25)
+                    )
+                    .frame(
+                        width: index == current ? 24 : 8,
+                        height: 8
+                    )
+                    .animation(.spring(response: 0.4, dampingFraction: 0.7), value: current)
             }
         }
     }
 }
 
-// MARK: - Use Cases Illustration
+// MARK: - Onboarding Page Content
 
-private struct UseCasesIllustration: View {
-    @State private var visibleCount = 0
+private struct OnboardingPageContent: View {
+    let title: String
+    let subtitle: String
+    let illustration: AnyView
+    let showIllustrationAbove: Bool
 
-    private var useCases: [(icon: String, label: String)] {
-        [
-            ("tornado", String(localized: "onboarding.useCase.disasters")),
-            ("music.note.house.fill", String(localized: "onboarding.useCase.concerts")),
-            ("figure.hiking", String(localized: "onboarding.useCase.offGrid")),
-            ("hand.raised.fill", String(localized: "onboarding.useCase.protests")),
-            ("mountain.2.fill", String(localized: "onboarding.useCase.adventures")),
-            ("building.2.fill", String(localized: "onboarding.useCase.emergencies")),
-        ]
+    @State private var textOpacity: Double = 0.0
+    @State private var textOffset: CGFloat = 20.0
+
+    init(title: String, subtitle: String, illustration: AnyView, showIllustrationAbove: Bool = true) {
+        self.title = title
+        self.subtitle = subtitle
+        self.illustration = illustration
+        self.showIllustrationAbove = showIllustrationAbove
     }
 
     var body: some View {
-        let amber = Constants.Colors.amber
+        VStack(spacing: 0) {
+            if showIllustrationAbove {
+                // Illustration fills upper portion
+                illustration
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 300)
+                    .padding(.top, 20)
 
-        LazyVGrid(columns: [
-            GridItem(.flexible()),
-            GridItem(.flexible()),
-            GridItem(.flexible()),
-        ], spacing: 16) {
-            ForEach(0..<useCases.count, id: \.self) { i in
-                VStack(spacing: 6) {
-                    Image(systemName: useCases[i].icon)
-                        .font(.system(size: 26, weight: .medium))
-                        .foregroundStyle(amber)
-                        .frame(width: 48, height: 48)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(amber.opacity(0.1))
-                        )
-
-                    Text(useCases[i].label)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.6))
-                }
-                .scaleEffect(i < visibleCount ? 1.0 : 0.5)
-                .opacity(i < visibleCount ? 1.0 : 0.0)
+                Spacer().frame(height: 32)
             }
+
+            // Title
+            Text(title)
+                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 32)
+                .opacity(textOpacity)
+                .offset(y: textOffset)
+
+            Spacer().frame(height: 14)
+
+            // Subtitle
+            Text(subtitle)
+                .font(.system(size: 17, weight: .regular))
+                .foregroundStyle(.white.opacity(0.6))
+                .multilineTextAlignment(.center)
+                .lineSpacing(5)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 36)
+                .opacity(textOpacity)
+                .offset(y: textOffset)
+
+            if !showIllustrationAbove {
+                Spacer().frame(height: 32)
+                illustration
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 300)
+            }
+
+            Spacer(minLength: 20)
         }
-        .padding(.horizontal, 20)
         .onAppear {
-            for i in 0..<useCases.count {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(Double(i) * 0.1)) {
-                    visibleCount = i + 1
-                }
+            withAnimation(.easeOut(duration: 0.6).delay(0.15)) {
+                textOpacity = 1.0
+                textOffset = 0.0
             }
         }
     }
 }
 
-// MARK: - Talk + Chat Illustration
+// MARK: - Hero Page (Page 1)
 
-private struct TalkChatIllustration: View {
-    @State private var talkVisible = false
-    @State private var chatVisible = false
+private struct HeroPage: View {
+    @State private var wordmarkOpacity: Double = 0
+    @State private var subtitleOpacity: Double = 0
+    @State private var subtitleOffset: CGFloat = 15
 
     var body: some View {
-        let amber = Constants.Colors.amber
+        VStack(spacing: 0) {
+            Spacer()
 
-        HStack(spacing: 24) {
-            // Talk side
-            VStack(spacing: 8) {
-                ZStack {
-                    Circle()
-                        .fill(amber.opacity(0.15))
-                        .frame(width: 72, height: 72)
-                    Circle()
-                        .fill(amber)
-                        .frame(width: 56, height: 56)
-                    Image(systemName: "mic.fill")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(.black)
-                }
-                Text(String(localized: "onboarding.talkChat.voice"))
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
-                Text(String(localized: "onboarding.talkChat.speed"))
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.35))
-            }
-            .scaleEffect(talkVisible ? 1.0 : 0.6)
-            .opacity(talkVisible ? 1.0 : 0.0)
+            // Small wordmark at top
+            Text("ChirpChirp")
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.4))
+                .opacity(wordmarkOpacity)
+                .padding(.bottom, 60)
 
-            // Divider
-            Rectangle()
-                .fill(.white.opacity(0.1))
-                .frame(width: 1, height: 80)
+            // Big typewriter text
+            TypewriterText(fullText: "Your phone is the network.", fontSize: 36)
+                .padding(.horizontal, 32)
 
-            // Chat side
-            VStack(spacing: 8) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.white.opacity(0.08))
-                        .frame(width: 72, height: 72)
-                    Image(systemName: "text.bubble.fill")
-                        .font(.system(size: 28, weight: .medium))
-                        .foregroundStyle(amber)
-                }
-                Text(String(localized: "onboarding.talkChat.text"))
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
-                Text(String(localized: "onboarding.talkChat.stealth"))
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.35))
-            }
-            .scaleEffect(chatVisible ? 1.0 : 0.6)
-            .opacity(chatVisible ? 1.0 : 0.0)
+            Spacer().frame(height: 40)
+
+            // Subtle tagline
+            Text("No towers. No subscriptions. Just people.")
+                .font(.system(size: 17, weight: .regular))
+                .foregroundStyle(.white.opacity(0.45))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 40)
+                .opacity(subtitleOpacity)
+                .offset(y: subtitleOffset)
+
+            Spacer()
+            Spacer()
         }
         .onAppear {
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.2)) {
-                talkVisible = true
+            withAnimation(.easeOut(duration: 0.6).delay(0.3)) {
+                wordmarkOpacity = 1.0
             }
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.5)) {
-                chatVisible = true
+            withAnimation(.easeOut(duration: 0.7).delay(2.0)) {
+                subtitleOpacity = 1.0
+                subtitleOffset = 0
             }
         }
     }
@@ -520,161 +776,109 @@ struct OnboardingView: View {
     @Environment(AppState.self) private var appState
 
     @State private var currentPage = 0
-    @State private var taglineOpacity: Double = 0.0
-    @State private var pagesVisible = false
-
-    private let amber = Color(hex: 0xFFB800)
-
-    private var pages: [(title: String, subtitle: String, color: Color, illustration: AnyView)] {
-        [
-            (
-                String(localized: "onboarding.page1.title"),
-                String(localized: "onboarding.page1.subtitle"),
-                Constants.Colors.hotRed,
-                AnyView(TowerDownIllustration())
-            ),
-            (
-                String(localized: "onboarding.page2.title"),
-                String(localized: "onboarding.page2.subtitle"),
-                Constants.Colors.amber,
-                AnyView(MeshNetworkIllustration())
-            ),
-            (
-                String(localized: "onboarding.page3.title"),
-                String(localized: "onboarding.page3.subtitle"),
-                Constants.Colors.amber,
-                AnyView(TalkChatIllustration())
-            ),
-            (
-                String(localized: "onboarding.page4.title"),
-                String(localized: "onboarding.page4.subtitle"),
-                Constants.Colors.electricGreen,
-                AnyView(EncryptionIllustration())
-            ),
-            (
-                String(localized: "onboarding.page5.title"),
-                String(localized: "onboarding.page5.subtitle"),
-                Constants.Colors.amber,
-                AnyView(UseCasesIllustration())
-            ),
-        ]
-    }
+    private let totalPages = 5
 
     var body: some View {
         ZStack {
+            // Background layers
             Color.black.ignoresSafeArea()
             MeshGradientBackground()
+            if currentPage == 0 {
+                NetworkNodesBackground()
+                    .opacity(0.6)
+                    .transition(.opacity)
+            }
 
             VStack(spacing: 0) {
-                Spacer()
-                    .frame(height: 50)
-
-                // Animated perch birds mascot
-                PerchBirdsView(size: 200, isAnimating: true)
-                    .frame(height: 130)
-                    .padding(.bottom, 12)
-
-                // Spring letter wordmark
-                SpringWordmark()
-                    .padding(.bottom, 4)
-
-                // Tagline
-                Text(String(localized: "onboarding.tagline"))
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.45))
-                    .opacity(taglineOpacity)
-
-                Spacer()
-                    .frame(height: 24)
-
-                // Swipeable pages
-                if pagesVisible {
-                    TabView(selection: $currentPage) {
-                        ForEach(Array(pages.enumerated()), id: \.offset) { index, page in
-                            OnboardingV2Page(
-                                title: page.title,
-                                subtitle: page.subtitle,
-                                accentColor: page.color,
-                                illustration: page.illustration
-                            )
-                            .tag(index)
+                // Skip button (pages 0-3)
+                HStack {
+                    Spacer()
+                    if currentPage < totalPages - 1 {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                currentPage = totalPages - 1
+                            }
+                        } label: {
+                            Text("Skip")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(.white.opacity(0.5))
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
                         }
+                        .transition(.opacity)
                     }
-                    .tabViewStyle(.page(indexDisplayMode: .never))
-                    .frame(height: 360)
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                }
+                .frame(height: 44)
+                .padding(.horizontal, 8)
 
-                    // Custom page dots
-                    HStack(spacing: 8) {
-                        ForEach(0..<pages.count, id: \.self) { index in
-                            Capsule()
-                                .fill(
-                                    index == currentPage
-                                        ? amber
-                                        : amber.opacity(0.25)
-                                )
-                                .frame(
-                                    width: index == currentPage ? 22 : 7,
-                                    height: 7
-                                )
-                                .animation(.spring(response: 0.4, dampingFraction: 0.7), value: currentPage)
+                // Full-screen page content
+                TabView(selection: $currentPage) {
+                    // Page 1: Hero
+                    HeroPage()
+                        .tag(0)
+
+                    // Page 2: No Towers
+                    OnboardingPageContent(
+                        title: "No towers. No Wi-Fi. No problem.",
+                        subtitle: "ChirpChirp uses Bluetooth and Wi-Fi Direct to connect phones directly. Works in basements, blackouts, and the backcountry.",
+                        illustration: AnyView(TowerDownIllustration())
+                    )
+                    .tag(1)
+
+                    // Page 3: Mesh
+                    OnboardingPageContent(
+                        title: "Every phone extends the network",
+                        subtitle: "Your messages hop from phone to phone. 5 people can cover a kilometer with zero infrastructure.",
+                        illustration: AnyView(MeshNetworkIllustration())
+                    )
+                    .tag(2)
+
+                    // Page 4: Use Cases
+                    OnboardingPageContent(
+                        title: "Talk. Text. Share. Survive.",
+                        subtitle: "Push-to-talk, encrypted messaging, photo sharing, GPS drops, SOS beacons — all without a single bar of signal.",
+                        illustration: AnyView(UseCasesIllustration())
+                    )
+                    .tag(3)
+
+                    // Page 5: Encryption
+                    OnboardingPageContent(
+                        title: "Military-grade encryption. Four layers deep.",
+                        subtitle: "WiFi encryption, TLS transport, AES-256 channels, and steganographic encoding. Nobody can listen in.",
+                        illustration: AnyView(EncryptionIllustration())
+                    )
+                    .tag(4)
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+
+                // Bottom controls
+                VStack(spacing: 20) {
+                    // Page dots
+                    PageDots(count: totalPages, current: currentPage)
+
+                    // Action button
+                    if currentPage == totalPages - 1 {
+                        ShimmerGetStartedButton {
+                            appState.isOnboardingComplete = true
                         }
+                        .padding(.horizontal, 32)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .bottom).combined(with: .opacity),
+                            removal: .opacity
+                        ))
+                    } else {
+                        NextArrowButton {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                currentPage += 1
+                            }
+                        }
+                        .transition(.opacity)
                     }
-                    .padding(.top, 2)
                 }
-
-                Spacer()
-
-                // Get Started button (last page)
-                if currentPage == pages.count - 1 {
-                    ShimmerGetStartedButton {
-                        appState.isOnboardingComplete = true
-                    }
-                    .padding(.horizontal, 32)
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .bottom).combined(with: .opacity),
-                        removal: .opacity
-                    ))
-                }
-
-                // No internet badge
-                HStack(spacing: 6) {
-                    Image(systemName: "wifi.slash")
-                        .font(.system(size: 11, weight: .semibold))
-                    Text(String(localized: "onboarding.noInternetRequired"))
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                }
-                .foregroundStyle(amber.opacity(0.6))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(
-                    Capsule()
-                        .fill(amber.opacity(0.08))
-                        .overlay(
-                            Capsule()
-                                .stroke(amber.opacity(0.15), lineWidth: 0.5)
-                        )
-                )
-                .padding(.top, 16)
-                .opacity(taglineOpacity)
-
-                Spacer()
-                    .frame(height: 30)
+                .padding(.bottom, 40)
+                .animation(.spring(response: 0.5, dampingFraction: 0.8), value: currentPage)
             }
-            .animation(.spring(response: 0.5, dampingFraction: 0.8), value: currentPage)
-        }
-        .onAppear {
-            startAnimations()
         }
         .accessibilityElement(children: .contain)
-    }
-
-    private func startAnimations() {
-        withAnimation(.easeOut(duration: 0.8).delay(0.9)) {
-            taglineOpacity = 1.0
-        }
-        withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(1.3)) {
-            pagesVisible = true
-        }
     }
 }
