@@ -59,13 +59,13 @@ final class FloorControlTests: XCTestCase {
         XCTAssertEqual(controller.state, .denied)
     }
 
-    func testRequestFloorWhenTransmittingStaysTransmitting() {
+    func testRequestFloorWhenTransmittingGetsDenied() {
         controller.requestFloor()
         XCTAssertEqual(controller.state, .transmitting)
 
-        // Second request while already transmitting should not change state
+        // Second request while already transmitting is denied
         controller.requestFloor()
-        XCTAssertEqual(controller.state, .transmitting)
+        XCTAssertEqual(controller.state, .denied)
     }
 
     // MARK: - releaseFloor
@@ -129,18 +129,19 @@ final class FloorControlTests: XCTestCase {
         XCTAssertEqual(controller.currentSpeaker?.name, "Alice")
     }
 
-    func testHandleRemoteFloorRequestWhenTransmittingDoesNotChangeState() {
+    func testHandleRemoteFloorRequestWhenTransmittingLocalWins() {
         controller.requestFloor()
         XCTAssertEqual(controller.state, .transmitting)
 
+        // Remote request with LATER timestamp — local wins the collision
         let message = FloorControlMessage.floorRequest(
             senderID: "remote-1",
             senderName: "Bob",
-            timestamp: Date(timeIntervalSince1970: 5000)
+            timestamp: Date().addingTimeInterval(10)
         )
         controller.handleMessage(message)
 
-        // Local user already has the floor; remote request should not override
+        // Local user requested first (earlier timestamp); should keep transmitting
         XCTAssertEqual(controller.state, .transmitting)
     }
 
@@ -236,15 +237,15 @@ final class FloorControlTests: XCTestCase {
         controller.requestFloor()
         XCTAssertEqual(controller.state, .transmitting)
 
-        // Remote tries to grab floor
+        // Remote tries to grab floor with LATER timestamp — local wins
         let remoteRequest = FloorControlMessage.floorRequest(
             senderID: "remote-1",
             senderName: "Bob",
-            timestamp: Date(timeIntervalSince1970: 2000)
+            timestamp: Date().addingTimeInterval(10)
         )
         controller.handleMessage(remoteRequest)
 
-        // Local should still be transmitting (first-come-first-served)
+        // Local should still be transmitting (earlier timestamp wins)
         XCTAssertEqual(controller.state, .transmitting)
     }
 }
