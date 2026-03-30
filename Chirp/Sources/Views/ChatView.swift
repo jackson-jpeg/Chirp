@@ -16,8 +16,12 @@ struct ChatView: View {
     var onShareLocation: () -> Void
     var onSendImage: ((String) -> Void)?
     var onSendFile: ((URL) -> Void)?
+    var cicadaService: CICADAService?
 
     @State private var composedText: String = ""
+    @State private var hiddenText: String = ""
+    @State private var showCICADAInput: Bool = false
+    @State private var revealMessageID: UUID?
     @State private var replyingTo: MeshTextMessage?
     @State private var showScrollToBottom: Bool = false
     @State private var isNearBottom: Bool = true
@@ -40,6 +44,22 @@ struct ChatView: View {
                         messagesList(proxy: proxy)
                     }
 
+                    // CICADA hidden message overlay
+                    if showCICADAInput {
+                        CICADAInputOverlay(
+                            hiddenText: $hiddenText,
+                            coverTextLength: composedText.count,
+                            capacity: cicadaService?.capacity(coverLength: composedText.count) ?? 0,
+                            onSend: sendMessage,
+                            onDismiss: {
+                                withAnimation(.spring(response: Constants.Animations.springResponse, dampingFraction: Constants.Animations.springDamping)) {
+                                    showCICADAInput = false
+                                    hiddenText = ""
+                                }
+                            }
+                        )
+                    }
+
                     // Input bar
                     ChatInputBar(
                         text: $composedText,
@@ -57,6 +77,12 @@ struct ChatView: View {
                         },
                         onPickDocument: onSendFile != nil ? {
                             showDocumentPicker = true
+                        } : nil,
+                        onLongPressSend: cicadaService?.isEnabled == true ? {
+                            withAnimation(.spring(response: Constants.Animations.springResponse, dampingFraction: Constants.Animations.springDamping)) {
+                                showCICADAInput.toggle()
+                                if !showCICADAInput { hiddenText = "" }
+                            }
                         } : nil
                     )
                 }
@@ -82,6 +108,24 @@ struct ChatView: View {
                 onSendFile?(url)
             }
         }
+        .overlay {
+            if let revealID = revealMessageID,
+               let message = findMessage(id: revealID),
+               let hidden = cicadaService?.hiddenText(for: message.id) {
+                ZStack {
+                    Color.black.opacity(0.5)
+                        .ignoresSafeArea()
+                        .onTapGesture { revealMessageID = nil }
+
+                    CICADARevealView(
+                        hiddenText: hidden,
+                        onDismiss: { revealMessageID = nil }
+                    )
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: Constants.Animations.quickFade), value: revealMessageID)
     }
 
     // MARK: - Empty State
@@ -121,7 +165,11 @@ struct ChatView: View {
                         MessageBubbleView(
                             message: message,
                             isFromSelf: isFromSelf,
-                            replyToMessage: replyTo
+                            replyToMessage: replyTo,
+                            hasHiddenContent: cicadaService?.hasHiddenContent(message.text) ?? false,
+                            onRevealHidden: {
+                                revealMessageID = message.id
+                            }
                         )
                         .id(message.id)
                         .padding(.horizontal, 12)
@@ -266,8 +314,19 @@ struct ChatView: View {
     private func sendMessage() {
         let trimmed = composedText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        onSend(trimmed, replyingTo?.id)
+
+        var textToSend = trimmed
+
+        // Encode hidden message via CICADA if active
+        if showCICADAInput && !hiddenText.isEmpty,
+           let encoded = cicadaService?.encodeText(cover: trimmed, hidden: hiddenText, channelID: channelID) {
+            textToSend = encoded
+        }
+
+        onSend(textToSend, replyingTo?.id)
         composedText = ""
+        hiddenText = ""
+        showCICADAInput = false
         replyingTo = nil
         isNearBottom = true
         showScrollToBottom = false

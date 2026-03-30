@@ -11,6 +11,8 @@ struct MessageBubbleView: View {
     let isFromSelf: Bool
     /// The original message this one replies to, if any.
     let replyToMessage: MeshTextMessage?
+    var hasHiddenContent: Bool = false
+    var onRevealHidden: (() -> Void)?
 
     // MARK: - Body
 
@@ -65,11 +67,23 @@ struct MessageBubbleView: View {
                             .multilineTextAlignment(.leading)
                     }
 
-                    // Timestamp
-                    Text(formattedTime)
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.4))
-                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    // Timestamp + hidden content indicator
+                    HStack(spacing: 4) {
+                        Spacer()
+                        Text(formattedTime)
+                            .font(.system(size: 10, weight: .medium, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.4))
+
+                        if hasHiddenContent {
+                            Button(action: { onRevealHidden?() }) {
+                                Image(systemName: "eye.slash.circle.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(Constants.Colors.amber.opacity(0.6))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Reveal hidden message")
+                        }
+                    }
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)

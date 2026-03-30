@@ -303,7 +303,8 @@ struct ChannelView: View {
                     senderName: appState.callsign
                 )
                 toast = ToastItem(message: "Sending \(fileName)...", type: .info)
-            }
+            },
+            cicadaService: appState.cicadaService
         )
     }
 

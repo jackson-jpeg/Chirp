@@ -39,6 +39,7 @@ final class AppState {
     let soundAlertService: SoundAlertService
     let pheromoneRouter: PheromoneRouter
     let meshCloudService: MeshCloudService
+    let cicadaService: CICADAService
 
     // MARK: - Identity
 
@@ -188,6 +189,15 @@ final class AppState {
         let meshCloudService = MeshCloudService(localPeerID: peerID, localFingerprint: "")
         self.meshCloudService = meshCloudService
 
+        // CICADA steganography
+        let cicadaService = CICADAService()
+        self.cicadaService = cicadaService
+
+        // Wire CICADA key derivation
+        cicadaService.channelCryptoProvider = { [weak self] channelID in
+            self?.channelManager.getChannelCrypto(for: channelID)
+        }
+
         // Create MultipeerConnectivity transport (works on any iPhone, zero friction)
         let displayName = UserDefaults.standard.string(forKey: "com.chirpchirp.callsign") ?? UIDevice.current.name
         let transport = MultipeerTransport(displayName: displayName, meshRouter: router, localPeerID: peerID, localPeerName: self.localPeerName)
@@ -224,6 +234,9 @@ final class AppState {
 
         // Wire triple-layer encryption into text messaging
         textMessageService.meshShield = self.meshShield
+
+        // Wire CICADA steganography into text messaging
+        textMessageService.cicadaService = cicadaService
 
         // Wire channel crypto into MeshShield so cover traffic is encrypted with channel key
         meshShield.channelCryptoProvider = { [weak self] channelID in

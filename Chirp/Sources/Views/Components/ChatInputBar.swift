@@ -14,6 +14,7 @@ struct ChatInputBar: View {
     var onTakePhoto: (() -> Void)?
     var onPickPhoto: (() -> Void)?
     var onPickDocument: (() -> Void)?
+    var onLongPressSend: (() -> Void)?
 
     @FocusState private var isTextFieldFocused: Bool
 
@@ -173,6 +174,12 @@ struct ChatInputBar: View {
         .disabled(!canSend)
         .accessibilityLabel("Send message")
         .accessibilityHint(canSend ? "Sends your message to the channel" : "Type a message first")
+        .simultaneousGesture(
+            LongPressGesture(minimumDuration: 0.5)
+                .onEnded { _ in
+                    onLongPressSend?()
+                }
+        )
         .accessibilityIdentifier(AccessibilityID.chatSendButton)
         .animation(.easeInOut(duration: 0.15), value: canSend)
     }

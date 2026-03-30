@@ -80,6 +80,23 @@ enum Constants {
         static let springDamping: Double = 0.8
         static let quickFade: Double = 0.2
     }
+
+    enum CICADA {
+        /// Version byte prepended to encrypted hidden payload.
+        static let version: UInt8 = 0x01
+        /// HKDF salt for deriving CICADA keys from channel keys.
+        static let keySalt = "CICADA-v1"
+        /// Zero-width space — represents bit 0.
+        static let bit0: Character = "\u{200B}"
+        /// Zero-width non-joiner — represents bit 1.
+        static let bit1: Character = "\u{200C}"
+        /// Set of invisible characters used for stego.
+        static let invisibleChars: Set<Character> = ["\u{200B}", "\u{200C}"]
+        /// Crypto overhead: 1 version + 2 length + 12 nonce + 16 tag = 31 bytes
+        static let cryptoOverhead = 31
+        /// Bits encoded per inter-character position (2 invisible chars = 2 bits).
+        static let bitsPerPosition = 2
+    }
 }
 
 extension Color {

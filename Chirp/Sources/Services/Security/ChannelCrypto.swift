@@ -76,4 +76,14 @@ struct ChannelCrypto: Sendable {
     func verify(signature: Data, for data: Data) -> Bool {
         HMAC<SHA256>.isValidAuthenticationCode(signature, authenticating: data, using: key)
     }
+
+    /// Derive a subkey for a specific purpose (e.g., CICADA steganography).
+    func deriveSubkey(salt: String, info: Data = Data()) -> SymmetricKey {
+        HKDF<SHA256>.deriveKey(
+            inputKeyMaterial: key,
+            salt: Data(salt.utf8),
+            info: info,
+            outputByteCount: 32
+        )
+    }
 }

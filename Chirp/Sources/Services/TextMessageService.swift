@@ -34,6 +34,9 @@ final class TextMessageService {
     /// Triple-layer encryption for locked channels.
     var meshShield: MeshShield?
 
+    /// CICADA steganography service for hidden message detection.
+    var cicadaService: CICADAService?
+
     // MARK: - Private state
 
     private let logger = Logger(subsystem: Constants.subsystem, category: "TextMessage")
@@ -180,6 +183,10 @@ final class TextMessageService {
 
         storeMessage(message)
         unreadCounts[message.channelID, default: 0] += 1
+
+        // CICADA: check for hidden steganographic content
+        cicadaService?.decodeAndStore(message: message, channelID: channelID)
+
         logger.info("Received text message \(message.id.uuidString, privacy: .public) from \(message.senderName, privacy: .public) on channel \(message.channelID, privacy: .public)")
     }
 
