@@ -5,6 +5,7 @@
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.chirpchirp.mesh.refresh</string>
+		<string>com.chirpchirp.swarm.compute</string>
 	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
@@ -55,5 +56,11 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 	</array>
+	<key>NSNearbyInteractionUsageDescription</key>
+	<string>ChirpChirp uses Ultra-Wideband to precisely locate nearby mesh peers for indoor positioning.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>ChirpChirp uses motion sensors for dead reckoning navigation when GPS is unavailable.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>ChirpChirp uses speech recognition for real-time voice translation between languages.</string>
 </dict>
 </plist>

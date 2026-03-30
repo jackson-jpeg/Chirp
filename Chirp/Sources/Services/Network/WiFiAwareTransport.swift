@@ -28,6 +28,8 @@ final class WiFiAwareTransport {
     private(set) var connectedPeerCount: Int = 0
     private(set) var isSupported: Bool = false
     private(set) var peers: [ChirpPeer] = []
+    private(set) var realtimeMode = false
+    private(set) var linkMetrics: [String: WALinkMetrics] = [:]
 
     var onPeersChanged: (([ChirpPeer]) -> Void)?
 
@@ -38,6 +40,7 @@ final class WiFiAwareTransport {
     private struct PeerHandle: Sendable {
         let id: String
         let send: @Sendable (Data) async throws -> Void
+        let fetchPath: @Sendable () -> NWPath?
         let task: Task<Void, Never>
     }
 
@@ -49,6 +52,7 @@ final class WiFiAwareTransport {
     private var browserTask: Task<Void, Never>?
     private var deviceObserverTask: Task<Void, Never>?
     private var reconnectTask: Task<Void, Never>?
+    private var metricsPollingTask: Task<Void, Never>?
 
     nonisolated static let meshMagic: UInt8 = 0xAA
 
@@ -69,6 +73,22 @@ final class WiFiAwareTransport {
         self.isSupported = WACapabilities.supportedFeatures.contains(.wifiAware)
     }
 
+    // MARK: - Realtime Mode
+
+    /// Toggle realtime (low-latency) Wi-Fi Aware datapath for active PTT transmission.
+    /// When enabled, the listener is restarted with `.realtime` datapath parameters
+    /// and audio packets are sent with `.interactiveVoice` QoS priority.
+    func setRealtimeMode(_ enabled: Bool) {
+        guard realtimeMode != enabled else { return }
+        realtimeMode = enabled
+        logger.info("WiFiAware realtime mode: \(enabled ? "ON" : "OFF")")
+
+        // Restart listener with updated datapath parameters
+        if isSupported && listenerTask != nil {
+            startListener()
+        }
+    }
+
     // MARK: - Lifecycle
 
     func start() {
@@ -79,6 +99,7 @@ final class WiFiAwareTransport {
         startDeviceObserver()
         startListener()
         startBrowser()
+        startMetricsPolling()
         logger.info("WiFiAwareTransport started")
     }
 
@@ -87,16 +108,19 @@ final class WiFiAwareTransport {
         browserTask?.cancel()
         deviceObserverTask?.cancel()
         reconnectTask?.cancel()
+        metricsPollingTask?.cancel()
         listenerTask = nil
         browserTask = nil
         deviceObserverTask = nil
         reconnectTask = nil
+        metricsPollingTask = nil
 
         for (_, handle) in activePeers { handle.task.cancel() }
         activePeers.removeAll()
         peers.removeAll()
         connectedPeerCount = 0
         previousPeerCount = 0
+        linkMetrics.removeAll()
         reconnectBackoff = Self.initialBackoff
         logger.info("WiFiAwareTransport stopped")
     }
@@ -133,8 +157,10 @@ final class WiFiAwareTransport {
             do {
                 // TLV framing over TLS gives us message boundaries + encryption.
                 // Wi-Fi Aware adds Wi-Fi layer encryption on top.
+                // Use .realtime datapath during active PTT for low-latency audio.
+                let datapathParams: WAPublisherListener.DatapathParameters = self.realtimeMode ? .realtime : .defaults
                 try await NetworkListener(
-                    for: .wifiAware(.connecting(to: service, from: .selected([])))
+                    for: .wifiAware(.connecting(to: service, from: .selected([]), datapath: datapathParams))
                 ) {
                     TLV {
                         TLS()
@@ -206,6 +232,9 @@ final class WiFiAwareTransport {
         let sendClosure: @Sendable (Data) async throws -> Void = { data in
             try await connection.send(data, type: Self.meshTLVType)
         }
+        let fetchPathClosure: @Sendable () -> NWPath? = {
+            connection.currentPath
+        }
 
         // Receive task: reads messages and feeds to mesh router
         let receiveTask = Task { [weak self] in
@@ -224,7 +253,7 @@ final class WiFiAwareTransport {
             self.updatePeerList()
         }
 
-        let handle = PeerHandle(id: peerID, send: sendClosure, task: receiveTask)
+        let handle = PeerHandle(id: peerID, send: sendClosure, fetchPath: fetchPathClosure, task: receiveTask)
         activePeers[peerID] = handle
         updatePeerList()
 
@@ -330,13 +359,55 @@ final class WiFiAwareTransport {
         }
     }
 
+    // MARK: - Link Quality Metrics Polling
+
+    private func startMetricsPolling() {
+        metricsPollingTask?.cancel()
+        metricsPollingTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard let self else { break }
+                await self.pollMetrics()
+            }
+        }
+    }
+
+    private func pollMetrics() async {
+        for (peerID, handle) in activePeers {
+            guard let path = handle.fetchPath() else { continue }
+            guard let waPath = try? await path.wifiAware else { continue }
+
+            let perf = waPath.performance
+            let metrics = WALinkMetrics(
+                peerID: peerID,
+                deviceName: peerID,
+                signalStrength: perf.signalStrength,
+                throughputCeiling: perf.throughputCeiling,
+                throughputCapacity: perf.throughputCapacity,
+                capacityRatio: perf.throughputCapacityRatio,
+                voiceLatency: perf.transmitLatency[.interactiveVoice]?.average,
+                videoLatency: perf.transmitLatency[.interactiveVideo]?.average,
+                bestEffortLatency: perf.transmitLatency[.bestEffort]?.average,
+                connectionUptime: waPath.durationActive
+            )
+            linkMetrics[peerID] = metrics
+        }
+
+        // Remove metrics for peers that are no longer active
+        let activeIDs = Set(activePeers.keys)
+        for key in linkMetrics.keys where !activeIDs.contains(key) {
+            linkMetrics.removeValue(forKey: key)
+        }
+    }
+
     // MARK: - Peer List
 
     private func updatePeerList() {
         let count = activePeers.count
         connectedPeerCount = count
         peers = activePeers.keys.map { id in
-            ChirpPeer(id: id, name: id, isConnected: true, signalStrength: 3, transportType: .wifiAware)
+            let signal = linkMetrics[id]?.signalBars ?? 3
+            return ChirpPeer(id: id, name: id, isConnected: true, signalStrength: signal, transportType: .wifiAware)
         }
         onPeersChanged?(peers)
 

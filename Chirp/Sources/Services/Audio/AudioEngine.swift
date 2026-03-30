@@ -13,6 +13,9 @@ final class AudioEngine: @unchecked Sendable {
     var onRawAudioBuffer: (@Sendable (AVAudioPCMBuffer, AVAudioTime) -> Void)?
     private(set) var inputLevel: Float = 0.0
 
+    /// Current Opus encoder bitrate in bits per second (for UI display).
+    private(set) var currentBitrate: Int = Constants.Opus.bitrate
+
     private var engine: AVAudioEngine?
     private var codec: OpusCodec?
     private var jitterBuffer: JitterBuffer?
@@ -221,6 +224,21 @@ final class AudioEngine: @unchecked Sendable {
 
         AudioSessionManager.deactivate()
         Logger.audio.info("AudioEngine torn down")
+    }
+
+    // MARK: - Adaptive Bitrate
+
+    /// Dynamically adjust the Opus encoder bitrate based on link quality.
+    /// Thread-safe: dispatches to the processing queue where the codec is accessed.
+    func setTargetBitrate(_ bitsPerSecond: Int) {
+        processingQueue.async { [weak self] in
+            guard let self, let codec = self.codec else { return }
+            codec.setTargetBitrate(bitsPerSecond)
+            let newBitrate = codec.currentBitrate
+            DispatchQueue.main.async { [weak self] in
+                self?.currentBitrate = newBitrate
+            }
+        }
     }
 
     // MARK: - Private

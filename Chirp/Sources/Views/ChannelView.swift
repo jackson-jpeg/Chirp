@@ -15,6 +15,7 @@ struct ChannelView: View {
     @State private var hasUsedPTT: Bool = false
     @State private var showHoldHint: Bool = true
     @State private var showPairingSheet: Bool = false
+    @State private var showCameraPicker: Bool = false
 
     enum ChannelMode: CaseIterable {
         case talk
@@ -110,6 +111,11 @@ struct ChannelView: View {
         .sheet(isPresented: $showPairingSheet) {
             PairingView()
                 .environment(appState)
+        }
+        .sheet(isPresented: $showCameraPicker) {
+            ImagePickerView(source: .camera) { image in
+                sendCameraImage(image)
+            }
         }
         .chirpToast($toast)
         .onAppear {
@@ -743,7 +749,8 @@ struct ChannelView: View {
             VStack(spacing: 4) {
                 PeerAvatarView(
                     peer: peer,
-                    isActiveSpeaker: isActive
+                    isActiveSpeaker: isActive,
+                    linkQuality: appState.wifiAwareLinkMetrics[peer.id]
                 )
                 .scaleEffect(isActive ? 1.3 : 1.0)
                 .shadow(
@@ -898,6 +905,27 @@ struct ChannelView: View {
 
     // MARK: - Quick Action Bar
 
+    private func sendCameraImage(_ image: UIImage) {
+        guard let compressed = ImageCompressor.compress(image) else {
+            toast = ToastItem(message: "Image compression failed", type: .warning)
+            return
+        }
+        let base64 = compressed.base64EncodedString()
+        let payload = MeshTextMessage.imagePrefix + base64
+        guard payload.count <= MeshTextMessage.maxImagePayloadLength else {
+            toast = ToastItem(message: "Image too large to send", type: .warning)
+            return
+        }
+        appState.textMessageService.send(
+            text: payload,
+            channelID: channel.id,
+            senderID: appState.localPeerID,
+            senderName: appState.callsign,
+            attachmentType: .image
+        )
+        toast = ToastItem(message: "Photo shared", type: .success)
+    }
+
     private var quickActionBar: some View {
         HStack(spacing: 20) {
             quickActionButton(
@@ -906,7 +934,7 @@ struct ChannelView: View {
                 color: .white.opacity(0.7),
                 size: 52
             ) {
-                toast = ToastItem(message: "Camera sharing coming soon", type: .info)
+                showCameraPicker = true
             }
             .accessibilityIdentifier(AccessibilityID.quickActionCamera)
 
@@ -946,12 +974,21 @@ struct ChannelView: View {
             .accessibilityIdentifier(AccessibilityID.quickActionLocation)
 
             quickActionButton(
-                icon: "sos",
-                label: String(localized: "channel.quickAction.sos"),
+                icon: EmergencyBeacon.shared.isActive ? "xmark.circle.fill" : "sos",
+                label: EmergencyBeacon.shared.isActive ? "STOP SOS" : String(localized: "channel.quickAction.sos"),
                 color: Constants.Colors.hotRed,
                 size: 60
             ) {
-                toast = ToastItem(message: "SOS beacon coming soon", type: .info)
+                if EmergencyBeacon.shared.isActive {
+                    EmergencyBeacon.shared.deactivate()
+                    toast = ToastItem(message: "SOS beacon stopped", type: .info)
+                } else {
+                    EmergencyBeacon.shared.activate(
+                        senderID: appState.localPeerID,
+                        senderName: appState.callsign
+                    )
+                    toast = ToastItem(message: "SOS BEACON ACTIVE — broadcasting every 5s", type: .warning)
+                }
             }
             .accessibilityIdentifier(AccessibilityID.quickActionSOS)
         }

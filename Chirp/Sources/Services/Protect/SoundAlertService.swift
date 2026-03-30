@@ -2,7 +2,7 @@ import AVFoundation
 import Foundation
 import Observation
 import OSLog
-@preconcurrency import SoundAnalysis
+import SoundAnalysis
 
 /// Listens for emergency sounds (gunshots, screams, sirens, etc.) using Apple's
 /// built-in sound classifier and broadcasts detections over the mesh network.
@@ -132,9 +132,12 @@ final class SoundAlertService: NSObject {
     nonisolated func feedAudio(buffer: AVAudioPCMBuffer, time: AVAudioTime) {
         guard isListeningFlag else { return }
 
+        nonisolated(unsafe) let buf = buffer
+        let audioTime = time
         analysisQueue.async { [weak self] in
             guard let self else { return }
             guard self.isListeningFlag else { return }
+            let buffer = buf; let time = audioTime
 
             // Lazy-create analyzer with the buffer's format on first call
             if self.analyzer == nil {
@@ -167,7 +170,6 @@ final class SoundAlertService: NSObject {
         guard let alert = SoundAlert.from(payload: payload) else { return }
 
         // Dedup: same sound class from same sender within 5 seconds
-        let dedupKey = "\(alert.senderID)-\(alert.soundClass.rawValue)"
         if let existing = meshAlerts.first(where: {
             $0.senderID == alert.senderID
             && $0.soundClass == alert.soundClass
@@ -255,7 +257,7 @@ final class SoundAlertService: NSObject {
 
 // MARK: - SNResultsObserving
 
-extension SoundAlertService: @preconcurrency SNResultsObserving {
+extension SoundAlertService: SNResultsObserving {
 
     nonisolated func request(_ request: SNRequest, didProduce result: SNResult) {
         guard let classification = result as? SNClassificationResult else { return }

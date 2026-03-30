@@ -24,6 +24,9 @@ final class PTTEngine {
     /// Provides the current peer list for transport preference decisions.
     var peerListProvider: (() -> [ChirpPeer])?
 
+    /// Provides current Wi-Fi Aware link metrics for quality-aware transport selection.
+    var wifiAwareMetricsProvider: (() -> [String: WALinkMetrics])?
+
     // MARK: - Private
 
     private let logger = Logger.ptt
@@ -72,28 +75,40 @@ final class PTTEngine {
                     timestamp: Self.currentTimestamp(),
                     opusData: opusData
                 )
-                // Send via preferred transport(s) — skip MC if all peers on WA
+                // Send via preferred transport(s) — quality-aware for audio
                 let serialized = packet.serialize()
                 let peers = self.peerListProvider?() ?? []
-                if TransportPreference.shouldSendOnMC(peers: peers) {
+                let metrics = self.wifiAwareMetricsProvider?()
+                let choice = TransportPreference.preferredTransport(
+                    for: .audio,
+                    wifiAwareMetrics: metrics,
+                    peers: peers
+                )
+                if TransportPreference.shouldSendOnMC(choice: choice) {
                     try? self.multipeerTransport?.sendAudio(serialized)
                 }
-                if TransportPreference.shouldSendOnWA(peers: peers) {
+                if TransportPreference.shouldSendOnWA(choice: choice) {
                     try? self.wifiAwareTransport?.sendAudio(serialized)
                 }
             }
         }
 
         // Floor control -> network: broadcast control messages to all peers
-        // via both transports (routed through MeshRouter).
+        // via both transports for reliability (quality-aware: control always sends on both).
         floorController.sendToAllPeers = { [weak self] message in
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 let peers = self.peerListProvider?() ?? []
-                if TransportPreference.shouldSendOnMC(peers: peers) {
+                let metrics = self.wifiAwareMetricsProvider?()
+                let choice = TransportPreference.preferredTransport(
+                    for: .control,
+                    wifiAwareMetrics: metrics,
+                    peers: peers
+                )
+                if TransportPreference.shouldSendOnMC(choice: choice) {
                     try? self.multipeerTransport?.sendControl(message)
                 }
-                if TransportPreference.shouldSendOnWA(peers: peers) {
+                if TransportPreference.shouldSendOnWA(choice: choice) {
                     try? self.wifiAwareTransport?.sendControl(message)
                 }
             }
@@ -138,6 +153,7 @@ final class PTTEngine {
 
         sequenceNumber = 0
         audioEngine.resetJitterBuffer()
+        wifiAwareTransport?.setRealtimeMode(true)
         audioEngine.startCapture()
         syncState()
         logger.info("Transmitting -- audio capture started")
@@ -146,6 +162,7 @@ final class PTTEngine {
     /// Stop transmitting: halt capture and release the floor.
     func stopTransmitting() {
         audioEngine.stopCapture()
+        wifiAwareTransport?.setRealtimeMode(false)
         floorController.releaseFloor()
         syncState()
         logger.info("Stopped transmitting")
@@ -161,10 +178,16 @@ final class PTTEngine {
                 guard !Task.isCancelled, let self else { break }
                 let heartbeat = FloorControlMessage.heartbeat(peerID: self.localPeerID, timestamp: Date())
                 let peers = self.peerListProvider?() ?? []
-                if TransportPreference.shouldSendOnMC(peers: peers) {
+                let metrics = self.wifiAwareMetricsProvider?()
+                let choice = TransportPreference.preferredTransport(
+                    for: .control,
+                    wifiAwareMetrics: metrics,
+                    peers: peers
+                )
+                if TransportPreference.shouldSendOnMC(choice: choice) {
                     try? self.multipeerTransport?.sendControl(heartbeat)
                 }
-                if TransportPreference.shouldSendOnWA(peers: peers) {
+                if TransportPreference.shouldSendOnWA(choice: choice) {
                     try? self.wifiAwareTransport?.sendControl(heartbeat)
                 }
             }

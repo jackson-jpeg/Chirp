@@ -115,6 +115,48 @@ struct MeshPacket: Sendable {
                 if prefix4 == brqMagic {
                     return .high
                 }
+
+                // UWB token exchange -- low TTL, direct peers only
+                let uwbMagic: [UInt8] = [0x55, 0x57, 0x42, 0x21]
+                if prefix4 == uwbMagic { return .normal }
+
+                // LIGHTHOUSE query/response
+                let lhqMagic: [UInt8] = [0x4C, 0x48, 0x51, 0x21]
+                let lhrMagic: [UInt8] = [0x4C, 0x48, 0x52, 0x21]
+                if prefix4 == lhqMagic || prefix4 == lhrMagic { return .normal }
+
+                // Witness request/countersign -- wide propagation
+                let wrqMagic: [UInt8] = [0x57, 0x52, 0x51, 0x21]
+                let wcsMagic: [UInt8] = [0x57, 0x43, 0x53, 0x21]
+                if prefix4 == wrqMagic || prefix4 == wcsMagic { return .high }
+
+                // Dead Drop -- normal, blend with store-and-forward
+                let drpMagic: [UInt8] = [0x44, 0x52, 0x50, 0x21]
+                let dpkMagic: [UInt8] = [0x44, 0x50, 0x4B, 0x21]
+                if prefix4 == drpMagic || prefix4 == dpkMagic { return .normal }
+
+                // Darkroom -- high priority (user waiting)
+                let drkMagic: [UInt8] = [0x44, 0x52, 0x4B, 0x21]
+                let dvkMagic: [UInt8] = [0x44, 0x56, 0x4B, 0x21]
+                if prefix4 == drkMagic || prefix4 == dvkMagic { return .high }
+
+                // BABEL -- high priority (real-time translation)
+                let bblMagic: [UInt8] = [0x42, 0x42, 0x4C, 0x21]
+                if prefix4 == bblMagic { return .high }
+
+                // CHORUS -- high priority (pipeline stalls if delayed)
+                let chrMagic: [UInt8] = [0x43, 0x48, 0x52, 0x21]
+                let choMagic: [UInt8] = [0x43, 0x48, 0x4F, 0x21]
+                let chcMagic: [UInt8] = [0x43, 0x48, 0x43, 0x21]
+                let chxMagic: [UInt8] = [0x43, 0x48, 0x58, 0x21]
+                if prefix4 == chrMagic || prefix4 == choMagic || prefix4 == chcMagic || prefix4 == chxMagic { return .high }
+
+                // SWARM -- normal priority (batch compute is latency-tolerant)
+                let swmMagic: [UInt8] = [0x53, 0x57, 0x4D, 0x21]
+                let swrMagic: [UInt8] = [0x53, 0x57, 0x52, 0x21]
+                let swcMagic: [UInt8] = [0x53, 0x57, 0x43, 0x21]
+                let swaMagic: [UInt8] = [0x53, 0x57, 0x41, 0x21]
+                if prefix4 == swmMagic || prefix4 == swrMagic || prefix4 == swcMagic || prefix4 == swaMagic { return .normal }
             }
             return .high
         }

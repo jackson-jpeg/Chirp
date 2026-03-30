@@ -3,6 +3,7 @@ import SwiftUI
 struct PeerAvatarView: View {
     var peer: ChirpPeer
     var isActiveSpeaker: Bool
+    var linkQuality: WALinkMetrics? = nil
 
     @State private var waveScale1: CGFloat = 1.0
     @State private var waveScale2: CGFloat = 1.0
@@ -138,7 +139,7 @@ struct PeerAvatarView: View {
                 Spacer()
                 HStack {
                     Spacer()
-                    SignalStrengthIndicator(level: peer.signalStrength)
+                    SignalStrengthIndicator(level: linkQuality?.signalBars ?? peer.signalStrength)
                         .scaleEffect(0.8)
                         .background(
                             Circle()
@@ -153,6 +154,25 @@ struct PeerAvatarView: View {
                 }
             }
             .frame(width: size + 4, height: size + 4)
+
+            // Link quality dot (bottom-left) — shown for WiFi Aware peers with metrics
+            if let quality = linkQuality {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Circle()
+                            .fill(linkQualityColor(quality.qualityLabel))
+                            .frame(width: 8, height: 8)
+                            .background(
+                                Circle()
+                                    .fill(Color.black.opacity(0.7))
+                                    .frame(width: 14, height: 14)
+                            )
+                        Spacer()
+                    }
+                }
+                .frame(width: size + 4, height: size + 4)
+            }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(peer.name), \(peer.isConnected ? "connected" : "disconnected")\(isActiveSpeaker ? ", speaking" : "")")
@@ -167,6 +187,17 @@ struct PeerAvatarView: View {
             } else {
                 stopWaveAnimation()
             }
+        }
+    }
+
+    // MARK: - Link Quality Color
+
+    private func linkQualityColor(_ label: String) -> Color {
+        switch label {
+        case "Excellent": return Color(hex: 0x30D158)
+        case "Good": return Color(hex: 0x64D2FF)
+        case "Fair": return Color(hex: 0xFFD60A)
+        default: return Color(hex: 0xFF453A)
         }
     }
 

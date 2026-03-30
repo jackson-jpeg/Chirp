@@ -613,8 +613,7 @@ private struct FriendDetailSheet: View {
                         HStack(spacing: 5) {
                             Image(systemName: "clock")
                                 .font(.system(size: 10))
-                            Text(String(localized: "friends.status.lastSeen"))
-                            + Text(lastSeen, format: .relative(presentation: .named))
+                            Text("\(String(localized: "friends.status.lastSeen"))\(lastSeen, format: .relative(presentation: .named))")
                         }
                         .font(.system(.caption))
                         .foregroundStyle(.secondary)

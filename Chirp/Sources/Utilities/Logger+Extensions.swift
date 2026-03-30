@@ -11,4 +11,6 @@ extension Logger {
     static let textMessage = Logger(subsystem: subsystem, category: "TextMessage")
     static let bleScanner = Logger(subsystem: subsystem, category: "BLEScanner")
     static let meshCloud = Logger(subsystem: subsystem, category: "MeshCloud")
+    static let deadDrop = Logger(subsystem: subsystem, category: "DeadDrop")
+    static let transport = Logger(subsystem: subsystem, category: "Transport")
 }

@@ -99,7 +99,7 @@ final class OfflineMapManager: NSObject {
 
         MLNOfflineStorage.shared.addPack(for: region, withContext: metadataData) { [weak self] pack, error in
             // MLNOfflineStorage calls this on the main queue.
-            // Transfer the non-Sendable MLNOfflinePack safely via MainActor.assumeIsolated.
+            nonisolated(unsafe) let unsafePack = pack
             MainActor.assumeIsolated {
                 guard let self else { return }
                 if let error {
@@ -107,13 +107,13 @@ final class OfflineMapManager: NSObject {
                     self.isDownloading = false
                     return
                 }
-                guard let pack else {
+                guard let unsafePack else {
                     self.logger.error("Offline pack creation returned nil")
                     self.isDownloading = false
                     return
                 }
-                self.activePack = pack
-                pack.resume()
+                self.activePack = unsafePack
+                unsafePack.resume()
                 self.logger.info("Started downloading region: \(name)")
             }
         }

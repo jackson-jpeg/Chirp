@@ -249,7 +249,7 @@ final class BLEScanner: NSObject {
 
 // MARK: - CBCentralManagerDelegate
 
-extension BLEScanner: @preconcurrency CBCentralManagerDelegate {
+extension BLEScanner: CBCentralManagerDelegate {
 
     nonisolated func centralManagerDidUpdateState(_ central: CBCentralManager) {
         let state = central.state

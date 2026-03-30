@@ -26,6 +26,7 @@ struct SettingsView: View {
             VStack(spacing: 24) {
                 profileHeroCard
                 meshNetworkSection
+                LinkHealthSection()
                 audioHapticsSection
                 quickAccessSection
                 emergencySection

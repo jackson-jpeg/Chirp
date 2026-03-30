@@ -8,6 +8,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     private let logger = Logger(subsystem: Constants.subsystem, category: "Location")
 
     private(set) var currentLocation: CLLocation?
+    private(set) var currentHeading: Double?
     private(set) var authorizationStatus: CLAuthorizationStatus = .notDetermined
 
     override init() {
@@ -17,8 +18,12 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     }
 
     func requestPermission() { manager.requestWhenInUseAuthorization() }
-    func startUpdating() { manager.startUpdatingLocation() }
+    func startUpdating() {
+        manager.startUpdatingLocation()
+        startHeadingUpdates()
+    }
     func stopUpdating() { manager.stopUpdatingLocation() }
+    func startHeadingUpdates() { manager.startUpdatingHeading() }
 
     // MARK: - Encoding / Decoding
 
@@ -76,6 +81,13 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         Task { @MainActor in
             self.currentLocation = latest
             self.logger.debug("Location updated: \(latest.coordinate.latitude, privacy: .private), \(latest.coordinate.longitude, privacy: .private)")
+        }
+    }
+
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+        let heading = newHeading.trueHeading >= 0 ? newHeading.trueHeading : newHeading.magneticHeading
+        Task { @MainActor in
+            self.currentHeading = heading
         }
     }
 

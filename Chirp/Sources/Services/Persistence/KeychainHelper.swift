@@ -36,7 +36,7 @@ enum KeychainHelper: Sendable {
             logger.fault("SecRandomCopyBytes failed with status \(status)")
             // Fallback: UUID-based key (less entropy but never crashes)
             return UUID().uuidString.replacingOccurrences(of: "-", with: "")
-                + UUID().uuidString.replacingOccurrences(of: "-", count: 0, max: 0).prefix(32)
+                + String(UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(32))
         }
         return bytes.map { String(format: "%02x", $0) }.joined()
     }

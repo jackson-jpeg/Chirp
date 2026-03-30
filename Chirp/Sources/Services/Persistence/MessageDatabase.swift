@@ -26,7 +26,7 @@ final class MessageDatabase {
         // for encryption at rest. The DB file is protected by NSFileProtectionCompleteUntilFirstUserAuthentication
         // which means it's encrypted whenever the device is locked (after first unlock).
         // Combined with Keychain-stored app secrets, this provides strong at-rest protection.
-        var config = Configuration()
+        let config = Configuration()
         dbQueue = try DatabaseQueue(path: dbURL.path, configuration: config)
 
         // Exclude from backup

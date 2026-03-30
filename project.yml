@@ -42,12 +42,20 @@ targets:
         product: MapLibre
       - sdk: CoreBluetooth.framework
       - sdk: SoundAnalysis.framework
+      - sdk: NearbyInteraction.framework
+      - sdk: CoreMotion.framework
+      - sdk: NetworkExtension.framework
+      - sdk: CoreML.framework
+      - sdk: NaturalLanguage.framework
+      - sdk: Metal.framework
+      - sdk: MetalKit.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: false
+        SWIFT_OBJC_BRIDGING_HEADER: Chirp/Sources/Services/Audio/Chirp-Bridging-Header.h
     info:
       path: Chirp/Info.plist
       properties:
@@ -64,6 +72,9 @@ targets:
         NSPhotoLibraryAddUsageDescription: "ChirpChirp saves received images to your photo library."
         ITSAppUsesNonExemptEncryption: true
         NSBluetoothAlwaysUsageDescription: "ChirpChirp scans for nearby Bluetooth devices to help detect potential surveillance or tracking equipment."
+        NSNearbyInteractionUsageDescription: "ChirpChirp uses Ultra-Wideband to precisely locate nearby mesh peers for indoor positioning."
+        NSMotionUsageDescription: "ChirpChirp uses motion sensors for dead reckoning navigation when GPS is unavailable."
+        NSSpeechRecognitionUsageDescription: "ChirpChirp uses speech recognition for real-time voice translation between languages."
         NSLocalNetworkUsageDescription: "ChirpChirp uses your local network to discover and connect to nearby devices for walkie-talkie communication."
         NSBonjourServices:
           - "_chirp-ptt._udp."
@@ -74,6 +85,7 @@ targets:
           - fetch
         BGTaskSchedulerPermittedIdentifiers:
           - com.chirpchirp.mesh.refresh
+          - com.chirpchirp.swarm.compute
 
   ChirpLiveActivity:
     type: app-extension
