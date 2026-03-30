@@ -77,6 +77,34 @@ final class AppState {
 
     private(set) var micPermissionGranted: Bool = false
 
+    /// Alert shown when a permission is denied. Views observe this to show feedback.
+    var permissionDeniedAlert: PermissionDeniedAlert?
+
+    enum PermissionDeniedAlert: Equatable {
+        case microphone
+        case location
+        case camera
+
+        var title: String {
+            switch self {
+            case .microphone: return "Microphone Access Required"
+            case .location: return "Location Access Required"
+            case .camera: return "Camera Access Required"
+            }
+        }
+
+        var message: String {
+            switch self {
+            case .microphone:
+                return "Microphone access is required for push-to-talk. Open Settings to enable."
+            case .location:
+                return "Location access is required for GPS sharing and SOS beacons."
+            case .camera:
+                return "Camera access is required for photo sharing."
+            }
+        }
+    }
+
     func requestMicPermission() async {
         let status = AVAudioApplication.shared.recordPermission
         switch status {
@@ -85,11 +113,26 @@ final class AppState {
         case .undetermined:
             let granted = await AVAudioApplication.requestRecordPermission()
             micPermissionGranted = granted
+            if !granted {
+                permissionDeniedAlert = .microphone
+            }
         case .denied:
             micPermissionGranted = false
+            permissionDeniedAlert = .microphone
         @unknown default:
             micPermissionGranted = false
         }
+    }
+
+    /// Called when location authorization changes to a denied state.
+    func handleLocationPermissionDenied() {
+        permissionDeniedAlert = .location
+    }
+
+    /// Opens the app's Settings page so the user can re-enable permissions.
+    func openAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 
     // MARK: - Forwarded State
@@ -154,8 +197,15 @@ final class AppState {
         self.friendsManager = FriendsManager()
 
         // Create mesh router using stable local peer ID as origin
-        guard let originUUID = UUID(uuidString: peerID) else {
-            fatalError("Local peer ID is not a valid UUID: \(peerID)")
+        let originUUID: UUID
+        if let parsed = UUID(uuidString: peerID) {
+            originUUID = parsed
+        } else {
+            // Peer ID was corrupted — generate a fresh one and persist it.
+            let freshUUID = UUID()
+            UserDefaults.standard.set(freshUUID.uuidString, forKey: Keys.peerID)
+            originUUID = freshUUID
+            Logger.ptt.error("Local peer ID was not a valid UUID — regenerated: \(freshUUID.uuidString)")
         }
         let router = MeshRouter(localPeerID: originUUID)
         self.meshRouter = router
@@ -226,7 +276,15 @@ final class AppState {
         if let lighthouseDB = try? LighthouseDatabase() {
             lighthouseService = LighthouseService(database: lighthouseDB)
         } else {
-            fatalError("Failed to initialize LighthouseDatabase")
+            // Database init failed (e.g. disk full) — create with a fresh retry.
+            // If still fails, create a no-database instance so the app can still launch.
+            Logger.ptt.error("Failed to initialize LighthouseDatabase — retrying once")
+            if let retryDB = try? LighthouseDatabase() {
+                lighthouseService = LighthouseService(database: retryDB)
+            } else {
+                Logger.ptt.error("LighthouseDatabase retry failed — positioning features will be unavailable")
+                lighthouseService = LighthouseService()
+            }
         }
         self.lighthouseService = lighthouseService
 
@@ -734,6 +792,9 @@ final class AppState {
         NotificationService.shared.requestPermission()
 
         // Request location permission and start updates for location sharing
+        locationService.onPermissionDenied = { [weak self] in
+            self?.handleLocationPermissionDenied()
+        }
         locationService.requestPermission()
         locationService.startUpdating()
 

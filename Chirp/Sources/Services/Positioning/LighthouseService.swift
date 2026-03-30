@@ -23,7 +23,7 @@ final class LighthouseService {
 
     // MARK: - Dependencies
 
-    private let database: LighthouseDatabase
+    private let database: LighthouseDatabase?
 
     // MARK: - Public State
 
@@ -49,6 +49,12 @@ final class LighthouseService {
     init(database: LighthouseDatabase) {
         self.database = database
         refreshCounts()
+    }
+
+    /// No-database fallback initializer. Positioning features will be unavailable.
+    init() {
+        self.database = nil
+        logger.warning("LighthouseService initialized without database — positioning unavailable")
     }
 
     // MARK: - Recording Control
@@ -112,11 +118,11 @@ final class LighthouseService {
         trail.addCrumb(crumb)
         currentTrail = trail
 
-        database.saveBreadcrumb(crumb, trailID: trail.id.uuidString)
+        database?.saveBreadcrumb(crumb, trailID: trail.id.uuidString)
 
         lastRecordedPosition = estimate
         lastRecordTime = now
-        totalBreadcrumbs = database.totalBreadcrumbs
+        totalBreadcrumbs = database?.totalBreadcrumbs ?? 0
 
         logger.debug("Breadcrumb recorded at \(estimate.latitude, privacy: .public), \(estimate.longitude, privacy: .public)")
     }
@@ -140,8 +146,8 @@ final class LighthouseService {
             contributorPeerID: peerID
         )
 
-        database.saveFingerprint(fingerprint)
-        totalFingerprints = database.totalFingerprints
+        database?.saveFingerprint(fingerprint)
+        totalFingerprints = database?.totalFingerprints ?? 0
 
         logger.info("Fingerprint recorded with \(observations.count, privacy: .public) observations")
     }
@@ -184,11 +190,11 @@ final class LighthouseService {
             return nil
         }
 
-        let candidates = database.findFingerprints(
+        let candidates = database?.findFingerprints(
             near: searchCenter.latitude,
             longitude: searchCenter.longitude,
             radiusMeters: Self.searchRadiusMeters
-        )
+        ) ?? []
 
         guard !candidates.isEmpty else {
             logger.debug("No fingerprints in search radius")
@@ -263,17 +269,17 @@ final class LighthouseService {
         // Decode geohash center for spatial lookup
         let (centerLat, centerLon) = geohashDecode(query.geohashPrefix)
 
-        let fingerprints = database.findFingerprints(
+        let fingerprints = database?.findFingerprints(
             near: centerLat,
             longitude: centerLon,
             radiusMeters: Self.searchRadiusMeters
-        )
+        ) ?? []
 
-        let breadcrumbCount = database.findBreadcrumbs(
+        let breadcrumbCount = database?.findBreadcrumbs(
             near: centerLat,
             longitude: centerLon,
             radiusMeters: Self.searchRadiusMeters
-        ).count
+        ).count ?? 0
 
         // Only respond if we have data to share
         guard !fingerprints.isEmpty || breadcrumbCount > 0 else { return }
@@ -294,7 +300,7 @@ final class LighthouseService {
     }
 
     /// Handle an incoming LHR! record — merge received fingerprints into
-    /// the local database.
+    /// the local database?.
     private func handleRecord(_ data: Data) {
         guard let record = LighthousePacket.Record.from(payload: data) else {
             logger.warning("Failed to decode LHR! packet")
@@ -304,7 +310,7 @@ final class LighthouseService {
         logger.info("Received LIGHTHOUSE record: \(record.fingerprints.count, privacy: .public) fingerprints for region \(record.regionHash, privacy: .public)")
 
         for fingerprint in record.fingerprints {
-            database.saveFingerprint(fingerprint)
+            database?.saveFingerprint(fingerprint)
         }
 
         refreshCounts()
@@ -340,17 +346,17 @@ final class LighthouseService {
 
     // MARK: - Maintenance
 
-    /// Prune old data from the database.
+    /// Prune old data from the database?.
     func pruneOldData(days: Int = 30) {
-        database.pruneOlderThan(days: days)
+        database?.pruneOlderThan(days: days)
         refreshCounts()
     }
 
     // MARK: - Private Helpers
 
     private func refreshCounts() {
-        totalBreadcrumbs = database.totalBreadcrumbs
-        totalFingerprints = database.totalFingerprints
+        totalBreadcrumbs = database?.totalBreadcrumbs ?? 0
+        totalFingerprints = database?.totalFingerprints ?? 0
     }
 
     /// Cosine similarity between an observed RSSI map and a stored fingerprint's

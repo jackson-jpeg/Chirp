@@ -9,13 +9,13 @@ enum ToastType {
     var color: Color {
         switch self {
         case .info:
-            return Color(hex: 0x0A84FF)
+            return Constants.Colors.blue500
         case .success:
-            return Color(hex: 0x30D158)
+            return Constants.Colors.electricGreen
         case .warning:
-            return Color(hex: 0xFFB800)
+            return Constants.Colors.amber
         case .error:
-            return Color(hex: 0xFF3B30)
+            return Constants.Colors.hotRed
         }
     }
 

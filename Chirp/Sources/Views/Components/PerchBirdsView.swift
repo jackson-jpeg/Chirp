@@ -17,10 +17,10 @@ struct PerchBirdsView: View {
     @State private var chirpHeadTilt: Double = 0
 
     // Colors
-    private let amber = Color(hex: 0xFFB800)
-    private let darkAmber = Color(hex: 0xE6A600)
-    private let beakOrange = Color(hex: 0xFF6B35)
-    private let eyeColor = Color(hex: 0x0F172A)
+    private let amber = Constants.Colors.amber
+    private let darkAmber = Color(hex: 0xE6A600) // Custom darker amber for bird body shading
+    private let beakOrange = Color(hex: 0xFF6B35) // Custom beak accent
+    private let eyeColor = Constants.Colors.backgroundPrimary
 
     private var scale: CGFloat { size / 200.0 }
 

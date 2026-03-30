@@ -522,6 +522,8 @@ struct HomeView: View {
     @State private var connectedPeerCount = 0
     @State private var isRefreshing = false
     @State private var showSOSConfirm = false
+    @State private var showPermissionAlert = false
+    @State private var permissionAlert: AppState.PermissionDeniedAlert?
     @State private var sosHoldProgress: CGFloat = 0
     @State private var pendingMessageCount: Int = 0
     @State private var selectedTab: HomeTab = .channels
@@ -679,6 +681,21 @@ struct HomeView: View {
                 Text(String(localized: "home.sos.alertMessage"))
             }
             .chirpToast($toast)
+            .onChange(of: appState.permissionDeniedAlert) { _, newAlert in
+                if let alert = newAlert {
+                    permissionAlert = alert
+                    showPermissionAlert = true
+                    appState.permissionDeniedAlert = nil
+                }
+            }
+            .alert(permissionAlert?.title ?? "", isPresented: $showPermissionAlert) {
+                Button("Open Settings") {
+                    appState.openAppSettings()
+                }
+                Button(String(localized: "common.cancel"), role: .cancel) {}
+            } message: {
+                Text(permissionAlert?.message ?? "")
+            }
             .onChange(of: appState.proximityAlert.recentAlerts.count) { _, _ in
                 if let latest = appState.proximityAlert.recentAlerts.last {
                     toast = ToastItem(message: "\(latest.friendName) is \(latest.distance)!", type: .info)

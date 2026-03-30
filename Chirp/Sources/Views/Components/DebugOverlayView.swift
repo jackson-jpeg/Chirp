@@ -13,11 +13,11 @@ struct DebugOverlayView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "ladybug.fill")
                         .font(.system(size: 9))
-                        .foregroundStyle(Color(hex: 0xFFB800))
+                        .foregroundStyle(Constants.Colors.amber)
 
                     Text("DEBUG")
                         .font(.system(size: 9, weight: .bold, design: .monospaced))
-                        .foregroundStyle(Color(hex: 0xFFB800))
+                        .foregroundStyle(Constants.Colors.amber)
 
                     Spacer()
 
@@ -63,7 +63,7 @@ struct DebugOverlayView: View {
                     .frame(height: 5)
 
                     Text(String(format: "%2.0f", appState.inputLevel * 100))
-                        .foregroundStyle(Color(hex: 0xFFB800))
+                        .foregroundStyle(Constants.Colors.amber)
                         .frame(width: 22, alignment: .trailing)
                 }
 
@@ -89,7 +89,7 @@ struct DebugOverlayView: View {
                     Text("\(appState.wifiAwareManager.pairedDevices.count)")
                         .foregroundStyle(
                             appState.wifiAwareManager.pairedDevices.count > 0
-                                ? Color(hex: 0x30D158)
+                                ? Constants.Colors.electricGreen
                                 : .white.opacity(0.5)
                         )
                 }
@@ -103,7 +103,7 @@ struct DebugOverlayView: View {
 
                     if let active = appState.channelManager.activeChannel {
                         Text(active.name)
-                            .foregroundStyle(Color(hex: 0xFFB800))
+                            .foregroundStyle(Constants.Colors.amber)
                     } else {
                         Text("none")
                             .foregroundStyle(.white.opacity(0.4))
@@ -142,9 +142,9 @@ struct DebugOverlayView: View {
     private var pttDotColor: Color {
         switch appState.pttState {
         case .idle: return .gray
-        case .transmitting: return Color(hex: 0xFF3B30)
-        case .receiving: return Color(hex: 0x30D158)
-        case .denied: return Color(hex: 0xFF3B30).opacity(0.5)
+        case .transmitting: return Constants.Colors.hotRed
+        case .receiving: return Constants.Colors.electricGreen
+        case .denied: return Constants.Colors.hotRed.opacity(0.5)
         }
     }
 
@@ -159,7 +159,7 @@ struct DebugOverlayView: View {
 
     private var levelGradient: LinearGradient {
         LinearGradient(
-            colors: [Color(hex: 0x30D158), Color(hex: 0xFFB800), Color(hex: 0xFF3B30)],
+            colors: [Constants.Colors.electricGreen, Constants.Colors.amber, Constants.Colors.hotRed],
             startPoint: .leading,
             endPoint: .trailing
         )
@@ -201,9 +201,9 @@ private struct FPSCounterRow: View {
     }
 
     private var fpsColor: Color {
-        if fps >= 55 { return Color(hex: 0x30D158) }
-        if fps >= 30 { return Color(hex: 0xFFB800) }
-        return Color(hex: 0xFF3B30)
+        if fps >= 55 { return Constants.Colors.electricGreen }
+        if fps >= 30 { return Constants.Colors.amber }
+        return Constants.Colors.hotRed
     }
 }
 

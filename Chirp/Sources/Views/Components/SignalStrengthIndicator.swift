@@ -10,7 +10,7 @@ struct SignalStrengthIndicator: View {
     private let barWidth: CGFloat = 3.5
     private let maxBarHeight: CGFloat = 14
 
-    private let activeColor = Color(hex: 0xFFB800)   // Amber
+    private let activeColor = Constants.Colors.amber
     private let inactiveColor = Color.white.opacity(0.15)
 
     var body: some View {

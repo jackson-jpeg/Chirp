@@ -28,7 +28,7 @@ struct PairingView: View {
                     Button("Done") {
                         dismiss()
                     }
-                    .foregroundStyle(Color(hex: 0xFFB800))
+                    .foregroundStyle(Constants.Colors.amber)
                 }
             }
         }
@@ -42,12 +42,12 @@ struct PairingView: View {
         ZStack {
             // Outer pulse rings
             Circle()
-                .stroke(Color(hex: 0xFFB800).opacity(pulseOpacity), lineWidth: 1.5)
+                .stroke(Constants.Colors.amber.opacity(pulseOpacity), lineWidth: 1.5)
                 .frame(width: 160, height: 160)
                 .scaleEffect(pulseScale)
 
             Circle()
-                .stroke(Color(hex: 0xFFB800).opacity(pulseOpacity * 0.6), lineWidth: 1)
+                .stroke(Constants.Colors.amber.opacity(pulseOpacity * 0.6), lineWidth: 1)
                 .frame(width: 160, height: 160)
                 .scaleEffect(pulseScale * 1.3)
 
@@ -56,7 +56,7 @@ struct PairingView: View {
                 .trim(from: 0, to: 0.25)
                 .stroke(
                     AngularGradient(
-                        colors: [Color(hex: 0xFFB800).opacity(0), Color(hex: 0xFFB800).opacity(0.5)],
+                        colors: [Constants.Colors.amber.opacity(0), Constants.Colors.amber.opacity(0.5)],
                         center: .center
                     ),
                     lineWidth: 3
@@ -67,7 +67,7 @@ struct PairingView: View {
             // Center device icon
             Image(systemName: "iphone.radiowaves.left.and.right")
                 .font(.system(size: 36, weight: .medium))
-                .foregroundStyle(Color(hex: 0xFFB800))
+                .foregroundStyle(Constants.Colors.amber)
         }
 
         Text("Searching for nearby devices...")
@@ -90,7 +90,7 @@ struct PairingView: View {
 
                 HStack {
                     Image(systemName: "wifi")
-                        .foregroundStyle(Color(hex: 0x30D158))
+                        .foregroundStyle(Constants.Colors.electricGreen)
 
                     Text("\(waTransport.pairedDeviceCount) paired device\(waTransport.pairedDeviceCount == 1 ? "" : "s")")
                         .foregroundStyle(.white)
@@ -100,7 +100,7 @@ struct PairingView: View {
                     if waTransport.connectedPeerCount > 0 {
                         Text("\(waTransport.connectedPeerCount) connected")
                             .font(.system(.caption, weight: .semibold))
-                            .foregroundStyle(Color(hex: 0x30D158))
+                            .foregroundStyle(Constants.Colors.electricGreen)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -134,7 +134,7 @@ struct PairingView: View {
         VStack(spacing: 20) {
             Image(systemName: "wifi.exclamationmark")
                 .font(.system(size: 56, weight: .light))
-                .foregroundStyle(Color(hex: 0xFF3B30).opacity(0.7))
+                .foregroundStyle(Constants.Colors.hotRed.opacity(0.7))
 
             Text("Wi-Fi Aware Not Supported")
                 .font(.system(.title2, weight: .bold))

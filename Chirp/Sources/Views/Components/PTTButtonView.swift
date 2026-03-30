@@ -42,13 +42,13 @@ struct PTTButtonView: View {
     private var primaryColor: Color {
         switch pttState {
         case .idle:
-            return Color(hex: 0xFFB800) // Amber
+            return Constants.Colors.amber
         case .transmitting:
-            return Color(hex: 0xFF3B30) // Red
+            return Constants.Colors.hotRed
         case .receiving:
-            return Color(hex: 0x30D158) // Green
+            return Constants.Colors.electricGreen
         case .denied:
-            return Color(hex: 0xFF3B30) // Red
+            return Constants.Colors.hotRed
         }
     }
 
@@ -101,8 +101,8 @@ struct PTTButtonView: View {
                         .fill(
                             RadialGradient(
                                 colors: [
-                                    Color(hex: 0xFFB800).opacity(breatheOpacity * 0.5),
-                                    Color(hex: 0xFFB800).opacity(0)
+                                    Constants.Colors.amber.opacity(breatheOpacity * 0.5),
+                                    Constants.Colors.amber.opacity(0)
                                 ],
                                 center: .center,
                                 startRadius: buttonSize / 3,
@@ -274,19 +274,19 @@ struct PTTButtonView: View {
                 Text("HOLD TO TALK")
                     .font(.system(size: 13, weight: .black, design: .monospaced))
                     .tracking(4)
-                    .foregroundStyle(Color(hex: 0xFFB800).opacity(0.5))
+                    .foregroundStyle(Constants.Colors.amber.opacity(0.5))
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
             } else if isTransmitting {
                 Text("LIVE")
                     .font(.system(size: 13, weight: .black, design: .monospaced))
                     .tracking(4)
-                    .foregroundStyle(Color(hex: 0xFF3B30).opacity(0.8))
+                    .foregroundStyle(Constants.Colors.hotRed.opacity(0.8))
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
             } else if isReceiving {
                 Text("RECEIVING")
                     .font(.system(size: 13, weight: .black, design: .monospaced))
                     .tracking(4)
-                    .foregroundStyle(Color(hex: 0x30D158).opacity(0.7))
+                    .foregroundStyle(Constants.Colors.electricGreen.opacity(0.7))
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
         }

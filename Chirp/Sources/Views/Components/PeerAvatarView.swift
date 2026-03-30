@@ -63,7 +63,7 @@ struct PeerAvatarView: View {
 
                 // Outer pulsing halo ring
                 Circle()
-                    .stroke(Color(hex: 0x30D158).opacity(haloOpacity), lineWidth: 2)
+                    .stroke(Constants.Colors.electricGreen.opacity(haloOpacity), lineWidth: 2)
                     .frame(width: size + 14, height: size + 14)
             }
 
@@ -81,14 +81,14 @@ struct PeerAvatarView: View {
                     Circle()
                         .stroke(
                             isActiveSpeaker
-                                ? Color(hex: 0x30D158).opacity(0.9)
+                                ? Constants.Colors.electricGreen.opacity(0.9)
                                 : Color.white.opacity(0.15),
                             lineWidth: isActiveSpeaker ? 3 : 2.5
                         )
                 )
                 .shadow(
                     color: isActiveSpeaker
-                        ? Color(hex: 0x30D158).opacity(0.4)
+                        ? Constants.Colors.electricGreen.opacity(0.4)
                         : Color.clear,
                     radius: 12
                 )
@@ -194,10 +194,10 @@ struct PeerAvatarView: View {
 
     private func linkQualityColor(_ label: String) -> Color {
         switch label {
-        case "Excellent": return Color(hex: 0x30D158)
-        case "Good": return Color(hex: 0x64D2FF)
-        case "Fair": return Color(hex: 0xFFD60A)
-        default: return Color(hex: 0xFF453A)
+        case "Excellent": return Constants.Colors.electricGreen
+        case "Good": return Constants.Colors.blue500
+        case "Fair": return Constants.Colors.amber
+        default: return Constants.Colors.hotRed
         }
     }
 
@@ -206,7 +206,7 @@ struct PeerAvatarView: View {
     @ViewBuilder
     private func waveRing(scale: Binding<CGFloat>, opacity: Binding<Double>) -> some View {
         Circle()
-            .stroke(Color(hex: 0x30D158).opacity(opacity.wrappedValue), lineWidth: 2)
+            .stroke(Constants.Colors.electricGreen.opacity(opacity.wrappedValue), lineWidth: 2)
             .frame(width: size + 8, height: size + 8)
             .scaleEffect(scale.wrappedValue)
     }

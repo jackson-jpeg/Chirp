@@ -4,7 +4,7 @@ import SwiftUI
 struct ActionButtonSetupView: View {
     @Environment(\.dismiss) private var dismiss
 
-    private let amber = Color(hex: 0xFFB800)
+    private let amber = Constants.Colors.amber
 
     var body: some View {
         NavigationStack {

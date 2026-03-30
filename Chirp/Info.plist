@@ -30,6 +30,10 @@
 		<string>_chirp-ptt._udp.</string>
 		<string>_chirp-ptt._tcp.</string>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>ChirpChirp uses your location to share GPS coordinates with nearby devices and for emergency SOS beacons.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>ChirpChirp uses background location to keep emergency SOS beacons broadcasting your position.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>ChirpChirp uses your local network to discover and connect to nearby devices for walkie-talkie communication.</string>
 	<key>NSMicrophoneUsageDescription</key>
@@ -51,10 +55,6 @@
 	<dict>
 		<key>UIColorName</key>
 		<string>LaunchBackground</string>
-		<key>UIImageName</key>
-		<string>LaunchLogo</string>
-		<key>UIImageRespectsSafeAreaInsets</key>
-		<true/>
 	</dict>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>

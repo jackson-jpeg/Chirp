@@ -119,7 +119,9 @@ final class LighthouseDatabase {
 
     init() throws {
         let fileManager = FileManager.default
-        let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+        guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            throw DatabaseError.documentsDirectoryUnavailable
+        }
         let dbURL = documentsURL.appendingPathComponent("lighthouse.db")
 
         var config = Configuration()

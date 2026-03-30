@@ -2,6 +2,18 @@ import Foundation
 import GRDB
 import OSLog
 
+/// Errors that can occur during database initialization.
+enum DatabaseError: Error, LocalizedError {
+    case documentsDirectoryUnavailable
+
+    var errorDescription: String? {
+        switch self {
+        case .documentsDirectoryUnavailable:
+            return "Documents directory is unavailable."
+        }
+    }
+}
+
 /// Encrypted SQLite message store backed by GRDB.
 ///
 /// The database file lives at `Documents/chirp_messages.db`, excluded from
@@ -19,7 +31,9 @@ final class MessageDatabase {
 
     init() throws {
         let fileManager = FileManager.default
-        let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+        guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            throw DatabaseError.documentsDirectoryUnavailable
+        }
         let dbURL = documentsURL.appendingPathComponent("chirp_messages.db")
 
         // GRDB standard doesn't include SQLCipher. Instead, rely on iOS Data Protection

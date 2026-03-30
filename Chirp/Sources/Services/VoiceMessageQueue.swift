@@ -53,7 +53,11 @@ final class VoiceMessageQueue {
     private static let voiceSubdirectory = "VoiceMessages"
 
     private var voiceDirectory: URL {
-        let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+        guard let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            // Fallback to temp directory if documents is unavailable (should never happen on iOS)
+            logger.error("Documents directory unavailable — falling back to temporary directory")
+            return fileManager.temporaryDirectory.appendingPathComponent(Self.voiceSubdirectory, isDirectory: true)
+        }
         return docs.appendingPathComponent(Self.voiceSubdirectory, isDirectory: true)
     }
 

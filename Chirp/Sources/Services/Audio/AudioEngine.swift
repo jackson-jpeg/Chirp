@@ -32,12 +32,20 @@ final class AudioEngine: @unchecked Sendable {
     private let samplesPerFrame = Constants.Opus.samplesPerFrame
 
     init() {
-        self.targetFormat = AVAudioFormat(
+        // 16kHz mono Int16 is universally supported on all iOS devices.
+        // The guard is purely defensive — this initializer should never return nil for these parameters.
+        if let format = AVAudioFormat(
             commonFormat: .pcmFormatInt16,
             sampleRate: Constants.Opus.sampleRate,
             channels: 1,
             interleaved: true
-        )!
+        ) {
+            self.targetFormat = format
+        } else {
+            // Absolute last resort — use 44.1kHz standard format which cannot fail.
+            Logger.audio.error("Failed to create target audio format — using 44.1kHz fallback")
+            self.targetFormat = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)!
+        }
     }
 
     func setup(echoCancel: Bool = false) throws {
@@ -56,12 +64,15 @@ final class AudioEngine: @unchecked Sendable {
         let playerNode = AVAudioPlayerNode()
         engine.attach(playerNode)
 
-        let playbackFormat = AVAudioFormat(
+        guard let playbackFormat = AVAudioFormat(
             commonFormat: .pcmFormatFloat32,
             sampleRate: Constants.Opus.sampleRate,
             channels: 1,
             interleaved: false
-        )!
+        ) else {
+            Logger.audio.error("Failed to create playback audio format")
+            return
+        }
         engine.connect(playerNode, to: engine.mainMixerNode, format: playbackFormat)
 
         self.playerNode = playerNode
@@ -165,12 +176,15 @@ final class AudioEngine: @unchecked Sendable {
             let pcmBuffer = try codec.decode(opusData)
 
             // Convert Int16 → Float32 for the player node
-            let floatFormat = AVAudioFormat(
+            guard let floatFormat = AVAudioFormat(
                 commonFormat: .pcmFormatFloat32,
                 sampleRate: Constants.Opus.sampleRate,
                 channels: 1,
                 interleaved: false
-            )!
+            ) else {
+                Logger.audio.error("Failed to create float audio format for playback")
+                return
+            }
             guard let floatBuffer = AVAudioPCMBuffer(
                 pcmFormat: floatFormat,
                 frameCapacity: pcmBuffer.frameLength

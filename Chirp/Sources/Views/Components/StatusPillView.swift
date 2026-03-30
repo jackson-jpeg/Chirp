@@ -30,11 +30,11 @@ enum ConnectionStatus {
     var dotColor: Color {
         switch self {
         case .connected:
-            return Color(hex: 0x30D158)
+            return Constants.Colors.electricGreen
         case .searching:
-            return Color(hex: 0xFFB800)
+            return Constants.Colors.amber
         case .disconnected:
-            return Color(hex: 0xFF3B30)
+            return Constants.Colors.hotRed
         }
     }
 }

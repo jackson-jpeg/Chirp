@@ -62,8 +62,6 @@ targets:
         CFBundleDisplayName: ChirpChirp
         UILaunchScreen:
           UIColorName: LaunchBackground
-          UIImageName: LaunchLogo
-          UIImageRespectsSafeAreaInsets: true
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
@@ -78,6 +76,8 @@ targets:
         NSNearbyInteractionUsageDescription: "ChirpChirp uses Ultra-Wideband to precisely locate nearby mesh peers for indoor positioning."
         NSMotionUsageDescription: "ChirpChirp uses motion sensors for dead reckoning navigation when GPS is unavailable."
         NSSpeechRecognitionUsageDescription: "ChirpChirp uses speech recognition for real-time voice translation between languages."
+        NSLocationWhenInUseUsageDescription: "ChirpChirp uses your location to share GPS coordinates with nearby devices and for emergency SOS beacons."
+        NSLocationAlwaysAndWhenInUseUsageDescription: "ChirpChirp uses background location to keep emergency SOS beacons broadcasting your position."
         NSLocalNetworkUsageDescription: "ChirpChirp uses your local network to discover and connect to nearby devices for walkie-talkie communication."
         NSBonjourServices:
           - "_chirp-ptt._udp."

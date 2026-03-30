@@ -11,6 +11,9 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     private(set) var currentHeading: Double?
     private(set) var authorizationStatus: CLAuthorizationStatus = .notDetermined
 
+    /// Fires when the user denies or restricts location access.
+    var onPermissionDenied: (() -> Void)?
+
     override init() {
         super.init()
         manager.delegate = self
@@ -108,6 +111,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
             manager.startUpdatingLocation()
         case .denied, .restricted:
             logger.warning("Location access denied or restricted")
+            onPermissionDenied?()
         case .notDetermined:
             break
         @unknown default:

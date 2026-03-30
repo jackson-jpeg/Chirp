@@ -101,7 +101,10 @@ final class BackgroundMeshService {
         let frequency: Double = 20.0        // 20Hz -- below human hearing threshold for most people
         let amplitude: Float = 0.001        // approximately -60dB
 
-        let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
+        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1) else {
+            logger.error("Failed to create audio format for tone engine")
+            return
+        }
         var phase: Double = 0.0
         let phaseIncrement = 2.0 * Double.pi * frequency / sampleRate
 

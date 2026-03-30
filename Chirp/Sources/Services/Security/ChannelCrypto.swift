@@ -53,11 +53,26 @@ struct ChannelCrypto: Sendable {
         return expanded
     }
 
+    /// Errors that can occur during encryption operations.
+    enum EncryptionError: Error, LocalizedError {
+        case sealedBoxCombinedUnavailable
+
+        var errorDescription: String? {
+            switch self {
+            case .sealedBoxCombinedUnavailable:
+                return "Failed to produce combined sealed box representation."
+            }
+        }
+    }
+
     /// Encrypt data using AES-GCM
     func encrypt(_ plaintext: Data) throws -> Data {
         let sealedBox = try AES.GCM.seal(plaintext, using: key)
         // Return combined: nonce(12) + ciphertext + tag(16)
-        return sealedBox.combined!
+        guard let combined = sealedBox.combined else {
+            throw EncryptionError.sealedBoxCombinedUnavailable
+        }
+        return combined
     }
 
     /// Decrypt data using AES-GCM
