@@ -32,11 +32,22 @@ enum Constants {
         static let hotRed = Color(hex: 0xFF3B30)
         static let emergencyRed = Color(hex: 0xCC0000)
 
+        // Modern palette
+        static let slate50 = Color(hex: 0xF8FAFC)
+        static let slate400 = Color(hex: 0x94A3B8)
+        static let slate500 = Color(hex: 0x64748B)
+        static let slate600 = Color(hex: 0x475569)
+        static let slate700 = Color(hex: 0x334155)
+        static let slate800 = Color(hex: 0x1E293B)
+        static let slate900 = Color(hex: 0x0F172A)
+        static let blue500 = Color(hex: 0x3B82F6)
+        static let blue600 = Color(hex: 0x2563EB)
+
         // Backgrounds
-        static let backgroundPrimary = Color(hex: 0x000000)
-        static let backgroundSecondary = Color(hex: 0x0A0A0F)
-        static let backgroundTertiary = Color(hex: 0x111118)
-        static let cardBackground = Color(hex: 0x141420)
+        static let backgroundPrimary = Color(hex: 0x0F172A)
+        static let backgroundSecondary = Color(hex: 0x0F172A)
+        static let backgroundTertiary = Color(hex: 0x1E293B)
+        static let cardBackground = Color(hex: 0x1E293B)
 
         // Surface
         static let surfaceGlass = Color.white.opacity(0.06)

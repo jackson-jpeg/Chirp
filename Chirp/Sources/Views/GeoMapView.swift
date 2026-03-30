@@ -32,13 +32,14 @@ struct GeoMapView: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> MLNMapView {
-        let mapView = MLNMapView(frame: .zero)
-        mapView.styleURL = OfflineMapManager.styleURL
+        let mapView = MLNMapView(frame: .zero, styleURL: OfflineMapManager.styleURL)
         mapView.showsUserLocation = true
         mapView.showsUserHeadingIndicator = true
+        mapView.automaticallyAdjustsContentInset = false
 
         // Dark appearance
         mapView.tintColor = UIColor(Constants.Colors.amber)
+        mapView.backgroundColor = UIColor(red: 0.06, green: 0.09, blue: 0.16, alpha: 1)
 
         if !isInteractive {
             mapView.isScrollEnabled = false
@@ -101,51 +102,46 @@ struct GeoMapView: UIViewRepresentable {
 
     // MARK: - Coordinator
 
-    final class Coordinator: NSObject, MLNMapViewDelegate {
+    @MainActor
+    final class Coordinator: NSObject, @preconcurrency MLNMapViewDelegate {
         var annotationMap: [String: MLNPointAnnotation] = [:]
         var peerData: [String: PeerPin] = [:]
         weak var mapView: MLNMapView?
 
-        // MLNMapViewDelegate always calls this on the main thread.
-        // Cache peer data outside the MainActor closure to avoid sending self.
-        nonisolated func mapView(_ mapView: MLNMapView, viewFor annotation: any MLNAnnotation) -> MLNAnnotationView? {
-            nonisolated(unsafe) let peers = peerData
+        func mapView(_ mapView: MLNMapView, viewFor annotation: any MLNAnnotation) -> MLNAnnotationView? {
             guard let pointAnnotation = annotation as? MLNPointAnnotation,
                   let peerID = pointAnnotation.subtitle,
-                  let peer = peers[peerID] else {
+                  let peer = peerData[peerID] else {
                 return nil
             }
 
             let reuseID = "peer-\(peer.id)"
-            let color = pinColor(for: peer)
+            var view = mapView.dequeueReusableAnnotationView(withIdentifier: reuseID)
 
-            return MainActor.assumeIsolated {
-                var view = mapView.dequeueReusableAnnotationView(withIdentifier: reuseID)
+            if view == nil {
+                view = MLNAnnotationView(annotation: annotation, reuseIdentifier: reuseID)
+                view?.frame = CGRect(x: 0, y: 0, width: 28, height: 28)
 
-                if view == nil {
-                    view = MLNAnnotationView(annotation: annotation, reuseIdentifier: reuseID)
-                    view?.frame = CGRect(x: 0, y: 0, width: 28, height: 28)
+                let dot = UIView(frame: CGRect(x: 4, y: 4, width: 20, height: 20))
+                dot.layer.cornerRadius = 10
+                dot.tag = 100
+                view?.addSubview(dot)
 
-                    let dot = UIView(frame: CGRect(x: 4, y: 4, width: 20, height: 20))
-                    dot.layer.cornerRadius = 10
-                    dot.tag = 100
-                    view?.addSubview(dot)
-
-                    let border = UIView(frame: CGRect(x: 2, y: 2, width: 24, height: 24))
-                    border.layer.cornerRadius = 12
-                    border.layer.borderWidth = 2
-                    border.layer.borderColor = UIColor.white.withAlphaComponent(0.3).cgColor
-                    border.backgroundColor = .clear
-                    border.tag = 101
-                    view?.addSubview(border)
-                }
-
-                if let dot = view?.viewWithTag(100) {
-                    dot.backgroundColor = color
-                }
-
-                return view
+                let border = UIView(frame: CGRect(x: 2, y: 2, width: 24, height: 24))
+                border.layer.cornerRadius = 12
+                border.layer.borderWidth = 2
+                border.layer.borderColor = UIColor.white.withAlphaComponent(0.3).cgColor
+                border.backgroundColor = .clear
+                border.tag = 101
+                view?.addSubview(border)
             }
+
+            let color = pinColor(for: peer)
+            if let dot = view?.viewWithTag(100) {
+                dot.backgroundColor = color
+            }
+
+            return view
         }
 
         func mapView(_ mapView: MLNMapView, annotationCanShowCallout annotation: any MLNAnnotation) -> Bool {

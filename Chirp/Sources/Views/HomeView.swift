@@ -1,113 +1,147 @@
 import SwiftUI
 
-// MARK: - Glass Header Bar (Revamped)
+// MARK: - Compact Header
 
-private struct GlassHeaderBar: View {
+private struct CompactHeader: View {
     let callsign: String
     let peerCount: Int
 
     @State private var pulseOpacity: Double = 0.6
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 14) {
-                // Logo mark — larger, more prominent
-                HStack(spacing: 8) {
-                    PerchBirdsView(size: 44, isAnimating: true)
-                        .frame(width: 44, height: 28)
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(callsign)
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
 
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("ChirpChirp")
-                            .font(.system(size: 20, weight: .heavy, design: .rounded))
-                            .foregroundStyle(Constants.Colors.amber)
-
-                        Text(callsign)
-                            .font(.system(size: 11, weight: .bold, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.45))
-                    }
-                }
-
-                Spacer()
-
-                // Mesh node count — prominent with animated pulse
                 HStack(spacing: 6) {
-                    ZStack {
-                        if peerCount > 0 {
-                            Circle()
-                                .fill(Constants.Colors.electricGreen.opacity(pulseOpacity * 0.5))
-                                .frame(width: 14, height: 14)
-                        }
-                        Circle()
-                            .fill(peerCount > 0 ? Constants.Colors.electricGreen : Color.gray.opacity(0.4))
-                            .frame(width: 8, height: 8)
-                    }
+                    Circle()
+                        .fill(peerCount > 0 ? Constants.Colors.electricGreen : Constants.Colors.slate500)
+                        .frame(width: 7, height: 7)
 
                     Text(peerCount > 0
                          ? String(localized: "home.header.nodesInMesh \(peerCount)")
                          : String(localized: "home.header.noMesh")
                     )
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(peerCount > 0 ? Constants.Colors.electricGreen : .secondary)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(peerCount > 0 ? Constants.Colors.electricGreen : Constants.Colors.slate400)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.black.opacity(0.4), Color.black.opacity(0.15)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .overlay(
-                            Capsule()
-                                .fill(peerCount > 0 ? Constants.Colors.electricGreen.opacity(0.1) : Color.clear)
-                        )
-                        .overlay(
-                            Capsule()
-                                .strokeBorder(
-                                    peerCount > 0 ? Constants.Colors.electricGreen.opacity(0.3) : Color.white.opacity(0.06),
-                                    lineWidth: 1
-                                )
-                        )
-                )
-                .shadow(color: peerCount > 0 ? Constants.Colors.electricGreen.opacity(0.2) : Color.clear, radius: 8)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
-            .background(
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-                    .environment(\.colorScheme, .dark)
-                    .overlay(
-                        Rectangle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.06),
-                                        Color.clear,
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
-                    )
-            )
+
+            Spacer()
         }
-        .onAppear {
-            guard peerCount > 0 else { return }
-            withAnimation(
-                .easeInOut(duration: 1.8)
-                    .repeatForever(autoreverses: true)
-            ) {
-                pulseOpacity = 0.15
-            }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
+    }
+}
+
+// MARK: - Inline Status Strip
+
+private struct InlineStatusStrip: View {
+    let peerCount: Int
+    let threatCount: Int
+    let isScanning: Bool
+    let isEmergencyActive: Bool
+
+    private var threatColor: Color {
+        if threatCount == 0 { return Constants.Colors.electricGreen }
+        if threatCount <= 2 { return Constants.Colors.amber }
+        return Constants.Colors.hotRed
+    }
+
+    private var modeText: String {
+        if isEmergencyActive { return "EMERGENCY" }
+        if isScanning { return "Scanning" }
+        return "Normal"
+    }
+
+    private var modeColor: Color {
+        if isEmergencyActive { return Constants.Colors.emergencyRed }
+        if isScanning { return Constants.Colors.amber }
+        return Constants.Colors.electricGreen
+    }
+
+    var body: some View {
+        HStack(spacing: 16) {
+            statusPill(
+                icon: "antenna.radiowaves.left.and.right",
+                text: "\(peerCount) peer\(peerCount == 1 ? "" : "s")",
+                color: peerCount > 0 ? Constants.Colors.electricGreen : Constants.Colors.slate500
+            )
+
+            statusPill(
+                icon: "shield.fill",
+                text: "\(threatCount) threat\(threatCount == 1 ? "" : "s")",
+                color: threatColor
+            )
+
+            statusPill(
+                icon: "circle.fill",
+                text: modeText,
+                color: modeColor,
+                iconSize: 6
+            )
+
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+    }
+
+    private func statusPill(icon: String, text: String, color: Color, iconSize: CGFloat = 11) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: iconSize, weight: .semibold))
+                .foregroundStyle(color)
+
+            Text(text)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Constants.Colors.slate400)
         }
     }
 }
 
-// MeshStatusBar removed — replaced by ProtectStatusBar (see Components/ProtectStatusBar.swift)
+// MARK: - Modern Tab Picker
+
+private struct ModernTabPicker: View {
+    @Binding var selectedTab: HomeTab
+    @Namespace private var underline
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(HomeTab.allCases, id: \.self) { tab in
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        selectedTab = tab
+                    }
+                } label: {
+                    VStack(spacing: 8) {
+                        Text(tab.rawValue)
+                            .font(.system(size: 15, weight: selectedTab == tab ? .semibold : .medium))
+                            .foregroundStyle(selectedTab == tab ? .white : Constants.Colors.slate500)
+
+                        ZStack {
+                            Rectangle()
+                                .fill(Color.clear)
+                                .frame(height: 2)
+
+                            if selectedTab == tab {
+                                Rectangle()
+                                    .fill(Constants.Colors.blue500)
+                                    .frame(height: 2)
+                                    .matchedGeometryEffect(id: "underline", in: underline)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+}
 
 // MARK: - Friend Avatar Bubble
 
@@ -130,33 +164,33 @@ private struct FriendAvatarBubble: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 52, height: 52)
+                        .frame(width: 48, height: 48)
                         .overlay(
                             Text(String(friend.name.prefix(1)).uppercased())
-                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
                                 .foregroundStyle(.white)
                         )
 
                     if friend.isOnline {
                         Circle()
                             .fill(Constants.Colors.electricGreen)
-                            .frame(width: 14, height: 14)
+                            .frame(width: 12, height: 12)
                             .overlay(
                                 Circle()
-                                    .stroke(Color.black, lineWidth: 2.5)
+                                    .stroke(Constants.Colors.slate900, lineWidth: 2)
                             )
-                            .offset(x: 2, y: 2)
+                            .offset(x: 1, y: 1)
                     }
                 }
 
                 Text(friend.name.split(separator: " ").first.map(String.init) ?? friend.name)
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.7))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Constants.Colors.slate400)
                     .lineLimit(1)
             }
         }
         .accessibilityLabel("\(friend.name), \(friend.isOnline ? "online" : "offline")")
-        .frame(width: 64)
+        .frame(width: 60)
     }
 
     private func colorForName(_ name: String) -> Color {
@@ -166,26 +200,13 @@ private struct FriendAvatarBubble: View {
     }
 }
 
-// MARK: - Channel Card (Enhanced)
+// MARK: - Channel Card (Redesigned)
 
 private struct ChannelCard: View {
     let channel: ChirpChannel
     let isActive: Bool
     let friends: [ChirpFriend]
     let unreadCount: Int
-
-    @State private var borderPhase: CGFloat = 0.0
-    @State private var glowIntensity: Double = 0.0
-
-    private var gradientColors: [Color] {
-        let hash = abs(channel.name.hashValue)
-        let hue1 = Double(hash % 360) / 360.0
-        let hue2 = (hue1 + 0.08).truncatingRemainder(dividingBy: 1.0)
-        return [
-            Color(hue: hue1, saturation: 0.4, brightness: 0.15),
-            Color(hue: hue2, saturation: 0.35, brightness: 0.10),
-        ]
-    }
 
     private var channelAccessibilityLabel: String {
         var parts = [channel.name]
@@ -203,495 +224,84 @@ private struct ChannelCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // Top row: name + lock + badges
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        Text(channel.name)
-                            .font(.system(size: 22, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
+        HStack(spacing: 14) {
+            // Channel icon
+            ZStack {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(isActive ? Constants.Colors.blue500.opacity(0.15) : Constants.Colors.slate700.opacity(0.6))
+                    .frame(width: 50, height: 50)
 
-                        if channel.accessMode == .locked {
-                            Image(systemName: "lock.fill")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(.white.opacity(0.4))
-                        }
-                    }
+                Image(systemName: channel.accessMode == .locked ? "lock.fill" : "waveform")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(isActive ? Constants.Colors.blue500 : Constants.Colors.slate400)
+            }
 
-                    // Monospaced frequency readout
-                    Text("CH-\(String(format: "%03d", abs(channel.name.hashValue) % 999))")
-                        .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        .foregroundStyle(Constants.Colors.amber.opacity(0.6))
+            // Channel info
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Text(channel.name)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
 
-                    // Time since creation + hop indicator
-                    HStack(spacing: 10) {
-                        Text(channel.createdAt.relativeDisplay)
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.35))
-
-                        // Mesh hop reach indicator
-                        HStack(spacing: 3) {
-                            Image(systemName: "antenna.radiowaves.left.and.right")
-                                .font(.system(size: 9, weight: .bold))
-                            Text("\(channel.activePeerCount) peer\(channel.activePeerCount == 1 ? "" : "s")")
-                                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        }
-                        .foregroundStyle(Constants.Colors.amber.opacity(0.5))
+                    if isActive {
+                        Circle()
+                            .fill(Constants.Colors.electricGreen)
+                            .frame(width: 8, height: 8)
                     }
                 }
 
-                Spacer()
+                HStack(spacing: 8) {
+                    Text("\(channel.activePeerCount) peer\(channel.activePeerCount == 1 ? "" : "s")")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Constants.Colors.slate400)
 
-                // Badges column
-                VStack(alignment: .trailing, spacing: 6) {
-                    if isActive {
-                        LiveBadge()
-                    }
+                    Text("·")
+                        .foregroundStyle(Constants.Colors.slate600)
 
-                    if unreadCount > 0 {
-                        UnreadBadge(count: unreadCount)
-                    }
+                    Text(channel.createdAt.relativeDisplay)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Constants.Colors.slate500)
                 }
             }
 
-            // Bottom row: peer avatars + arrow
-            HStack(spacing: 0) {
-                peerAvatarStack
+            Spacer()
 
-                Spacer()
+            // Right side: unread badge or chevron
+            VStack(alignment: .trailing, spacing: 6) {
+                if unreadCount > 0 {
+                    Text("\(min(unreadCount, 99))\(unreadCount > 99 ? "+" : "")")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(
+                            Capsule()
+                                .fill(Constants.Colors.blue500)
+                        )
+                }
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.3))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Constants.Colors.slate600)
             }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(channelAccessibilityLabel)
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier(AccessibilityID.channelCard)
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [Color.black.opacity(0.55), Color.black.opacity(0.2)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(Constants.Colors.amber.opacity(isActive ? 0.12 : 0.06))
-                )
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .strokeBorder(
-                    isActive
-                        ? LinearGradient(
-                            colors: [Constants.Colors.amber.opacity(0.6), Constants.Colors.amber.opacity(0.2), Constants.Colors.amber.opacity(0.5)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                        : LinearGradient(
-                            colors: [Color.white.opacity(0.08), Color.white.opacity(0.03)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        ),
-                    lineWidth: isActive ? 2 : 1
-                )
-        )
-        .shadow(
-            color: isActive ? Constants.Colors.amber.opacity(0.25) : Color.black.opacity(0.3),
-            radius: isActive ? 20 : 8,
-            y: 4
-        )
-        .onAppear {
-            guard isActive else { return }
-            withAnimation(
-                .easeInOut(duration: 2.0)
-                    .repeatForever(autoreverses: true)
-            ) {
-                glowIntensity = 1.0
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var peerAvatarStack: some View {
-        let peerNames = channel.peers.prefix(4)
-        let overflow = max(0, channel.peers.count - 4)
-
-        HStack(spacing: -10) {
-            ForEach(Array(peerNames.enumerated()), id: \.element.id) { index, peer in
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                peerColor(peer.name),
-                                peerColor(peer.name).opacity(0.6),
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 32, height: 32)
-                    .overlay(
-                        Text(String(peer.name.prefix(1)).uppercased())
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                    )
-                    .overlay(
-                        Circle()
-                            .stroke(Color.black, lineWidth: 2)
-                    )
-                    .zIndex(Double(4 - index))
-            }
-
-            if overflow > 0 {
-                Circle()
-                    .fill(Color.white.opacity(0.12))
-                    .frame(width: 32, height: 32)
-                    .overlay(
-                        Text("+\(overflow)")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.7))
-                    )
-                    .overlay(
-                        Circle()
-                            .stroke(Color.black, lineWidth: 2)
-                    )
-            }
-        }
-    }
-
-    private func peerColor(_ name: String) -> Color {
-        let hash = abs(name.hashValue)
-        let hue = Double(hash % 360) / 360.0
-        return Color(hue: hue, saturation: 0.5, brightness: 0.6)
-    }
-}
-
-// MARK: - Unread Badge
-
-private struct UnreadBadge: View {
-    let count: Int
-
-    var body: some View {
-        Text("\(min(count, 99))\(count > 99 ? "+" : "")")
-            .font(.system(size: 11, weight: .black, design: .rounded))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(
-                Capsule()
-                    .fill(Constants.Colors.amber)
-            )
-            .accessibilityLabel("\(count) unread message\(count == 1 ? "" : "s")")
-    }
-}
-
-// MARK: - Live Badge
-
-private struct LiveBadge: View {
-    @State private var glowing = false
-
-    var body: some View {
-        HStack(spacing: 5) {
-            Circle()
-                .fill(Constants.Colors.hotRed)
-                .frame(width: 7, height: 7)
-                .shadow(color: Constants.Colors.hotRed.opacity(glowing ? 0.8 : 0.2), radius: 4)
-
-            Text("LIVE")
-                .font(.system(size: 10, weight: .black, design: .rounded))
-                .foregroundStyle(.white)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
-        .background(
-            Capsule()
-                .fill(Constants.Colors.hotRed.opacity(0.2))
-                .overlay(
-                    Capsule()
-                        .stroke(Constants.Colors.hotRed.opacity(0.4), lineWidth: 0.5)
-                )
-        )
-        .onAppear {
-            withAnimation(
-                .easeInOut(duration: 1.0)
-                    .repeatForever(autoreverses: true)
-            ) {
-                glowing = true
-            }
-        }
-    }
-}
-
-// MARK: - Mesh Network Illustration (Empty State)
-
-private struct MeshNetworkIllustration: View {
-    @State private var nodePositions: [(CGFloat, CGFloat)] = [
-        (0.2, 0.3), (0.5, 0.15), (0.8, 0.35),
-        (0.35, 0.65), (0.65, 0.7), (0.5, 0.5),
-    ]
-    @State private var lineOpacity: Double = 0.0
-    @State private var nodeScale: CGFloat = 0.0
-
-    var body: some View {
-        ZStack {
-            // Connection lines
-            Canvas { context, size in
-                let points = nodePositions.map { CGPoint(x: $0.0 * size.width, y: $0.1 * size.height) }
-                let connections: [(Int, Int)] = [
-                    (0, 5), (1, 5), (2, 5), (3, 5), (4, 5),
-                    (0, 1), (1, 2), (3, 4), (0, 3),
-                ]
-
-                for (a, b) in connections {
-                    var path = Path()
-                    path.move(to: points[a])
-                    path.addLine(to: points[b])
-                    context.stroke(
-                        path,
-                        with: .color(Constants.Colors.amber.opacity(lineOpacity * 0.3)),
-                        lineWidth: 1
-                    )
-                }
-            }
-
-            // Nodes
-            ForEach(0..<nodePositions.count, id: \.self) { index in
-                let pos = nodePositions[index]
-                let isCenter = index == 5
-                Circle()
-                    .fill(
-                        isCenter
-                            ? Constants.Colors.amber.opacity(0.8)
-                            : Constants.Colors.amber.opacity(0.4)
-                    )
-                    .frame(width: isCenter ? 12 : 8, height: isCenter ? 12 : 8)
-                    .shadow(color: Constants.Colors.amber.opacity(0.4), radius: isCenter ? 8 : 4)
-                    .scaleEffect(nodeScale)
-                    .position(
-                        x: pos.0 * 180,
-                        y: pos.1 * 120
-                    )
-            }
-        }
-        .frame(width: 180, height: 120)
-        .onAppear {
-            withAnimation(.spring(response: 0.8, dampingFraction: 0.6).delay(0.2)) {
-                nodeScale = 1.0
-            }
-            withAnimation(.easeIn(duration: 1.2).delay(0.5)) {
-                lineOpacity = 1.0
-            }
-        }
-    }
-}
-
-// MARK: - Enhanced Empty State
-
-private struct ChannelEmptyState: View {
-    let onTap: () -> Void
-
-    @State private var floatOffset: CGFloat = 0.0
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Spacer()
-                .frame(height: 40)
-
-            // Mesh network illustration
-            MeshNetworkIllustration()
-                .offset(y: floatOffset)
-
-            Spacer()
-                .frame(height: 20)
-
-            // Perch birds mascot
-            PerchBirdsView(size: 120, isAnimating: true)
-                .offset(y: floatOffset * 0.6)
-
-            Spacer()
-                .frame(height: 28)
-
-            VStack(spacing: 12) {
-                Text(String(localized: "home.emptyState.title"))
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-
-                Text(String(localized: "home.emptyState.subtitle"))
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.4))
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(3)
-            }
-
-            Spacer()
-                .frame(height: 36)
-
-            // CTA card
-            Button(action: onTap) {
-                HStack(spacing: 16) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(Constants.Colors.amber.opacity(0.15))
-                            .frame(width: 52, height: 52)
-
-                        Image(systemName: "plus.bubble.fill")
-                            .font(.system(size: 22, weight: .medium))
-                            .foregroundStyle(Constants.Colors.amber)
-                    }
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(String(localized: "home.emptyState.createChannel"))
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-
-                        Text(String(localized: "home.emptyState.createChannelSubtitle"))
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.4))
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "arrow.right.circle.fill")
-                        .font(.system(size: 24, weight: .medium))
-                        .foregroundStyle(Constants.Colors.amber.opacity(0.7))
-                }
-                .padding(18)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(.ultraThinMaterial)
-                        .environment(\.colorScheme, .dark)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(Constants.Colors.amber.opacity(0.2), lineWidth: 0.5)
-                        )
-                )
-                .shadow(color: Constants.Colors.amber.opacity(0.1), radius: 16, y: 4)
-            }
-            .padding(.horizontal, 20)
-            .accessibilityLabel("Create your first channel")
-
-            Spacer()
-        }
-        .onAppear {
-            withAnimation(
-                .easeInOut(duration: 3.0)
-                    .repeatForever(autoreverses: true)
-            ) {
-                floatOffset = -8
-            }
-        }
-    }
-}
-
-// MARK: - Quick Action Button
-
-private struct QuickActionButton: View {
-    let icon: String
-    let label: String
-    let color: Color
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 6) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.black.opacity(0.5), Color.black.opacity(0.2)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(color.opacity(0.1))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .strokeBorder(color.opacity(0.25), lineWidth: 1)
-                        )
-                        .frame(width: 50, height: 50)
-
-                    Image(systemName: icon)
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(color)
-                }
-                .shadow(color: color.opacity(0.2), radius: 8, y: 2)
-
-                Text(label)
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.5))
-            }
-        }
-        .accessibilityLabel(label)
-    }
-}
-
-// MARK: - Bottom Quick Actions
-
-private struct BottomQuickActions: View {
-    let onNewChannel: () -> Void
-    let onSOS: () -> Void
-    let gatewayAvailable: Bool
-    let onGateway: () -> Void
-
-    var body: some View {
-        HStack(spacing: 0) {
-            QuickActionButton(
-                icon: "plus.bubble.fill",
-                label: String(localized: "home.quickAction.newChannel"),
-                color: Constants.Colors.amber,
-                action: onNewChannel
-            )
-
-            Spacer()
-
-            QuickActionButton(
-                icon: "sos",
-                label: "SOS",
-                color: Constants.Colors.hotRed,
-                action: onSOS
-            )
-
-            if gatewayAvailable {
-                Spacer()
-
-                QuickActionButton(
-                    icon: "antenna.radiowaves.left.and.right",
-                    label: String(localized: "home.quickAction.gateway"),
-                    color: Constants.Colors.electricGreen,
-                    action: onGateway
-                )
-            }
-        }
-        .padding(.horizontal, 40)
+        .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .background(
-            Rectangle()
-                .fill(
-                    LinearGradient(
-                        colors: [Color.black.opacity(0.5), Color.black.opacity(0.3)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(isActive ? Constants.Colors.slate800 : Constants.Colors.slate800.opacity(0.6))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(
+                    isActive ? Constants.Colors.blue500.opacity(0.3) : Color.white.opacity(0.04),
+                    lineWidth: 1
                 )
-                .overlay(
-                    Rectangle()
-                        .fill(Color.white.opacity(0.03))
-                )
-                .overlay(alignment: .top) {
-                    Rectangle()
-                        .fill(Color.white.opacity(0.08))
-                        .frame(height: 0.5)
-                }
         )
     }
 }
@@ -705,6 +315,96 @@ private extension Date {
         if interval < 3600 { return "\(Int(interval / 60))m ago" }
         if interval < 86400 { return "\(Int(interval / 3600))h ago" }
         return "\(Int(interval / 86400))d ago"
+    }
+}
+
+// MARK: - Empty State (Redesigned)
+
+private struct ChannelEmptyState: View {
+    let peerCount: Int
+    let onTap: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer()
+                .frame(height: 48)
+
+            // Device readiness card
+            VStack(spacing: 20) {
+                Image(systemName: "antenna.radiowaves.left.and.right")
+                    .font(.system(size: 40, weight: .light))
+                    .foregroundStyle(Constants.Colors.slate500)
+
+                VStack(spacing: 8) {
+                    Text(String(localized: "home.emptyState.title"))
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(.white)
+
+                    Text(String(localized: "home.emptyState.subtitle"))
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundStyle(Constants.Colors.slate400)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(2)
+                }
+
+                // Readiness indicators
+                VStack(spacing: 12) {
+                    readinessRow(icon: "wifi", label: "Wi-Fi Direct", ready: true)
+                    readinessRow(icon: "antenna.radiowaves.left.and.right", label: "Mesh Network", ready: peerCount > 0)
+                    readinessRow(icon: "lock.shield.fill", label: "Encryption", ready: true)
+                }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Constants.Colors.slate800.opacity(0.5))
+                )
+            }
+            .padding(.horizontal, 40)
+
+            Spacer()
+                .frame(height: 32)
+
+            // Create channel button
+            Button(action: onTap) {
+                HStack(spacing: 12) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .semibold))
+
+                    Text(String(localized: "home.emptyState.createChannel"))
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Constants.Colors.blue500)
+                )
+            }
+            .padding(.horizontal, 40)
+            .accessibilityLabel("Create your first channel")
+
+            Spacer()
+        }
+    }
+
+    private func readinessRow(icon: String, label: String, ready: Bool) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Constants.Colors.slate400)
+                .frame(width: 20)
+
+            Text(label)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Constants.Colors.slate400)
+
+            Spacer()
+
+            Image(systemName: ready ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(ready ? Constants.Colors.electricGreen : Constants.Colors.slate600)
+        }
     }
 }
 
@@ -802,6 +502,14 @@ private struct SOSToolbarButton: View {
     }
 }
 
+// MARK: - Home Tab Enum
+
+enum HomeTab: String, CaseIterable {
+    case channels = "Channels"
+    case protect = "Protect"
+    case files = "Files"
+}
+
 // MARK: - Home View
 
 struct HomeView: View {
@@ -817,13 +525,6 @@ struct HomeView: View {
     @State private var sosHoldProgress: CGFloat = 0
     @State private var pendingMessageCount: Int = 0
     @State private var selectedTab: HomeTab = .channels
-    @Namespace private var tabAnimation
-
-    private enum HomeTab: String, CaseIterable {
-        case channels = "Channels"
-        case protect = "Protect"
-        case files = "Files"
-    }
 
     private var connectionStatus: ConnectionStatus {
         let mpPeers = appState.connectedPeerCount
@@ -835,68 +536,35 @@ struct HomeView: View {
         return .searching
     }
 
-    // MARK: - Tab Picker
-
-    private var homeTabPicker: some View {
-        HStack(spacing: Constants.Layout.smallSpacing) {
-            ForEach(HomeTab.allCases, id: \.self) { tab in
-                Button {
-                    withAnimation(.spring(response: Constants.Animations.springResponse, dampingFraction: Constants.Animations.springDamping)) {
-                        selectedTab = tab
-                    }
-                } label: {
-                    Text(tab.rawValue)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(selectedTab == tab ? .white : .white.opacity(0.5))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background {
-                            if selectedTab == tab {
-                                Capsule()
-                                    .fill(Constants.Colors.amber)
-                                    .matchedGeometryEffect(id: "tabIndicator", in: tabAnimation)
-                            }
-                        }
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, Constants.Layout.horizontalPadding)
-        .padding(.vertical, 10)
-    }
-
     var body: some View {
         NavigationStack {
             ZStack {
-                // Deep dark background with subtle navy gradient
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.02, green: 0.02, blue: 0.06),
-                        Color.black,
-                        Color(red: 0.01, green: 0.01, blue: 0.04),
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
+                // Dark blue-black background
+                Constants.Colors.slate900
+                    .ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    // Glass header bar
-                    GlassHeaderBar(
+                    // Compact header with callsign + mesh status
+                    CompactHeader(
                         callsign: appState.callsign,
                         peerCount: appState.connectedPeerCount
                     )
 
-                    // Protect status bar
-                    ProtectStatusBar(
+                    // Inline status strip
+                    InlineStatusStrip(
                         peerCount: appState.connectedPeerCount,
                         threatCount: appState.bleScanner.threatDevices.count,
                         isScanning: appState.bleScanner.isScanning,
                         isEmergencyActive: EmergencyMode.shared.isActive
                     )
 
+                    Divider()
+                        .background(Constants.Colors.slate700)
+                        .padding(.horizontal, 20)
+
                     // Tab picker
-                    homeTabPicker
+                    ModernTabPicker(selectedTab: $selectedTab)
+                        .padding(.top, 4)
 
                     // Tab content
                     switch selectedTab {
@@ -915,14 +583,32 @@ struct HomeView: View {
                     case .files:
                         FilesTabView()
                     }
+                }
 
-                    // Bottom quick actions
-                    BottomQuickActions(
-                        onNewChannel: { showChannelCreation = true },
-                        onSOS: { showSOSConfirm = true },
-                        gatewayAvailable: MeshGateway.shared.gatewayAvailable,
-                        onGateway: { showGatewayMessage = true }
-                    )
+                // FAB for new channel (channels tab only)
+                if selectedTab == .channels {
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            Button {
+                                showChannelCreation = true
+                            } label: {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 22, weight: .semibold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 56, height: 56)
+                                    .background(
+                                        Circle()
+                                            .fill(Constants.Colors.blue500)
+                                            .shadow(color: Constants.Colors.blue500.opacity(0.4), radius: 12, y: 4)
+                                    )
+                            }
+                            .accessibilityLabel("New Channel")
+                            .padding(.trailing, 20)
+                            .padding(.bottom, 24)
+                        }
+                    }
                 }
 
                 // Emergency mode overlay -- always on top
@@ -930,27 +616,44 @@ struct HomeView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    NavigationLink {
-                        MeshMapView()
-                    } label: {
-                        Image(systemName: "point.3.connected.trianglepath.dotted")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(Constants.Colors.amber)
+                    HStack(spacing: 12) {
+                        NavigationLink {
+                            MeshMapView()
+                        } label: {
+                            Image(systemName: "point.3.connected.trianglepath.dotted")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(Constants.Colors.slate400)
+                        }
+                        .accessibilityLabel("Mesh Map")
+                        .accessibilityIdentifier(AccessibilityID.meshMapButton)
+
+                        if MeshGateway.shared.gatewayAvailable {
+                            Button {
+                                showGatewayMessage = true
+                            } label: {
+                                Image(systemName: "antenna.radiowaves.left.and.right")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundStyle(Constants.Colors.electricGreen)
+                            }
+                            .accessibilityLabel("Gateway")
+                        }
                     }
-                    .accessibilityLabel("Mesh Map")
-                    .accessibilityIdentifier(AccessibilityID.meshMapButton)
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink {
-                        SettingsView()
-                    } label: {
-                        Image(systemName: "gearshape.fill")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(.secondary)
+                    HStack(spacing: 12) {
+                        SOSToolbarButton(showConfirm: $showSOSConfirm)
+
+                        NavigationLink {
+                            SettingsView()
+                        } label: {
+                            Image(systemName: "gearshape.fill")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(Constants.Colors.slate400)
+                        }
+                        .accessibilityLabel("Settings")
+                        .accessibilityIdentifier(AccessibilityID.settingsButton)
                     }
-                    .accessibilityLabel("Settings")
-                    .accessibilityIdentifier(AccessibilityID.settingsButton)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -998,13 +701,15 @@ struct HomeView: View {
             // Section header with "See All" link
             HStack {
                 Text(String(localized: "home.friends.title"))
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Constants.Colors.slate400)
+                    .textCase(.uppercase)
+                    .tracking(0.5)
 
                 if !appState.friendsManager.onlineFriends.isEmpty {
                     Text(String(localized: "home.friends.online \(appState.friendsManager.onlineFriends.count)"))
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Constants.Colors.electricGreen.opacity(0.7))
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Constants.Colors.electricGreen.opacity(0.8))
                 }
 
                 Spacer()
@@ -1013,8 +718,8 @@ struct HomeView: View {
                     FriendsView()
                 } label: {
                     Text(String(localized: "home.friends.seeAll"))
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(Constants.Colors.amber.opacity(0.7))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Constants.Colors.blue500)
                 }
                 .accessibilityLabel("See all friends")
             }
@@ -1039,10 +744,6 @@ struct HomeView: View {
                 .padding(.bottom, 12)
             }
         }
-        .background(
-            Rectangle()
-                .fill(Color.white.opacity(0.02))
-        )
     }
 
     // MARK: - Channel List
@@ -1050,11 +751,11 @@ struct HomeView: View {
     private var channelListView: some View {
         ScrollView {
             if appState.channelManager.channels.isEmpty {
-                ChannelEmptyState {
+                ChannelEmptyState(peerCount: appState.connectedPeerCount) {
                     showChannelCreation = true
                 }
             } else {
-                LazyVStack(spacing: 16) {
+                LazyVStack(spacing: 8) {
                     ForEach(appState.channelManager.channels) { channel in
                         let isActive = appState.channelManager.activeChannel?.id == channel.id
 
@@ -1080,8 +781,8 @@ struct HomeView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 20)
-                .padding(.bottom, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 80) // space for FAB
             }
         }
         .refreshable {
