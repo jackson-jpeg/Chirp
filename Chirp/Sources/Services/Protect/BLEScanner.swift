@@ -45,6 +45,7 @@ final class BLEScanner: NSObject {
     private var centralManager: CBCentralManager?
     private var scanTimer: Timer?
     private var restTimer: Timer?
+    private var sortDebounceTask: Task<Void, Never>?
     private var deviceMap: [String: BLEDevice] = [:]
 
     private let logger = Logger(subsystem: Constants.subsystem, category: "BLEScanner")
@@ -180,12 +181,20 @@ final class BLEScanner: NSObject {
             deviceMap[peripheralID] = device
         }
 
-        // Rebuild sorted list: highest threat first, then by RSSI (strongest first)
-        discoveredDevices = deviceMap.values.sorted { a, b in
-            if a.threatLevel != b.threatLevel {
-                return a.threatLevel > b.threatLevel
+        // Debounce sort — BLE callbacks fire rapidly, sorting every time is wasteful
+        scheduleSortUpdate()
+    }
+
+    /// Debounced sort — coalesces rapid BLE discovery callbacks into one sort per 0.5s.
+    private func scheduleSortUpdate() {
+        sortDebounceTask?.cancel()
+        sortDebounceTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled, let self else { return }
+            self.discoveredDevices = self.deviceMap.values.sorted { a, b in
+                if a.threatLevel != b.threatLevel { return a.threatLevel > b.threatLevel }
+                return a.rssi > b.rssi
             }
-            return a.rssi > b.rssi
         }
     }
 
@@ -231,13 +240,8 @@ final class BLEScanner: NSObject {
             }
         }
 
-        // Rebuild sorted list
-        discoveredDevices = deviceMap.values.sorted { a, b in
-            if a.threatLevel != b.threatLevel {
-                return a.threatLevel > b.threatLevel
-            }
-            return a.rssi > b.rssi
-        }
+        // Debounced sort
+        scheduleSortUpdate()
 
         logger.info("Received mesh scan report from \(report.senderName, privacy: .public) — \(report.devices.count) devices")
     }
