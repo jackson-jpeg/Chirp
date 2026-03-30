@@ -32,17 +32,16 @@ struct QuickReplyBar: View {
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
             }
-            .foregroundStyle(Constants.Colors.amber)
+            .foregroundStyle(Constants.Colors.textSecondary)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .background(
                 Capsule()
-                    .fill(.ultraThinMaterial)
-                    .opacity(0.7)
+                    .fill(Constants.Colors.surfaceGlass)
             )
             .overlay(
                 Capsule()
-                    .strokeBorder(Constants.Colors.amber.opacity(0.25), lineWidth: 0.5)
+                    .strokeBorder(Constants.Colors.surfaceBorder, lineWidth: Constants.Layout.glassBorderWidth)
             )
         }
         .buttonStyle(.plain)
@@ -65,27 +64,27 @@ struct QuickReplyBar: View {
         VStack(spacing: 8) {
             Image(systemName: reply.icon)
                 .font(.system(size: 28))
-                .foregroundStyle(Constants.Colors.amber)
+                .foregroundStyle(Constants.Colors.blue500)
 
             Text(reply.label)
                 .font(.system(.headline, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(Constants.Colors.textPrimary)
 
             switch reply.type {
             case .text(let message):
                 Text("\"\(message)\"")
                     .font(.system(.subheadline))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(Constants.Colors.textSecondary)
                     .italic()
             case .audioFile(let filename):
                 Text(filename)
                     .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .foregroundStyle(Constants.Colors.textTertiary)
             }
         }
         .padding(16)
         .frame(minWidth: 160)
-        .background(.ultraThinMaterial)
+        .background(Constants.Colors.cardBackground)
         .presentationCompactAdaptation(.popover)
     }
 }

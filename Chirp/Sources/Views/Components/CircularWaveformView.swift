@@ -21,10 +21,10 @@ struct CircularWaveformView: View {
 
     private var brightColor: Color {
         switch pttState {
-        case .idle: Color(hex: 0xFFD966)
-        case .transmitting: Color(hex: 0xFF6B6B)
-        case .receiving: Color(hex: 0x6EE7A0)
-        case .denied: Color(hex: 0x888888)
+        case .idle: Constants.Colors.amber
+        case .transmitting: Constants.Colors.hotRed
+        case .receiving: Constants.Colors.electricGreen
+        case .denied: Constants.Colors.slate500
         }
     }
 

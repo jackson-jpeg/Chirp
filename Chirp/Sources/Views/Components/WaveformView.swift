@@ -25,13 +25,13 @@ struct WaveformView: View {
     private var brightColor: Color {
         switch pttState {
         case .idle:
-            return Color(hex: 0xFFD966)
+            return Constants.Colors.amber
         case .transmitting:
-            return Color(hex: 0xFF6B6B)
+            return Constants.Colors.hotRed
         case .receiving:
-            return Color(hex: 0x6EE7A0)
+            return Constants.Colors.electricGreen
         case .denied:
-            return Color(hex: 0xFF6B6B)
+            return Constants.Colors.hotRed
         }
     }
 

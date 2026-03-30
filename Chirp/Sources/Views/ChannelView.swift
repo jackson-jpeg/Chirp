@@ -221,13 +221,6 @@ struct ChannelView: View {
             }
             .padding(.bottom, Constants.Layout.spacing)
 
-            // Idle birds — friendly waiting state above waveform
-            if pttState == .idle {
-                PerchBirdsView(size: 100, isAnimating: true)
-                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
-                    .padding(.bottom, Constants.Layout.smallSpacing)
-            }
-
             // Central composition: peers around waveform around PTT
             centralComposition
                 .padding(.bottom, Constants.Layout.smallSpacing)
