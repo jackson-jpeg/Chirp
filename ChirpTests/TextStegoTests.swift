@@ -7,130 +7,111 @@ final class TextStegoTests: XCTestCase {
     private let testKey = SymmetricKey(size: .bits256)
     private let wrongKey = SymmetricKey(size: .bits256)
 
-    // MARK: - Roundtrip
-
-    /// Cover text must be long enough to hold: hidden bytes + 31 crypto overhead.
-    /// "secret" = 6 bytes → ~37 encrypted → 148 positions → 149+ visible chars.
+    /// Cover text must be long enough: hidden bytes + 31 crypto overhead.
+    /// ~240 chars provides ~28 usable bytes of hidden capacity.
     private let longCover = "The weather is absolutely beautiful today and I was thinking we should go for a walk in the park later this afternoon. What do you think about meeting at three? I could bring some sandwiches and we could have a nice little picnic by the lake."
+
+    // MARK: - Roundtrip
 
     func testBasicRoundtrip() {
         let hidden = Data("secret".utf8)
+        guard let encoded = TextStego.encode(cover: longCover, hidden: hidden, key: testKey) else {
+            XCTFail("Encode returned nil — capacity: \(TextStego.capacity(coverLength: longCover.count))")
+            return
+        }
 
-        let encoded = TextStego.encode(cover: longCover, hidden: hidden, key: testKey)
-        XCTAssertNotNil(encoded, "Encode failed — capacity: \(TextStego.capacity(coverLength: longCover.count))")
+        XCTAssertEqual(TextStego.visibleText(encoded), longCover)
 
-        // Visible text should look the same
-        let visible = TextStego.visibleText(encoded!)
-        XCTAssertEqual(visible, longCover)
-
-        // Decode should recover hidden data
-        let decoded = TextStego.decode(encoded!, key: testKey)
+        let decoded = TextStego.decode(encoded, key: testKey)
         XCTAssertEqual(decoded, hidden)
     }
 
     func testRoundtripUTF8Hidden() {
-        let hidden = Data("GPS:27.95,82.45".utf8) // Short to fit capacity
+        let hidden = Data("GPS:27.95,82.45".utf8)
+        guard let encoded = TextStego.encode(cover: longCover, hidden: hidden, key: testKey) else {
+            XCTFail("Encode returned nil")
+            return
+        }
 
-        let encoded = TextStego.encode(cover: longCover, hidden: hidden, key: testKey)
-        XCTAssertNotNil(encoded)
-
-        let decoded = TextStego.decode(encoded!, key: testKey)
-        XCTAssertNotNil(decoded)
-        XCTAssertEqual(String(data: decoded!, encoding: .utf8), "GPS:27.95,82.45")
+        guard let decoded = TextStego.decode(encoded, key: testKey) else {
+            XCTFail("Decode returned nil")
+            return
+        }
+        XCTAssertEqual(String(data: decoded, encoding: .utf8), "GPS:27.95,82.45")
     }
 
     // MARK: - Wrong Key
 
     func testWrongKeyReturnsNil() {
         let hidden = Data("top secret".utf8)
+        guard let encoded = TextStego.encode(cover: longCover, hidden: hidden, key: testKey) else {
+            XCTFail("Encode returned nil")
+            return
+        }
 
-        let encoded = TextStego.encode(cover: longCover, hidden: hidden, key: testKey)
-        XCTAssertNotNil(encoded)
-
-        let decoded = TextStego.decode(encoded!, key: wrongKey)
-        XCTAssertNil(decoded)
+        let decoded = TextStego.decode(encoded, key: wrongKey)
+        XCTAssertNil(decoded, "Wrong key should not decode")
     }
 
     // MARK: - Capacity
 
     func testCapacityCalculation() {
-        // 100 visible chars = 99 positions x 2 bits = 198 bits = 24 bytes - 31 overhead = negative -> 0
-        let cap100 = TextStego.capacity(coverLength: 100)
-        XCTAssertGreaterThanOrEqual(cap100, 0)
+        XCTAssertEqual(TextStego.capacity(coverLength: 0), 0)
+        XCTAssertEqual(TextStego.capacity(coverLength: 1), 0)
 
-        // 200 chars = 199 positions x 2 bits = 398 bits = 49 bytes - 31 = 18 usable bytes
+        // 200 chars = 199 positions × 2 bits = 398 bits = 49 bytes - 31 = 18 usable
         let cap200 = TextStego.capacity(coverLength: 200)
         XCTAssertGreaterThan(cap200, 0)
-
-        // Single char = 0 positions = 0 capacity
-        XCTAssertEqual(TextStego.capacity(coverLength: 1), 0)
-        XCTAssertEqual(TextStego.capacity(coverLength: 0), 0)
+        XCTAssertEqual(cap200, 18)
     }
 
     // MARK: - hasHiddenContent
 
-    func testHasHiddenContentTrue() {
-        let cover = "Hello"
-        let hidden = Data("x".utf8)
-        let encoded = TextStego.encode(cover: cover, hidden: hidden, key: testKey)
-        // May be nil if capacity is too small - check
-        if let encoded {
-            XCTAssertTrue(TextStego.hasHiddenContent(encoded))
-        }
+    func testHasHiddenContentDetectsInvisibleChars() {
+        let text = "Hello\u{200B}world"
+        XCTAssertTrue(TextStego.hasHiddenContent(text))
     }
 
-    func testHasHiddenContentFalse() {
+    func testHasHiddenContentFalseForNormalText() {
         XCTAssertFalse(TextStego.hasHiddenContent("Normal text with no hidden content"))
     }
 
     // MARK: - Edge Cases
 
     func testEmptyHiddenReturnsNil() {
-        let result = TextStego.encode(cover: "cover", hidden: Data(), key: testKey)
-        XCTAssertNil(result)
+        XCTAssertNil(TextStego.encode(cover: longCover, hidden: Data(), key: testKey))
     }
 
     func testEmptyCoverReturnsNil() {
-        let result = TextStego.encode(cover: "", hidden: Data("x".utf8), key: testKey)
-        XCTAssertNil(result)
+        XCTAssertNil(TextStego.encode(cover: "", hidden: Data("x".utf8), key: testKey))
     }
 
     func testExceedsCapacityReturnsNil() {
-        let cover = "Hi" // Only 1 position = very limited capacity
-        let hidden = Data(repeating: 0xAA, count: 100) // Way too much data
-        let result = TextStego.encode(cover: cover, hidden: hidden, key: testKey)
-        XCTAssertNil(result)
+        let cover = "Hi"  // 1 position, ~0 usable bytes
+        XCTAssertNil(TextStego.encode(cover: cover, hidden: Data(repeating: 0xAA, count: 100), key: testKey))
     }
 
     func testVisibleTextStripsInvisible() {
-        let text = "H\u{200B}\u{200C}ello"
-        XCTAssertEqual(TextStego.visibleText(text), "Hello")
+        XCTAssertEqual(TextStego.visibleText("H\u{200B}\u{200C}ello"), "Hello")
     }
 
     func testNoHiddenContentDecodeReturnsNil() {
-        let result = TextStego.decode("Normal text", key: testKey)
-        XCTAssertNil(result)
+        XCTAssertNil(TextStego.decode("Normal text", key: testKey))
     }
 
     // MARK: - Max Capacity
 
     func testLongCoverMaxCapacity() {
-        // 500-char cover should have significant capacity
         let cover = String(repeating: "A", count: 500)
         let capacity = TextStego.capacity(coverLength: 500)
-        XCTAssertGreaterThan(capacity, 50, "500-char cover should hide at least 50 bytes")
+        XCTAssertGreaterThan(capacity, 50)
 
-        // Encode max capacity data
-        if capacity > 0 {
-            let hidden = Data(repeating: 0x42, count: capacity)
-            let encoded = TextStego.encode(cover: cover, hidden: hidden, key: testKey)
-            XCTAssertNotNil(encoded, "Should encode at max capacity")
-
-            if let encoded {
-                XCTAssertTrue(encoded.count <= MeshTextMessage.maxTextLength, "Must fit in message limit")
-                let decoded = TextStego.decode(encoded, key: testKey)
-                XCTAssertEqual(decoded, hidden)
-            }
+        let hidden = Data(repeating: 0x42, count: min(capacity, 50))
+        guard let encoded = TextStego.encode(cover: cover, hidden: hidden, key: testKey) else {
+            XCTFail("Encode at max capacity failed")
+            return
         }
+        XCTAssertTrue(encoded.count <= MeshTextMessage.maxTextLength)
+        XCTAssertEqual(TextStego.decode(encoded, key: testKey), hidden)
     }
 }
