@@ -193,11 +193,6 @@ final class AppState {
         let cicadaService = CICADAService()
         self.cicadaService = cicadaService
 
-        // Wire CICADA key derivation
-        cicadaService.channelCryptoProvider = { [weak self] channelID in
-            self?.channelManager.getChannelCrypto(for: channelID)
-        }
-
         // Create MultipeerConnectivity transport (works on any iPhone, zero friction)
         let displayName = UserDefaults.standard.string(forKey: "com.chirpchirp.callsign") ?? UIDevice.current.name
         let transport = MultipeerTransport(displayName: displayName, meshRouter: router, localPeerID: peerID, localPeerName: self.localPeerName)
@@ -215,6 +210,11 @@ final class AppState {
 
         // Capture channel manager reference for closures below
         let chanMgrRef = self.channelManager
+
+        // Wire CICADA key derivation (after all properties initialized)
+        cicadaService.channelCryptoProvider = { [weak self] channelID in
+            self?.channelManager.getChannelCrypto(for: channelID)
+        }
 
         // Wire pheromone router send callback -- ACKs go out on both transports
         pheromoneRouter.onSendPacket = { payload, channelID in
