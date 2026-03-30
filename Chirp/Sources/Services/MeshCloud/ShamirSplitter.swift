@@ -109,15 +109,19 @@ enum ShamirSplitter {
         return expTable[Int(logTable[Int(a)]) + 255 - Int(logTable[Int(b)])]
     }
 
-    // Precomputed log/exp tables for GF(256) with generator 2 and polynomial 0x11B.
+    // Precomputed log/exp tables for GF(256) with polynomial 0x11D
+    // (x^8 + x^4 + x^3 + x^2 + 1) and generator 2.
+    // With polynomial 0x11D, generator 2 IS primitive (produces full 255-element cycle).
     // expTable has 512 entries so that (logA + logB) can index directly without modulo.
     private static let expTable: [UInt8] = {
         var table = [UInt8](repeating: 0, count: 512)
-        var x: UInt16 = 1
+        var x: Int = 1
         for i in 0..<255 {
-            table[i] = UInt8(x)
-            x = x << 1
-            if x >= 256 { x ^= 0x11B }
+            table[i] = UInt8(x & 0xFF)
+            x <<= 1  // multiply by generator 2 (= shift left in GF)
+            if x & 0x100 != 0 {
+                x ^= 0x11D  // reduce modulo polynomial
+            }
         }
         // Duplicate the cycle for overflow-safe lookup
         for i in 255..<512 {
