@@ -256,11 +256,15 @@ struct PTTButtonView: View {
                     .onChanged { _ in
                         guard canInteract, !isPressed else { return }
                         isPressed = true
+                        HapticsManager.shared.pttDown()
+                        SoundEffects.shared.playChirpBegin()
                         onPressDown()
                     }
                     .onEnded { _ in
                         guard isPressed else { return }
                         isPressed = false
+                        HapticsManager.shared.pttUp()
+                        SoundEffects.shared.playChirpEnd()
                         onPressUp()
                     }
             )
@@ -478,6 +482,8 @@ struct PTTButtonView: View {
     // MARK: - Denied Animation
 
     private func triggerDenied() {
+        HapticsManager.shared.denied()
+
         // Flash red hard
         deniedFlash = true
         withAnimation(.easeOut(duration: 0.3)) {

@@ -328,6 +328,7 @@ struct ChatView: View {
             textToSend = encoded
         }
 
+        HapticsManager.shared.pttUp()
         onSend(textToSend, replyingTo?.id)
         composedText = ""
         hiddenText = ""

@@ -88,7 +88,7 @@ struct SettingsView: View {
 
                 // Peer ID fingerprint
                 HStack(spacing: 8) {
-                    Image(systemName: "fingerprint")
+                    Image(systemName: "person.badge.key.fill")
                         .font(.system(size: 11))
                         .foregroundStyle(Constants.Colors.textTertiary)
 
@@ -443,7 +443,7 @@ struct SettingsView: View {
 
                 glassRow {
                     HStack(spacing: 12) {
-                        Image(systemName: "fingerprint")
+                        Image(systemName: "person.badge.key.fill")
                             .foregroundStyle(amber)
                             .frame(width: 24)
                         VStack(alignment: .leading, spacing: 2) {

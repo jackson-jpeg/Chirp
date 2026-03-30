@@ -975,6 +975,7 @@ struct ChannelView: View {
                     EmergencyBeacon.shared.deactivate()
                     toast = ToastItem(message: "SOS beacon stopped", type: .info)
                 } else {
+                    HapticsManager.shared.denied()
                     EmergencyBeacon.shared.activate(
                         senderID: appState.localPeerID,
                         senderName: appState.callsign

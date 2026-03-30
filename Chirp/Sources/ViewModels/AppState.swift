@@ -561,6 +561,16 @@ final class AppState {
                                     senderID: packet.originID.uuidString,
                                     channelID: packet.channelID
                                 )
+
+                                // Show local notification for background messages
+                                if let lastMsg = txtService.messagesByChannel[channelForACK]?.last {
+                                    let chName = chanMgr.channels.first(where: { $0.id == channelForACK })?.name ?? "Chirp"
+                                    NotificationService.shared.showMessageNotification(
+                                        from: lastMsg.senderName,
+                                        text: lastMsg.text,
+                                        channelName: chName
+                                    )
+                                }
                             }
 
                             // Try file transfer (FIL! / FLC! / FNK! prefixes)
@@ -603,7 +613,12 @@ final class AppState {
                             chorusSvc.handlePacket(packet.payload, fromPeer: packet.originID.uuidString, channelID: packet.channelID)
 
                             // SOS beacon (SOS! prefix)
+                            let sosCountBefore = EmergencyBeacon.shared.receivedAlerts.count
                             EmergencyBeacon.shared.handleReceivedSOSData(packet.payload)
+                            if EmergencyBeacon.shared.receivedAlerts.count > sosCountBefore,
+                               let sosMsg = EmergencyBeacon.shared.receivedAlerts.first {
+                                NotificationService.shared.showSOSNotification(from: sosMsg.senderName)
+                            }
 
                             if let message = try? MeshCodable.decoder.decode(FloorControlMessage.self, from: packet.payload) {
                                 floorCtrl.handleMessage(message)
@@ -714,6 +729,9 @@ final class AppState {
             localName: callsign,
             channels: channelIDs
         )
+
+        // Request notification permission for background message alerts
+        NotificationService.shared.requestPermission()
 
         // Request location permission and start updates for location sharing
         locationService.requestPermission()
@@ -870,6 +888,15 @@ final class AppState {
         let allPeers = Array(merged.values)
         let oldCount = connectedPeerCount
         connectedPeerCount = allPeers.count
+
+        // Play sound/haptic for peer join or leave
+        if allPeers.count > oldCount {
+            HapticsManager.shared.peerConnected()
+            SoundEffects.shared.playPeerJoined()
+        } else if allPeers.count < oldCount && oldCount > 0 {
+            HapticsManager.shared.peerDisconnected()
+            SoundEffects.shared.playPeerLeft()
+        }
 
         // Update active channel peers
         if let activeID = channelManager.activeChannel?.id {
