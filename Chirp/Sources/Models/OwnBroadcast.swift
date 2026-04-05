@@ -47,8 +47,8 @@ struct OwnBroadcast: Identifiable, Sendable {
         // ChirpChirp's own broadcasts
         broadcasts.append(OwnBroadcast(
             id: "chirpchirp-mc",
-            protocolName: "ChirpChirp Mesh",
-            description: "ChirpChirp advertises via Bonjour for MultipeerConnectivity mesh discovery",
+            protocolName: "ChirpChirps Mesh",
+            description: "ChirpChirps advertises via Bonjour for MultipeerConnectivity mesh discovery",
             riskLevel: .none,
             recommendation: "This is required for mesh networking. All mesh traffic is encrypted.",
             icon: "dot.radiowaves.left.and.right"

@@ -1049,7 +1049,7 @@ struct MeshMapView: View {
                             .font(Constants.Typography.body)
                             .foregroundStyle(Constants.Colors.textSecondary)
 
-                        Text("Nearby ChirpChirp devices will appear here")
+                        Text("Nearby ChirpChirps devices will appear here")
                             .font(Constants.Typography.caption)
                             .foregroundStyle(Constants.Colors.textTertiary)
 

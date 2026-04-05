@@ -71,18 +71,18 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
           - UIInterfaceOrientationPortraitUpsideDown
-        NSMicrophoneUsageDescription: "ChirpChirp uses your microphone for real-time voice communication with nearby devices."
-        NSCameraUsageDescription: "ChirpChirp uses your camera to capture and share media with nearby devices."
-        NSPhotoLibraryUsageDescription: "ChirpChirp accesses your photo library to share images with nearby devices."
-        NSPhotoLibraryAddUsageDescription: "ChirpChirp saves received images to your photo library."
+        NSMicrophoneUsageDescription: "ChirpChirps uses your microphone for real-time voice communication with nearby devices."
+        NSCameraUsageDescription: "ChirpChirps uses your camera to capture and share media with nearby devices."
+        NSPhotoLibraryUsageDescription: "ChirpChirps accesses your photo library to share images with nearby devices."
+        NSPhotoLibraryAddUsageDescription: "ChirpChirps saves received images to your photo library."
         ITSAppUsesNonExemptEncryption: false
-        NSBluetoothAlwaysUsageDescription: "ChirpChirp uses Bluetooth to discover nearby devices for peer-to-peer communication."
-        NSNearbyInteractionUsageDescription: "ChirpChirp uses Ultra-Wideband to precisely locate nearby mesh peers for indoor positioning."
-        NSMotionUsageDescription: "ChirpChirp uses motion sensors to improve positioning when GPS is unavailable."
-        NSSpeechRecognitionUsageDescription: "ChirpChirp uses speech recognition for real-time translation of voice communication."
-        NSLocationWhenInUseUsageDescription: "ChirpChirp uses your location to share your position with nearby peers."
-        NSLocationAlwaysAndWhenInUseUsageDescription: "ChirpChirp uses background location for emergency SOS broadcasting in critical situations."
-        NSLocalNetworkUsageDescription: "ChirpChirp uses your local network to connect directly to nearby devices without internet."
+        NSBluetoothAlwaysUsageDescription: "ChirpChirps uses Bluetooth to discover nearby devices for peer-to-peer communication."
+        NSNearbyInteractionUsageDescription: "ChirpChirps uses Ultra-Wideband to precisely locate nearby mesh peers for indoor positioning."
+        NSMotionUsageDescription: "ChirpChirps uses motion sensors to improve positioning when GPS is unavailable."
+        NSSpeechRecognitionUsageDescription: "ChirpChirps uses speech recognition for real-time translation of voice communication."
+        NSLocationWhenInUseUsageDescription: "ChirpChirps uses your location to share your position with nearby peers."
+        NSLocationAlwaysAndWhenInUseUsageDescription: "ChirpChirps uses background location for emergency SOS broadcasting in critical situations."
+        NSLocalNetworkUsageDescription: "ChirpChirps uses your local network to connect directly to nearby devices without internet."
         NSBonjourServices:
           - "_chirp-ptt._udp"
           - "_chirp-ptt._tcp"

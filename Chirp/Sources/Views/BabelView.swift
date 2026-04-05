@@ -6,8 +6,6 @@ import OSLog
 /// Displays a real-time translation feed with language pair selection,
 /// pipeline status, and PTT-style start/stop controls.
 struct BabelView: View {
-    @Environment(AppState.self) private var appState
-
     @Bindable var babelService: BabelService
 
     let localPeerID: String
@@ -372,7 +370,7 @@ struct BabelView: View {
 
                 Spacer()
 
-                Toggle("", isOn: Bindable(babelService).autoSpeak)
+                Toggle("", isOn: $babelService.autoSpeak)
                     .labelsHidden()
                     .tint(Constants.Colors.electricGreen)
             }

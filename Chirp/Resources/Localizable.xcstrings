@@ -277,7 +277,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Add me on ChirpChirp! My code: %@"
+            "value" : "Add me on ChirpChirps! My code: %@"
           }
         }
       }
@@ -672,10 +672,10 @@
         }
       }
     },
-    "ChirpChirp" : {
+    "ChirpChirps" : {
 
     },
-    "ChirpChirp %@" : {
+    "ChirpChirps %@" : {
 
     },
     "common.cancel" : {
@@ -1101,7 +1101,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Friends can add you with your ChirpChirp ID"
+            "value" : "Friends can add you with your ChirpChirps ID"
           }
         }
       }
@@ -1123,7 +1123,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Add friends to start talking instantly.\nShare your ChirpChirp code or discover\npeople nearby on the same network."
+            "value" : "Add friends to start talking instantly.\nShare your ChirpChirps code or discover\npeople nearby on the same network."
           }
         }
       }
@@ -1578,7 +1578,7 @@
     "Mesh Network" : {
 
     },
-    "Nearby ChirpChirp devices will appear here" : {
+    "Nearby ChirpChirps devices will appear here" : {
 
     },
     "No messages yet.\nSend the first one!" : {
@@ -1615,7 +1615,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ChirpChirp works when nothing else does. Your phone connects directly to nearby devices."
+            "value" : "ChirpChirps works when nothing else does. Your phone connects directly to nearby devices."
           }
         }
       }
@@ -1984,7 +1984,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rate ChirpChirp"
+            "value" : "Rate ChirpChirps"
           }
         }
       }
@@ -2160,7 +2160,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ensure Local Network is enabled in Settings → Privacy → Local Network → ChirpChirp"
+            "value" : "Ensure Local Network is enabled in Settings → Privacy → Local Network → ChirpChirps"
           }
         }
       }
@@ -2358,7 +2358,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"Hey Siri, push to talk with ChirpChirp\""
+            "value" : "\"Hey Siri, push to talk with ChirpChirps\""
           }
         }
       }
@@ -2433,7 +2433,7 @@
     "This device doesn't support Wi-Fi Aware.\nChirp requires iOS 26+ and compatible hardware." : {
 
     },
-    "Tip: You can also say \"Hey Siri, push to talk with ChirpChirp\" to start a session hands-free." : {
+    "Tip: You can also say \"Hey Siri, push to talk with ChirpChirps\" to start a session hands-free." : {
 
     },
     "Use your Action Button as a\nphysical push-to-talk trigger" : {

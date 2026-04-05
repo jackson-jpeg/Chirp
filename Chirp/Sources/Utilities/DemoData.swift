@@ -72,7 +72,7 @@ enum DemoData {
                             text: "Copy that. Signal is already gone up here", timestamp: now.addingTimeInterval(-480),
                             replyToID: nil, attachmentType: nil),
             MeshTextMessage(id: UUID(), senderID: localPeerID, senderName: localPeerName, channelID: channelID,
-                            text: "ChirpChirp still works though", timestamp: now.addingTimeInterval(-420),
+                            text: "ChirpChirps still works though", timestamp: now.addingTimeInterval(-420),
                             replyToID: nil, attachmentType: nil),
             MeshTextMessage(id: UUID(), senderID: "peer-4", senderName: "Priya", channelID: channelID,
                             text: "This is incredible. No signal and I can hear everyone", timestamp: now.addingTimeInterval(-360),

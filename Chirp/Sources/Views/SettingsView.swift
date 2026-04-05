@@ -38,7 +38,7 @@ struct SettingsView: View {
                 #endif
 
                 // Version footer
-                Text("ChirpChirp \(appVersion)")
+                Text("ChirpChirps \(appVersion)")
                     .font(Constants.Typography.monoSmall)
                     .foregroundStyle(Constants.Colors.textTertiary)
                     .padding(.top, 4)

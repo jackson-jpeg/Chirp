@@ -261,7 +261,7 @@ private struct TheMeshPage: View {
             Spacer()
 
             // Small wordmark
-            Text("ChirpChirp")
+            Text("ChirpChirps")
                 .font(.system(size: 16, weight: .bold, design: .rounded))
                 .foregroundStyle(Constants.Colors.amber.opacity(0.6))
                 .padding(.bottom, 24)

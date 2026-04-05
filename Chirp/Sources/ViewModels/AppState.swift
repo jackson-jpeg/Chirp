@@ -1187,7 +1187,7 @@ final class AppState {
         let channel = channelManager.activeChannel
         liveActivityManager.updateActivity(
             state: pttState,
-            channelName: channel?.name ?? "ChirpChirp",
+            channelName: channel?.name ?? "ChirpChirps",
             peerCount: channel?.activePeerCount ?? 0,
             inputLevel: Double(inputLevel)
         )

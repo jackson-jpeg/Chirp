@@ -173,9 +173,13 @@ final class BabelService {
             throw BabelError.speechRecognizerUnavailable
         }
 
-        // Configure translation session
+        // Configure translation session (non-fatal — falls back to original text)
         #if canImport(Translation)
-        try await configureTranslation(source: sourceLanguage, target: targetLanguage)
+        do {
+            try await configureTranslation(source: sourceLanguage, target: targetLanguage)
+        } catch {
+            logger.warning("Translation session setup failed, will send original text: \(error.localizedDescription)")
+        }
         #endif
 
         let session = BabelSession(
@@ -369,10 +373,11 @@ final class BabelService {
         let sourceLang = Locale.Language(identifier: source)
         let targetLang = Locale.Language(identifier: target)
 
-        translationSession = TranslationSession(
-            installedSource: sourceLang,
+        let configuration = TranslationSession.Configuration(
+            source: sourceLang,
             target: targetLang
         )
+        translationSession = try await TranslationSession(configuration: configuration)
         logger.info("Translation session configured: \(source) -> \(target)")
     }
     #endif
@@ -382,9 +387,7 @@ final class BabelService {
         guard let session = translationSession else {
             throw BabelError.translationSessionNotConfigured
         }
-        // TranslationSession is not Sendable but translate() is a read-only async call.
-        nonisolated(unsafe) let s = session
-        let response = try await s.translate(text)
+        let response = try await session.translate(text)
         return response.targetText
         #else
         logger.warning("Translation framework not available, returning original text")

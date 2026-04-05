@@ -52,15 +52,15 @@ struct ActionButtonSetupView: View {
                         setupStep(
                             number: 3,
                             icon: "magnifyingglass",
-                            title: "Find ChirpChirp",
-                            detail: "Search for \"Push to Talk\" or \"ChirpChirp\""
+                            title: "Find ChirpChirps",
+                            detail: "Search for \"Push to Talk\" or \"ChirpChirps\""
                         )
 
                         setupStep(
                             number: 4,
                             icon: "checkmark.circle.fill",
                             title: "Select \"Push to Talk\"",
-                            detail: "Tap it to assign. Now press your Action Button to instantly open ChirpChirp!"
+                            detail: "Tap it to assign. Now press your Action Button to instantly open ChirpChirps!"
                         )
                     }
                     .padding(.horizontal, 20)
@@ -90,7 +90,7 @@ struct ActionButtonSetupView: View {
                     HStack(spacing: 10) {
                         Image(systemName: "lightbulb.fill")
                             .foregroundStyle(amber)
-                        Text("Tip: You can also say \"Hey Siri, push to talk with ChirpChirp\" to start a session hands-free.")
+                        Text("Tip: You can also say \"Hey Siri, push to talk with ChirpChirps\" to start a session hands-free.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }

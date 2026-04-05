@@ -7,7 +7,7 @@ import SwiftUI
 /// Users can assign this to their Action Button for instant walkie-talkie.
 struct StartChirpPTTIntent: AppIntent {
     static let title: LocalizedStringResource = "Push to Talk"
-    static let description: IntentDescription = "Open ChirpChirp and start transmitting on your active channel."
+    static let description: IntentDescription = "Open ChirpChirps and start transmitting on your active channel."
     static let openAppWhenRun = true
 
     func perform() async throws -> some IntentResult {
@@ -24,7 +24,7 @@ struct StartChirpPTTIntent: AppIntent {
 /// Opens ChirpChirp to the active channel
 struct OpenChannelIntent: AppIntent {
     static let title: LocalizedStringResource = "Open Channel"
-    static let description: IntentDescription = "Open ChirpChirp to your active channel."
+    static let description: IntentDescription = "Open ChirpChirps to your active channel."
     static let openAppWhenRun = true
 
     @Parameter(title: "Channel Name")
