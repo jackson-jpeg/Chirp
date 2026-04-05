@@ -493,7 +493,10 @@ struct ChatView: View {
                 }
             }
         }
-        .accessibilityLabel("Scroll to latest messages\(newMessagesSinceScroll > 0 ? ", \(newMessagesSinceScroll) new" : "")")
+        .accessibilityLabel(newMessagesSinceScroll > 0
+            ? String(localized: "chat.scrollToBottom.withNew \(newMessagesSinceScroll)")
+            : String(localized: "chat.scrollToBottom")
+        )
     }
 
     // MARK: - Date Separator

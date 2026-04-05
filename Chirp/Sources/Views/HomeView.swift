@@ -50,9 +50,9 @@ private struct InlineStatusStrip: View {
     }
 
     private var modeText: String {
-        if isEmergencyActive { return "EMERGENCY" }
-        if isScanning { return "Scanning" }
-        return "Normal"
+        if isEmergencyActive { return String(localized: "home.status.emergency") }
+        if isScanning { return String(localized: "home.status.scanning") }
+        return String(localized: "home.status.normal")
     }
 
     private var modeColor: Color {
@@ -65,13 +65,13 @@ private struct InlineStatusStrip: View {
         HStack(spacing: 16) {
             statusPill(
                 icon: "antenna.radiowaves.left.and.right",
-                text: "\(peerCount) peer\(peerCount == 1 ? "" : "s")",
+                text: String(localized: "home.status.peerCount \(peerCount)"),
                 color: peerCount > 0 ? Constants.Colors.electricGreen : Constants.Colors.slate500
             )
 
             statusPill(
                 icon: "shield.fill",
-                text: "\(threatCount) threat\(threatCount == 1 ? "" : "s")",
+                text: String(localized: "home.status.threatCount \(threatCount)"),
                 color: threatColor
             )
 
@@ -252,7 +252,7 @@ private struct ChannelCard: View {
                         HStack(spacing: 3) {
                             Image(systemName: "waveform")
                                 .font(.system(size: 8, weight: .bold))
-                            Text("LIVE")
+                            Text(String(localized: "home.channel.live"))
                                 .font(.system(size: 9, weight: .black, design: .rounded))
                         }
                         .foregroundStyle(.white)
@@ -271,7 +271,7 @@ private struct ChannelCard: View {
                 }
 
                 HStack(spacing: 8) {
-                    Text("\(channel.activePeerCount) peer\(channel.activePeerCount == 1 ? "" : "s")")
+                    Text(String(localized: "home.status.peerCount \(channel.activePeerCount)"))
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(Constants.Colors.slate400)
 
@@ -297,7 +297,7 @@ private struct ChannelCard: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
                 } else {
-                    Text("No messages yet")
+                    Text(String(localized: "home.channel.noMessages"))
                         .font(.system(size: 13, weight: .regular))
                         .foregroundStyle(Constants.Colors.slate600)
                         .italic()
@@ -378,10 +378,10 @@ private struct ChannelCard: View {
 private extension Date {
     var relativeDisplay: String {
         let interval = Date().timeIntervalSince(self)
-        if interval < 60 { return "Just now" }
-        if interval < 3600 { return "\(Int(interval / 60))m ago" }
-        if interval < 86400 { return "\(Int(interval / 3600))h ago" }
-        return "\(Int(interval / 86400))d ago"
+        if interval < 60 { return String(localized: "time.justNow") }
+        if interval < 3600 { return String(localized: "time.minutesAgo \(Int(interval / 60))") }
+        if interval < 86400 { return String(localized: "time.hoursAgo \(Int(interval / 3600))") }
+        return String(localized: "time.daysAgo \(Int(interval / 86400))")
     }
 }
 
@@ -418,7 +418,7 @@ private struct ChannelEmptyState: View {
                         .multilineTextAlignment(.center)
                         .lineSpacing(2)
 
-                    Text("Your mesh. Your rules. No towers needed.")
+                    Text(String(localized: "home.emptyState.tagline"))
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(Constants.Colors.amber.opacity(0.7))
                         .padding(.top, 2)
@@ -426,9 +426,9 @@ private struct ChannelEmptyState: View {
 
                 // Readiness indicators
                 VStack(spacing: 12) {
-                    readinessRow(icon: "wifi", label: "Wi-Fi Direct", ready: true)
+                    readinessRow(icon: "wifi", label: String(localized: "home.readiness.wifiDirect"), ready: true)
                     meshNetworkRow
-                    readinessRow(icon: "lock.shield.fill", label: "Encryption", ready: true)
+                    readinessRow(icon: "lock.shield.fill", label: String(localized: "home.readiness.encryption"), ready: true)
                 }
                 .padding(16)
                 .background(
@@ -493,12 +493,12 @@ private struct ChannelEmptyState: View {
                 .scaleEffect(meshReady ? 1.0 : meshSearchPulse)
                 .frame(width: 20)
 
-            Text("Mesh Network")
+            Text(String(localized: "home.readiness.meshNetwork"))
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Constants.Colors.slate400)
 
             if !meshReady {
-                Text("Searching...")
+                Text(String(localized: "home.readiness.searching"))
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Constants.Colors.amber.opacity(0.5))
             }
@@ -734,11 +734,11 @@ private struct ChannelInfoCard: View {
     }
 
     private var subtitle: String {
-        guard let ch = channel else { return "No channel selected" }
+        guard let ch = channel else { return String(localized: "home.channel.noChannelSelected") }
         if peerCount > 0 {
-            return "\(peerCount) peer\(peerCount == 1 ? "" : "s") on \(ch.name)"
+            return String(localized: "home.channel.peersOn \(peerCount) \(ch.name)")
         }
-        return "Listening on \(ch.name)"
+        return String(localized: "home.channel.listeningOn \(ch.name)")
     }
 
     var body: some View {
@@ -753,7 +753,7 @@ private struct ChannelInfoCard: View {
                             .foregroundStyle(Constants.Colors.electricGreen)
                     }
 
-                    Text(channel?.name ?? "No Channel")
+                    Text(channel?.name ?? String(localized: "home.channel.noChannel"))
                         .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
                         .lineLimit(1)
@@ -780,16 +780,16 @@ private struct ChannelInfoCard: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Channel: \(channel?.name ?? "None"), \(subtitle). Tap to switch.")
-        .confirmationDialog("Switch Channel", isPresented: $showPicker) {
+        .confirmationDialog(String(localized: "home.channel.switchChannel"), isPresented: $showPicker) {
             ForEach(channels) { ch in
                 Button(ch.name) {
                     onSelect(ch)
                 }
             }
-            Button("New Channel") {
+            Button(String(localized: "home.channel.newChannel")) {
                 onCreate()
             }
-            Button("Cancel", role: .cancel) {}
+            Button(String(localized: "common.cancel"), role: .cancel) {}
         }
     }
 }
@@ -861,7 +861,7 @@ private struct ScanningPeersView: View {
                     )
             }
 
-            Text("Scanning for peers")
+            Text(String(localized: "home.scanning.peers"))
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(Constants.Colors.slate600)
         }
@@ -957,10 +957,10 @@ private struct MeshStatusStrip: View {
     let isEmergencyActive: Bool
 
     private var meshLabel: String {
-        guard let stats = meshStats, peerCount > 0 else { return "No mesh" }
-        if stats.maxHops >= 3 { return "Mesh: \(stats.maxHops) hops" }
-        if stats.maxHops >= 1 { return "Mesh: \(stats.maxHops) hop\(stats.maxHops == 1 ? "" : "s")" }
-        return "Direct"
+        guard let stats = meshStats, peerCount > 0 else { return String(localized: "home.mesh.noMesh") }
+        if stats.maxHops >= 3 { return String(localized: "home.mesh.hops \(stats.maxHops)") }
+        if stats.maxHops >= 1 { return String(localized: "home.mesh.hops \(stats.maxHops)") }
+        return String(localized: "home.mesh.direct")
     }
 
     private var meshColor: Color {
@@ -987,18 +987,18 @@ private struct MeshStatusStrip: View {
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundStyle(Constants.Colors.slate400)
             }
-            .accessibilityLabel("Mesh status: \(meshLabel)")
+            .accessibilityLabel(String(localized: "home.mesh.statusLabel \(meshLabel)"))
 
             HStack(spacing: 4) {
                 Circle()
                     .fill(relayActive ? Constants.Colors.electricGreen : Constants.Colors.slate700)
                     .frame(width: 6, height: 6)
 
-                Text("Relay")
+                Text(String(localized: "home.mesh.relay"))
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundStyle(relayActive ? Constants.Colors.slate400 : Constants.Colors.slate600)
             }
-            .accessibilityLabel(relayActive ? "Relay active" : "Relay inactive")
+            .accessibilityLabel(relayActive ? String(localized: "home.mesh.relayActive") : String(localized: "home.mesh.relayInactive"))
 
             if isEncrypted {
                 HStack(spacing: 4) {
@@ -1019,7 +1019,7 @@ private struct MeshStatusStrip: View {
                                 .strokeBorder(Constants.Colors.electricGreen.opacity(0.2), lineWidth: 0.5)
                         )
                 )
-                .accessibilityLabel("End-to-end encrypted")
+                .accessibilityLabel(String(localized: "home.mesh.e2eEncrypted"))
             }
 
             Spacer()
@@ -1030,11 +1030,11 @@ private struct MeshStatusStrip: View {
                         .fill(Constants.Colors.emergencyRed)
                         .frame(width: 6, height: 6)
 
-                    Text("SOS")
+                    Text(String(localized: "home.mesh.sos"))
                         .font(.system(size: 10, weight: .black, design: .monospaced))
                         .foregroundStyle(Constants.Colors.emergencyRed)
                 }
-                .accessibilityLabel("Emergency mode active")
+                .accessibilityLabel(String(localized: "home.mesh.emergencyActive"))
             }
         }
         .padding(.horizontal, 20)

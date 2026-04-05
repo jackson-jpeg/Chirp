@@ -385,8 +385,9 @@ final class LighthouseService {
         for key in commonKeys {
             // Shift RSSI values to positive range for meaningful cosine similarity.
             // Typical RSSI: -30 (strong) to -100 (weak). Add 100 to make positive.
-            let obsVal = Double(observed[key]! + 100)
-            let stoVal = Double(storedMap[key]! + 100)
+            guard let obsRSSI = observed[key], let stoRSSI = storedMap[key] else { continue }
+            let obsVal = Double(obsRSSI + 100)
+            let stoVal = Double(stoRSSI + 100)
 
             dotProduct += obsVal * stoVal
             normObserved += obsVal * obsVal

@@ -91,7 +91,7 @@ struct ChannelView: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(Constants.Colors.textSecondary)
                 }
-                .accessibilityLabel("Back")
+                .accessibilityLabel(String(localized: "common.back"))
             }
             // Show "Boost" pairing button when Wi-Fi Aware is available
             if appState.wifiAwareTransport != nil {
@@ -103,7 +103,7 @@ struct ChannelView: View {
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(Constants.Colors.amber)
                     }
-                    .accessibilityLabel("Boost connection with Wi-Fi Aware pairing")
+                    .accessibilityLabel(String(localized: "channel.a11y.boostConnection"))
                 }
             }
         }
@@ -230,7 +230,7 @@ struct ChannelView: View {
             QuickReplyBar(replies: appState.quickReplyManager.replies) { reply in
                 switch reply.type {
                 case .audioFile:
-                    toast = ToastItem(message: "Audio replies coming soon", type: .info)
+                    toast = ToastItem(message: String(localized: "channel.toast.audioRepliesComingSoon"), type: .info)
                 case .text:
                     appState.textMessageService.send(
                         text: reply.label,
@@ -238,7 +238,7 @@ struct ChannelView: View {
                         senderID: appState.localPeerID,
                         senderName: appState.callsign
                     )
-                    toast = ToastItem(message: "Sent: \(reply.label)", type: .success)
+                    toast = ToastItem(message: String(localized: "channel.toast.sent \(reply.label)"), type: .success)
                 }
             }
             .padding(.bottom, Constants.Layout.spacing)
@@ -279,7 +279,7 @@ struct ChannelView: View {
                 .foregroundStyle(Constants.Colors.textTertiary.opacity(0.5))
                 .padding(.vertical, 6)
                 .frame(maxWidth: .infinity)
-                .accessibilityLabel("Messages are end-to-end encrypted")
+                .accessibilityLabel(String(localized: "channel.a11y.messagesEncrypted"))
             }
 
             chatContent
@@ -304,7 +304,7 @@ struct ChannelView: View {
             },
             onShareLocation: {
                 guard let location = appState.locationService.currentLocation else {
-                    toast = ToastItem(message: "Location unavailable", type: .warning)
+                    toast = ToastItem(message: String(localized: "channel.toast.locationUnavailable"), type: .warning)
                     return
                 }
                 let locText = LocationService.encodeLocation(location)
@@ -315,7 +315,7 @@ struct ChannelView: View {
                     senderName: appState.callsign,
                     attachmentType: .location
                 )
-                toast = ToastItem(message: "Location shared", type: .success)
+                toast = ToastItem(message: String(localized: "channel.toast.locationShared"), type: .success)
             },
             onSendImage: { payload in
                 appState.textMessageService.send(
@@ -325,16 +325,16 @@ struct ChannelView: View {
                     senderName: appState.callsign,
                     attachmentType: .image
                 )
-                toast = ToastItem(message: "Image sent", type: .success)
+                toast = ToastItem(message: String(localized: "channel.toast.imageSent"), type: .success)
             },
             onSendFile: { fileURL in
                 guard let fileData = try? Data(contentsOf: fileURL) else {
-                    toast = ToastItem(message: "Could not read file", type: .warning)
+                    toast = ToastItem(message: String(localized: "channel.toast.couldNotReadFile"), type: .warning)
                     return
                 }
                 guard fileData.count <= FileTransferService.maxFileSize else {
                     let maxMB = FileTransferService.maxFileSize / 1_048_576
-                    toast = ToastItem(message: "File too large (max \(maxMB) MB)", type: .warning)
+                    toast = ToastItem(message: String(localized: "channel.toast.fileTooLarge \(maxMB)"), type: .warning)
                     return
                 }
                 let fileName = fileURL.lastPathComponent
@@ -347,7 +347,7 @@ struct ChannelView: View {
                     senderID: appState.localPeerID,
                     senderName: appState.callsign
                 )
-                toast = ToastItem(message: "Sending \(fileName)...", type: .info)
+                toast = ToastItem(message: String(localized: "channel.toast.sending \(fileName)"), type: .info)
             },
             onSendReaction: { emoji, messageID in
                 appState.textMessageService.sendReaction(
@@ -571,7 +571,7 @@ struct ChannelView: View {
                         Circle()
                             .strokeBorder(Constants.Colors.glassAmberBorder, lineWidth: 0.5)
                     )
-                    .accessibilityLabel("Encrypted channel")
+                    .accessibilityLabel(String(localized: "channel.a11y.encryptedChannel"))
             }
 
             Spacer()
@@ -794,7 +794,7 @@ struct ChannelView: View {
                     guard appState.micPermissionGranted else {
                         HapticsManager.shared.denied()
                         toast = ToastItem(
-                            message: "Microphone access required. Enable in Settings.",
+                            message: String(localized: "channel.toast.microphoneRequired"),
                             type: .error
                         )
                         return
@@ -906,7 +906,7 @@ struct ChannelView: View {
     // MARK: - Empty Radar Overlay
 
     private var emptyRadarOverlay: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { timeline in
+        TimelineView(.animation(minimumInterval: 1.0 / 20.0)) { timeline in
             let time = timeline.date.timeIntervalSinceReferenceDate
             ZStack {
                 // Smooth pulsing radar rings — staggered
@@ -1010,13 +1010,13 @@ struct ChannelView: View {
 
     private func sendCameraImage(_ image: UIImage) {
         guard let compressed = ImageCompressor.compress(image) else {
-            toast = ToastItem(message: "Image compression failed", type: .warning)
+            toast = ToastItem(message: String(localized: "channel.toast.imageCompressionFailed"), type: .warning)
             return
         }
         let base64 = compressed.base64EncodedString()
         let payload = MeshTextMessage.imagePrefix + base64
         guard payload.count <= MeshTextMessage.maxImagePayloadLength else {
-            toast = ToastItem(message: "Image too large to send", type: .warning)
+            toast = ToastItem(message: String(localized: "channel.toast.imageTooLarge"), type: .warning)
             return
         }
         appState.textMessageService.send(
@@ -1026,7 +1026,7 @@ struct ChannelView: View {
             senderName: appState.callsign,
             attachmentType: .image
         )
-        toast = ToastItem(message: "Photo shared", type: .success)
+        toast = ToastItem(message: String(localized: "channel.toast.photoShared"), type: .success)
     }
 
     private var quickActionBar: some View {
@@ -1061,7 +1061,7 @@ struct ChannelView: View {
                 size: 48
             ) {
                 guard let location = appState.locationService.currentLocation else {
-                    toast = ToastItem(message: "Location unavailable", type: .warning)
+                    toast = ToastItem(message: String(localized: "channel.toast.locationUnavailable"), type: .warning)
                     return
                 }
                 let locText = LocationService.encodeLocation(location)
@@ -1072,26 +1072,26 @@ struct ChannelView: View {
                     senderName: appState.callsign,
                     attachmentType: .location
                 )
-                toast = ToastItem(message: "Location shared", type: .success)
+                toast = ToastItem(message: String(localized: "channel.toast.locationShared"), type: .success)
             }
             .accessibilityIdentifier(AccessibilityID.quickActionLocation)
 
             quickActionButton(
                 icon: EmergencyBeacon.shared.isActive ? "xmark.circle.fill" : "sos",
-                label: EmergencyBeacon.shared.isActive ? "STOP SOS" : String(localized: "channel.quickAction.sos"),
+                label: EmergencyBeacon.shared.isActive ? String(localized: "channel.quickAction.stopSOS") : String(localized: "channel.quickAction.sos"),
                 color: Constants.Colors.hotRed,
                 size: 48
             ) {
                 if EmergencyBeacon.shared.isActive {
                     EmergencyBeacon.shared.deactivate()
-                    toast = ToastItem(message: "SOS beacon stopped", type: .info)
+                    toast = ToastItem(message: String(localized: "channel.toast.sosBeaconStopped"), type: .info)
                 } else {
                     HapticsManager.shared.denied()
                     EmergencyBeacon.shared.activate(
                         senderID: appState.localPeerID,
                         senderName: appState.callsign
                     )
-                    toast = ToastItem(message: "SOS BEACON ACTIVE — broadcasting every 5s", type: .warning)
+                    toast = ToastItem(message: String(localized: "channel.toast.sosBeaconActive"), type: .warning)
                 }
             }
             .accessibilityIdentifier(AccessibilityID.quickActionSOS)

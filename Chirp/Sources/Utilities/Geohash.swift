@@ -169,7 +169,7 @@ enum Geohash {
     private static func adjacentCardinal(_ hash: String, direction: Axis) -> String? {
         guard !hash.isEmpty else { return nil }
 
-        let lastChar = hash.last!
+        guard let lastChar = hash.last else { return nil }
         var parent = String(hash.dropLast())
         let isEven = hash.count % 2 == 0
 
