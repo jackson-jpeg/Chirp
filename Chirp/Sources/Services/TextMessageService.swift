@@ -570,6 +570,18 @@ final class TextMessageService {
         return all.filter { $0.id == parentID || $0.replyToID == parentID }
     }
 
+    /// Returns the text of the most recent message on a channel, or `nil` if empty.
+    func lastMessageText(for channelID: String) -> String? {
+        hydrateIfNeeded(channelID: channelID)
+        return messagesByChannel[channelID]?.last?.text
+    }
+
+    /// Returns the timestamp of the most recent message on a channel, or `nil` if empty.
+    func lastMessageDate(for channelID: String) -> Date? {
+        hydrateIfNeeded(channelID: channelID)
+        return messagesByChannel[channelID]?.last?.timestamp
+    }
+
     // MARK: - Private
 
     /// Hydrate the in-memory cache from the database for a channel, once per session.

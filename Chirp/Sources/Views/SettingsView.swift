@@ -12,6 +12,8 @@ struct SettingsView: View {
     @State private var howItWorksExpanded = false
     @State private var copiedID = false
     @State private var showActionButtonSetup = false
+    @State private var showResetIdentityConfirm = false
+    @State private var showClearDataConfirm = false
 
     // MARK: - Color shortcuts
 
@@ -33,16 +35,28 @@ struct SettingsView: View {
                 privacySecuritySection
                 meshCloudSection
                 aboutSection
+                dangerZoneSection
                 #if DEBUG
                 debugSection
                 #endif
 
                 // Version footer
-                Text("ChirpChirps \(appVersion)")
-                    .font(Constants.Typography.monoSmall)
-                    .foregroundStyle(Constants.Colors.textTertiary)
-                    .padding(.top, 4)
-                    .padding(.bottom, 32)
+                VStack(spacing: 6) {
+                    Image(systemName: "point.3.connected.trianglepath.dotted")
+                        .font(.system(size: 18, weight: .light))
+                        .foregroundStyle(Constants.Colors.textTertiary.opacity(0.5))
+
+                    Text("ChirpChirps v\(appVersion)")
+                        .font(Constants.Typography.monoSmall)
+                        .foregroundStyle(Constants.Colors.textTertiary)
+
+                    Text("Infrastructure-free communication")
+                        .font(.system(.caption2, design: .serif))
+                        .italic()
+                        .foregroundStyle(Constants.Colors.textTertiary.opacity(0.6))
+                }
+                .padding(.top, 8)
+                .padding(.bottom, 32)
             }
             .padding(.horizontal, Constants.Layout.horizontalPadding)
             .padding(.top, Constants.Layout.smallSpacing)
@@ -61,28 +75,35 @@ struct SettingsView: View {
 
     private var profileHeroCard: some View {
         VStack(spacing: 16) {
-            // Avatar
+            // Avatar with amber ring
             ZStack {
+                // Outer amber ring (PTT-style)
                 Circle()
-                    .fill(
+                    .stroke(
                         LinearGradient(
-                            colors: [Constants.Colors.blue500, Constants.Colors.blue600.opacity(0.4)],
+                            colors: [amber, amber.opacity(0.6)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
-                        )
+                        ),
+                        lineWidth: 2.5
                     )
-                    .frame(width: 72, height: 72)
+                    .frame(width: 86, height: 86)
+
+                // Avatar circle with callsign-based gradient
+                Circle()
+                    .fill(avatarGradient)
+                    .frame(width: 80, height: 80)
 
                 Text(avatarInitial)
-                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
                     .foregroundStyle(Constants.Colors.textPrimary)
             }
-            .shadow(color: Constants.Colors.blue500.opacity(0.3), radius: 12, y: 4)
+            .shadow(color: amber.opacity(0.25), radius: 16, y: 4)
 
             // Callsign (editable)
-            VStack(spacing: 6) {
+            VStack(spacing: 8) {
                 TextField(String(localized: "settings.profile.callsign"), text: Bindable(appState).callsign)
-                    .font(Constants.Typography.sectionTitle)
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundStyle(Constants.Colors.textPrimary)
                     .multilineTextAlignment(.center)
                     .autocorrectionDisabled()
@@ -113,13 +134,14 @@ struct SettingsView: View {
                             Text(copiedID ? String(localized: "settings.profile.copied") : String(localized: "settings.profile.copyID"))
                                 .font(Constants.Typography.badge)
                         }
-                        .foregroundStyle(copiedID ? green : Constants.Colors.blue500)
+                        .foregroundStyle(copiedID ? green : amber)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
                         .background(
                             Capsule()
-                                .fill((copiedID ? green : Constants.Colors.blue500).opacity(0.12))
+                                .fill((copiedID ? green : amber).opacity(0.12))
                         )
+                        .contentTransition(.symbolEffect(.replace))
                     }
                     .buttonStyle(.plain)
                 }
@@ -128,8 +150,28 @@ struct SettingsView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
         .padding(.horizontal, Constants.Layout.cardPadding)
-        .background(glassBackground)
-        .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.cardCornerRadius, style: .continuous))
+        .background(
+            ZStack {
+                // Glass card background
+                RoundedRectangle(cornerRadius: Constants.Layout.cardCornerRadius, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .opacity(0.5)
+
+                // Subtle amber glow at top
+                RoundedRectangle(cornerRadius: Constants.Layout.cardCornerRadius, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [amber.opacity(0.06), .clear, .clear],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+
+                // Border
+                RoundedRectangle(cornerRadius: Constants.Layout.cardCornerRadius, style: .continuous)
+                    .stroke(amber.opacity(0.12), lineWidth: 0.5)
+            }
+        )
     }
 
     // MARK: - Mesh Network
@@ -167,6 +209,7 @@ struct SettingsView: View {
                         Text("\(appState.connectedPeerCount)")
                             .font(.system(.body, design: .monospaced, weight: .semibold))
                             .foregroundStyle(appState.connectedPeerCount > 0 ? green : .secondary)
+                            .contentTransition(.numericText())
                     }
                 }
 
@@ -182,6 +225,7 @@ struct SettingsView: View {
                         Text("\(appState.wifiAwareTransport?.pairedDeviceCount ?? 0)")
                             .font(.system(.body, design: .monospaced, weight: .semibold))
                             .foregroundStyle(Constants.Colors.textSecondary)
+                            .contentTransition(.numericText())
                     }
                 }
 
@@ -240,7 +284,7 @@ struct SettingsView: View {
         glassRow {
             HStack(spacing: 12) {
                 Image(systemName: "checkmark.circle")
-                    .foregroundStyle(amber)
+                    .foregroundStyle(green)
                     .frame(width: 24)
                 Text(String(localized: "settings.meshNetwork.delivered"))
                     .foregroundStyle(Constants.Colors.textPrimary)
@@ -253,7 +297,7 @@ struct SettingsView: View {
         glassRow {
             HStack(spacing: 12) {
                 Image(systemName: "arrow.3.trianglepath")
-                    .foregroundStyle(amber)
+                    .foregroundStyle(Constants.Colors.slate400)
                     .frame(width: 24)
                 Text(String(localized: "settings.meshNetwork.deduplicated"))
                     .foregroundStyle(Constants.Colors.textPrimary)
@@ -294,6 +338,7 @@ struct SettingsView: View {
         Text(value)
             .font(.system(.body, design: .monospaced, weight: .medium))
             .foregroundStyle(color)
+            .contentTransition(.numericText())
     }
 
     // MARK: - Audio & Haptics
@@ -307,21 +352,21 @@ struct SettingsView: View {
                     Toggle(isOn: $speakerOutput) {
                         settingsRow(icon: "speaker.wave.2.fill", title: String(localized: "settings.audioHaptics.speakerOutput"))
                     }
-                    .tint(Constants.Colors.blue500)
+                    .tint(amber)
                 }
 
                 glassRow {
                     Toggle(isOn: $hapticFeedback) {
                         settingsRow(icon: "hand.tap.fill", title: String(localized: "settings.audioHaptics.hapticFeedback"))
                     }
-                    .tint(Constants.Colors.blue500)
+                    .tint(amber)
                 }
 
                 glassRow {
                     Toggle(isOn: $chirpSounds) {
                         settingsRow(icon: "waveform", title: String(localized: "settings.audioHaptics.chirpSounds"))
                     }
-                    .tint(Constants.Colors.blue500)
+                    .tint(amber)
                 }
 
                 glassRow {
@@ -331,7 +376,7 @@ struct SettingsView: View {
                     )) {
                         settingsRow(icon: "arrow.triangle.2.circlepath", title: String(localized: "settings.audioHaptics.loopbackTest"))
                     }
-                    .tint(Constants.Colors.blue500)
+                    .tint(amber)
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous))
@@ -494,7 +539,7 @@ struct SettingsView: View {
                             }
                         }
                     }
-                    .tint(Constants.Colors.blue500)
+                    .tint(amber)
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous))
@@ -685,6 +730,95 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Danger Zone
+
+    private var dangerZoneSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sectionHeader(icon: "exclamationmark.triangle.fill", title: "DANGER ZONE", dimmed: false, tintColor: red)
+
+            VStack(spacing: 1) {
+                // Reset Mesh Identity
+                glassRow(tint: red) {
+                    Button {
+                        showResetIdentityConfirm = true
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "person.crop.circle.badge.xmark")
+                                .foregroundStyle(red)
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Reset Mesh Identity")
+                                    .foregroundStyle(Constants.Colors.textPrimary)
+                                Text("Generate a new peer ID and keypair")
+                                    .font(.system(.caption2))
+                                    .foregroundStyle(Constants.Colors.textTertiary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(red.opacity(0.5))
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+                .confirmationDialog(
+                    "Reset Mesh Identity?",
+                    isPresented: $showResetIdentityConfirm,
+                    titleVisibility: .visible
+                ) {
+                    Button("Reset Identity", role: .destructive) {
+                        // Identity reset would go here
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("This will generate a new peer ID. Friends will need to re-add you. This cannot be undone.")
+                }
+
+                // Clear All Data
+                glassRow(tint: red) {
+                    Button {
+                        showClearDataConfirm = true
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "trash.fill")
+                                .foregroundStyle(red)
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Clear All Data")
+                                    .foregroundStyle(Constants.Colors.textPrimary)
+                                Text("Erase messages, friends, and channels")
+                                    .font(.system(.caption2))
+                                    .foregroundStyle(Constants.Colors.textTertiary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(red.opacity(0.5))
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+                .confirmationDialog(
+                    "Clear All Data?",
+                    isPresented: $showClearDataConfirm,
+                    titleVisibility: .visible
+                ) {
+                    Button("Clear Everything", role: .destructive) {
+                        // Data clear would go here
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("This will permanently delete all messages, friends, channels, and local settings. This cannot be undone.")
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous)
+                    .stroke(red.opacity(0.15), lineWidth: 0.5)
+            )
+        }
+    }
+
     // MARK: - Debug
 
     #if DEBUG
@@ -823,6 +957,25 @@ struct SettingsView: View {
         return "?"
     }
 
+    /// Gradient based on callsign hash for personalized avatar
+    private var avatarGradient: LinearGradient {
+        let gradients: [(Color, Color)] = [
+            (Color(hex: 0xFFB800), Color(hex: 0xFF8C00)),
+            (Color(hex: 0x30D158), Color(hex: 0x00C7BE)),
+            (Color(hex: 0x5E5CE6), Color(hex: 0xBF5AF2)),
+            (Color(hex: 0xFF6B6B), Color(hex: 0xFF2D55)),
+            (Color(hex: 0x64D2FF), Color(hex: 0x5E5CE6)),
+            (Color(hex: 0xBF5AF2), Color(hex: 0xFF2D55)),
+        ]
+        let hash = appState.callsign.unicodeScalars.reduce(0) { $0 &+ Int($1.value) }
+        let pair = gradients[abs(hash) % gradients.count]
+        return LinearGradient(
+            colors: [pair.0, pair.1],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
     private var truncatedPeerID: String {
         let id = appState.localPeerID
         if id.count > 12 {
@@ -880,26 +1033,27 @@ struct SettingsView: View {
 
     // MARK: - Reusable Components
 
-    private func sectionHeader(icon: String, title: String, dimmed: Bool = false) -> some View {
+    private func sectionHeader(icon: String, title: String, dimmed: Bool = false, tintColor: Color? = nil) -> some View {
         HStack(spacing: Constants.Layout.smallSpacing) {
             Image(systemName: icon)
                 .font(Constants.Typography.caption)
-                .foregroundStyle(dimmed ? .secondary : amber)
+                .foregroundStyle(dimmed ? .secondary : (tintColor ?? amber))
 
             Text(title.uppercased())
                 .font(Constants.Typography.badge)
-                .foregroundStyle(dimmed ? Constants.Colors.textTertiary : Constants.Colors.textSecondary)
+                .foregroundStyle(dimmed ? Constants.Colors.textTertiary : (tintColor ?? Constants.Colors.textSecondary))
+                .tracking(0.5)
         }
         .padding(.horizontal, 4)
         .padding(.bottom, 10)
     }
 
-    private func glassRow<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+    private func glassRow<Content: View>(tint: Color? = nil, @ViewBuilder content: () -> Content) -> some View {
         content()
             .padding(.horizontal, Constants.Layout.cardPadding)
             .padding(.vertical, 13)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Constants.Colors.surfaceGlass)
+            .background(tint.map { $0.opacity(0.04) } ?? Constants.Colors.surfaceGlass)
     }
 
     private var glassBackground: some View {

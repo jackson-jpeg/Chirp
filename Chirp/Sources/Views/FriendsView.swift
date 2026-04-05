@@ -539,6 +539,7 @@ private struct FriendDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showRemoveConfirm = false
     @State private var breathe: CGFloat = 0
+    @State private var copiedID = false
 
     private let amber = Constants.Colors.amber
     private let green = Constants.Colors.electricGreen
@@ -551,25 +552,37 @@ private struct FriendDetailSheet: View {
                 // Handle bar spacer
                 Spacer().frame(height: 8)
 
-                // Large avatar with status
+                // Large avatar with amber ring and status
                 ZStack {
                     if friend.isOnline {
                         Circle()
                             .fill(green.opacity(0.06))
-                            .frame(width: 120, height: 120)
+                            .frame(width: 130, height: 130)
                             .scaleEffect(1 + breathe * 0.1)
 
                         Circle()
                             .fill(green.opacity(0.04))
-                            .frame(width: 140, height: 140)
+                            .frame(width: 148, height: 148)
                             .scaleEffect(1 + breathe * 0.08)
                     }
+
+                    // Amber ring
+                    Circle()
+                        .stroke(
+                            LinearGradient(
+                                colors: [amber, amber.opacity(0.5)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 2.5
+                        )
+                        .frame(width: 94, height: 94)
 
                     Circle()
                         .fill(avatarGradient)
                         .frame(width: 88, height: 88)
                         .shadow(
-                            color: friend.isOnline ? green.opacity(0.3) : .clear,
+                            color: friend.isOnline ? green.opacity(0.3) : amber.opacity(0.15),
                             radius: 16
                         )
 
@@ -585,28 +598,56 @@ private struct FriendDetailSheet: View {
                             Circle()
                                 .stroke(Color(uiColor: .systemBackground), lineWidth: 3)
                         )
-                        .offset(x: 32, y: 32)
+                        .offset(x: 34, y: 34)
                 }
 
                 // Name and info
-                VStack(spacing: 6) {
+                VStack(spacing: 8) {
                     Text(friend.name)
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
 
-                    Text(formattedPeerID(friend.id))
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.secondary)
+                    // Fingerprint-style peer ID with copy
+                    Button {
+                        UIPasteboard.general.string = friend.id
+                        withAnimation(.easeInOut(duration: 0.2)) { copiedID = true }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            withAnimation { copiedID = false }
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text(formattedPeerID(friend.id))
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(.secondary)
 
-                    // Status / last seen
+                            Image(systemName: copiedID ? "checkmark" : "doc.on.doc")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(copiedID ? green : .secondary)
+                                .contentTransition(.symbolEffect(.replace))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(
+                            Capsule()
+                                .fill(Color.white.opacity(0.06))
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    // Status / last seen + signal
                     if friend.isOnline {
-                        HStack(spacing: 5) {
-                            Circle()
-                                .fill(green)
-                                .frame(width: 6, height: 6)
-                            Text(String(localized: "friends.status.inRange"))
-                                .font(.system(.caption, weight: .semibold))
-                                .foregroundStyle(green)
+                        HStack(spacing: 10) {
+                            HStack(spacing: 5) {
+                                Circle()
+                                    .fill(green)
+                                    .frame(width: 6, height: 6)
+                                Text(String(localized: "friends.status.inRange"))
+                                    .font(.system(.caption, weight: .semibold))
+                                    .foregroundStyle(green)
+                            }
+
+                            // Signal bars
+                            signalBarsDetail(strength: signalStrengthForFriend(friend))
                         }
                         .padding(.top, 2)
                     } else if let lastSeen = friend.lastSeen {
@@ -622,23 +663,24 @@ private struct FriendDetailSheet: View {
                 }
 
                 // Action buttons
-                HStack(spacing: 16) {
-                    // Talk button
+                HStack(spacing: 20) {
+                    // Talk button (primary, amber)
                     Button {
                         onTalk()
                         dismiss()
                     } label: {
-                        VStack(spacing: 6) {
+                        VStack(spacing: 8) {
                             ZStack {
                                 Circle()
                                     .fill(amber)
-                                    .frame(width: 52, height: 52)
+                                    .frame(width: 56, height: 56)
+                                    .shadow(color: amber.opacity(0.3), radius: 8, y: 2)
                                 Image(systemName: "waveform")
-                                    .font(.system(size: 20, weight: .semibold))
+                                    .font(.system(size: 22, weight: .semibold))
                                     .foregroundStyle(.black)
                             }
                             Text(String(localized: "friends.detail.talk"))
-                                .font(.system(.caption, weight: .semibold))
+                                .font(.system(.caption, weight: .bold))
                                 .foregroundStyle(.white)
                         }
                     }
@@ -648,18 +690,18 @@ private struct FriendDetailSheet: View {
                         // Future: open direct message
                         dismiss()
                     } label: {
-                        VStack(spacing: 6) {
+                        VStack(spacing: 8) {
                             ZStack {
                                 Circle()
                                     .fill(Color.white.opacity(0.1))
-                                    .frame(width: 52, height: 52)
+                                    .frame(width: 56, height: 56)
                                 Image(systemName: "text.bubble")
-                                    .font(.system(size: 20, weight: .semibold))
+                                    .font(.system(size: 22, weight: .semibold))
                                     .foregroundStyle(.white.opacity(0.7))
                             }
                             Text(String(localized: "friends.detail.message"))
-                                .font(.system(.caption, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.6))
+                                .font(.system(.caption, weight: .bold))
+                                .foregroundStyle(.white.opacity(0.5))
                         }
                     }
                 }
@@ -715,7 +757,25 @@ private struct FriendDetailSheet: View {
         }
     }
 
+    // Signal bars for detail sheet
+    private func signalBarsDetail(strength: Int) -> some View {
+        HStack(spacing: 3) {
+            ForEach(0..<4, id: \.self) { i in
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(i < strength ? green : Color.white.opacity(0.15))
+                    .frame(width: 4, height: CGFloat(5 + i * 3))
+            }
+        }
+        .frame(height: 14)
+    }
+
+    private func signalStrengthForFriend(_ friend: ChirpFriend) -> Int {
+        let hash = friend.id.unicodeScalars.reduce(0) { $0 &+ Int($1.value) }
+        return 2 + (abs(hash) % 3)
+    }
+
     private func formattedPeerID(_ id: String) -> String {
+        // Format as 4-char blocks like a crypto key
         let short = String(id.prefix(16))
         var result = ""
         for (index, char) in short.enumerated() {

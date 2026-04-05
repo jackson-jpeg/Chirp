@@ -64,17 +64,19 @@ struct AddFriendView: View {
                         .frame(height: 44)
                 } else {
                     Text(formattedFingerprint(peerFingerprint))
-                        .font(.system(size: 24, weight: .bold, design: .monospaced))
+                        .font(.system(size: 20, weight: .bold, design: .monospaced))
                         .foregroundStyle(.white)
-                        .tracking(3)
+                        .tracking(2)
                         .textSelection(.enabled)
                         .padding(.top, 4)
+                        .padding(.horizontal, 4)
                 }
 
                 // Copy + Share buttons
                 HStack(spacing: 16) {
                     Button {
                         UIPasteboard.general.string = peerFingerprint
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         withAnimation(.easeInOut(duration: 0.2)) { showCopied = true }
                         Task {
                             try? await Task.sleep(for: .seconds(2))
@@ -342,10 +344,10 @@ struct AddFriendView: View {
     }
 
     private func formattedFingerprint(_ fp: String) -> String {
-        // Format as pairs: "a4 f2 1b 9c 2e 7d a0 11"
+        // Format as 4-char blocks like a crypto key: "a4f2 1b9c 2e7d a011"
         var result = ""
         for (index, char) in fp.enumerated() {
-            if index > 0 && index % 2 == 0 {
+            if index > 0 && index % 4 == 0 {
                 result += " "
             }
             result.append(char)
