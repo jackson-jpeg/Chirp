@@ -88,6 +88,8 @@ enum AudioSessionManager {
             return
         }
 
+        let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+
         // Notification observer runs on queue: .main, so we can assume MainActor.
         MainActor.assumeIsolated {
             switch type {
@@ -96,7 +98,6 @@ enum AudioSessionManager {
                 onInterruptionBegan?()
 
             case .ended:
-                let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
                 let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
                 if options.contains(.shouldResume) {
                     Logger.audio.info("Audio session interruption ENDED — shouldResume, reactivating")

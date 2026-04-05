@@ -924,8 +924,9 @@ final class AppState {
         notificationObservers.append(NotificationCenter.default.addObserver(
             forName: .emergencyModeChanged, object: nil, queue: .main
         ) { notification in
+            let active = notification.userInfo?["active"] as? Bool ?? false
             MainActor.assumeIsolated {
-                guard let active = notification.userInfo?["active"] as? Bool else { return }
+                guard active else { return }
 
                 // Toggle mesh router emergency relay
                 Task { await routerForEmergency.setEmergencyRelay(active) }
