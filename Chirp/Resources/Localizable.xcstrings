@@ -1022,6 +1022,286 @@
         }
       }
     },
+    "emergency.cancelSOS": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CANCEL SOS"
+          }
+        }
+      }
+    },
+    "emergency.countdown.secondsRemaining %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld seconds remaining before SOS activation"
+          }
+        }
+      }
+    },
+    "emergency.countdown.cancelAccessibility": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel SOS activation"
+          }
+        }
+      }
+    },
+    "emergency.coordinates.label %@ %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Latitude %@, Longitude %@"
+          }
+        }
+      }
+    },
+    "emergency.coordinates.altitudeAccuracy %lld %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altitude: %1$lldm | Accuracy: %2$lldm"
+          }
+        }
+      }
+    },
+    "emergency.status.broadcastingToMesh %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Broadcasting to %lld mesh nodes"
+          }
+        }
+      }
+    },
+    "emergency.sos.activeAccessibility": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SOS beacon active. Tap to deactivate"
+          }
+        }
+      }
+    },
+    "emergency.sos.inactiveAccessibility": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activate SOS beacon"
+          }
+        }
+      }
+    },
+    "emergency.sos.activeHint": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stops broadcasting emergency signal"
+          }
+        }
+      }
+    },
+    "emergency.sos.inactiveHint": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Broadcasts emergency signal to all nearby mesh devices"
+          }
+        }
+      }
+    },
+    "emergency.overlay.emergencyMode": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EMERGENCY MODE"
+          }
+        }
+      }
+    },
+    "emergency.overlay.locationBroadcast": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Location Broadcast"
+          }
+        }
+      }
+    },
+    "emergency.overlay.everySeconds %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every %llds"
+          }
+        }
+      }
+    },
+    "emergency.overlay.disabled": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disabled"
+          }
+        }
+      }
+    },
+    "emergency.overlay.sosBeacon": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SOS Beacon"
+          }
+        }
+      }
+    },
+    "emergency.overlay.broadcasting": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Broadcasting"
+          }
+        }
+      }
+    },
+    "emergency.overlay.standby": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standby"
+          }
+        }
+      }
+    },
+    "emergency.overlay.audioQuality": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio Quality"
+          }
+        }
+      }
+    },
+    "emergency.overlay.audioLow": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "8 kbps (low)"
+          }
+        }
+      }
+    },
+    "emergency.overlay.audioNormal": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "24 kbps"
+          }
+        }
+      }
+    },
+    "emergency.overlay.meshRelay": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mesh Relay"
+          }
+        }
+      }
+    },
+    "emergency.overlay.relayAll": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relay All"
+          }
+        }
+      }
+    },
+    "emergency.overlay.relayNormal": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Normal"
+          }
+        }
+      }
+    },
+    "emergency.overlay.maxTTL": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max TTL"
+          }
+        }
+      }
+    },
+    "emergency.overlay.hops %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld hops"
+          }
+        }
+      }
+    },
+    "emergency.overlay.deactivate": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DEACTIVATE EMERGENCY MODE"
+          }
+        }
+      }
+    },
+    "emergency.overlay.bannerAccessibility": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emergency mode active"
+          }
+        }
+      }
+    },
+    "emergency.overlay.bannerHint": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap to expand emergency mode details"
+          }
+        }
+      }
+    },
     "friends.action.remove": {
       "extractionState": "stale",
       "localizations": {

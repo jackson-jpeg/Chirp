@@ -52,7 +52,7 @@ struct EmergencyModeOverlay: View {
                 .frame(width: 8, height: 8)
                 .opacity(pulseOpacity)
 
-            Text("EMERGENCY MODE")
+            Text(String(localized: "emergency.overlay.emergencyMode"))
                 .font(.system(size: 12, weight: .black, design: .monospaced))
                 .foregroundStyle(.white)
                 .tracking(2)
@@ -101,6 +101,9 @@ struct EmergencyModeOverlay: View {
             Rectangle()
                 .stroke(red.opacity(borderGlow), lineWidth: 1.5)
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(String(localized: "emergency.overlay.bannerAccessibility"))
+        .accessibilityHint(String(localized: "emergency.overlay.bannerHint"))
     }
 
     // MARK: - Expanded Details
@@ -110,10 +113,10 @@ struct EmergencyModeOverlay: View {
             // Location broadcast status
             statusRow(
                 icon: "location.fill",
-                label: "Location Broadcast",
+                label: String(localized: "emergency.overlay.locationBroadcast"),
                 value: emergencyMode.locationBroadcastInterval > 0
-                    ? "Every \(Int(emergencyMode.locationBroadcastInterval))s"
-                    : "Disabled",
+                    ? String(localized: "emergency.overlay.everySeconds \(Int(emergencyMode.locationBroadcastInterval))")
+                    : String(localized: "emergency.overlay.disabled"),
                 color: emergencyMode.locationBroadcastInterval > 0 ? green : .secondary
             )
 
@@ -121,32 +124,38 @@ struct EmergencyModeOverlay: View {
             let beaconActive = EmergencyBeacon.shared.isActive
             statusRow(
                 icon: "sos",
-                label: "SOS Beacon",
-                value: beaconActive ? "Broadcasting" : "Standby",
+                label: String(localized: "emergency.overlay.sosBeacon"),
+                value: beaconActive
+                    ? String(localized: "emergency.overlay.broadcasting")
+                    : String(localized: "emergency.overlay.standby"),
                 color: beaconActive ? red : .secondary
             )
 
             // Audio quality
             statusRow(
                 icon: "waveform",
-                label: "Audio Quality",
-                value: emergencyMode.audioQuality == .emergency ? "8 kbps (low)" : "24 kbps",
+                label: String(localized: "emergency.overlay.audioQuality"),
+                value: emergencyMode.audioQuality == .emergency
+                    ? String(localized: "emergency.overlay.audioLow")
+                    : String(localized: "emergency.overlay.audioNormal"),
                 color: amber
             )
 
             // Mesh relay
             statusRow(
                 icon: "arrow.triangle.branch",
-                label: "Mesh Relay",
-                value: emergencyMode.shouldRelayEverything ? "Relay All" : "Normal",
+                label: String(localized: "emergency.overlay.meshRelay"),
+                value: emergencyMode.shouldRelayEverything
+                    ? String(localized: "emergency.overlay.relayAll")
+                    : String(localized: "emergency.overlay.relayNormal"),
                 color: emergencyMode.shouldRelayEverything ? green : .secondary
             )
 
             // TTL
             statusRow(
                 icon: "arrow.up.and.down.and.sparkles",
-                label: "Max TTL",
-                value: "\(emergencyMode.maxTTL) hops",
+                label: String(localized: "emergency.overlay.maxTTL"),
+                value: String(localized: "emergency.overlay.hops \(emergencyMode.maxTTL)"),
                 color: amber
             )
 
@@ -154,7 +163,7 @@ struct EmergencyModeOverlay: View {
             Button {
                 emergencyMode.deactivate()
             } label: {
-                Text("DEACTIVATE EMERGENCY MODE")
+                Text(String(localized: "emergency.overlay.deactivate"))
                     .font(.system(size: 13, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -168,6 +177,7 @@ struct EmergencyModeOverlay: View {
                             )
                     )
             }
+            .accessibilityLabel(String(localized: "emergency.overlay.deactivate"))
             .padding(.top, 4)
         }
         .padding(16)

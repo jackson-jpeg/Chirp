@@ -54,7 +54,7 @@ struct ChatInputBar: View {
 
                 // Text input area
                 VStack(alignment: .trailing, spacing: 2) {
-                    TextField("Message...", text: $text, axis: .vertical)
+                    TextField("Message", text: $text, axis: .vertical)
                         .font(Constants.Typography.body)
                         .foregroundStyle(Constants.Colors.textPrimary)
                         .lineLimit(1...5)
@@ -84,8 +84,18 @@ struct ChatInputBar: View {
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(Constants.Colors.surfaceBorder, lineWidth: Constants.Layout.glassBorderWidth)
+                        .strokeBorder(
+                            isTextFieldFocused
+                                ? Constants.Colors.amber.opacity(0.5)
+                                : Constants.Colors.surfaceBorder,
+                            lineWidth: isTextFieldFocused ? 1.5 : Constants.Layout.glassBorderWidth
+                        )
                 )
+                .shadow(
+                    color: isTextFieldFocused ? Constants.Colors.amber.opacity(0.15) : .clear,
+                    radius: 8
+                )
+                .animation(.easeInOut(duration: 0.2), value: isTextFieldFocused)
 
                 // Send button
                 sendButton
@@ -197,10 +207,17 @@ struct ChatInputBar: View {
                 Button {
                     onSend()
                 } label: {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 32, weight: .medium))
-                        .foregroundStyle(Constants.Colors.blue500)
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 15, weight: .heavy))
+                        .foregroundStyle(Constants.Colors.slate900)
+                        .frame(width: 32, height: 32)
+                        .background(
+                            Circle()
+                                .fill(Constants.Colors.amber)
+                        )
+                        .shadow(color: Constants.Colors.amber.opacity(0.4), radius: 6, y: 2)
                 }
+                .transition(.scale(scale: 0.5).combined(with: .opacity))
                 .accessibilityLabel("Send message")
                 .accessibilityHint("Sends your message to the channel")
                 .simultaneousGesture(
@@ -213,19 +230,22 @@ struct ChatInputBar: View {
             } else if onSendVoiceNote != nil {
                 // Mic button for voice notes (hold to record)
                 micButton
+                    .transition(.scale(scale: 0.5).combined(with: .opacity))
             } else {
-                Button {} label: {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 32, weight: .medium))
-                        .foregroundStyle(Constants.Colors.textTertiary)
-                }
-                .disabled(true)
-                .accessibilityLabel("Send message")
-                .accessibilityHint("Type a message first")
-                .accessibilityIdentifier(AccessibilityID.chatSendButton)
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 15, weight: .heavy))
+                    .foregroundStyle(Constants.Colors.textTertiary.opacity(0.4))
+                    .frame(width: 32, height: 32)
+                    .background(
+                        Circle()
+                            .fill(Constants.Colors.surfaceGlass)
+                    )
+                    .accessibilityLabel("Send message")
+                    .accessibilityHint("Type a message first")
+                    .accessibilityIdentifier(AccessibilityID.chatSendButton)
             }
         }
-        .animation(.easeInOut(duration: 0.15), value: canSend)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: canSend)
     }
 
     // MARK: - Voice Note Recording

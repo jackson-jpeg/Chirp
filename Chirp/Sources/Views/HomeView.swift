@@ -1,3 +1,4 @@
+import CoreLocation
 import SwiftUI
 
 // MARK: - Compact Header
@@ -1363,8 +1364,9 @@ struct HomeView: View {
         case .map:
             GeoMapView(
                 userLocation: appState.locationService.currentLocation?.coordinate,
-                peers: []
+                peers: mapPeerPins
             )
+            .ignoresSafeArea(edges: .bottom)
 
         case .more:
             MoreView()
@@ -1375,6 +1377,28 @@ struct HomeView: View {
 
     private var activePeers: [ChirpPeer] {
         appState.channelManager.activeChannel?.peers.filter(\.isConnected) ?? []
+    }
+
+    /// Build peer pins from beacon data for the map tab.
+    private var mapPeerPins: [PeerPin] {
+        let beaconNodes = appState.meshBeacon.sortedNodes
+        let peers = appState.channelManager.activeChannel?.peers ?? []
+        let peerTransport: [String: ChirpPeer.TransportType] = Dictionary(
+            peers.map { ($0.id, $0.transportType) },
+            uniquingKeysWith: { _, last in last }
+        )
+        return beaconNodes.compactMap { beacon in
+            guard let lat = beacon.latitude, let lon = beacon.longitude else { return nil }
+            let isStale = Date().timeIntervalSince(beacon.lastSeen) > 10
+            let transport = peerTransport[beacon.id] ?? .multipeer
+            return PeerPin(
+                id: beacon.id,
+                name: beacon.name,
+                coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
+                transportType: transport,
+                isStale: isStale
+            )
+        }
     }
 
     private var channelIsEncrypted: Bool {

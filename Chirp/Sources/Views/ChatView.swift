@@ -438,6 +438,22 @@ struct ChatView: View {
 
     // MARK: - Scroll-to-Bottom FAB
 
+    /// Count of messages that arrived while scrolled up.
+    private var newMessagesSinceScroll: Int {
+        // Approximate: count messages from non-self senders at the tail
+        let recentSelf = messages.last?.senderID == localPeerID
+        guard !recentSelf else { return 0 }
+        var count = 0
+        for msg in messages.reversed() {
+            if msg.senderID != localPeerID {
+                count += 1
+            } else {
+                break
+            }
+        }
+        return min(count, 99)
+    }
+
     private func scrollToBottomButton(proxy: ScrollViewProxy) -> some View {
         Button {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -446,32 +462,59 @@ struct ChatView: View {
             showScrollToBottom = false
             isNearBottom = true
         } label: {
-            Image(systemName: "chevron.down.circle.fill")
-                .font(.system(size: 36, weight: .medium))
-                .foregroundStyle(Constants.Colors.amber)
-                .background(
-                    Circle()
-                        .fill(.ultraThinMaterial)
-                        .frame(width: 38, height: 38)
-                )
-                .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+            ZStack(alignment: .topTrailing) {
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .frame(width: 40, height: 40)
+                    .overlay(
+                        Circle()
+                            .strokeBorder(Constants.Colors.surfaceBorder, lineWidth: 0.5)
+                    )
+                    .overlay(
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(Constants.Colors.amber)
+                    )
+                    .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+
+                // New message count badge
+                if newMessagesSinceScroll > 0 {
+                    Text("\(newMessagesSinceScroll)")
+                        .font(Constants.Typography.badge)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(Constants.Colors.hotRed)
+                        )
+                        .offset(x: 4, y: -4)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
         }
-        .accessibilityLabel("Scroll to latest messages")
+        .accessibilityLabel("Scroll to latest messages\(newMessagesSinceScroll > 0 ? ", \(newMessagesSinceScroll) new" : "")")
     }
 
     // MARK: - Date Separator
 
     private func dateSeparator(for date: Date) -> some View {
-        Text(formattedDateSeparator(date))
-            .font(.system(size: 12, weight: .medium))
-            .foregroundStyle(Constants.Colors.textTertiary)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 4)
-            .background(
-                Capsule()
-                    .fill(Constants.Colors.surfaceGlass)
-            )
-            .frame(maxWidth: .infinity)
+        HStack(spacing: 12) {
+            Rectangle()
+                .fill(Constants.Colors.surfaceBorder)
+                .frame(height: 0.5)
+
+            Text(formattedDateSeparator(date))
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Constants.Colors.textTertiary)
+                .fixedSize()
+
+            Rectangle()
+                .fill(Constants.Colors.surfaceBorder)
+                .frame(height: 0.5)
+        }
+        .padding(.horizontal, 24)
+        .accessibilityLabel("Messages from \(formattedDateSeparator(date))")
     }
 
     // MARK: - Message Clustering

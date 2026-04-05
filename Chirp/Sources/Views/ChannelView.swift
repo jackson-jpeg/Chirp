@@ -53,7 +53,7 @@ struct ChannelView: View {
             vignetteOverlay
 
             VStack(spacing: 0) {
-                // Minimal channel header
+                // Glass channel header
                 channelHeader
                     .padding(.horizontal, Constants.Layout.horizontalPadding)
                     .padding(.top, Constants.Layout.smallSpacing)
@@ -71,7 +71,6 @@ struct ChannelView: View {
                     } else {
                         // Chat UI
                         chatModeContent
-                            .transition(.opacity.animation(.easeInOut(duration: 0.25)))
                     }
                 }
                 .animation(.easeInOut(duration: 0.3), value: channelMode)
@@ -140,63 +139,81 @@ struct ChannelView: View {
     // MARK: - Mode Picker
 
     private var modePicker: some View {
-        HStack(spacing: 0) {
-            ForEach(ChannelMode.allCases, id: \.self) { mode in
-                Button {
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        channelMode = mode
-                    }
-                    if mode == .chat {
-                        appState.textMessageService.markAsRead(channelID: channel.id)
-                    }
-                } label: {
-                    ZStack(alignment: .topTrailing) {
-                        Text(mode.label.uppercased())
-                            .font(Constants.Typography.caption)
-                            .tracking(2)
-                            .foregroundStyle(channelMode == mode ? .white : Constants.Colors.textTertiary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 11)
-                            .background {
-                                if channelMode == mode {
-                                    Capsule()
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [Constants.Colors.blue500, Constants.Colors.blue600],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                        .shadow(color: Constants.Colors.blue500.opacity(0.4), radius: 8)
+        GeometryReader { geometry in
+            let segmentWidth = (geometry.size.width - 6) / CGFloat(ChannelMode.allCases.count)
+
+            ZStack(alignment: .leading) {
+                // Sliding active indicator
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [Constants.Colors.amber.opacity(0.9), Constants.Colors.amberDark],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .shadow(color: Constants.Colors.amber.opacity(0.35), radius: 10, y: 2)
+                    .frame(width: segmentWidth, height: geometry.size.height - 6)
+                    .offset(x: 3 + segmentWidth * CGFloat(ChannelMode.allCases.firstIndex(of: channelMode) ?? 0))
+                    .animation(.spring(response: 0.35, dampingFraction: 0.75), value: channelMode)
+
+                // Segment buttons
+                HStack(spacing: 0) {
+                    ForEach(ChannelMode.allCases, id: \.self) { mode in
+                        Button {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                channelMode = mode
+                            }
+                            if mode == .chat {
+                                appState.textMessageService.markAsRead(channelID: channel.id)
+                            }
+                        } label: {
+                            ZStack(alignment: .topTrailing) {
+                                HStack(spacing: 5) {
+                                    Image(systemName: mode == .talk ? "waveform" : "bubble.left.and.bubble.right")
+                                        .font(.system(size: 11, weight: .bold))
+                                    Text(mode.label.uppercased())
+                                        .font(.system(size: 12, weight: .heavy))
+                                        .tracking(1.5)
+                                }
+                                .foregroundStyle(
+                                    channelMode == mode
+                                        ? Constants.Colors.slate900
+                                        : Constants.Colors.textTertiary
+                                )
+                                .frame(maxWidth: .infinity)
+                                .frame(height: geometry.size.height)
+
+                                // Unread badge on Chat tab
+                                if mode == .chat && channelMode != .chat && chatUnreadCount > 0 {
+                                    Text("\(min(chatUnreadCount, 99))")
+                                        .font(Constants.Typography.badge)
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 1)
+                                        .background(Capsule().fill(Constants.Colors.hotRed))
+                                        .offset(x: -8, y: 4)
                                 }
                             }
-
-                        // Unread badge on Chat tab
-                        if mode == .chat && channelMode != .chat && chatUnreadCount > 0 {
-                            Text("\(min(chatUnreadCount, 99))")
-                                .font(Constants.Typography.badge)
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 1)
-                                .background(Capsule().fill(Constants.Colors.hotRed))
-                                .offset(x: -4, y: 2)
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(mode.label) mode\(channelMode == mode ? ", selected" : "")")
+                        .accessibilityHint(mode == .chat && chatUnreadCount > 0 ? "\(chatUnreadCount) unread message\(chatUnreadCount == 1 ? "" : "s")" : "")
                     }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(mode.label) mode\(channelMode == mode ? ", selected" : "")")
-                .accessibilityHint(mode == .chat && chatUnreadCount > 0 ? "\(chatUnreadCount) unread message\(chatUnreadCount == 1 ? "" : "s")" : "")
             }
         }
-        .padding(3)
+        .frame(height: 40)
         .background(
             Capsule()
-                .fill(Constants.Colors.surfaceGlass)
-                .overlay(
-                    Capsule()
-                        .strokeBorder(Constants.Colors.surfaceBorder, lineWidth: Constants.Layout.glassBorderWidth)
-                )
+                .fill(.ultraThinMaterial)
+                .opacity(0.5)
         )
+        .overlay(
+            Capsule()
+                .strokeBorder(Constants.Colors.surfaceBorder, lineWidth: Constants.Layout.glassBorderWidth)
+        )
+        .accessibilityIdentifier(AccessibilityID.modePicker)
     }
 
     // MARK: - Talk Mode Content
@@ -250,6 +267,27 @@ struct ChannelView: View {
     // MARK: - Chat Mode Content
 
     private var chatModeContent: some View {
+        VStack(spacing: 0) {
+            // Encryption notice at top of chat
+            if channel.accessMode == .locked {
+                HStack(spacing: 6) {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                    Text(String(localized: "chat.empty.encrypted"))
+                        .font(Constants.Typography.caption)
+                }
+                .foregroundStyle(Constants.Colors.textTertiary.opacity(0.5))
+                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity)
+                .accessibilityLabel("Messages are end-to-end encrypted")
+            }
+
+            chatContent
+        }
+        .transition(.opacity.combined(with: .move(edge: .bottom)))
+    }
+
+    private var chatContent: some View {
         ChatView(
             channelID: channel.id,
             localPeerID: appState.localPeerID,
@@ -367,23 +405,30 @@ struct ChannelView: View {
                 let cx = size.width / 2
                 let cy = size.height / 2
 
+                // State-dependent intensity — brighter when active
+                let intensity: Double = switch pttState {
+                case .transmitting: 1.4
+                case .receiving: 1.2
+                default: 1.0
+                }
+
                 // Blob 1: upper-left drift
                 let b1x = cx * 0.6 + sin(time * 0.3) * cx * 0.25
                 let b1y = cy * 0.4 + cos(time * 0.25) * cy * 0.2
                 drawMeshBlob(context: context, center: CGPoint(x: b1x, y: b1y),
-                             radius: size.width * 0.55, color: color1, opacity: 0.12)
+                             radius: size.width * 0.55, color: color1, opacity: 0.12 * intensity)
 
                 // Blob 2: lower-right drift
                 let b2x = cx * 1.3 + cos(time * 0.35) * cx * 0.2
                 let b2y = cy * 1.4 + sin(time * 0.28) * cy * 0.15
                 drawMeshBlob(context: context, center: CGPoint(x: b2x, y: b2y),
-                             radius: size.width * 0.5, color: color2, opacity: 0.10)
+                             radius: size.width * 0.5, color: color2, opacity: 0.10 * intensity)
 
                 // Blob 3: center drift
                 let b3x = cx + sin(time * 0.22 + 1.5) * cx * 0.15
                 let b3y = cy * 0.8 + cos(time * 0.18 + 0.7) * cy * 0.12
                 drawMeshBlob(context: context, center: CGPoint(x: b3x, y: b3y),
-                             radius: size.width * 0.45, color: color3, opacity: 0.08)
+                             radius: size.width * 0.45, color: color3, opacity: 0.08 * intensity)
             }
         }
         .ignoresSafeArea()
@@ -503,79 +548,99 @@ struct ChannelView: View {
         .accessibilityHidden(true)
     }
 
-    // MARK: - Channel Header (Minimal)
+    // MARK: - Channel Header (Glass Status Bar)
 
     private var channelHeader: some View {
         HStack(spacing: Constants.Layout.smallSpacing) {
+            // Channel name
             Text(channel.name)
                 .font(.system(.title3, weight: .bold))
                 .foregroundStyle(Constants.Colors.textPrimary)
 
+            // Encrypted lock badge
             if channel.accessMode == .locked {
-                HStack(spacing: 3) {
-                    Image(systemName: "lock.fill")
-                        .font(Constants.Typography.badge)
-                }
-                .foregroundStyle(Constants.Colors.amber)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background(
-                    Capsule()
-                        .fill(Constants.Colors.glassAmber)
-                )
-                .overlay(
-                    Capsule()
-                        .strokeBorder(Constants.Colors.glassAmberBorder, lineWidth: 0.5)
-                )
-                .accessibilityLabel("Locked channel")
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(Constants.Colors.amber)
+                    .padding(5)
+                    .background(
+                        Circle()
+                            .fill(Constants.Colors.glassAmber)
+                    )
+                    .overlay(
+                        Circle()
+                            .strokeBorder(Constants.Colors.glassAmberBorder, lineWidth: 0.5)
+                    )
+                    .accessibilityLabel("Encrypted channel")
             }
-
-            // Mesh reach indicator
-            meshReachLabel
 
             Spacer()
 
-            // Peer count pill
-            peerCountPill
+            // Signal strength + peer count
+            peerSignalPill
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .opacity(0.6)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous)
+                .strokeBorder(Constants.Colors.surfaceBorder, lineWidth: Constants.Layout.glassBorderWidth)
+        )
         .accessibilityElement(children: .combine)
     }
 
-    private var meshReachLabel: some View {
-        let beacon = appState.meshBeacon
-        let hops = max(1, beacon.maxHopDepth)
-        let range = beacon.estimatedRange > 0 ? beacon.estimatedRange : 80
-
-        return Text("~\(range)m | \(hops) hop\(hops == 1 ? "" : "s")")
-            .font(Constants.Typography.monoSmall)
-            .foregroundStyle(Constants.Colors.textTertiary)
-    }
-
-    private var peerCountPill: some View {
+    private var peerSignalPill: some View {
         let count = appState.channelManager.activeChannel?.activePeerCount ?? 0
 
-        return HStack(spacing: 5) {
-            Circle()
-                .fill(count > 0 ? Constants.Colors.electricGreen : Color.gray)
-                .frame(width: 6, height: 6)
+        return HStack(spacing: 6) {
+            // Signal strength bars based on peer count
+            signalBars(strength: count)
 
-            Text("\(count) peer\(count == 1 ? "" : "s")")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Constants.Colors.textSecondary)
+            Text("\(count)")
+                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                .foregroundStyle(count > 0 ? Constants.Colors.textPrimary : Constants.Colors.textTertiary)
+
+            Image(systemName: "person.2.fill")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(count > 0 ? Constants.Colors.electricGreen : Constants.Colors.textTertiary)
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 5)
+        .padding(.vertical, 6)
         .background(
             Capsule()
                 .fill(Constants.Colors.surfaceGlass)
         )
         .overlay(
             Capsule()
-                .strokeBorder(Constants.Colors.surfaceBorder, lineWidth: 0.5)
+                .strokeBorder(
+                    count > 0
+                        ? Constants.Colors.electricGreen.opacity(0.2)
+                        : Constants.Colors.surfaceBorder,
+                    lineWidth: 0.5
+                )
         )
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(appState.channelManager.activeChannel?.activePeerCount ?? 0) peer\((appState.channelManager.activeChannel?.activePeerCount ?? 0) == 1 ? "" : "s") connected")
+        .accessibilityLabel("\(count) peer\(count == 1 ? "" : "s") connected")
         .accessibilityIdentifier(AccessibilityID.peerCountPill)
+    }
+
+    /// Signal strength indicator with 4 bars
+    private func signalBars(strength: Int) -> some View {
+        HStack(spacing: 1.5) {
+            ForEach(0..<4, id: \.self) { bar in
+                let height: CGFloat = CGFloat(4 + bar * 3)
+                let active = bar < min(strength, 4)
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(active ? Constants.Colors.electricGreen : Constants.Colors.textTertiary.opacity(0.3))
+                    .frame(width: 3, height: height)
+                    .frame(height: 16, alignment: .bottom)
+            }
+        }
+        .accessibilityHidden(true)
     }
 
     // MARK: - Status Pill (Floating Glass)
@@ -871,7 +936,20 @@ struct ChannelView: View {
                     .frame(width: peerCircleRadius * 1.6, height: peerCircleRadius * 1.6)
                     .rotationEffect(sweepAngle)
 
-                VStack(spacing: 6) {
+                VStack(spacing: 8) {
+                    // Scanning dots animation
+                    HStack(spacing: 4) {
+                        ForEach(0..<3, id: \.self) { dot in
+                            let phase = (time * 1.5 + Double(dot) * 0.3)
+                                .truncatingRemainder(dividingBy: 1.0)
+                            Circle()
+                                .fill(Constants.Colors.blue500)
+                                .frame(width: 5, height: 5)
+                                .opacity(0.3 + phase * 0.5)
+                                .scaleEffect(0.8 + phase * 0.4)
+                        }
+                    }
+
                     Text(String(localized: "channel.radar.scanning"))
                         .font(Constants.Typography.caption)
                         .foregroundStyle(Constants.Colors.blue500.opacity(0.6))
@@ -880,7 +958,7 @@ struct ChannelView: View {
                         .font(Constants.Typography.badge)
                         .foregroundStyle(Constants.Colors.textTertiary)
                 }
-                .offset(y: -peerCircleRadius - 20)
+                .offset(y: -peerCircleRadius - 24)
             }
         }
     }

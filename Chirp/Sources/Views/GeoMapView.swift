@@ -360,7 +360,7 @@ struct GeoMapView: UIViewRepresentable {
                 return view
             }
 
-            // Dead drop pin
+            // Dead drop pin — diamond-shaped with lock icon for distinct visibility
             if let pointAnnotation = annotation as? MLNPointAnnotation,
                let title = pointAnnotation.title,
                title.hasPrefix("deaddrop-"),
@@ -372,24 +372,25 @@ struct GeoMapView: UIViewRepresentable {
 
                 if view == nil {
                     view = MLNAnnotationView(annotation: annotation, reuseIdentifier: reuseID)
-                    view?.frame = CGRect(x: 0, y: 0, width: 32, height: 32)
+                    view?.frame = CGRect(x: 0, y: 0, width: 36, height: 36)
 
-                    // Amber/gold background circle
-                    let bg = UIView(frame: CGRect(x: 2, y: 2, width: 28, height: 28))
-                    bg.layer.cornerRadius = 14
+                    // Diamond-shaped background (rotated square)
+                    let bg = UIView(frame: CGRect(x: 4, y: 4, width: 28, height: 28))
+                    bg.layer.cornerRadius = 6
+                    bg.transform = CGAffineTransform(rotationAngle: .pi / 4)
                     bg.tag = 300
                     view?.addSubview(bg)
 
-                    // Lock icon
-                    let iconView = UIImageView(frame: CGRect(x: 8, y: 8, width: 16, height: 16))
+                    // Lock icon (not rotated — sits centered on top)
+                    let iconView = UIImageView(frame: CGRect(x: 10, y: 10, width: 16, height: 16))
                     iconView.contentMode = .scaleAspectFit
                     iconView.tintColor = .black
                     iconView.tag = 301
                     view?.addSubview(iconView)
 
-                    // Outer ring for time-locked state
-                    let ring = UIView(frame: CGRect(x: 0, y: 0, width: 32, height: 32))
-                    ring.layer.cornerRadius = 16
+                    // Outer glow ring for time-locked state
+                    let ring = UIView(frame: CGRect(x: 0, y: 0, width: 36, height: 36))
+                    ring.layer.cornerRadius = 18
                     ring.layer.borderWidth = 2
                     ring.backgroundColor = .clear
                     ring.tag = 302
@@ -400,22 +401,33 @@ struct GeoMapView: UIViewRepresentable {
                 let isExpired = dropPin.expiresAt < Date()
                 let bgColor: UIColor = isExpired
                     ? UIColor(white: 0.4, alpha: 1.0)
-                    : UIColor(red: 1.0, green: 0.72, blue: 0.0, alpha: 1.0)  // amber/gold
+                    : dropPin.isTimeLocked
+                        ? UIColor(red: 1.0, green: 0.55, blue: 0.0, alpha: 1.0)  // deeper amber for time-locked
+                        : UIColor(red: 1.0, green: 0.72, blue: 0.0, alpha: 1.0)  // amber/gold
 
                 if let bg = view?.viewWithTag(300) {
                     bg.backgroundColor = bgColor
+                    bg.layer.shadowColor = bgColor.cgColor
+                    bg.layer.shadowOpacity = isExpired ? 0 : 0.6
+                    bg.layer.shadowRadius = 6
+                    bg.layer.shadowOffset = .zero
                 }
 
                 if let iconView = view?.viewWithTag(301) as? UIImageView {
                     let symbolName = dropPin.isPickedUp ? "lock.open.fill" : "lock.fill"
                     iconView.image = UIImage(systemName: symbolName)
+                    iconView.tintColor = isExpired ? .darkGray : .black
                 }
 
                 if let ring = view?.viewWithTag(302) {
                     ring.layer.borderColor = dropPin.isTimeLocked
-                        ? UIColor(red: 1.0, green: 0.55, blue: 0.0, alpha: 0.8).cgColor  // deeper amber for time-locked
-                        : UIColor.white.withAlphaComponent(0.3).cgColor
+                        ? UIColor(red: 1.0, green: 0.55, blue: 0.0, alpha: 0.8).cgColor
+                        : UIColor.white.withAlphaComponent(0.2).cgColor
+                    ring.isHidden = !dropPin.isTimeLocked
                 }
+
+                view?.isAccessibilityElement = true
+                view?.accessibilityLabel = "Dead drop from \(dropPin.senderName), \(dropPin.timeLockStatus), \(dropPin.expiryDescription)"
 
                 return view
             }
@@ -431,27 +443,51 @@ struct GeoMapView: UIViewRepresentable {
             var view = mapView.dequeueReusableAnnotationView(withIdentifier: reuseID)
 
             if view == nil {
+                // Taller frame to accommodate the name label below the dot
                 view = MLNAnnotationView(annotation: annotation, reuseIdentifier: reuseID)
-                view?.frame = CGRect(x: 0, y: 0, width: 28, height: 28)
+                view?.frame = CGRect(x: 0, y: 0, width: 80, height: 44)
+                view?.centerOffset = CGVector(dx: 0, dy: -8)
 
-                let dot = UIView(frame: CGRect(x: 4, y: 4, width: 20, height: 20))
+                let dot = UIView(frame: CGRect(x: 30, y: 0, width: 20, height: 20))
                 dot.layer.cornerRadius = 10
                 dot.tag = 100
                 view?.addSubview(dot)
 
-                let border = UIView(frame: CGRect(x: 2, y: 2, width: 24, height: 24))
+                let border = UIView(frame: CGRect(x: 28, y: -2, width: 24, height: 24))
                 border.layer.cornerRadius = 12
                 border.layer.borderWidth = 2
                 border.layer.borderColor = UIColor.white.withAlphaComponent(0.3).cgColor
                 border.backgroundColor = .clear
                 border.tag = 101
                 view?.addSubview(border)
+
+                // Name label below the dot
+                let nameLabel = UILabel(frame: CGRect(x: 0, y: 22, width: 80, height: 18))
+                nameLabel.textAlignment = .center
+                nameLabel.font = UIFont.systemFont(ofSize: 10, weight: .semibold)
+                nameLabel.textColor = .white
+                nameLabel.layer.shadowColor = UIColor.black.cgColor
+                nameLabel.layer.shadowOffset = CGSize(width: 0, height: 1)
+                nameLabel.layer.shadowOpacity = 0.8
+                nameLabel.layer.shadowRadius = 2
+                nameLabel.tag = 102
+                view?.addSubview(nameLabel)
             }
 
             let color = pinColor(for: peer)
             if let dot = view?.viewWithTag(100) {
                 dot.backgroundColor = color
+                dot.alpha = peer.isStale ? 0.5 : 1.0
             }
+            if let nameLabel = view?.viewWithTag(102) as? UILabel {
+                nameLabel.text = peer.name
+                nameLabel.alpha = peer.isStale ? 0.4 : 0.9
+            }
+
+            view?.isAccessibilityElement = true
+            view?.accessibilityLabel = peer.isStale
+                ? "\(peer.name), stale location"
+                : "\(peer.name), connected via \(peer.transportType)"
 
             return view
         }

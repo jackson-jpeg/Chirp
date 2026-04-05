@@ -8,36 +8,56 @@ private struct CountdownOverlay: View {
     let onCancel: () -> Void
 
     @State private var scale: CGFloat = 0.5
+    @State private var vignetteIntensity: Double = 0.0
+
+    private let red = Constants.Colors.emergencyRed
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.85)
+            Color.black.opacity(0.92)
                 .ignoresSafeArea()
 
-            VStack(spacing: 32) {
+            // Red vignette that intensifies as countdown progresses
+            RadialGradient(
+                colors: [Color.clear, red.opacity(vignetteIntensity)],
+                center: .center,
+                startRadius: 80,
+                endRadius: 450
+            )
+            .ignoresSafeArea()
+
+            VStack(spacing: 28) {
                 Spacer()
 
                 Text(String(localized: "emergency.countdown.activating"))
-                    .font(.system(size: 14, weight: .black, design: .monospaced))
-                    .foregroundStyle(Constants.Colors.hotRed)
-                    .tracking(4)
+                    .font(.system(size: 16, weight: .black, design: .monospaced))
+                    .foregroundStyle(red)
+                    .tracking(6)
 
                 Text("\(secondsRemaining)")
-                    .font(.system(size: 120, weight: .black, design: .rounded))
-                    .foregroundStyle(Constants.Colors.hotRed)
+                    .font(.system(size: 140, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .shadow(color: red, radius: 30)
+                    .shadow(color: red.opacity(0.5), radius: 60)
                     .scaleEffect(scale)
                     .animation(.easeOut(duration: 0.3), value: scale)
                     .onChange(of: secondsRemaining) {
                         scale = 0.5
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.5)) {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.45)) {
                             scale = 1.0
+                        }
+                        // Intensify vignette as countdown decreases
+                        withAnimation(.easeInOut(duration: 0.8)) {
+                            vignetteIntensity = Double(3 - secondsRemaining + 1) * 0.15
                         }
                     }
                     .onAppear {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.5)) {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.45)) {
                             scale = 1.0
                         }
+                        vignetteIntensity = 0.1
                     }
+                    .accessibilityLabel(String(localized: "emergency.countdown.secondsRemaining \(secondsRemaining)"))
 
                 Text(String(localized: "emergency.countdown.cancelHint"))
                     .font(.system(size: 15, weight: .medium))
@@ -60,7 +80,7 @@ private struct CountdownOverlay: View {
                                 )
                         )
                 }
-                .accessibilityLabel("Cancel SOS activation")
+                .accessibilityLabel(String(localized: "emergency.countdown.cancelAccessibility"))
                 .accessibilityIdentifier(AccessibilityID.sosCancelButton)
                 .padding(.horizontal, 40)
                 .padding(.bottom, 60)
@@ -75,22 +95,41 @@ private struct SOSButton: View {
     let isActive: Bool
     let action: () -> Void
 
-    @State private var pulseScale: CGFloat = 1.0
-    @State private var pulseOpacity: Double = 0.6
+    @State private var ringPhase: Double = 0
     @State private var innerGlow: Double = 0.3
+    @State private var sosTextPulse: Double = 1.0
 
-    private let red = Constants.Colors.hotRed
+    private let red = Constants.Colors.emergencyRed
 
     var body: some View {
         ZStack {
-            // Outer pulse rings (when active).
+            // Outer pulse rings (when active) — staggered expanding rings like PTT transmit
             if isActive {
-                ForEach(0..<3, id: \.self) { ring in
-                    Circle()
-                        .stroke(red.opacity(pulseOpacity * (0.4 - Double(ring) * 0.12)), lineWidth: 2)
-                        .frame(width: 200 + CGFloat(ring) * 40, height: 200 + CGFloat(ring) * 40)
-                        .scaleEffect(pulseScale)
+                TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                    let t = timeline.date.timeIntervalSinceReferenceDate
+                    Canvas { context, size in
+                        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+                        for ring in 0..<4 {
+                            let phase = (t * 0.6 + Double(ring) * 0.25)
+                                .truncatingRemainder(dividingBy: 1.0)
+                            let radius = 90.0 + phase * 80.0
+                            let opacity = (1.0 - phase) * 0.35
+                            let path = Path(ellipseIn: CGRect(
+                                x: center.x - radius,
+                                y: center.y - radius,
+                                width: radius * 2,
+                                height: radius * 2
+                            ))
+                            context.stroke(
+                                path,
+                                with: .color(Color(hex: 0xCC0000).opacity(opacity)),
+                                lineWidth: 2.5 - phase * 1.5
+                            )
+                        }
+                    }
                 }
+                .frame(width: 340, height: 340)
+                .allowsHitTesting(false)
             }
 
             // Glow ring.
@@ -112,9 +151,9 @@ private struct SOSButton: View {
                         .fill(
                             RadialGradient(
                                 colors: [
+                                    Constants.Colors.hotRed,
                                     red,
-                                    red.opacity(0.8),
-                                    Color(hex: 0xCC1100),
+                                    Color(hex: 0x990000),
                                 ],
                                 center: .center,
                                 startRadius: 0,
@@ -122,7 +161,7 @@ private struct SOSButton: View {
                             )
                         )
                         .frame(width: 160, height: 160)
-                        .shadow(color: red.opacity(isActive ? 0.8 : 0.4), radius: isActive ? 40 : 20)
+                        .shadow(color: red.opacity(isActive ? 0.9 : 0.4), radius: isActive ? 45 : 20)
 
                     // Inner highlight.
                     Circle()
@@ -135,6 +174,13 @@ private struct SOSButton: View {
                         )
                         .frame(width: 160, height: 160)
 
+                    // Warning stripes border when inactive
+                    if !isActive {
+                        Circle()
+                            .stroke(Color.black.opacity(0.3), lineWidth: 3)
+                            .frame(width: 160, height: 160)
+                    }
+
                     VStack(spacing: 4) {
                         Image(systemName: "sos")
                             .font(.system(size: 48, weight: .black))
@@ -143,15 +189,20 @@ private struct SOSButton: View {
                         if isActive {
                             Text(String(localized: "emergency.sos.active"))
                                 .font(.system(size: 12, weight: .black, design: .monospaced))
-                                .foregroundStyle(.white.opacity(0.8))
+                                .foregroundStyle(.white)
                                 .tracking(2)
+                                .opacity(sosTextPulse)
                         }
                     }
                 }
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(isActive ? "SOS beacon active. Tap to deactivate" : "Activate SOS beacon")
-            .accessibilityHint(isActive ? "Stops broadcasting emergency signal" : "Broadcasts emergency signal to all nearby mesh devices")
+            .accessibilityLabel(isActive
+                ? String(localized: "emergency.sos.activeAccessibility")
+                : String(localized: "emergency.sos.inactiveAccessibility"))
+            .accessibilityHint(isActive
+                ? String(localized: "emergency.sos.activeHint")
+                : String(localized: "emergency.sos.inactiveHint"))
             .accessibilityIdentifier(AccessibilityID.sosActivateButton)
         }
         .onAppear {
@@ -167,17 +218,16 @@ private struct SOSButton: View {
 
     private func startPulseAnimation() {
         withAnimation(
-            .easeInOut(duration: 1.2)
-            .repeatForever(autoreverses: true)
-        ) {
-            pulseScale = 1.3
-            pulseOpacity = 0.0
-        }
-        withAnimation(
             .easeInOut(duration: 0.8)
             .repeatForever(autoreverses: true)
         ) {
             innerGlow = 0.6
+        }
+        withAnimation(
+            .easeInOut(duration: 1.0)
+            .repeatForever(autoreverses: true)
+        ) {
+            sosTextPulse = 0.4
         }
     }
 }
@@ -281,6 +331,36 @@ private struct SOSAlertCard: View {
     }
 }
 
+// MARK: - Broadcasting Dots Label
+
+/// Animated "Broadcasting to mesh..." with trailing dots.
+private struct BroadcastingDotsLabel: View {
+    let peerCount: Int
+    let color: Color
+
+    @State private var dotCount = 0
+    @State private var animationTask: Task<Void, Never>?
+
+    var body: some View {
+        let dots = String(repeating: ".", count: dotCount)
+        Text(String(localized: "emergency.status.broadcastingToMesh \(peerCount)") + dots)
+            .font(.system(size: 14, weight: .bold, design: .rounded))
+            .foregroundStyle(color)
+            .onAppear { startDotAnimation() }
+            .onDisappear { animationTask?.cancel() }
+    }
+
+    private func startDotAnimation() {
+        animationTask = Task { @MainActor in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(500))
+                guard !Task.isCancelled else { break }
+                dotCount = (dotCount + 1) % 4
+            }
+        }
+    }
+}
+
 // MARK: - Emergency SOS View
 
 struct EmergencySOSView: View {
@@ -294,8 +374,9 @@ struct EmergencySOSView: View {
     @State private var emergencyHoldProgress: CGFloat = 0.0
     @State private var emergencyHoldTask: Task<Void, Never>?
     @State private var isHoldingForEmergency = false
+    @State private var sosActiveTextPulse: Double = 1.0
 
-    private let red = Constants.Colors.hotRed
+    private let red = Constants.Colors.emergencyRed
     private let amber = Constants.Colors.amber
 
     private var beacon: EmergencyBeacon { EmergencyBeacon.shared }
@@ -441,14 +522,49 @@ struct EmergencySOSView: View {
     // MARK: - Active Status
 
     private var activeStatusSection: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
+            // SOS ACTIVE pulsing header
+            Text(String(localized: "emergency.sos.active"))
+                .font(.system(size: 18, weight: .black, design: .monospaced))
+                .foregroundStyle(Constants.Colors.emergencyRed)
+                .tracking(4)
+                .opacity(sosActiveTextPulse)
+                .onAppear {
+                    withAnimation(
+                        .easeInOut(duration: 1.0)
+                        .repeatForever(autoreverses: true)
+                    ) {
+                        sosActiveTextPulse = 0.4
+                    }
+                }
+
+            // GPS coordinates displayed prominently
+            if let location = beacon.lastLocation {
+                VStack(spacing: 4) {
+                    Text(String(
+                        format: "%.6f, %.6f",
+                        location.coordinate.latitude,
+                        location.coordinate.longitude
+                    ))
+                    .font(.system(size: 18, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.white)
+                    .accessibilityLabel(String(localized: "emergency.coordinates.label \(String(format: "%.6f", location.coordinate.latitude)) \(String(format: "%.6f", location.coordinate.longitude))"))
+                }
+            }
+
+            // Broadcasting to mesh with animated dots
+            BroadcastingDotsLabel(
+                peerCount: appState.connectedPeerCount,
+                color: Constants.Colors.emergencyRed
+            )
+
             // Broadcast count + mesh node count.
             HStack(spacing: 20) {
                 statusPill(
                     icon: "antenna.radiowaves.left.and.right",
                     label: String(localized: "emergency.status.broadcasts"),
                     value: "\(beacon.broadcastCount)",
-                    color: red
+                    color: Constants.Colors.emergencyRed
                 )
 
                 statusPill(
@@ -463,9 +579,9 @@ struct EmergencySOSView: View {
             let battery = UIDevice.current.batteryLevel
             if battery >= 0 {
                 HStack(spacing: 8) {
-                    Image(systemName: "battery.50")
+                    Image(systemName: batteryIconForLevel(battery))
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(battery > 0.2 ? Constants.Colors.electricGreen : red)
+                        .foregroundStyle(battery > 0.2 ? Constants.Colors.electricGreen : Constants.Colors.emergencyRed)
 
                     Text(String(localized: "emergency.status.batteryRemaining \(Int(battery * 100))"))
                         .font(.system(size: 13, weight: .semibold))
@@ -473,9 +589,27 @@ struct EmergencySOSView: View {
                 }
             }
 
-            Text(String(localized: "emergency.status.broadcastingTo \(appState.connectedPeerCount)"))
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .foregroundStyle(red)
+            // Large CANCEL SOS button
+            Button {
+                beacon.deactivate()
+            } label: {
+                Text(String(localized: "emergency.cancelSOS"))
+                    .font(.system(size: 18, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Constants.Colors.emergencyRed.opacity(0.25))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Constants.Colors.emergencyRed.opacity(0.5), lineWidth: 1.5)
+                            )
+                    )
+            }
+            .accessibilityLabel(String(localized: "emergency.cancelSOS"))
+            .accessibilityIdentifier(AccessibilityID.sosCancelButton)
+            .padding(.top, 8)
         }
     }
 
@@ -542,8 +676,7 @@ struct EmergencySOSView: View {
                 .font(.system(size: 16, weight: .bold, design: .monospaced))
                 .foregroundStyle(.white.opacity(0.9))
 
-                Text(String(format: "Altitude: %.0fm | Accuracy: %.0fm",
-                            location.altitude, location.horizontalAccuracy))
+                Text(String(localized: "emergency.coordinates.altitudeAccuracy \(Int(location.altitude)) \(Int(location.horizontalAccuracy))"))
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundStyle(.white.opacity(0.35))
             } else {
@@ -657,6 +790,16 @@ struct EmergencySOSView: View {
         countdownTask = nil
         isCountingDown = false
         countdownSeconds = 3
+    }
+
+    private func batteryIconForLevel(_ level: Float) -> String {
+        switch level {
+        case 0.75...: return "battery.100"
+        case 0.50...: return "battery.75"
+        case 0.25...: return "battery.50"
+        case 0.10...: return "battery.25"
+        default: return "battery.0"
+        }
     }
 
     private func startVignetteAnimation() {
