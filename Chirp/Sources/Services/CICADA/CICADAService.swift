@@ -21,6 +21,14 @@ final class CICADAService {
         didSet { UserDefaults.standard.set(isEnabled, forKey: Keys.enabled) }
     }
 
+    /// Preferred text steganography mode.
+    var preferredMode: TextStego.StegoMode = {
+        let raw = UserDefaults.standard.integer(forKey: Constants.CICADA.preferredModeKey)
+        return TextStego.StegoMode(rawValue: raw) ?? .zeroWidth
+    }() {
+        didSet { UserDefaults.standard.set(preferredMode.rawValue, forKey: Constants.CICADA.preferredModeKey) }
+    }
+
     /// Decoded hidden messages keyed by MeshTextMessage ID.
     /// Ephemeral — cleared each session for security.
     private(set) var hiddenMessages: [UUID: String] = [:]
@@ -47,11 +55,11 @@ final class CICADAService {
             return nil
         }
         let hiddenData = Data(hidden.utf8)
-        guard let encoded = TextStego.encode(cover: cover, hidden: hiddenData, key: key) else {
-            logger.warning("CICADA encode failed — insufficient capacity (\(cover.count) chars, \(hiddenData.count) bytes)")
+        guard let encoded = TextStego.encode(cover: cover, hidden: hiddenData, key: key, mode: preferredMode) else {
+            logger.warning("CICADA encode failed — insufficient capacity (\(cover.count) chars, \(hiddenData.count) bytes, mode: \(self.preferredMode.rawValue))")
             return nil
         }
-        logger.info("CICADA encoded \(hiddenData.count) bytes into \(cover.count)-char cover")
+        logger.info("CICADA encoded \(hiddenData.count) bytes into \(cover.count)-char cover (mode: \(self.preferredMode.rawValue))")
         return encoded
     }
 

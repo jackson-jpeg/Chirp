@@ -33,7 +33,9 @@ struct SettingsView: View {
                 privacySecuritySection
                 meshCloudSection
                 aboutSection
+                #if DEBUG
                 debugSection
+                #endif
 
                 // Version footer
                 Text("ChirpChirp \(appVersion)")
@@ -613,10 +615,32 @@ struct SettingsView: View {
                     .buttonStyle(.plain)
                 }
 
+                // Support
+                glassRow {
+                    Button {
+                        if let url = URL(string: "https://chirpchirps.com/support") {
+                            UIApplication.shared.open(url)
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "questionmark.circle.fill")
+                                .foregroundStyle(amber)
+                                .frame(width: 24)
+                            Text("Support")
+                                .foregroundStyle(Constants.Colors.textPrimary)
+                            Spacer()
+                            Image(systemName: "arrow.up.forward")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+
                 // Privacy Policy
                 glassRow {
                     Button {
-                        if let url = URL(string: "https://chirpchirp.app/privacy") {
+                        if let url = URL(string: "https://chirpchirps.com/privacy") {
                             UIApplication.shared.open(url)
                         }
                     } label: {
@@ -638,7 +662,7 @@ struct SettingsView: View {
                 // Open Source
                 glassRow {
                     Button {
-                        if let url = URL(string: "https://chirpchirp.app/credits") {
+                        if let url = URL(string: "https://chirpchirps.com/credits") {
                             UIApplication.shared.open(url)
                         }
                     } label: {
@@ -663,6 +687,7 @@ struct SettingsView: View {
 
     // MARK: - Debug
 
+    #if DEBUG
     private var debugSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             sectionHeader(icon: "ladybug.fill", title: "Debug", dimmed: true)
@@ -786,6 +811,7 @@ struct SettingsView: View {
             .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous))
         }
     }
+    #endif
 
     // MARK: - Computed Properties
 

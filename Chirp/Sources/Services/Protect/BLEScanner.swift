@@ -3,7 +3,7 @@ import Foundation
 import Observation
 import OSLog
 
-/// Scans for nearby Bluetooth Low Energy devices and assesses threat levels.
+/// Scans for nearby Bluetooth Low Energy devices and categorizes them.
 ///
 /// Uses ``CBCentralManager`` to discover BLE peripherals, resolves manufacturer
 /// data via ``BLEManufacturerDB``, and exposes a sorted list of detected devices.
@@ -29,7 +29,7 @@ final class BLEScanner: NSObject {
 
     private(set) var bluetoothState: BluetoothState = .unknown
 
-    /// Devices with medium or high threat level.
+    /// Devices with medium or high awareness level.
     var threatDevices: [BLEDevice] {
         discoveredDevices.filter { $0.threatLevel >= .medium }
     }
@@ -43,8 +43,8 @@ final class BLEScanner: NSObject {
     // MARK: - Private State
 
     private var centralManager: CBCentralManager?
-    private var scanTimer: Timer?
-    private var restTimer: Timer?
+    private var scanTask: Task<Void, Never>?
+    private var restTask: Task<Void, Never>?
     private var sortDebounceTask: Task<Void, Never>?
     private var deviceMap: [String: BLEDevice] = [:]
 
@@ -88,10 +88,10 @@ final class BLEScanner: NSObject {
         isScanning = false
 
         centralManager?.stopScan()
-        scanTimer?.invalidate()
-        scanTimer = nil
-        restTimer?.invalidate()
-        restTimer = nil
+        scanTask?.cancel()
+        scanTask = nil
+        restTask?.cancel()
+        restTask = nil
 
         logger.info("BLE scanning stopped")
     }
@@ -112,9 +112,11 @@ final class BLEScanner: NSObject {
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
         )
 
-        scanTimer?.invalidate()
-        scanTimer = Timer.scheduledTimer(withTimeInterval: scanDuration, repeats: false) { [weak self] _ in
-            Task { @MainActor [weak self] in
+        scanTask?.cancel()
+        scanTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(self?.scanDuration ?? 5))
+            guard !Task.isCancelled else { return }
+            await MainActor.run { [weak self] in
                 self?.endScanWindow()
             }
         }
@@ -122,13 +124,15 @@ final class BLEScanner: NSObject {
 
     private func endScanWindow() {
         centralManager?.stopScan()
-        scanTimer?.invalidate()
-        scanTimer = nil
+        scanTask?.cancel()
+        scanTask = nil
 
         guard isScanning else { return }
 
-        restTimer = Timer.scheduledTimer(withTimeInterval: restDuration, repeats: false) { [weak self] _ in
-            Task { @MainActor [weak self] in
+        restTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(self?.restDuration ?? 10))
+            guard !Task.isCancelled else { return }
+            await MainActor.run { [weak self] in
                 self?.beginScanWindow()
             }
         }

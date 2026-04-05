@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFoundation
 
 /// The message composition bar at the bottom of the chat view.
 ///
@@ -15,8 +16,17 @@ struct ChatInputBar: View {
     var onPickPhoto: (() -> Void)?
     var onPickDocument: (() -> Void)?
     var onLongPressSend: (() -> Void)?
+    /// Called when user starts/continues typing (for typing indicators).
+    var onTyping: (() -> Void)?
+    /// Called when a voice note is recorded: (duration, audioData).
+    var onSendVoiceNote: ((TimeInterval, Data) -> Void)?
 
     @FocusState private var isTextFieldFocused: Bool
+    @State private var isRecordingVoice: Bool = false
+    @State private var voiceRecordingDuration: TimeInterval = 0
+    @State private var voiceRecordingTimer: Timer?
+    @State private var audioRecorder: VoiceNoteRecorder?
+    @State private var dragOffset: CGFloat = 0
 
     private let maxCharacters = MeshTextMessage.maxTextLength
     private let characterWarningThreshold = 800
@@ -28,6 +38,13 @@ struct ChatInputBar: View {
             // Reply preview
             if let reply = replyingTo {
                 replyBanner(reply)
+            }
+
+            // Voice recording overlay
+            if isRecordingVoice {
+                voiceRecordingOverlay
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
             }
 
             // Input row
@@ -47,17 +64,19 @@ struct ChatInputBar: View {
                             if newValue.count > maxCharacters {
                                 text = String(newValue.prefix(maxCharacters))
                             }
+                            // Notify typing indicator
+                            if !newValue.isEmpty {
+                                onTyping?()
+                            }
                         }
                         .accessibilityLabel("Message input")
                         .accessibilityIdentifier(AccessibilityID.chatInputField)
 
-                    // Character counter (visible near limit)
-                    if text.count >= characterWarningThreshold {
-                        Text("\(text.count)/\(maxCharacters)")
-                            .font(Constants.Typography.badge)
-                            .foregroundStyle(text.count >= maxCharacters ? Constants.Colors.hotRed : Constants.Colors.textTertiary)
-                            .transition(.opacity)
-                    }
+                    // Character counter (always visible, opacity increases near limit)
+                    Text("\(text.count)/\(maxCharacters)")
+                        .font(Constants.Typography.badge)
+                        .foregroundStyle(text.count >= 950 ? Constants.Colors.hotRed : Constants.Colors.textTertiary)
+                        .opacity(text.count >= 950 ? 1.0 : (text.count >= characterWarningThreshold ? 0.6 : 0.3))
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
@@ -86,7 +105,7 @@ struct ChatInputBar: View {
                 .ignoresSafeArea(edges: .bottom)
         )
         .animation(.easeInOut(duration: 0.15), value: replyingTo?.id)
-        .animation(.easeInOut(duration: 0.15), value: text.count >= characterWarningThreshold)
+        .animation(.easeInOut(duration: 0.15), value: text.count)
     }
 
     // MARK: - Reply Banner
@@ -168,29 +187,161 @@ struct ChatInputBar: View {
         .accessibilityIdentifier(AccessibilityID.chatAttachmentMenu)
     }
 
-    // MARK: - Send Button
+    // MARK: - Send Button / Mic Button
 
     private var sendButton: some View {
         let canSend = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 
-        return Button {
-            guard canSend else { return }
-            onSend()
-        } label: {
-            Image(systemName: "arrow.up.circle.fill")
-                .font(.system(size: 32, weight: .medium))
-                .foregroundStyle(canSend ? Constants.Colors.blue500 : Constants.Colors.textTertiary)
+        return Group {
+            if canSend {
+                Button {
+                    onSend()
+                } label: {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 32, weight: .medium))
+                        .foregroundStyle(Constants.Colors.blue500)
+                }
+                .accessibilityLabel("Send message")
+                .accessibilityHint("Sends your message to the channel")
+                .simultaneousGesture(
+                    LongPressGesture(minimumDuration: 0.5)
+                        .onEnded { _ in
+                            onLongPressSend?()
+                        }
+                )
+                .accessibilityIdentifier(AccessibilityID.chatSendButton)
+            } else if onSendVoiceNote != nil {
+                // Mic button for voice notes (hold to record)
+                micButton
+            } else {
+                Button {} label: {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 32, weight: .medium))
+                        .foregroundStyle(Constants.Colors.textTertiary)
+                }
+                .disabled(true)
+                .accessibilityLabel("Send message")
+                .accessibilityHint("Type a message first")
+                .accessibilityIdentifier(AccessibilityID.chatSendButton)
+            }
         }
-        .disabled(!canSend)
-        .accessibilityLabel("Send message")
-        .accessibilityHint(canSend ? "Sends your message to the channel" : "Type a message first")
-        .simultaneousGesture(
-            LongPressGesture(minimumDuration: 0.5)
-                .onEnded { _ in
-                    onLongPressSend?()
+        .animation(.easeInOut(duration: 0.15), value: canSend)
+    }
+
+    // MARK: - Voice Note Recording
+
+    private var micButton: some View {
+        ZStack {
+            Image(systemName: isRecordingVoice ? "mic.fill" : "mic.circle.fill")
+                .font(.system(size: 32, weight: .medium))
+                .foregroundStyle(isRecordingVoice ? Constants.Colors.hotRed : Constants.Colors.textTertiary)
+                .scaleEffect(isRecordingVoice ? 1.2 : 1.0)
+                .animation(.easeInOut(duration: 0.2), value: isRecordingVoice)
+        }
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                    if !isRecordingVoice {
+                        startRecording()
+                    }
+                    dragOffset = value.translation.width
+                }
+                .onEnded { value in
+                    if value.translation.width < -80 {
+                        // Swipe left to cancel
+                        cancelRecording()
+                    } else {
+                        finishRecording()
+                    }
+                    dragOffset = 0
                 }
         )
-        .accessibilityIdentifier(AccessibilityID.chatSendButton)
-        .animation(.easeInOut(duration: 0.15), value: canSend)
+        .accessibilityLabel("Record voice note")
+        .accessibilityHint("Hold to record, release to send, swipe left to cancel")
+        .accessibilityIdentifier(AccessibilityID.chatVoiceNoteButton)
+    }
+
+    // MARK: - Voice Recording Overlay
+
+    private var voiceRecordingOverlay: some View {
+        HStack(spacing: 12) {
+            // Red recording dot
+            Circle()
+                .fill(Constants.Colors.hotRed)
+                .frame(width: 10, height: 10)
+                .opacity(voiceRecordingDuration.truncatingRemainder(dividingBy: 1.0) < 0.5 ? 1.0 : 0.4)
+
+            // Duration
+            Text(formatDuration(voiceRecordingDuration))
+                .font(Constants.Typography.monoStatus)
+                .foregroundStyle(Constants.Colors.textPrimary)
+
+            Spacer()
+
+            // Swipe hint
+            if dragOffset > -40 {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 11))
+                    Text("Swipe to cancel")
+                        .font(Constants.Typography.caption)
+                }
+                .foregroundStyle(Constants.Colors.textTertiary)
+            } else {
+                Text("Release to cancel")
+                    .font(Constants.Typography.caption)
+                    .foregroundStyle(Constants.Colors.hotRed)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Constants.Colors.surfaceGlass)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .transition(.opacity.combined(with: .scale(scale: 0.95)))
+    }
+
+    private func startRecording() {
+        isRecordingVoice = true
+        voiceRecordingDuration = 0
+        HapticsManager.shared.pttDown()
+
+        let recorder = VoiceNoteRecorder()
+        audioRecorder = recorder
+        recorder.startRecording()
+
+        let timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            Task { @MainActor in
+                voiceRecordingDuration += 0.1
+            }
+        }
+        voiceRecordingTimer = timer
+    }
+
+    private func finishRecording() {
+        guard isRecordingVoice, let recorder = audioRecorder else { return }
+        isRecordingVoice = false
+        voiceRecordingTimer?.invalidate()
+        voiceRecordingTimer = nil
+        HapticsManager.shared.pttUp()
+
+        if let data = recorder.stopRecording(), voiceRecordingDuration >= 0.5 {
+            onSendVoiceNote?(voiceRecordingDuration, data)
+        }
+        audioRecorder = nil
+    }
+
+    private func cancelRecording() {
+        isRecordingVoice = false
+        voiceRecordingTimer?.invalidate()
+        voiceRecordingTimer = nil
+        audioRecorder?.cancelRecording()
+        audioRecorder = nil
+        HapticsManager.shared.pttUp()
+    }
+
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let minutes = Int(duration) / 60
+        let seconds = Int(duration) % 60
+        return String(format: "%d:%02d", minutes, seconds)
     }
 }

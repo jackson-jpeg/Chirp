@@ -51,7 +51,7 @@ final class JitterBuffer: @unchecked Sendable {
         packetsReceived += 1
 
         // Drop late packets
-        if let lastPulled = lastPulledSequence, sequenceNumber <= lastPulled {
+        if let lastPulled = lastPulledSequence, Int32(bitPattern: sequenceNumber &- lastPulled) <= 0 {
             packetsDroppedLate += 1
             Logger.audio.debug("Dropped late packet seq=\(sequenceNumber), lastPulled=\(lastPulled)")
             return

@@ -68,28 +68,11 @@ final class CameraButtonPTT: ObservableObject {
     // MARK: - Private
 
     private func checkAvailability() {
-        // iPhone 16 family: model identifiers iPhone17,x
-        // The camera control button is physically present on these models.
-        // At runtime we can check device model or, on iOS 26+, query the
-        // system API. For now we do a best-effort model string check.
-        #if targetEnvironment(simulator)
+        // Disabled until iOS 26 CameraButton API is wired
         isAvailable = false
-        #else
-        let model = deviceModelIdentifier()
-        // iPhone 16 series starts at iPhone17,1
-        isAvailable = model.hasPrefix("iPhone17,") || model.hasPrefix("iPhone18,")
-        #endif
     }
 
-    private func deviceModelIdentifier() -> String {
-        var systemInfo = utsname()
-        uname(&systemInfo)
-        return withUnsafePointer(to: &systemInfo.machine) {
-            $0.withMemoryRebound(to: CChar.self, capacity: 1) {
-                String(validatingCString: $0) ?? "Unknown"
-            }
-        }
-    }
+    // deviceModelIdentifier() removed — not needed while CameraButton is disabled
 }
 
 // MARK: - SwiftUI View Extension

@@ -117,7 +117,23 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
             let serialized = meshPacket.serialize()
             var wireData = Data([Self.meshMagic])
             wireData.append(serialized)
-            try? self.session.send(wireData, toPeers: self.session.connectedPeers, with: .unreliable)
+            do {
+                try self.session.send(wireData, toPeers: self.session.connectedPeers, with: .unreliable)
+            } catch {
+                self.logger.error("MultipeerTransport send failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// Send pre-built wire data (meshMagic + serialized MeshPacket).
+    /// Used when the caller has already created the packet to avoid duplicate packet IDs
+    /// when sending on multiple transports.
+    func sendRawWireData(_ wireData: Data, reliable: Bool = false) {
+        guard !session.connectedPeers.isEmpty else { return }
+        do {
+            try session.send(wireData, toPeers: session.connectedPeers, with: reliable ? .reliable : .unreliable)
+        } catch {
+            logger.error("MultipeerTransport send failed: \(error.localizedDescription)")
         }
     }
 
@@ -136,7 +152,11 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
             let serialized = meshPacket.serialize()
             var wireData = Data([Self.meshMagic])
             wireData.append(serialized)
-            try? self.session.send(wireData, toPeers: self.session.connectedPeers, with: .reliable)
+            do {
+                try self.session.send(wireData, toPeers: self.session.connectedPeers, with: .reliable)
+            } catch {
+                self.logger.error("MultipeerTransport send failed: \(error.localizedDescription)")
+            }
         }
     }
 
@@ -156,7 +176,11 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
             let serialized = meshPacket.serialize()
             var wireData = Data([Self.meshMagic])
             wireData.append(serialized)
-            try? self.session.send(wireData, toPeers: self.session.connectedPeers, with: .reliable)
+            do {
+                try self.session.send(wireData, toPeers: self.session.connectedPeers, with: .reliable)
+            } catch {
+                self.logger.error("MultipeerTransport send failed: \(error.localizedDescription)")
+            }
         }
     }
 
@@ -171,7 +195,11 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
         wireData.append(packet)
 
         // Use unreliable for forwarded packets -- they're already best-effort mesh traffic
-        try? session.send(wireData, toPeers: targets, with: .unreliable)
+        do {
+            try session.send(wireData, toPeers: targets, with: .unreliable)
+        } catch {
+            logger.error("MultipeerTransport send failed: \(error.localizedDescription)")
+        }
         logger.debug("Mesh forwarded packet to \(targets.count) peers (excluded '\(excludePeer)')")
     }
 
@@ -191,7 +219,7 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
             )
         }
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let self else { return }
             self.peers = newPeers
             self.onPeersChanged?(newPeers)

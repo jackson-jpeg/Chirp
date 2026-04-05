@@ -45,6 +45,10 @@ enum AccessibilityID {
     static let chatInputField = "chatInputField"
     static let chatSendButton = "chatSendButton"
     static let chatAttachmentMenu = "chatAttachmentMenu"
+    static let chatSearchField = "chatSearchField"
+    static let chatVoiceNoteButton = "chatVoiceNoteButton"
+    static let chatVoiceNoteBubble = "chatVoiceNoteBubble"
+    static let chatTypingIndicator = "chatTypingIndicator"
 
     // MARK: - Emergency
     static let emergencySOSView = "emergencySOSView"

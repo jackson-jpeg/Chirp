@@ -96,7 +96,8 @@ struct StatusPillView: View {
         )
         .shadow(color: statusColor.opacity(0.2), radius: 10, y: 3)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Connection: \(status.text)")
+        .accessibilityLabel("Connection status: \(status.text)")
+        .accessibilityHint(statusAccessibilityHint)
         .animation(.easeInOut(duration: 0.3), value: statusKey)
         .onAppear {
             startPulseIfNeeded()
@@ -120,6 +121,17 @@ struct StatusPillView: View {
     private func resetPulse() {
         pulseScale = 1.0
         pulseOpacity = 1.0
+    }
+
+    private var statusAccessibilityHint: String {
+        switch status {
+        case .connected(let count):
+            return "\(count) peer\(count == 1 ? "" : "s") connected to the mesh"
+        case .searching:
+            return "Looking for nearby devices"
+        case .disconnected:
+            return "No peers found nearby"
+        }
     }
 
     private var statusKey: String {

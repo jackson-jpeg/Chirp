@@ -64,6 +64,10 @@ final class WiFiAwareTransport {
     private static let maxBackoff: TimeInterval = 30.0
     private static let initialBackoff: TimeInterval = 2.0
 
+    private var listenerRetryCount = 0
+    private var browserRetryCount = 0
+    private static let maxRetries = 3
+
     // MARK: - Init
 
     init(meshRouter: MeshRouter, localPeerID: String, localPeerName: String) {
@@ -96,6 +100,8 @@ final class WiFiAwareTransport {
             logger.info("Wi-Fi Aware not supported — transport inactive")
             return
         }
+        listenerRetryCount = 0
+        browserRetryCount = 0
         startDeviceObserver()
         startListener()
         startBrowser()
@@ -176,6 +182,16 @@ final class WiFiAwareTransport {
             } catch {
                 if !Task.isCancelled {
                     self.logger.error("WiFiAware listener failed: \(error.localizedDescription)")
+                    if self.listenerRetryCount < Self.maxRetries {
+                        self.listenerRetryCount += 1
+                        self.logger.info("Retrying listener (\(self.listenerRetryCount)/\(Self.maxRetries)) in 2s")
+                        try? await Task.sleep(for: .seconds(2))
+                        if !Task.isCancelled {
+                            self.startListener()
+                        }
+                    } else {
+                        self.logger.error("Listener retries exhausted (\(Self.maxRetries))")
+                    }
                 }
             }
         }
@@ -216,6 +232,16 @@ final class WiFiAwareTransport {
             } catch {
                 if !Task.isCancelled {
                     self.logger.error("WiFiAware browser failed: \(error.localizedDescription)")
+                    if self.browserRetryCount < Self.maxRetries {
+                        self.browserRetryCount += 1
+                        self.logger.info("Retrying browser (\(self.browserRetryCount)/\(Self.maxRetries)) in 2s")
+                        try? await Task.sleep(for: .seconds(2))
+                        if !Task.isCancelled {
+                            self.startBrowser()
+                        }
+                    } else {
+                        self.logger.error("Browser retries exhausted (\(Self.maxRetries))")
+                    }
                 }
             }
         }
@@ -299,6 +325,13 @@ final class WiFiAwareTransport {
             wireData.append(packet.serialize())
             await self.broadcastToAll(wireData)
         }
+    }
+
+    /// Send pre-built wire data (meshMagic + serialized MeshPacket).
+    /// Used when the caller has already created the packet to avoid duplicate packet IDs
+    /// when sending on multiple transports.
+    func sendRawWireData(_ wireData: Data) async {
+        await broadcastToAll(wireData)
     }
 
     func sendControl(_ message: FloorControlMessage, channelID: String? = nil) throws {

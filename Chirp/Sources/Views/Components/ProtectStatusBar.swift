@@ -59,11 +59,11 @@ struct ProtectStatusBar: View {
                 RoomScannerView()
             } label: {
                 HStack(spacing: 6) {
-                    Text("\(threatCount) threat\(threatCount == 1 ? "" : "s")")
+                    Text("\(threatCount) flagged")
                         .foregroundStyle(threatColor.opacity(0.8))
                 }
             }
-            .accessibilityLabel("\(threatCount) threat\(threatCount == 1 ? "" : "s") detected, tap for room scanner")
+            .accessibilityLabel("\(threatCount) flagged device\(threatCount == 1 ? "" : "s"), tap for device scanner")
 
             separator
 

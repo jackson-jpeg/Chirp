@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Full-featured BLE room scanner UI for detecting nearby devices and assessing threats.
+/// Full-featured BLE device scanner UI for detecting and categorizing nearby devices.
 struct RoomScannerView: View {
     @Environment(AppState.self) private var appState
 
@@ -49,7 +49,7 @@ struct RoomScannerView: View {
             .padding(.top, 12)
         }
         .background(Constants.Colors.backgroundPrimary)
-        .navigationTitle("Room Scanner")
+        .navigationTitle("Device Scanner")
         .navigationBarTitleDisplayMode(.large)
     }
 
@@ -130,14 +130,14 @@ struct RoomScannerView: View {
         let devices = scanner.discoveredDevices
         let safe = devices.filter { $0.threatLevel <= .low }.count
         let unknown = devices.filter { $0.threatLevel == .medium }.count
-        let suspicious = devices.filter { $0.threatLevel == .high }.count
+        let flagged = devices.filter { $0.threatLevel == .high }.count
 
         return HStack(spacing: 0) {
             threatPill(count: safe, label: "Safe", color: Constants.Colors.electricGreen)
             Spacer()
             threatPill(count: unknown, label: "Unknown", color: Constants.Colors.amber)
             Spacer()
-            threatPill(count: suspicious, label: "Suspicious", color: Constants.Colors.hotRed)
+            threatPill(count: flagged, label: "Flagged", color: Constants.Colors.hotRed)
         }
         .padding(Constants.Layout.cardPadding)
         .background(
@@ -168,13 +168,13 @@ struct RoomScannerView: View {
     private var deviceList: some View {
         let scanner = appState.bleScanner
 
-        let suspicious = scanner.discoveredDevices.filter { $0.threatLevel == .high }
+        let flagged = scanner.discoveredDevices.filter { $0.threatLevel == .high }
         let unknown = scanner.discoveredDevices.filter { $0.threatLevel == .medium }
         let safe = scanner.discoveredDevices.filter { $0.threatLevel <= .low }
 
         return VStack(spacing: 0) {
-            if !suspicious.isEmpty {
-                deviceSection(title: "Suspicious", devices: suspicious, color: Constants.Colors.hotRed)
+            if !flagged.isEmpty {
+                deviceSection(title: "Flagged", devices: flagged, color: Constants.Colors.hotRed)
             }
             if !unknown.isEmpty {
                 deviceSection(title: "Unknown", devices: unknown, color: Constants.Colors.amber)
@@ -290,7 +290,7 @@ struct RoomScannerView: View {
     }
 
     private func meshReportCard(_ report: MeshScanReport) -> some View {
-        let threats = report.devices.filter { $0.threatLevel >= .medium }
+        let notable = report.devices.filter { $0.threatLevel >= .medium }
 
         return VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -310,8 +310,8 @@ struct RoomScannerView: View {
                     .font(Constants.Typography.caption)
                     .foregroundStyle(Constants.Colors.textSecondary)
 
-                if !threats.isEmpty {
-                    Label("\(threats.count) threat\(threats.count == 1 ? "" : "s")", systemImage: "exclamationmark.triangle")
+                if !notable.isEmpty {
+                    Label("\(notable.count) flagged", systemImage: "exclamationmark.triangle")
                         .font(Constants.Typography.caption)
                         .foregroundStyle(Constants.Colors.hotRed)
                 }

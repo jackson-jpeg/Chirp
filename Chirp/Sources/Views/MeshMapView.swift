@@ -151,6 +151,8 @@ private struct TopologyCanvas: View {
     let pulsePhase: Double
     let meshHealthScore: Double
     let sosActive: Bool
+    let hopPath: HopPath?
+    let selfID: String
 
     private let amber = Constants.Colors.amber
     private let green = Constants.Colors.electricGreen
@@ -173,7 +175,12 @@ private struct TopologyCanvas: View {
             // 4. Self node glow
             drawSelfGlow(context: context, center: center)
 
-            // 5. SOS border pulse
+            // 5. Hop path overlay
+            if let hopPath {
+                drawHopPath(context: context, center: center, maxRadius: maxRadius, hopPath: hopPath)
+            }
+
+            // 6. SOS border pulse
             if sosActive {
                 drawSOSBorder(context: context, size: canvasSize)
             }
@@ -377,6 +384,82 @@ private struct TopologyCanvas: View {
                 endRadius: glowRadius
             )
         )
+    }
+
+    // MARK: - Hop Path Overlay
+
+    private func drawHopPath(
+        context: GraphicsContext,
+        center: CGPoint,
+        maxRadius: CGFloat,
+        hopPath: HopPath
+    ) {
+        let maxHop = max(3, (nodes.map(\.hopCount).max() ?? 1) + 1)
+
+        for link in hopPath.links {
+            // Resolve start point: "self" -> center, otherwise find node position
+            let fromPoint: CGPoint
+            if link.fromID == selfID {
+                fromPoint = center
+            } else if let node = nodes.first(where: { $0.id == link.fromID }) {
+                fromPoint = positionForNode(node, center: center, maxRadius: maxRadius, maxHop: maxHop, allNodes: nodes)
+            } else {
+                continue
+            }
+
+            // Resolve end point
+            guard let toNode = nodes.first(where: { $0.id == link.toID }) else { continue }
+            let toPoint = positionForNode(toNode, center: center, maxRadius: maxRadius, maxHop: maxHop, allNodes: nodes)
+
+            // Color by quality: green > 0.7, yellow 0.4-0.7, red < 0.4
+            let linkColor: Color
+            if link.quality > 0.7 {
+                linkColor = Constants.Colors.meshHealthGood
+            } else if link.quality >= 0.4 {
+                linkColor = Constants.Colors.meshHealthFair
+            } else {
+                linkColor = Constants.Colors.meshHealthPoor
+            }
+
+            // Draw thick glowing path segment
+            var path = Path()
+            path.move(to: fromPoint)
+            path.addLine(to: toPoint)
+
+            // Outer glow
+            context.stroke(path, with: .color(linkColor.opacity(0.25)), style: StrokeStyle(lineWidth: 8, lineCap: .round))
+            // Main stroke
+            context.stroke(path, with: .color(linkColor.opacity(0.9)), style: StrokeStyle(lineWidth: 3, lineCap: .round))
+
+            // Animated pulse traveling along the path segment
+            let t = pulsePhase
+            let pulsePoint = CGPoint(
+                x: fromPoint.x + (toPoint.x - fromPoint.x) * t,
+                y: fromPoint.y + (toPoint.y - fromPoint.y) * t
+            )
+            let pulseRect = CGRect(x: pulsePoint.x - 5, y: pulsePoint.y - 5, width: 10, height: 10)
+            context.fill(Path(ellipseIn: pulseRect), with: .color(.white.opacity(0.9)))
+        }
+
+        // Draw hop count badge at the midpoint of the path
+        if let lastLink = hopPath.links.last,
+           let toNode = nodes.first(where: { $0.id == lastLink.toID }) {
+            let toPoint = positionForNode(toNode, center: center, maxRadius: maxRadius, maxHop: maxHop, allNodes: nodes)
+            // Badge position: offset above the destination node
+            let badgeCenter = CGPoint(x: toPoint.x + 18, y: toPoint.y - 18)
+            let badgeSize: CGFloat = 22
+            let badgeRect = CGRect(
+                x: badgeCenter.x - badgeSize / 2,
+                y: badgeCenter.y - badgeSize / 2,
+                width: badgeSize,
+                height: badgeSize
+            )
+            context.fill(Path(ellipseIn: badgeRect), with: .color(amber))
+            let hopText = Text("\(hopPath.hopCount)")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundStyle(.black)
+            context.draw(context.resolve(hopText), at: badgeCenter, anchor: .center)
+        }
     }
 
     // MARK: - SOS Border
@@ -626,12 +709,30 @@ private enum MapTab: String, CaseIterable {
     case map = "Map"
 }
 
+// MARK: - Hop Path Data
+
+/// Represents a computed multi-hop path from self to a destination peer,
+/// with per-link quality for color coding.
+private struct HopPath: Equatable {
+    struct Link: Equatable {
+        let fromID: String
+        let toID: String
+        let quality: Double  // 0-1
+    }
+    let peerIDs: [String]  // ordered hop list (first hop -> destination)
+    let links: [Link]
+    let destinationName: String
+
+    var hopCount: Int { peerIDs.count }
+}
+
 struct MeshMapView: View {
     @Environment(AppState.self) private var appState
     @State private var selectedNode: TopologyNode?
     @State private var cachedHealthScore: Double = 0
     @State private var selectedTab: MapTab = .topology
     @State private var showOfflineMapSheet: Bool = false
+    @State private var activeHopPath: HopPath?
 
     @Namespace private var meshUnderline
     private let amber = Constants.Colors.amber
@@ -682,6 +783,31 @@ struct MeshMapView: View {
 
     private var sosActive: Bool {
         EmergencyMode.shared.isActive
+    }
+
+    /// Compute hop path from self to a destination node via MeshIntelligence.
+    private func computeHopPath(to node: TopologyNode) {
+        Task {
+            guard let path = await appState.meshIntelligence.pathTo(destination: node.id) else {
+                await MainActor.run {
+                    withAnimation(.easeInOut(duration: 0.3)) { activeHopPath = nil }
+                }
+                return
+            }
+            // Build link quality for each segment: self->first, first->second, etc.
+            var links: [HopPath.Link] = []
+            let selfID = appState.localPeerID
+            var prevID = selfID
+            for peerID in path {
+                let quality = await appState.meshIntelligence.linkQuality(from: prevID, to: peerID)
+                links.append(HopPath.Link(fromID: prevID, toID: peerID, quality: quality))
+                prevID = peerID
+            }
+            let hopPath = HopPath(peerIDs: path, links: links, destinationName: node.name)
+            await MainActor.run {
+                withAnimation(.easeInOut(duration: 0.3)) { activeHopPath = hopPath }
+            }
+        }
     }
 
     /// Build peer pins from beacon data for the geographic map view.
@@ -798,6 +924,9 @@ struct MeshMapView: View {
             NodeDetailSheet(node: node)
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.hidden)
+                .onDisappear {
+                    withAnimation(.easeInOut(duration: 0.3)) { activeHopPath = nil }
+                }
         }
         .sheet(isPresented: $showOfflineMapSheet) {
             OfflineMapDownloadSheet()
@@ -837,7 +966,9 @@ struct MeshMapView: View {
                         nodes: topologyNodes,
                         pulsePhase: phase,
                         meshHealthScore: cachedHealthScore,
-                        sosActive: sosActive
+                        sosActive: sosActive,
+                        hopPath: activeHopPath,
+                        selfID: appState.localPeerID
                     )
                 }
                 .accessibilityElement(children: .ignore)
@@ -900,6 +1031,7 @@ struct MeshMapView: View {
                     .accessibilityAddTraits(.isButton)
                     .onTapGesture {
                         selectedNode = node
+                        computeHopPath(to: node)
                     }
                     .transition(.scale.combined(with: .opacity))
                     .animation(.spring(response: 0.5, dampingFraction: 0.7), value: topologyNodes)
@@ -942,11 +1074,65 @@ struct MeshMapView: View {
 
     // MARK: - Geographic Map Content
 
+    /// Build geographic hop segments from the active hop path and peer pin coordinates.
+    private var geoHopSegments: [GeoHopSegment] {
+        guard let hopPath = activeHopPath else { return [] }
+        let pinMap = Dictionary(peerPins.map { ($0.id, $0.coordinate) }, uniquingKeysWith: { _, b in b })
+        var segments: [GeoHopSegment] = []
+        for link in hopPath.links {
+            let fromCoord: CLLocationCoordinate2D?
+            if link.fromID == appState.localPeerID {
+                fromCoord = appState.locationService.currentLocation?.coordinate
+            } else {
+                fromCoord = pinMap[link.fromID]
+            }
+            let toCoord = pinMap[link.toID]
+            guard let from = fromCoord, let to = toCoord else { continue }
+            segments.append(GeoHopSegment(from: from, to: to, quality: link.quality))
+        }
+        return segments
+    }
+
+    /// Build dead drop pins from the DeadDropService.
+    private var deadDropMapPins: [DeadDropPin] {
+        appState.deadDropService.allActiveDrops.compactMap { drop in
+            guard let decoded = Geohash.decode(drop.geohashPrefix) else { return nil }
+            let coord = CLLocationCoordinate2D(latitude: decoded.latitude, longitude: decoded.longitude)
+            return DeadDropPin(
+                id: drop.id,
+                coordinate: coord,
+                geohashPrefix: drop.geohashPrefix,
+                isTimeLocked: drop.isTimeLocked,
+                timeLockDate: drop.timeLockDate,
+                expiresAt: drop.expiresAt,
+                senderName: drop.senderName,
+                isPickedUp: appState.deadDropService.pickedUpMessages[drop.id] != nil
+            )
+        }
+    }
+
+    /// Build peer movement trails from LighthouseDatabase breadcrumbs.
+    private var peerMovementTrails: [PeerTrail] {
+        guard let db = appState.lighthouseService.database else { return [] }
+        let peerIDs = db.allBreadcrumbPeerIDs()
+        return peerIDs.compactMap { peerID in
+            let crumbs = db.recentBreadcrumbs(forPeer: peerID, limit: 50)
+            guard crumbs.count >= 2 else { return nil }
+            let coords = crumbs.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+            let timestamps = crumbs.map(\.timestamp)
+            return PeerTrail(peerID: peerID, coordinates: coords, timestamps: timestamps)
+        }
+    }
+
     private var geoMapContent: some View {
         ZStack {
             GeoMapView(
                 userLocation: appState.locationService.currentLocation?.coordinate,
-                peers: peerPins
+                peers: peerPins,
+                hopSegments: geoHopSegments,
+                hopCount: activeHopPath?.hopCount ?? 0,
+                deadDropPins: deadDropMapPins,
+                peerTrails: peerMovementTrails
             )
             .ignoresSafeArea(edges: .bottom)
 

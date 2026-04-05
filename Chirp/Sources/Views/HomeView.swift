@@ -6,8 +6,6 @@ private struct CompactHeader: View {
     let callsign: String
     let peerCount: Int
 
-    @State private var pulseOpacity: Double = 0.6
-
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
@@ -102,47 +100,6 @@ private struct InlineStatusStrip: View {
     }
 }
 
-// MARK: - Modern Tab Picker
-
-private struct ModernTabPicker: View {
-    @Binding var selectedTab: HomeTab
-    @Namespace private var underline
-
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(HomeTab.allCases, id: \.self) { tab in
-                Button {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        selectedTab = tab
-                    }
-                } label: {
-                    VStack(spacing: 8) {
-                        Text(tab.rawValue)
-                            .font(.system(size: 15, weight: selectedTab == tab ? .semibold : .medium))
-                            .foregroundStyle(selectedTab == tab ? .white : Constants.Colors.slate500)
-
-                        ZStack {
-                            Rectangle()
-                                .fill(Color.clear)
-                                .frame(height: 2)
-
-                            if selectedTab == tab {
-                                Rectangle()
-                                    .fill(Constants.Colors.blue500)
-                                    .frame(height: 2)
-                                    .matchedGeometryEffect(id: "underline", in: underline)
-                            }
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, 20)
-    }
-}
-
 // MARK: - Friend Avatar Bubble
 
 private struct FriendAvatarBubble: View {
@@ -200,7 +157,7 @@ private struct FriendAvatarBubble: View {
     }
 }
 
-// MARK: - Channel Card (Redesigned)
+// MARK: - Channel Card (Liquid Glass)
 
 private struct ChannelCard: View {
     let channel: ChirpChannel
@@ -256,7 +213,7 @@ private struct ChannelCard: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(Constants.Colors.slate400)
 
-                    Text("·")
+                    Text("\u{00B7}")
                         .foregroundStyle(Constants.Colors.slate600)
 
                     Text(channel.createdAt.relativeDisplay)
@@ -294,12 +251,12 @@ private struct ChannelCard: View {
         .padding(.vertical, 14)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(isActive ? Constants.Colors.slate800 : Constants.Colors.slate800.opacity(0.6))
+                .fill(.ultraThinMaterial)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(
-                    isActive ? Constants.Colors.blue500.opacity(0.3) : Color.white.opacity(0.04),
+                    isActive ? Constants.Colors.blue500.opacity(0.3) : Color.white.opacity(0.06),
                     lineWidth: 1
                 )
         )
@@ -417,7 +374,7 @@ private struct SOSToolbarButton: View {
 
     @State private var isHolding = false
     @State private var holdProgress: CGFloat = 0
-    @State private var holdTimer: Timer?
+    @State private var holdTask: Task<Void, Never>?
 
     private let holdDuration: TimeInterval = 1.5
 
@@ -464,37 +421,36 @@ private struct SOSToolbarButton: View {
     private func startHold() {
         isHolding = true
         holdProgress = 0
-        holdTimer?.invalidate()
+        holdTask?.cancel()
 
-        let interval: TimeInterval = 0.05
-        let steps = holdDuration / interval
-        nonisolated(unsafe) var currentStep: Double = 0
+        let interval: Duration = .milliseconds(50)
+        let totalSteps = holdDuration / 0.05
 
-        holdTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
-            currentStep += 1
-            let progress = CGFloat(currentStep / steps)
-            DispatchQueue.main.async {
-                withAnimation(.linear(duration: interval)) {
+        holdTask = Task { @MainActor in
+            var currentStep: Double = 0
+            while !Task.isCancelled, currentStep < totalSteps {
+                try? await Task.sleep(for: interval)
+                guard !Task.isCancelled else { break }
+                currentStep += 1
+                let progress = CGFloat(currentStep / totalSteps)
+                withAnimation(.linear(duration: 0.05)) {
                     holdProgress = progress
                 }
-            }
-            if currentStep >= steps {
-                timer.invalidate()
             }
         }
     }
 
     private func completeHold() {
-        holdTimer?.invalidate()
-        holdTimer = nil
+        holdTask?.cancel()
+        holdTask = nil
         isHolding = false
         holdProgress = 0
         showConfirm = true
     }
 
     private func cancelHold() {
-        holdTimer?.invalidate()
-        holdTimer = nil
+        holdTask?.cancel()
+        holdTask = nil
         withAnimation(.easeOut(duration: 0.2)) {
             isHolding = false
             holdProgress = 0
@@ -505,9 +461,118 @@ private struct SOSToolbarButton: View {
 // MARK: - Home Tab Enum
 
 enum HomeTab: String, CaseIterable {
-    case channels = "Channels"
-    case protect = "Protect"
-    case files = "Files"
+    case talk = "Talk"
+    case messages = "Messages"
+    case map = "Map"
+    case more = "More"
+
+    var icon: String {
+        switch self {
+        case .talk: return "waveform"
+        case .messages: return "bubble.left.and.bubble.right"
+        case .map: return "map"
+        case .more: return "ellipsis"
+        }
+    }
+}
+
+// MARK: - Bottom Navigation Bar
+
+private struct BottomNavBar: View {
+    @Binding var selectedTab: HomeTab
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(HomeTab.allCases, id: \.self) { tab in
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        selectedTab = tab
+                    }
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: tab.icon)
+                            .font(.system(size: 18, weight: selectedTab == tab ? .semibold : .regular))
+                            .foregroundStyle(selectedTab == tab ? Constants.Colors.amber : Constants.Colors.slate500)
+
+                        Text(tab.rawValue)
+                            .font(.system(size: 10, weight: selectedTab == tab ? .semibold : .medium))
+                            .foregroundStyle(selectedTab == tab ? Constants.Colors.amber : Constants.Colors.slate500)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(tab.rawValue)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.bottom, 4)
+        .background(
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .overlay(alignment: .top) {
+                    Rectangle()
+                        .fill(Constants.Colors.slate700.opacity(0.5))
+                        .frame(height: 0.5)
+                }
+                .ignoresSafeArea(.container, edges: .bottom)
+        )
+    }
+}
+
+// MARK: - Channel Selector Pill
+
+private struct ChannelSelectorPill: View {
+    let channels: [ChirpChannel]
+    let activeChannel: ChirpChannel?
+    let onSelect: (ChirpChannel) -> Void
+    let onCreate: () -> Void
+
+    @State private var showPicker = false
+
+    var body: some View {
+        Button {
+            showPicker = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "waveform")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Constants.Colors.amber)
+
+                Text(activeChannel?.name ?? "No Channel")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(Constants.Colors.slate400)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(
+                Capsule()
+                    .fill(Constants.Colors.slate800)
+                    .overlay(
+                        Capsule()
+                            .stroke(Constants.Colors.slate700, lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Channel: \(activeChannel?.name ?? "None"). Tap to switch.")
+        .confirmationDialog("Switch Channel", isPresented: $showPicker) {
+            ForEach(channels) { channel in
+                Button(channel.name) {
+                    onSelect(channel)
+                }
+            }
+            Button("New Channel") {
+                onCreate()
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+    }
 }
 
 // MARK: - Home View
@@ -524,9 +589,10 @@ struct HomeView: View {
     @State private var showSOSConfirm = false
     @State private var showPermissionAlert = false
     @State private var permissionAlert: AppState.PermissionDeniedAlert?
-    @State private var sosHoldProgress: CGFloat = 0
-    @State private var pendingMessageCount: Int = 0
-    @State private var selectedTab: HomeTab = .channels
+    @State private var selectedTab: HomeTab = .talk
+    @State private var pttState: PTTState = .idle
+    @State private var inputLevel: Float = 0.0
+    @State private var transmitStartTime: Date?
 
     private var connectionStatus: ConnectionStatus {
         let mpPeers = appState.connectedPeerCount
@@ -552,43 +618,15 @@ struct HomeView: View {
                         peerCount: appState.connectedPeerCount
                     )
 
-                    // Inline status strip
-                    InlineStatusStrip(
-                        peerCount: appState.connectedPeerCount,
-                        threatCount: appState.bleScanner.threatDevices.count,
-                        isScanning: appState.bleScanner.isScanning,
-                        isEmergencyActive: EmergencyMode.shared.isActive
-                    )
-
-                    Divider()
-                        .background(Constants.Colors.slate700)
-                        .padding(.horizontal, 20)
-
-                    // Tab picker
-                    ModernTabPicker(selectedTab: $selectedTab)
-                        .padding(.top, 4)
-
                     // Tab content
-                    switch selectedTab {
-                    case .channels:
-                        // Friends quick-access row
-                        if !appState.friendsManager.friends.isEmpty {
-                            friendsQuickAccess
-                        }
+                    tabContent
 
-                        // Channel list or empty state
-                        channelListView
-
-                    case .protect:
-                        ProtectTabView()
-
-                    case .files:
-                        FilesTabView()
-                    }
+                    // Bottom navigation bar
+                    BottomNavBar(selectedTab: $selectedTab)
                 }
 
-                // FAB for new channel (channels tab only)
-                if selectedTab == .channels {
+                // FAB for new channel (messages tab only)
+                if selectedTab == .messages {
                     VStack {
                         Spacer()
                         HStack {
@@ -608,7 +646,7 @@ struct HomeView: View {
                             }
                             .accessibilityLabel("New Channel")
                             .padding(.trailing, 20)
-                            .padding(.bottom, 24)
+                            .padding(.bottom, 80) // space for bottom nav
                         }
                     }
                 }
@@ -643,19 +681,7 @@ struct HomeView: View {
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 12) {
-                        SOSToolbarButton(showConfirm: $showSOSConfirm)
-
-                        NavigationLink {
-                            SettingsView()
-                        } label: {
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundStyle(Constants.Colors.slate400)
-                        }
-                        .accessibilityLabel("Settings")
-                        .accessibilityIdentifier(AccessibilityID.settingsButton)
-                    }
+                    SOSToolbarButton(showConfirm: $showSOSConfirm)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -708,6 +734,127 @@ struct HomeView: View {
                     try? await Task.sleep(for: .seconds(2))
                 }
             }
+            .onReceive(NotificationCenter.default.publisher(for: .chirpPTTShortcutTriggered)) { _ in
+                // Action Button / Shortcut triggered — switch to Talk tab
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    selectedTab = .talk
+                }
+            }
+        }
+    }
+
+    // MARK: - Tab Content
+
+    @ViewBuilder
+    private var tabContent: some View {
+        switch selectedTab {
+        case .talk:
+            pttHomeContent
+
+        case .messages:
+            // Inline status strip
+            InlineStatusStrip(
+                peerCount: appState.connectedPeerCount,
+                threatCount: appState.bleScanner.threatDevices.count,
+                isScanning: appState.bleScanner.isScanning,
+                isEmergencyActive: EmergencyMode.shared.isActive
+            )
+
+            // Friends quick-access row
+            if !appState.friendsManager.friends.isEmpty {
+                friendsQuickAccess
+            }
+
+            // Channel list or empty state
+            channelListView
+
+        case .map:
+            GeoMapView(
+                userLocation: appState.locationService.currentLocation?.coordinate,
+                peers: []
+            )
+
+        case .more:
+            MoreView()
+        }
+    }
+
+    // MARK: - PTT Home Content
+
+    private var pttHomeContent: some View {
+        VStack(spacing: 0) {
+            // Channel selector
+            ChannelSelectorPill(
+                channels: appState.channelManager.channels,
+                activeChannel: appState.channelManager.activeChannel,
+                onSelect: { channel in
+                    appState.channelManager.joinChannel(id: channel.id)
+                },
+                onCreate: {
+                    showChannelCreation = true
+                }
+            )
+            .padding(.top, 12)
+
+            Spacer()
+
+            // PTT button — large, centered
+            PTTButtonView(
+                pttState: $pttState,
+                onPressDown: {
+                    guard appState.micPermissionGranted else {
+                        Task { await appState.requestMicPermission() }
+                        return
+                    }
+                    HapticsManager.shared.pttDown()
+                    SoundEffects.shared.playChirpBegin()
+                    transmitStartTime = Date()
+                    appState.pttEngine.startTransmitting()
+                },
+                onPressUp: {
+                    guard appState.micPermissionGranted else { return }
+                    HapticsManager.shared.pttUp()
+                    SoundEffects.shared.playChirpEnd()
+                    transmitStartTime = nil
+                    appState.pttEngine.stopTransmitting()
+                }
+            )
+
+            Spacer()
+
+            // Peer count + status indicator
+            HStack(spacing: 16) {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(appState.connectedPeerCount > 0 ? Constants.Colors.electricGreen : Constants.Colors.slate500)
+                        .frame(width: 8, height: 8)
+
+                    Text("\(appState.connectedPeerCount) nearby")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(Constants.Colors.slate400)
+                }
+
+                if EmergencyMode.shared.isActive {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Constants.Colors.emergencyRed)
+                            .frame(width: 8, height: 8)
+
+                        Text("EMERGENCY")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(Constants.Colors.emergencyRed)
+                    }
+                }
+            }
+            .padding(.bottom, 20)
+        }
+        .onChange(of: appState.pttState) { _, newValue in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                pttState = newValue
+            }
+        }
+        .onChange(of: appState.inputLevel) { _, newValue in
+            inputLevel = newValue
         }
     }
 
@@ -811,9 +958,18 @@ struct HomeView: View {
 
     private func refreshPeerDiscovery() async {
         isRefreshing = true
+
+        // Restart multipeer advertising + browsing to force fresh discovery
+        appState.multipeerTransport.stop()
+        appState.multipeerTransport.start()
+
+        // Brief pause so peers have time to reconnect
         try? await Task.sleep(for: .seconds(1))
+
+        // Refresh local peer count
         let peers = await appState.peerTracker.connectedPeers
         connectedPeerCount = peers.count
+
         isRefreshing = false
     }
 

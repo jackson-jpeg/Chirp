@@ -357,11 +357,21 @@ final class FileTransferService {
 
     private func encryptIfNeeded(_ data: Data, channelID: String) -> Data {
         guard let crypto = channelCryptoProvider?(channelID) else { return data }
-        return (try? crypto.encrypt(data)) ?? data
+        do {
+            return try crypto.encrypt(data)
+        } catch {
+            logger.error("File encryption failed, sending unencrypted: \(error.localizedDescription)")
+            return data
+        }
     }
 
     private func decryptIfNeeded(_ data: Data, channelID: String) -> Data {
         guard let crypto = channelCryptoProvider?(channelID) else { return data }
-        return (try? crypto.decrypt(data)) ?? data
+        do {
+            return try crypto.decrypt(data)
+        } catch {
+            logger.error("File decryption failed, returning raw data: \(error.localizedDescription)")
+            return data
+        }
     }
 }

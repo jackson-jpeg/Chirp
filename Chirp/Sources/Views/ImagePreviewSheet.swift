@@ -14,6 +14,9 @@ struct ImagePreviewSheet: View {
     @State private var offset: CGSize = .zero
     @State private var lastOffset: CGSize = .zero
     @State private var saveState: SaveState = .idle
+    @State private var dragToDismissOffset: CGFloat = 0
+    @State private var backgroundOpacity: Double = 1.0
+    @State private var showShareSheet: Bool = false
 
     private let logger = Logger(subsystem: Constants.subsystem, category: "ImagePreview")
 
@@ -26,16 +29,17 @@ struct ImagePreviewSheet: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Color.black.opacity(backgroundOpacity)
+                .ignoresSafeArea()
 
-            // Zoomable image
+            // Zoomable image with drag-to-dismiss
             Image(uiImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .scaleEffect(currentZoom * totalZoom)
-                .offset(offset)
+                .offset(x: offset.width, y: offset.height + dragToDismissOffset)
                 .gesture(zoomGesture)
-                .gesture(dragGesture)
+                .gesture(combinedDragGesture)
                 .onTapGesture(count: 2) {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                         if totalZoom > 1.5 {
@@ -69,10 +73,17 @@ struct ImagePreviewSheet: View {
 
                 // Bottom bar
                 HStack(spacing: 20) {
+                    // Share button
+                    shareButton
+
                     saveButton
                 }
                 .padding(.bottom, 40)
             }
+            .opacity(backgroundOpacity)
+        }
+        .sheet(isPresented: $showShareSheet) {
+            ShareSheetView(items: [image])
         }
     }
 
@@ -97,18 +108,57 @@ struct ImagePreviewSheet: View {
             }
     }
 
-    private var dragGesture: some Gesture {
+    /// Combined drag gesture: pans when zoomed in, drag-to-dismiss when at 1x.
+    private var combinedDragGesture: some Gesture {
         DragGesture()
             .onChanged { value in
-                guard totalZoom > 1.0 else { return }
-                offset = CGSize(
-                    width: lastOffset.width + value.translation.width,
-                    height: lastOffset.height + value.translation.height
-                )
+                if totalZoom > 1.0 {
+                    // Pan mode
+                    offset = CGSize(
+                        width: lastOffset.width + value.translation.width,
+                        height: lastOffset.height + value.translation.height
+                    )
+                } else {
+                    // Drag-to-dismiss mode
+                    dragToDismissOffset = value.translation.height
+                    let progress = min(abs(value.translation.height) / 300, 1.0)
+                    backgroundOpacity = 1.0 - progress * 0.6
+                }
             }
-            .onEnded { _ in
-                lastOffset = offset
+            .onEnded { value in
+                if totalZoom > 1.0 {
+                    lastOffset = offset
+                } else {
+                    if abs(value.translation.height) > 120 {
+                        dismiss()
+                    } else {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            dragToDismissOffset = 0
+                            backgroundOpacity = 1.0
+                        }
+                    }
+                }
             }
+    }
+
+    // MARK: - Share Button
+
+    private var shareButton: some View {
+        Button {
+            showShareSheet = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "square.and.arrow.up")
+                Text("Share")
+            }
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(Color.white.opacity(0.15))
+            .clipShape(Capsule())
+        }
+        .accessibilityLabel("Share image")
     }
 
     // MARK: - Save Button
@@ -178,4 +228,17 @@ struct ImagePreviewSheet: View {
             }
         }
     }
+}
+
+// MARK: - Share Sheet
+
+/// UIKit share sheet wrapper for sharing arbitrary items.
+private struct ShareSheetView: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }

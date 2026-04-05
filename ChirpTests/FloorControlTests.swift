@@ -248,4 +248,65 @@ final class FloorControlTests: XCTestCase {
         // Local should still be transmitting (earlier timestamp wins)
         XCTAssertEqual(controller.state, .transmitting)
     }
+
+    // MARK: - Collision: equal timestamp tiebreaker by peer ID
+
+    func testFloorCollisionEqualTimestampLocalWinsViaPeerID() {
+        // Local peer "AAA" has lexicographically smaller ID than remote "ZZZ"
+        // so local should win the tiebreaker
+        let ctrl = FloorController(localPeerID: "AAA", localPeerName: "LocalUser")
+        nonisolated(unsafe) var broadcasts: [FloorControlMessage] = []
+        ctrl.sendToAllPeers = { broadcasts.append($0) }
+
+        ctrl.requestFloor()
+        XCTAssertEqual(ctrl.state, .transmitting)
+
+        // Capture the timestamp that was broadcast so we can send an identical one
+        guard case .floorRequest(_, _, let localTS) = broadcasts.first else {
+            XCTFail("Expected floorRequest broadcast")
+            return
+        }
+
+        // Remote peer "ZZZ" sends floor request with the exact same timestamp
+        let remoteRequest = FloorControlMessage.floorRequest(
+            senderID: "ZZZ",
+            senderName: "RemoteUser",
+            timestamp: localTS
+        )
+        ctrl.handleMessage(remoteRequest)
+
+        // Local ("AAA" < "ZZZ") should win — still transmitting
+        XCTAssertEqual(ctrl.state, .transmitting, "Local peer with smaller ID should win tiebreaker")
+    }
+
+    func testFloorCollisionEqualTimestampRemoteWinsViaPeerID() {
+        // Local peer "ZZZ" has lexicographically larger ID than remote "AAA"
+        // so remote should win the tiebreaker
+        let ctrl = FloorController(localPeerID: "ZZZ", localPeerName: "LocalUser")
+        nonisolated(unsafe) var broadcasts: [FloorControlMessage] = []
+        ctrl.sendToAllPeers = { broadcasts.append($0) }
+
+        ctrl.requestFloor()
+        XCTAssertEqual(ctrl.state, .transmitting)
+
+        guard case .floorRequest(_, _, let localTS) = broadcasts.first else {
+            XCTFail("Expected floorRequest broadcast")
+            return
+        }
+
+        // Remote peer "AAA" sends floor request with the exact same timestamp
+        let remoteRequest = FloorControlMessage.floorRequest(
+            senderID: "AAA",
+            senderName: "RemoteUser",
+            timestamp: localTS
+        )
+        ctrl.handleMessage(remoteRequest)
+
+        // Remote ("AAA" < "ZZZ") should win — local yields to receiving
+        XCTAssertEqual(
+            ctrl.state,
+            .receiving(speakerName: "RemoteUser", speakerID: "AAA"),
+            "Remote peer with smaller ID should win tiebreaker"
+        )
+    }
 }

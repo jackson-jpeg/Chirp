@@ -27,6 +27,10 @@ final class AudioEngine: @unchecked Sendable {
     private var converter: AVAudioConverter?
     private var isCapturing = false
     private let processingQueue = DispatchQueue(label: "com.chirpchirp.audio.processing", qos: .userInteractive)
+    private var playbackTimer: DispatchSourceTimer?
+    private let playbackQueue = DispatchQueue(label: "com.chirpchirp.audio.playback", qos: .userInteractive)
+    private var lastGoodFrame: Data?
+    private var concealmentCount: Int = 0
 
     private let targetFormat: AVAudioFormat
     private let samplesPerFrame = Constants.Opus.samplesPerFrame
@@ -42,13 +46,17 @@ final class AudioEngine: @unchecked Sendable {
         ) {
             self.targetFormat = format
         } else {
-            // Absolute last resort — use 44.1kHz standard format which cannot fail.
+            // Absolute last resort — use 44.1kHz standard format.
             Logger.audio.error("Failed to create target audio format — using 44.1kHz fallback")
-            self.targetFormat = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)!
+            guard let fallback = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)
+                ?? AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 44100, channels: 1, interleaved: false) else {
+                fatalError("Cannot create any audio format — device configuration broken")
+            }
+            self.targetFormat = fallback
         }
     }
 
-    func setup(echoCancel: Bool = false) throws {
+    func setup(echoCancel: Bool = true) throws {
         try AudioSessionManager.configure(echoCancel: echoCancel)
 
         let codec = try OpusCodec()
@@ -91,12 +99,31 @@ final class AudioEngine: @unchecked Sendable {
         Logger.audio.info("AudioEngine setup complete")
     }
 
+    /// Restart the AVAudioEngine if iOS killed it during an interruption.
+    /// Safe to call even if the engine is still running.
+    func restartEngineIfNeeded() {
+        guard let engine else {
+            Logger.audio.warning("restartEngineIfNeeded: no engine")
+            return
+        }
+        guard !engine.isRunning else { return }
+
+        Logger.audio.warning("AVAudioEngine stopped after interruption — restarting")
+        do {
+            engine.prepare()
+            try engine.start()
+            playerNode?.play()
+            Logger.audio.info("AVAudioEngine restarted successfully")
+        } catch {
+            Logger.audio.error("Failed to restart AVAudioEngine: \(error.localizedDescription)")
+        }
+    }
+
     func startCapture() {
         guard let engine, !isCapturing else { return }
 
         isCapturing = true
         captureAccumulator.removeAll()
-        sequenceNumber = 0
 
         let inputNode = engine.inputNode
 
@@ -118,7 +145,8 @@ final class AudioEngine: @unchecked Sendable {
             // Feed raw audio to sound analysis (if wired)
             self.onRawAudioBuffer?(buffer, time)
 
-            // Process on separate queue to avoid blocking audio thread
+            // Process on separate queue to avoid blocking audio thread.
+            // AVAudioPCMBuffer is not Sendable but is only read on processingQueue.
             nonisolated(unsafe) let buf = buffer
             self.processingQueue.async { [weak self] in
                 guard let self, self.isCapturing else { return }
@@ -162,63 +190,118 @@ final class AudioEngine: @unchecked Sendable {
     }
 
     func resetJitterBuffer() {
+        stopPlaybackTimer()
         jitterBuffer?.reset()
     }
 
     func receiveAudioPacket(_ opusData: Data, sequenceNumber: UInt32) {
-        guard let codec, let playerNode else {
-            Logger.audio.warning("receiveAudioPacket: codec or playerNode nil")
+        guard let codec, let jitterBuffer else {
+            Logger.audio.warning("receiveAudioPacket: codec or jitterBuffer nil")
             return
         }
 
         do {
-            // Decode Opus → Int16 PCM
+            // Decode Opus → Int16 PCM, push into jitter buffer for reordering
             let pcmBuffer = try codec.decode(opusData)
+            jitterBuffer.push(pcmBuffer: pcmBuffer, sequenceNumber: sequenceNumber)
 
-            // Convert Int16 → Float32 for the player node
-            guard let floatFormat = AVAudioFormat(
-                commonFormat: .pcmFormatFloat32,
-                sampleRate: Constants.Opus.sampleRate,
-                channels: 1,
-                interleaved: false
-            ) else {
-                Logger.audio.error("Failed to create float audio format for playback")
-                return
-            }
-            guard let floatBuffer = AVAudioPCMBuffer(
-                pcmFormat: floatFormat,
-                frameCapacity: pcmBuffer.frameLength
-            ) else { return }
-            floatBuffer.frameLength = pcmBuffer.frameLength
-
-            if let int16Data = pcmBuffer.int16ChannelData,
-               let floatData = floatBuffer.floatChannelData {
-                for i in 0..<Int(pcmBuffer.frameLength) {
-                    floatData[0][i] = Float(int16Data[0][i]) / Float(Int16.max)
-                }
-            }
-
-            // Feed decoded PCM to live transcription (if wired)
-            onDecodedPCM?(floatBuffer)
-
-            // Schedule on player node — plays immediately
-            playerNode.scheduleBuffer(floatBuffer)
-
-            // Start playing if not already
-            if !playerNode.isPlaying {
-                playerNode.play()
+            // Start playback timer if not already running
+            if playbackTimer == nil {
+                startPlaybackTimer()
             }
 
             if sequenceNumber < 5 || sequenceNumber % 50 == 0 {
-                Logger.audio.info("Audio playing: seq=\(sequenceNumber), \(pcmBuffer.frameLength) frames")
+                Logger.audio.info("Audio buffered: seq=\(sequenceNumber), buffered=\(jitterBuffer.bufferedCount)")
             }
         } catch {
             Logger.audio.error("Decode failed seq=\(sequenceNumber): \(error.localizedDescription)")
         }
     }
 
+    // MARK: - Jitter Buffer Playback
+
+    private func startPlaybackTimer() {
+        guard playbackTimer == nil else { return }
+
+        let timer = DispatchSource.makeTimerSource(queue: playbackQueue)
+        // Fire every 20ms (one Opus frame duration) for smooth playback
+        timer.schedule(deadline: .now(), repeating: .milliseconds(20), leeway: .milliseconds(1))
+        timer.setEventHandler { [weak self] in
+            self?.drainJitterBuffer()
+        }
+        timer.resume()
+        playbackTimer = timer
+
+        Logger.audio.info("Playback timer started")
+    }
+
+    private func stopPlaybackTimer() {
+        playbackTimer?.cancel()
+        playbackTimer = nil
+    }
+
+    private func drainJitterBuffer() {
+        guard let jitterBuffer, let playerNode else { return }
+
+        // Pull one frame (20ms) from the jitter buffer
+        let pcmData: Data
+        let attenuation: Float
+
+        if let pulled = jitterBuffer.pull(frameCount: 1) {
+            pcmData = pulled
+            lastGoodFrame = pulled
+            concealmentCount = 0
+            attenuation = 1.0
+        } else if let lastFrame = lastGoodFrame, concealmentCount < 3 {
+            // Packet loss concealment: repeat last good frame with decay
+            pcmData = lastFrame
+            attenuation = Float(3 - concealmentCount) / 3.0
+            concealmentCount += 1
+        } else {
+            // No data and no concealment possible — silence / skip
+            return
+        }
+
+        let sampleCount = pcmData.count / MemoryLayout<Int16>.size
+        guard sampleCount > 0 else { return }
+
+        // Convert Int16 data → Float32 AVAudioPCMBuffer for playerNode
+        guard let floatFormat = AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: Constants.Opus.sampleRate,
+            channels: 1,
+            interleaved: false
+        ) else { return }
+
+        guard let floatBuffer = AVAudioPCMBuffer(
+            pcmFormat: floatFormat,
+            frameCapacity: AVAudioFrameCount(sampleCount)
+        ) else { return }
+        floatBuffer.frameLength = AVAudioFrameCount(sampleCount)
+
+        guard let floatData = floatBuffer.floatChannelData else { return }
+        pcmData.withUnsafeBytes { rawPtr in
+            guard let int16Ptr = rawPtr.baseAddress?.assumingMemoryBound(to: Int16.self) else { return }
+            for i in 0..<sampleCount {
+                floatData[0][i] = Float(int16Ptr[i]) / Float(Int16.max) * attenuation
+            }
+        }
+
+        // Feed decoded PCM to live transcription (if wired)
+        onDecodedPCM?(floatBuffer)
+
+        // Schedule on player node
+        playerNode.scheduleBuffer(floatBuffer)
+
+        // Start playing if not already
+        if !playerNode.isPlaying {
+            playerNode.play()
+        }
+    }
+
     func teardown() {
         stopCapture()
+        stopPlaybackTimer()
 
         playerNode?.stop()
         engine?.stop()
@@ -249,7 +332,7 @@ final class AudioEngine: @unchecked Sendable {
             guard let self, let codec = self.codec else { return }
             codec.setTargetBitrate(bitsPerSecond)
             let newBitrate = codec.currentBitrate
-            DispatchQueue.main.async { [weak self] in
+            Task { @MainActor [weak self] in
                 self?.currentBitrate = newBitrate
             }
         }
@@ -271,7 +354,9 @@ final class AudioEngine: @unchecked Sendable {
                 frameCapacity: max(outputFrames, AVAudioFrameCount(samplesPerFrame))
             ) else { return }
 
-            // Simple convert (not the input-block version which can deadlock)
+            // Simple convert (not the input-block version which can deadlock).
+            // nonisolated(unsafe) is safe here: the converter closure runs synchronously
+            // within convert() on the same thread, so no actual data race can occur.
             var error: NSError?
             nonisolated(unsafe) var consumed = false
             nonisolated(unsafe) let src = buffer

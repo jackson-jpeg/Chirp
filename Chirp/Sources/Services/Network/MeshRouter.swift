@@ -18,8 +18,14 @@ actor MeshRouter {
     /// Ring buffer of recently-seen packet IDs for deduplication.
     /// Entries older than `packetExpirySeconds` are pruned lazily.
     private var seenPackets: [(id: UUID, time: Date)] = []
+    private var seenPacketSet: Set<UUID> = []
     private let maxSeenPackets = 10_000
-    private let packetExpirySeconds: TimeInterval = 5.0
+    private let packetExpirySeconds: TimeInterval = 120.0
+
+    /// Per-origin highest-seen sequence number for replay protection.
+    /// Packets with sequence <= last seen for that origin are rejected.
+    private var originSequenceMap: [UUID: (sequence: UInt32, lastSeen: Date)] = [:]
+    private let originSequenceExpirySeconds: TimeInterval = 300.0
 
     // MARK: - Stats
 
@@ -27,6 +33,11 @@ actor MeshRouter {
     private(set) var packetsDelivered: UInt64 = 0
     private(set) var packetsDeduplicated: UInt64 = 0
     private(set) var maxHopsObserved: UInt8 = 0
+
+    // MARK: - Emergency
+
+    /// When true, relay all packets regardless of TTL (emergency mode).
+    var emergencyRelayAll: Bool = false
 
     // MARK: - Callbacks
 
@@ -53,6 +64,11 @@ actor MeshRouter {
         self.localPeerID = localPeerID
     }
 
+    /// Toggle emergency relay mode from outside the actor.
+    func setEmergencyRelay(_ enabled: Bool) {
+        emergencyRelayAll = enabled
+    }
+
     // MARK: - Packet handling
 
     /// Process an incoming mesh packet received from `fromPeer`.
@@ -71,11 +87,23 @@ actor MeshRouter {
         // 2. Lazily prune expired entries before the dedup check.
         cleanExpired()
 
-        // 3. Duplicate detection.
-        if seenPackets.contains(where: { $0.id == packet.packetID }) {
+        // 3. Duplicate detection (O(1) via Set).
+        if seenPacketSet.contains(packet.packetID) {
             packetsDeduplicated += 1
             logger.trace("Deduplicated packet \(packet.packetID.uuidString, privacy: .public)")
             return false
+        }
+
+        // 3b. Per-origin sequence replay protection.
+        //     Reject packets whose sequence <= the highest we've seen from that origin.
+        //     Uses signed comparison to handle UInt32 wraparound correctly.
+        if let entry = originSequenceMap[packet.originID] {
+            let diff = Int32(bitPattern: packet.sequenceNumber &- entry.sequence)
+            if diff <= 0 {
+                packetsDeduplicated += 1
+                logger.trace("Replay rejected: origin \(packet.originID.uuidString, privacy: .public) seq \(packet.sequenceNumber) <= \(entry.sequence)")
+                return false
+            }
         }
 
         // 4. TTL exhausted.
@@ -88,19 +116,27 @@ actor MeshRouter {
 
         // 4a. Record in seen set.
         seenPackets.append((id: packet.packetID, time: Date()))
+        seenPacketSet.insert(packet.packetID)
         if seenPackets.count > maxSeenPackets {
             // Evict oldest quarter to amortise removal cost.
             let evictCount = maxSeenPackets / 4
+            for i in 0..<evictCount {
+                seenPacketSet.remove(seenPackets[i].id)
+            }
             seenPackets.removeFirst(evictCount)
             logger.debug("Evicted \(evictCount) oldest seen-packet entries")
         }
+
+        // 4a2. Update per-origin sequence high-water mark.
+        originSequenceMap[packet.originID] = (sequence: packet.sequenceNumber, lastSeen: Date())
 
         // 4b. Deliver to local audio / control pipeline.
         packetsDelivered += 1
         onLocalDelivery?(packet)
 
         // 4c. Forward to other peers if hops remain.
-        if packet.ttl > 1, let forwarded = packet.forwarded() {
+        // In emergency mode, relay everything regardless of TTL.
+        if packet.ttl > 1 || emergencyRelayAll, let forwarded = packet.forwarded() {
             packetsRelayed += 1
             onForward?(forwarded, fromPeer)
             logger.trace("Forwarded packet \(packet.packetID.uuidString, privacy: .public) TTL \(forwarded.ttl)")
@@ -138,8 +174,10 @@ actor MeshRouter {
         priority: MeshPacket.MessagePriority? = nil
     ) -> MeshPacket {
         let resolvedPriority = priority ?? MeshPacket.inferPriority(type: type, payload: payload)
+        // Emergency mode: use maximum TTL for all packets to maximize reach
+        let baseTTL = MeshPacket.adaptiveTTL(for: type, priority: resolvedPriority)
         let ttl = min(
-            MeshPacket.adaptiveTTL(for: type, priority: resolvedPriority),
+            emergencyRelayAll ? MeshPacket.maxTTL : baseTTL,
             MeshPacket.maxTTL
         )
         let packet = MeshPacket(
@@ -155,6 +193,7 @@ actor MeshRouter {
         // Pre-register so we don't process our own packet if it echoes back
         // before the expiry window closes.
         seenPackets.append((id: packet.packetID, time: Date()))
+        seenPacketSet.insert(packet.packetID)
         logger.trace("Created packet priority=\(resolvedPriority.rawValue) ttl=\(ttl)")
         return packet
     }
@@ -182,12 +221,20 @@ actor MeshRouter {
         // binary-drop the prefix that's expired.
         if let firstValidIndex = seenPackets.firstIndex(where: { $0.time >= cutoff }) {
             if firstValidIndex > 0 {
+                for i in 0..<firstValidIndex {
+                    seenPacketSet.remove(seenPackets[i].id)
+                }
                 seenPackets.removeFirst(firstValidIndex)
             }
         } else {
             // Everything is expired.
             seenPackets.removeAll()
+            seenPacketSet.removeAll()
         }
+
+        // Prune stale origin sequence entries (no packets for 5 minutes).
+        let originCutoff = Date().addingTimeInterval(-originSequenceExpirySeconds)
+        originSequenceMap = originSequenceMap.filter { $0.value.lastSeen >= originCutoff }
     }
 }
 

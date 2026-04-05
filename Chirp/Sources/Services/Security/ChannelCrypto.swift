@@ -65,20 +65,75 @@ struct ChannelCrypto: Sendable {
         }
     }
 
-    /// Encrypt data using AES-GCM
-    func encrypt(_ plaintext: Data) throws -> Data {
-        let sealedBox = try AES.GCM.seal(plaintext, using: key)
-        // Return combined: nonce(12) + ciphertext + tag(16)
+    // MARK: - Epoch Key Derivation
+
+    /// Derive an epoch-specific key via HKDF ratchet.
+    /// Each epoch produces a unique key; knowing epoch N's key
+    /// does not reveal epoch N-1's key (forward secrecy).
+    func epochKey(epoch: UInt32) -> SymmetricKey {
+        guard epoch > 0 else { return key }
+        var epochBytes = epoch.bigEndian
+        let info = withUnsafeBytes(of: &epochBytes) { Data($0) }
+        return HKDF<SHA256>.deriveKey(
+            inputKeyMaterial: key,
+            salt: Data("ChirpKeyRotation".utf8),
+            info: info,
+            outputByteCount: 32
+        )
+    }
+
+    /// Encrypt data using AES-GCM with epoch prefix.
+    /// Wire format: [epoch:4 BE][AES-GCM nonce+ciphertext+tag]
+    func encrypt(_ plaintext: Data, epoch: UInt32 = 0) throws -> Data {
+        let encKey = epochKey(epoch: epoch)
+        let sealedBox = try AES.GCM.seal(plaintext, using: encKey)
         guard let combined = sealedBox.combined else {
             throw EncryptionError.sealedBoxCombinedUnavailable
         }
-        return combined
+        var result = Data(capacity: 4 + combined.count)
+        var epochBE = epoch.bigEndian
+        withUnsafeBytes(of: &epochBE) { result.append(contentsOf: $0) }
+        result.append(combined)
+        return result
     }
 
-    /// Decrypt data using AES-GCM
-    func decrypt(_ ciphertext: Data) throws -> Data {
-        let sealedBox = try AES.GCM.SealedBox(combined: ciphertext)
-        return try AES.GCM.open(sealedBox, using: key)
+    /// Decrypt data using AES-GCM, reading epoch from prefix.
+    /// Tries the embedded epoch, then falls back to lookback epochs.
+    func decrypt(_ ciphertext: Data, currentEpoch: UInt32 = 0, lookback: UInt32 = 2) throws -> Data {
+        // Legacy format: no epoch prefix (epoch 0)
+        guard ciphertext.count > 4 else {
+            let sealedBox = try AES.GCM.SealedBox(combined: ciphertext)
+            return try AES.GCM.open(sealedBox, using: key)
+        }
+
+        let embeddedEpoch = UInt32(bigEndian: ciphertext.prefix(4).withUnsafeBytes { $0.load(as: UInt32.self) })
+        let sealedData = Data(ciphertext.dropFirst(4))
+
+        // Try the embedded epoch first
+        let encKey = epochKey(epoch: embeddedEpoch)
+        if let sealedBox = try? AES.GCM.SealedBox(combined: sealedData),
+           let plaintext = try? AES.GCM.open(sealedBox, using: encKey) {
+            return plaintext
+        }
+
+        // Lookback: try nearby epochs for in-flight messages during rotation
+        let minEpoch = embeddedEpoch > lookback ? embeddedEpoch - lookback : 0
+        let maxEpoch = embeddedEpoch + lookback
+        for epoch in minEpoch...maxEpoch where epoch != embeddedEpoch {
+            let fallbackKey = epochKey(epoch: epoch)
+            if let sealedBox = try? AES.GCM.SealedBox(combined: sealedData),
+               let plaintext = try? AES.GCM.open(sealedBox, using: fallbackKey) {
+                return plaintext
+            }
+        }
+
+        // Final fallback: try legacy format (no epoch prefix, raw AES-GCM)
+        if let sealedBox = try? AES.GCM.SealedBox(combined: ciphertext),
+           let plaintext = try? AES.GCM.open(sealedBox, using: key) {
+            return plaintext
+        }
+
+        throw EncryptionError.sealedBoxCombinedUnavailable
     }
 
     /// Sign data with HMAC-SHA256
@@ -98,6 +153,20 @@ struct ChannelCrypto: Sendable {
             inputKeyMaterial: key,
             salt: Data(salt.utf8),
             info: info,
+            outputByteCount: 32
+        )
+    }
+
+    /// Derive the MeshShield Layer 1 key from an ephemeral public key.
+    ///
+    /// Binds the ephemeral DH material to the channel key so that only channel
+    /// members can strip Layer 1. Without this, the ephemeral public key (sent
+    /// in cleartext) would be sufficient to reconstruct the Layer 1 key.
+    func deriveLayer1Key(ephemeralKeyData: Data) -> SymmetricKey {
+        HKDF<SHA256>.deriveKey(
+            inputKeyMaterial: SymmetricKey(data: ephemeralKeyData),
+            salt: Data("ChirpMeshShield-L1".utf8),
+            info: key.withUnsafeBytes { Data($0) },
             outputByteCount: 32
         )
     }

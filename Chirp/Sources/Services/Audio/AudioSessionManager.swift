@@ -7,10 +7,14 @@ enum AudioSessionManager {
 
     /// Called when an audio interruption begins (e.g., phone call).
     /// PTTEngine should auto-release the floor when this fires.
-    nonisolated(unsafe) static var onInterruptionBegan: (() -> Void)?
+    @MainActor static var onInterruptionBegan: (() -> Void)?
 
     /// Called when an audio interruption ends with shouldResume.
-    nonisolated(unsafe) static var onInterruptionEnded: (() -> Void)?
+    @MainActor static var onInterruptionEnded: (() -> Void)?
+
+    /// Called when an audio input device is lost (e.g., Bluetooth headset disconnected).
+    /// PTTEngine should stop capture and release the floor when this fires.
+    @MainActor static var onInputDeviceLost: (() -> Void)?
 
     // MARK: - Configuration
 
@@ -84,24 +88,27 @@ enum AudioSessionManager {
             return
         }
 
-        switch type {
-        case .began:
-            Logger.audio.warning("Audio session interruption BEGAN — releasing floor")
-            onInterruptionBegan?()
+        // Notification observer runs on queue: .main, so we can assume MainActor.
+        MainActor.assumeIsolated {
+            switch type {
+            case .began:
+                Logger.audio.warning("Audio session interruption BEGAN — releasing floor")
+                onInterruptionBegan?()
 
-        case .ended:
-            let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
-            let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
-            if options.contains(.shouldResume) {
-                Logger.audio.info("Audio session interruption ENDED — shouldResume, reactivating")
-                try? AVAudioSession.sharedInstance().setActive(true, options: [])
-                onInterruptionEnded?()
-            } else {
-                Logger.audio.info("Audio session interruption ENDED — no shouldResume flag")
+            case .ended:
+                let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+                let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+                if options.contains(.shouldResume) {
+                    Logger.audio.info("Audio session interruption ENDED — shouldResume, reactivating")
+                    try? AVAudioSession.sharedInstance().setActive(true, options: [])
+                    onInterruptionEnded?()
+                } else {
+                    Logger.audio.info("Audio session interruption ENDED — no shouldResume flag")
+                }
+
+            @unknown default:
+                Logger.audio.warning("Unknown audio session interruption type: \(typeValue)")
             }
-
-        @unknown default:
-            Logger.audio.warning("Unknown audio session interruption type: \(typeValue)")
         }
     }
 
@@ -131,5 +138,15 @@ enum AudioSessionManager {
         }
 
         Logger.audio.info("Audio route changed: reason=\(reasonName), output=\(currentOutput), input=\(currentInput)")
+
+        // When an audio device is unplugged/disconnected mid-session, the mic input
+        // may become invalid. Notify PTTEngine to stop capture and release the floor.
+        if reason == .oldDeviceUnavailable {
+            Logger.audio.warning("Audio input device lost — notifying PTTEngine")
+            // Notification observer runs on queue: .main, so we can assume MainActor.
+            MainActor.assumeIsolated {
+                onInputDeviceLost?()
+            }
+        }
     }
 }

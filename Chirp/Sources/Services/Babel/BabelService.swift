@@ -1,6 +1,7 @@
 @preconcurrency import Speech
 import AVFoundation
 import Foundation
+import NaturalLanguage
 import Observation
 import OSLog
 #if canImport(Translation)
@@ -42,6 +43,31 @@ final class BabelService {
     /// Languages available from the Translation framework.
     private(set) var availableLanguages: [String] = []
 
+    /// User's preferred language for receiving translations.
+    /// Stored in UserDefaults, defaults to Locale.current.
+    var preferredLanguage: String {
+        get {
+            UserDefaults.standard.string(forKey: "babel.preferredLanguage")
+                ?? Locale.current.language.languageCode?.identifier ?? "en"
+        }
+        set { UserDefaults.standard.set(newValue, forKey: "babel.preferredLanguage") }
+    }
+
+    // MARK: - Translation Cache
+
+    /// Cache of translated strings. Key = hash of originalText + sourceLang + targetLang.
+    private var translationCache: [String: String] = [:]
+
+    /// Build a cache key from the translation parameters.
+    func cacheKey(text: String, from source: String, to target: String) -> String {
+        "\(source)|\(target)|\(text)"
+    }
+
+    /// Test-only accessor for cache key generation.
+    func testCacheKey(text: String, from source: String, to target: String) -> String {
+        cacheKey(text: text, from: source, to: target)
+    }
+
     // MARK: - Callbacks
 
     /// Called when a translated packet is ready to send over the mesh.
@@ -71,16 +97,19 @@ final class BabelService {
     private var senderID: String = ""
     private var senderName: String = ""
 
+    /// Debounce tracker for partial-result translations.
+    private var lastPartialTranslation: Date = .distantPast
+
     /// Maximum received translations kept in memory.
     private let maxReceivedCount = 100
 
     /// Audio format for feeding the speech recognizer (16 kHz mono Float32).
-    private let recognitionFormat = AVAudioFormat(
+    private let recognitionFormat: AVAudioFormat? = AVAudioFormat(
         commonFormat: .pcmFormatFloat32,
         sampleRate: Constants.Opus.sampleRate,
         channels: 1,
         interleaved: false
-    )!
+    )
 
     // MARK: - Init
 
@@ -196,8 +225,8 @@ final class BabelService {
 
     /// Handle an incoming mesh packet that may contain a Babel translation.
     ///
-    /// Decodes the `BBL!` payload, appends to `receivedTranslations`,
-    /// and optionally speaks it via TTS.
+    /// Decodes the `BBL!` payload, appends to `receivedTranslations`, and
+    /// optionally speaks the result via TTS.
     func handlePacket(_ data: Data, channelID: String) {
         guard let message = BabelMessage.from(payload: data) else { return }
 
@@ -214,10 +243,10 @@ final class BabelService {
             receivedTranslations.removeFirst(receivedTranslations.count - maxReceivedCount)
         }
 
-        logger.info("Received Babel translation from \(message.senderName): \(message.translatedText.prefix(60))")
+        logger.info("Received Babel from \(message.senderName): \(message.displayText.prefix(60))")
 
         if autoSpeak {
-            speak(message.translatedText, language: message.targetLanguage)
+            speak(message.displayText, language: message.targetLanguage.isEmpty ? preferredLanguage : message.targetLanguage)
         }
     }
 
@@ -272,14 +301,18 @@ final class BabelService {
                 // Final result — translate and send
                 let finalText = text
                 currentPartialText = ""
-                Task {
+                Task { @MainActor in
                     await translateAndSend(text: finalText, isFinal: true)
                 }
             } else {
                 // Partial result — translate for preview but don't send over mesh
-                let partialText = text
-                Task {
-                    await translateAndSend(text: partialText, isFinal: false)
+                // Throttle: only translate partials every 0.3s to avoid starving the main thread
+                if Date().timeIntervalSince(lastPartialTranslation) >= 0.3 {
+                    lastPartialTranslation = Date()
+                    let partialText = text
+                    Task { @MainActor in
+                        await translateAndSend(text: partialText, isFinal: false)
+                    }
                 }
             }
         }
@@ -298,7 +331,38 @@ final class BabelService {
         }
     }
 
-    // MARK: - Private — Translation
+    // MARK: - Language Detection
+
+    /// Detect the dominant language of text using NLLanguageRecognizer.
+    /// Returns a BCP-47 language code, or nil if detection fails.
+    func detectLanguage(_ text: String) -> String? {
+        let recognizer = NLLanguageRecognizer()
+        recognizer.processString(text)
+        guard let lang = recognizer.dominantLanguage else { return nil }
+        return lang.rawValue
+    }
+
+    // MARK: - Reusable Translation
+
+    /// Translate text using the active session, with caching.
+    /// Requires startSession() to have been called first.
+    func translateText(_ text: String, from source: String, to target: String) async -> String? {
+        let key = cacheKey(text: text, from: source, to: target)
+        if let cached = translationCache[key] {
+            return cached
+        }
+        guard activeSession != nil else { return nil }
+        do {
+            let result = try await translate(text)
+            translationCache[key] = result
+            return result
+        } catch {
+            logger.error("Translation failed: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    // MARK: - Private — Translation (Session-based)
 
     #if canImport(Translation)
     private func configureTranslation(source: String, target: String) async throws {
@@ -318,11 +382,11 @@ final class BabelService {
         guard let session = translationSession else {
             throw BabelError.translationSessionNotConfigured
         }
-        nonisolated(unsafe) let unsafeSession = session
-        let response = try await unsafeSession.translate(text)
+        // TranslationSession is not Sendable but translate() is a read-only async call.
+        nonisolated(unsafe) let s = session
+        let response = try await s.translate(text)
         return response.targetText
         #else
-        // Translation framework not available — return original text
         logger.warning("Translation framework not available, returning original text")
         return text
         #endif
@@ -332,31 +396,35 @@ final class BabelService {
         guard let session = activeSession, session.isActive else { return }
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
 
+        // Detect source language
+        let detectedLang = detectLanguage(text) ?? session.sourceLanguageCode
+
+        // Translate on sender side using the active session
+        var translated: String? = nil
         do {
-            let translatedText = try await translate(text)
-
-            let message = BabelMessage(
-                id: UUID(),
-                senderID: senderID,
-                senderName: senderName,
-                channelID: channelID,
-                sourceLanguage: session.sourceLanguageCode,
-                targetLanguage: session.targetLanguageCode,
-                originalText: text,
-                translatedText: translatedText,
-                isFinal: isFinal,
-                timestamp: Date()
-            )
-
-            if isFinal {
-                // Send final translations over the mesh
-                if let payload = try? message.wirePayload() {
-                    onSendPacket?(payload, channelID)
-                    logger.info("Sent Babel translation: \(translatedText.prefix(60))")
-                }
-            }
+            translated = try await translate(text)
         } catch {
-            logger.error("Babel translation failed: \(error.localizedDescription)")
+            logger.warning("Translation failed, sending original: \(error.localizedDescription)")
+        }
+
+        let message = BabelMessage(
+            id: UUID(),
+            senderID: senderID,
+            senderName: senderName,
+            channelID: channelID,
+            sourceLanguage: detectedLang,
+            targetLanguage: session.targetLanguageCode,
+            originalText: text,
+            translatedText: translated,
+            isFinal: isFinal,
+            timestamp: Date()
+        )
+
+        if isFinal {
+            if let payload = try? message.wirePayload() {
+                onSendPacket?(payload, channelID)
+                logger.info("Sent Babel: \(message.displayText.prefix(60))")
+            }
         }
     }
 
@@ -380,6 +448,7 @@ final class BabelService {
         case speechRecognizerUnavailable
         case unsupportedLanguagePair
         case translationSessionNotConfigured
+        case translationTimeout
 
         var errorDescription: String? {
             switch self {
@@ -389,6 +458,8 @@ final class BabelService {
                 "The selected language pair is not supported for translation."
             case .translationSessionNotConfigured:
                 "Translation session has not been configured."
+            case .translationTimeout:
+                "Translation timed out after 5 seconds — the language model may not be downloaded."
             }
         }
     }

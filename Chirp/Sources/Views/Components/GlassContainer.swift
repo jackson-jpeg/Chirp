@@ -26,28 +26,19 @@ struct GlassContainer: ViewModifier {
         content
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.black.opacity(0.55),
-                                Color.black.opacity(0.25)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .fill(.ultraThinMaterial)
                     .overlay(
                         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            .fill(tintColor.opacity(0.12))
+                            .fill(tintColor.opacity(0.08))
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                             .strokeBorder(
                                 LinearGradient(
                                     colors: [
-                                        tintColor.opacity(0.5),
-                                        tintColor.opacity(0.15),
-                                        tintColor.opacity(0.35)
+                                        tintColor.opacity(0.4),
+                                        tintColor.opacity(0.1),
+                                        tintColor.opacity(0.25)
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing

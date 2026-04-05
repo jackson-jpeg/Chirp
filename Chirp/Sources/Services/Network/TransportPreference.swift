@@ -40,10 +40,18 @@ enum TransportPreference {
     /// Tracks the last logged transport choice per intent to avoid log spam.
     private static let lastLoggedChoice = OSAllocatedUnfairLock(initialState: [PacketIntent: TransportChoice]())
 
+    // MARK: - Transport Hysteresis
+
+    /// Tracks the current audio transport choice for dead-band hysteresis.
+    /// Protected by an unfair lock to avoid data races across isolation boundaries.
+    private static let _currentAudioTransport = OSAllocatedUnfairLock(initialState: TransportChoice.both)
+
     // MARK: - Thresholds
 
-    /// Maximum voice latency (ms) to prefer Wi-Fi Aware for audio.
-    private static let audioLatencyThresholdMs: Double = 20
+    /// Switch TO wifiAwareOnly when latency drops below this (ms).
+    private static let audioLatencyLowMs: Double = 15
+    /// Switch AWAY from wifiAwareOnly when latency exceeds this (ms).
+    private static let audioLatencyHighMs: Double = 25
     /// Minimum signal strength (dBm) to prefer Wi-Fi Aware for audio.
     private static let audioSignalThresholdDBm: Double = -70
     /// Minimum throughput capacity (bits/s) to prefer Wi-Fi Aware for bulk data.
@@ -97,19 +105,40 @@ enum TransportPreference {
     // MARK: - Audio Selection
 
     /// For audio: prefer Wi-Fi Aware if it has low latency and decent signal.
+    /// Uses dead-band hysteresis to prevent flapping between transports.
     private static func audioTransportChoice(metrics: [String: WALinkMetrics]) -> TransportChoice {
-        // Check if ANY WA peer has acceptable voice latency and signal
-        let hasGoodWALink = metrics.values.contains { m in
+        // Find the best (lowest) voice latency among WA peers with acceptable signal
+        var bestLatencyMs: Double?
+        for m in metrics.values {
             guard let latency = m.voiceLatency,
                   let signal = m.signalStrength else {
-                return false
+                continue
             }
+            guard signal > audioSignalThresholdDBm else { continue }
             let latencyMs = Double(latency.components.seconds) * 1000
                 + Double(latency.components.attoseconds) / 1_000_000_000_000_000
-            return latencyMs < audioLatencyThresholdMs && signal > audioSignalThresholdDBm
+            if bestLatencyMs == nil || latencyMs < (bestLatencyMs ?? .greatestFiniteMagnitude) {
+                bestLatencyMs = latencyMs
+            }
         }
 
-        return hasGoodWALink ? .wifiAwareOnly : .both
+        guard let latencyMs = bestLatencyMs else {
+            // No WA peer with acceptable signal -- fall back to both
+            _currentAudioTransport.withLock { $0 = .both }
+            return .both
+        }
+
+        // Dead-band hysteresis: switch TO wifiAwareOnly below 15ms,
+        // switch AWAY above 25ms, keep current choice between 15-25ms.
+        return _currentAudioTransport.withLock { current in
+            if latencyMs < audioLatencyLowMs {
+                current = .wifiAwareOnly
+            } else if latencyMs > audioLatencyHighMs {
+                current = .both
+            }
+            // Between 15-25ms: keep current unchanged
+            return current
+        }
     }
 
     // MARK: - Bulk Data Selection

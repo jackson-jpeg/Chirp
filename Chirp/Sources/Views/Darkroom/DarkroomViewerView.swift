@@ -156,7 +156,7 @@ struct DarkroomViewerView: View {
         } message: {
             Text("A screenshot was captured. The sender has been notified and the photo has been securely deleted.")
         }
-        .alert("Error", isPresented: $showError) {
+        .alert("Decryption Failed", isPresented: $showError) {
             Button("OK") {
                 dismiss()
             }

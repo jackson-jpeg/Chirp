@@ -24,6 +24,22 @@ final class DeadDropService {
     /// Successfully decrypted messages, keyed by drop ID.
     private(set) var pickedUpMessages: [UUID: String] = [:]
 
+    /// All active (non-expired) drops visible for map display — both relay-stored and user-created.
+    var allActiveDrops: [DeadDropMessage] {
+        let now = Date()
+        let relayDrops = storedDrops.values.filter { $0.expiresAt > now }
+        let ownDrops = myDrops.filter { $0.expiresAt > now }
+        // De-duplicate by ID in case a user's own drop also appears in storedDrops.
+        var seen = Set<UUID>()
+        var result: [DeadDropMessage] = []
+        for drop in ownDrops + relayDrops {
+            if seen.insert(drop.id).inserted {
+                result.append(drop)
+            }
+        }
+        return result
+    }
+
     // MARK: - Callbacks
 
     /// Called when the service needs to broadcast a packet on a channel.

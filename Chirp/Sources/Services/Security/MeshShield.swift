@@ -3,6 +3,12 @@ import Foundation
 import Observation
 import OSLog
 
+// MARK: - Errors
+
+enum MeshShieldError: Error {
+    case sealedBoxCombinedNil
+}
+
 // MARK: - Triple-Layer Encryption
 
 /// Triple-layer encryption for all mesh messages.
@@ -14,8 +20,6 @@ import OSLog
 ///        └── contains: [original message payload]
 /// ```
 enum MeshShieldCrypto {
-
-    private static let layer1Salt = Data("ChirpMeshShield-L1".utf8)
 
     /// Wrap a payload in three layers of encryption.
     ///
@@ -29,30 +33,34 @@ enum MeshShieldCrypto {
     static func encrypt(
         _ plaintext: Data,
         channelCrypto: ChannelCrypto,
-        peerIdentity: PeerIdentity
+        peerIdentity: PeerIdentity,
+        epoch: UInt32 = 0
     ) async throws -> Data {
 
         // Layer 3: Sign the plaintext
         let signature = try await peerIdentity.sign(plaintext)
 
-        // Layer 2: Encrypt with channel key
-        let layer2Ciphertext = try channelCrypto.encrypt(plaintext)
+        // Layer 2: Encrypt with channel key (epoch-rotated)
+        let layer2Ciphertext = try channelCrypto.encrypt(plaintext, epoch: epoch)
 
         // Combine: [signature:64][layer2 ciphertext]
         var innerPackage = Data(capacity: 64 + layer2Ciphertext.count)
         innerPackage.append(signature)
         innerPackage.append(layer2Ciphertext)
 
-        // Layer 1: Ephemeral DH encryption
+        // Layer 1: Ephemeral key + channel key bound via HKDF
         let ephemeralPrivate = Curve25519.KeyAgreement.PrivateKey()
         let ephemeralPublic = ephemeralPrivate.publicKey
-        let symmetricKey = deriveLayer1Key(from: ephemeralPublic.rawRepresentation)
+        let symmetricKey = channelCrypto.deriveLayer1Key(ephemeralKeyData: ephemeralPublic.rawRepresentation)
         let sealed = try AES.GCM.seal(innerPackage, using: symmetricKey)
+        guard let combined = sealed.combined else {
+            throw MeshShieldError.sealedBoxCombinedNil
+        }
 
         // Wire: [ephemeralPubKey:32][nonce+ciphertext+tag]
-        var wire = Data(capacity: 32 + sealed.combined!.count)
+        var wire = Data(capacity: 32 + combined.count)
         wire.append(ephemeralPublic.rawRepresentation)
-        wire.append(sealed.combined!)
+        wire.append(combined)
 
         // Ephemeral private key destroyed when it goes out of scope
         return wire
@@ -62,15 +70,16 @@ enum MeshShieldCrypto {
     /// Returns the original plaintext, or `nil` if decryption fails.
     static func decrypt(
         _ wire: Data,
-        channelCrypto: ChannelCrypto
+        channelCrypto: ChannelCrypto,
+        currentEpoch: UInt32 = 0
     ) -> Data? {
         guard wire.count > 32 + 28 + 64 + 28 else { return nil }
 
         let ephemeralKeyData = Data(wire.prefix(32))
         let layer1Ciphertext = Data(wire.dropFirst(32))
 
-        // Layer 1 decrypt
-        let symmetricKey = deriveLayer1Key(from: ephemeralKeyData)
+        // Layer 1 decrypt — requires channel key to derive symmetric key
+        let symmetricKey = channelCrypto.deriveLayer1Key(ephemeralKeyData: ephemeralKeyData)
         guard let sealedBox = try? AES.GCM.SealedBox(combined: layer1Ciphertext),
               let innerPackage = try? AES.GCM.open(sealedBox, using: symmetricKey) else {
             return nil
@@ -79,21 +88,12 @@ enum MeshShieldCrypto {
         guard innerPackage.count > 64 + 28 else { return nil }
         let layer2Ciphertext = Data(innerPackage.dropFirst(64))
 
-        // Layer 2 decrypt
-        guard let plaintext = try? channelCrypto.decrypt(layer2Ciphertext) else {
+        // Layer 2 decrypt (epoch-aware with lookback)
+        guard let plaintext = try? channelCrypto.decrypt(layer2Ciphertext, currentEpoch: currentEpoch) else {
             return nil
         }
 
         return plaintext
-    }
-
-    private static func deriveLayer1Key(from ephemeralKeyData: Data) -> SymmetricKey {
-        HKDF<SHA256>.deriveKey(
-            inputKeyMaterial: SymmetricKey(data: ephemeralKeyData),
-            salt: layer1Salt,
-            info: Data(),
-            outputByteCount: 32
-        )
     }
 }
 
@@ -126,6 +126,20 @@ final class MeshShield {
     /// Returns the current active channel ID, if any.
     var activeChannelProvider: (() -> String?)?
 
+    /// Returns the number of visible peers (for adaptive rate limiting).
+    var peerCountProvider: (() -> Int)?
+
+    // MARK: - Token Bucket Rate Limiter
+
+    /// Maximum tokens (burst capacity).
+    private let maxTokens: Double = 5.0
+    /// Token refill rate: 20 per minute = 1 per 3 seconds.
+    private let refillRate: Double = 20.0 / 60.0
+    /// Current token count.
+    private var tokens: Double = 5.0
+    /// Last time tokens were refilled.
+    private var lastRefill: Date = Date()
+
     // MARK: - Init
 
     init() {}
@@ -151,12 +165,13 @@ final class MeshShield {
     // MARK: - Encryption API
 
     /// Triple-encrypt a payload. Used by TextMessageService for locked channels.
-    func encrypt(_ plaintext: Data, channelCrypto: ChannelCrypto) async -> Data? {
+    func encrypt(_ plaintext: Data, channelCrypto: ChannelCrypto, epoch: UInt32 = 0) async -> Data? {
         do {
             return try await MeshShieldCrypto.encrypt(
                 plaintext,
                 channelCrypto: channelCrypto,
-                peerIdentity: PeerIdentity.shared
+                peerIdentity: PeerIdentity.shared,
+                epoch: epoch
             )
         } catch {
             logger.error("Encryption failed: \(error.localizedDescription)")
@@ -165,8 +180,8 @@ final class MeshShield {
     }
 
     /// Triple-decrypt a payload. Returns plaintext or nil if not triple-encrypted.
-    nonisolated func decrypt(_ ciphertext: Data, channelCrypto: ChannelCrypto) -> Data? {
-        MeshShieldCrypto.decrypt(ciphertext, channelCrypto: channelCrypto)
+    nonisolated func decrypt(_ ciphertext: Data, channelCrypto: ChannelCrypto, currentEpoch: UInt32 = 0) -> Data? {
+        MeshShieldCrypto.decrypt(ciphertext, channelCrypto: channelCrypto, currentEpoch: currentEpoch)
     }
 
     /// Check if a payload is cover traffic (silently discard).
@@ -191,27 +206,49 @@ final class MeshShield {
         }
     }
 
+    /// Refill tokens based on elapsed time and consume one if available.
+    private func consumeToken() -> Bool {
+        let now = Date()
+        let elapsed = now.timeIntervalSince(lastRefill)
+        lastRefill = now
+
+        // Adaptive rate: halve refill when >10 peers (they're also generating cover)
+        let peerCount = peerCountProvider?() ?? 0
+        let adjustedRate = peerCount > 10 ? refillRate / 2.0 : refillRate
+
+        tokens = min(maxTokens, tokens + elapsed * adjustedRate)
+        guard tokens >= 1.0 else { return false }
+        tokens -= 1.0
+        return true
+    }
+
     private func injectCoverPacket() {
+        // Skip if no active channel (unencrypted cover is pointless)
+        guard let activeID = activeChannelProvider?(),
+              let crypto = channelCryptoProvider?(activeID) else {
+            return
+        }
+
+        // Rate limit
+        guard consumeToken() else {
+            logger.trace("Cover traffic rate-limited, skipping injection")
+            return
+        }
+
         let packetType: MeshPacket.PacketType = Bool.random() ? .audio : .control
-        // Size distribution matches real encrypted message ranges
         let payloadSize = packetType == .audio ? Int.random(in: 80...350) : Int.random(in: 80...600)
 
-        // Cover payload: magic prefix + random bytes
-        // After channel encryption, 0xDEADBEEF is invisible on the wire.
-        // Only revealed after decryption by nodes with the channel key.
         var coverPayload = Data(Self.coverMagic)
         var noise = [UInt8](repeating: 0, count: max(0, payloadSize - 4))
         for i in noise.indices { noise[i] = UInt8.random(in: 0...255) }
         coverPayload.append(Data(noise))
 
-        // Encrypt cover payload with channel key so it's indistinguishable from real traffic
-        var wirePayload = coverPayload
-        var channelID = ""
-        if let activeID = activeChannelProvider?(),
-           let crypto = channelCryptoProvider?(activeID),
-           let encrypted = try? crypto.encrypt(coverPayload) {
-            wirePayload = encrypted
-            channelID = activeID
+        let wirePayload: Data
+        do {
+            wirePayload = try crypto.encrypt(coverPayload)
+        } catch {
+            logger.error("Cover traffic encryption failed, skipping: \(error.localizedDescription)")
+            return
         }
 
         let packet = MeshPacket(
@@ -221,7 +258,7 @@ final class MeshShield {
             packetID: UUID(),
             sequenceNumber: UInt32.random(in: 0...UInt32.max),
             timestamp: UInt64(Date().timeIntervalSince1970 * 1000),
-            channelID: channelID,
+            channelID: activeID,
             payload: wirePayload
         )
 

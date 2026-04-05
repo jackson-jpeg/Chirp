@@ -289,10 +289,10 @@ struct EmergencySOSView: View {
 
     @State private var isCountingDown = false
     @State private var countdownSeconds = 3
-    @State private var countdownTimer: Timer?
+    @State private var countdownTask: Task<Void, Never>?
     @State private var vignetteOpacity: Double = 0.0
     @State private var emergencyHoldProgress: CGFloat = 0.0
-    @State private var emergencyHoldTimer: Timer?
+    @State private var emergencyHoldTask: Task<Void, Never>?
     @State private var isHoldingForEmergency = false
 
     private let red = Constants.Colors.hotRed
@@ -634,25 +634,27 @@ struct EmergencySOSView: View {
         countdownSeconds = 3
         isCountingDown = true
 
-        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            DispatchQueue.main.async {
+        countdownTask = Task { @MainActor in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else { break }
                 countdownSeconds -= 1
                 if countdownSeconds <= 0 {
-                    countdownTimer?.invalidate()
-                    countdownTimer = nil
+                    countdownTask = nil
                     isCountingDown = false
                     beacon.activate(
                         senderID: appState.localPeerID,
                         senderName: appState.callsign
                     )
+                    break
                 }
             }
         }
     }
 
     private func cancelCountdown() {
-        countdownTimer?.invalidate()
-        countdownTimer = nil
+        countdownTask?.cancel()
+        countdownTask = nil
         isCountingDown = false
         countdownSeconds = 3
     }
@@ -764,28 +766,27 @@ struct EmergencySOSView: View {
         isHoldingForEmergency = true
         emergencyHoldProgress = 0
 
-        let interval: TimeInterval = 0.05
+        let interval: Duration = .milliseconds(50)
         let totalDuration: TimeInterval = 3.0
-        let steps = totalDuration / interval
-        nonisolated(unsafe) var currentStep: Double = 0
+        let steps = totalDuration / 0.05
 
-        emergencyHoldTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
-            currentStep += 1
-            let progress = CGFloat(currentStep / steps)
-            DispatchQueue.main.async {
-                withAnimation(.linear(duration: interval)) {
+        emergencyHoldTask = Task { @MainActor in
+            var currentStep: Double = 0
+            while !Task.isCancelled, currentStep < steps {
+                try? await Task.sleep(for: interval)
+                guard !Task.isCancelled else { break }
+                currentStep += 1
+                let progress = CGFloat(currentStep / steps)
+                withAnimation(.linear(duration: 0.05)) {
                     emergencyHoldProgress = min(progress, 1.0)
                 }
-            }
-            if currentStep >= steps {
-                timer.invalidate()
             }
         }
     }
 
     private func completeEmergencyHold() {
-        emergencyHoldTimer?.invalidate()
-        emergencyHoldTimer = nil
+        emergencyHoldTask?.cancel()
+        emergencyHoldTask = nil
         isHoldingForEmergency = false
         emergencyHoldProgress = 0
 

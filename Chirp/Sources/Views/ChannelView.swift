@@ -211,13 +211,18 @@ struct ChannelView: View {
 
             // Quick replies — tap to send as text message
             QuickReplyBar(replies: appState.quickReplyManager.replies) { reply in
-                appState.textMessageService.send(
-                    text: reply.label,
-                    channelID: channel.id,
-                    senderID: appState.localPeerID,
-                    senderName: appState.callsign
-                )
-                toast = ToastItem(message: "Sent: \(reply.label)", type: .success)
+                switch reply.type {
+                case .audioFile:
+                    toast = ToastItem(message: "Audio replies coming soon", type: .info)
+                case .text:
+                    appState.textMessageService.send(
+                        text: reply.label,
+                        channelID: channel.id,
+                        senderID: appState.localPeerID,
+                        senderName: appState.callsign
+                    )
+                    toast = ToastItem(message: "Sent: \(reply.label)", type: .success)
+                }
             }
             .padding(.bottom, Constants.Layout.spacing)
 
@@ -306,7 +311,42 @@ struct ChannelView: View {
                 )
                 toast = ToastItem(message: "Sending \(fileName)...", type: .info)
             },
-            cicadaService: appState.cicadaService
+            onSendReaction: { emoji, messageID in
+                appState.textMessageService.sendReaction(
+                    emoji: emoji,
+                    messageID: messageID,
+                    channelID: channel.id,
+                    senderID: appState.localPeerID,
+                    senderName: appState.localPeerName
+                )
+            },
+            cicadaService: appState.cicadaService,
+            typingPeers: appState.textMessageService.typingPeersByChannel[channel.id] ?? [],
+            onTyping: {
+                appState.textMessageService.sendTypingIndicator(
+                    channelID: channel.id,
+                    senderID: appState.localPeerID,
+                    senderName: appState.localPeerName
+                )
+            },
+            onMessageAppeared: { messageID in
+                appState.textMessageService.markMessageAsRead(
+                    messageID,
+                    channelID: channel.id,
+                    localPeerID: appState.localPeerID
+                )
+            },
+            onSendVoiceNote: { duration, audioData in
+                let base64 = audioData.base64EncodedString()
+                appState.textMessageService.send(
+                    text: base64,
+                    channelID: channel.id,
+                    senderID: appState.localPeerID,
+                    senderName: appState.callsign,
+                    attachmentType: .voiceNote
+                )
+                toast = ToastItem(message: String(localized: "chat.voiceNote.sent"), type: .success)
+            }
         )
     }
 

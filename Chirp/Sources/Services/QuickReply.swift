@@ -44,13 +44,11 @@ final class QuickReplyManager {
             utterance.pitchMultiplier = 1.0
             synthesizer?.speak(utterance)
 
-        case .audioFile(let filename):
-            let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
-            guard let fileURL = documentsURL?.appendingPathComponent(filename) else { return }
-            guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
-            // Audio file playback would be routed through the mesh audio pipeline
-            // by feeding PCM frames into the Opus encoder, same as mic input.
-            _ = fileURL // TODO: Feed audio file into Opus encoder pipeline
+        case .audioFile:
+            // Audio quick replies are not yet implemented — the Opus encoder
+            // pipeline integration is pending. The UI guards against reaching
+            // this path, but bail out safely just in case.
+            return
         }
     }
 

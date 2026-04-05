@@ -11,11 +11,16 @@ struct BabelMessage: Codable, Sendable, Identifiable {
     let senderName: String
     let channelID: String
     let sourceLanguage: String      // BCP-47 code, e.g., "en-US"
-    let targetLanguage: String      // BCP-47 code, e.g., "es"
+    let targetLanguage: String      // BCP-47 code, e.g., "es" (legacy, kept for compat)
     let originalText: String        // Source language transcription
-    let translatedText: String      // Target language translation
+    let translatedText: String?     // Optional — present for backward compat / pre-translated
     let isFinal: Bool               // false for partial results
     let timestamp: Date
+
+    /// Display text: use translatedText if available, otherwise originalText.
+    var displayText: String {
+        translatedText ?? originalText
+    }
 
     // MARK: - Constants
 

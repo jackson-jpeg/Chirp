@@ -13,6 +13,16 @@ struct SignalStrengthIndicator: View {
     private let activeColor = Constants.Colors.amber
     private let inactiveColor = Color.white.opacity(0.15)
 
+    private var signalLevelDescription: String {
+        switch level {
+        case 0: return "none"
+        case 1: return "weak"
+        case 2: return "fair"
+        case 3: return "good"
+        default: return "excellent"
+        }
+    }
+
     var body: some View {
         VStack(spacing: 2) {
             HStack(alignment: .bottom, spacing: barSpacing) {
@@ -30,7 +40,8 @@ struct SignalStrengthIndicator: View {
             .frame(height: maxBarHeight, alignment: .bottom)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Signal strength \(level) of \(barCount)")
+        .accessibilityLabel("Signal strength: \(signalLevelDescription)")
+        .accessibilityHint("Signal level \(level) out of \(barCount) bars")
         .onAppear {
             animatedLevel = level.clamped(to: 0...barCount)
         }

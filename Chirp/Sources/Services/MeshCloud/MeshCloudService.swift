@@ -3,6 +3,19 @@ import Foundation
 import Observation
 import OSLog
 
+/// Errors that can occur during mesh backup retrieval.
+enum MeshCloudError: Error, Sendable {
+    case noMetadata
+    case timeout
+    case missingChunks([UInt16])
+    case insufficientShards(have: Int, need: Int)
+    case keyReconstructionFailed
+    case invalidKeySize(Int)
+    case decryptionFailed
+    case integrityCheckFailed
+    case cancelled
+}
+
 /// Distributed encrypted backup service across mesh nodes.
 ///
 /// Uses a hybrid Shamir approach:
@@ -51,8 +64,24 @@ final class MeshCloudService {
     private var retrievalShards: [ShamirSplitter.Share] = []
     private var activeRetrievalMeta: BackupMetadata?
 
+    /// Continuation for async retrieveBackup flow.
+    private var retrievalContinuation: CheckedContinuation<Data, Error>?
+
     private static let chunkSize = 2048  // 2 KB per chunk
     private static let expiryDays: TimeInterval = 30 * 24 * 60 * 60
+    static let defaultRetrievalTimeout: TimeInterval = 60  // seconds per retry round
+    static let defaultMaxRetries = 3
+
+    /// Override for testing -- set before calling retrieveBackup.
+    var retrievalTimeoutOverride: TimeInterval?
+    var maxRetriesOverride: Int?
+
+    private var effectiveTimeout: TimeInterval {
+        retrievalTimeoutOverride ?? Self.defaultRetrievalTimeout
+    }
+    private var effectiveMaxRetries: Int {
+        maxRetriesOverride ?? Self.defaultMaxRetries
+    }
 
     private enum Keys {
         static let quotaMB = "com.chirpchirp.meshcloud.quotaMB"
@@ -128,6 +157,9 @@ final class MeshCloudService {
         let chunkCount = UInt16(clamping: (combined.count + Self.chunkSize - 1) / Self.chunkSize)
         let expiresAt = Date().addingTimeInterval(Self.expiryDays)
 
+        // SHA-256 hash of original plaintext for integrity verification on retrieval
+        let fileHash = Data(SHA256.hash(data: fileData))
+
         let metadata = BackupMetadata(
             id: backupID,
             ownerPeerID: localPeerID,
@@ -137,7 +169,8 @@ final class MeshCloudService {
             chunkCount: chunkCount,
             threshold: k,
             totalShares: n,
-            timestamp: Date()
+            timestamp: Date(),
+            fileHash: fileHash
         )
 
         // Save metadata locally
@@ -210,11 +243,102 @@ final class MeshCloudService {
 
     /// Cancel an active retrieval.
     func cancelRetrieval() {
+        let continuation = retrievalContinuation
+        retrievalContinuation = nil
         isRetrieving = false
         retrievalProgress = 0
         retrievalChunks = [:]
         retrievalShards = []
         activeRetrievalMeta = nil
+        continuation?.resume(throwing: MeshCloudError.cancelled)
+    }
+
+    /// Retrieve and decrypt a backup from the mesh.
+    ///
+    /// Broadcasts retrieval requests, collects chunks with timeout and retry,
+    /// reassembles, reconstructs the AES key, decrypts, and verifies integrity.
+    /// Returns the original plaintext data.
+    func retrieveBackup(backupID: UUID) async throws -> Data {
+        guard let meta = localBackups.first(where: { $0.id == backupID }) else {
+            logger.warning("No local metadata for backup \(backupID)")
+            throw MeshCloudError.noMetadata
+        }
+
+        // Reset retrieval state
+        isRetrieving = true
+        retrievalProgress = 0
+        retrievalChunks = [:]
+        retrievalShards = []
+        activeRetrievalMeta = meta
+
+        defer {
+            isRetrieving = false
+            retrievalChunks = [:]
+            retrievalShards = []
+            activeRetrievalMeta = nil
+            retrievalContinuation = nil
+        }
+
+        var lastError: Error = MeshCloudError.timeout
+
+        let maxRetries = self.effectiveMaxRetries
+        let timeout = self.effectiveTimeout
+
+        for attempt in 1...maxRetries {
+            logger.info("Retrieval attempt \(attempt)/\(maxRetries) for backup \(backupID)")
+
+            // Broadcast BRQ! retrieval request
+            let request = BackupRetrievalRequest(
+                backupID: backupID,
+                requestingPeerID: localPeerID,
+                requestingFingerprint: localFingerprint
+            )
+
+            do {
+                let payload = try request.wirePayload()
+                onSendPacket?(payload, "")
+            } catch {
+                logger.error("Failed to send retrieval request: \(error.localizedDescription)")
+                lastError = error
+                continue
+            }
+
+            // Wait for chunks via continuation with timeout
+            do {
+                let decrypted: Data = try await withCheckedThrowingContinuation { continuation in
+                    self.retrievalContinuation = continuation
+
+                    // Start timeout watchdog
+                    Task { @MainActor [weak self] in
+                        try? await Task.sleep(for: .seconds(timeout))
+                        guard let self = self, self.retrievalContinuation != nil else { return }
+                        let cont = self.retrievalContinuation
+                        self.retrievalContinuation = nil
+                        cont?.resume(throwing: MeshCloudError.timeout)
+                    }
+                }
+
+                // Continuation was resumed with decrypted data -- success
+                retrievalProgress = 1.0
+                return decrypted
+            } catch {
+                lastError = error
+                // Log missing state for retry
+                let totalChunks = Int(meta.chunkCount)
+                let missing = (0..<UInt16(totalChunks)).filter { retrievalChunks[$0] == nil }
+                if !missing.isEmpty {
+                    logger.warning("Missing \(missing.count) chunks after attempt \(attempt)")
+                }
+                if retrievalShards.count < meta.threshold {
+                    logger.warning("Only \(self.retrievalShards.count)/\(meta.threshold) shards after attempt \(attempt)")
+                }
+                // Don't clear collected chunks/shards between retries -- accumulate
+                continue
+            }
+        }
+
+        logger.error("Retrieval failed after \(maxRetries) attempts for backup \(backupID)")
+        throw lastError
     }
 
     // MARK: - Packet Handling
@@ -321,13 +445,19 @@ final class MeshCloudService {
         let shardsToUse = Array(retrievalShards.prefix(metadata.threshold))
         guard let keyData = ShamirSplitter.reconstruct(shares: shardsToUse) else {
             logger.error("Failed to reconstruct key from \(shardsToUse.count) shards")
+            let cont = retrievalContinuation
+            retrievalContinuation = nil
             isRetrieving = false
+            cont?.resume(throwing: MeshCloudError.keyReconstructionFailed)
             return
         }
 
         guard keyData.count == 32 else {
             logger.error("Reconstructed key has wrong size: \(keyData.count)")
+            let cont = retrievalContinuation
+            retrievalContinuation = nil
             isRetrieving = false
+            cont?.resume(throwing: MeshCloudError.invalidKeySize(keyData.count))
             return
         }
 
@@ -338,25 +468,60 @@ final class MeshCloudService {
         for i in 0..<metadata.chunkCount {
             guard let chunkData = retrievalChunks[i] else {
                 logger.error("Missing chunk \(i) during assembly")
+                let cont = retrievalContinuation
+                retrievalContinuation = nil
                 isRetrieving = false
+                cont?.resume(throwing: MeshCloudError.missingChunks([i]))
                 return
             }
             combinedEncrypted.append(chunkData)
         }
 
         // 3. Decrypt with AES-GCM
+        let decrypted: Data
         do {
             let sealedBox = try AES.GCM.SealedBox(combined: combinedEncrypted)
-            let decrypted = try AES.GCM.open(sealedBox, using: symmetricKey)
+            decrypted = try AES.GCM.open(sealedBox, using: symmetricKey)
+        } catch {
+            logger.error("Failed to decrypt backup: \(error.localizedDescription)")
+            let cont = retrievalContinuation
+            retrievalContinuation = nil
+            isRetrieving = false
+            cont?.resume(throwing: MeshCloudError.decryptionFailed)
+            return
+        }
 
-            // Save to Documents
+        // 4. SHA-256 integrity verification
+        if let expectedHash = metadata.fileHash {
+            let actualHash = Data(SHA256.hash(data: decrypted))
+            guard actualHash == expectedHash else {
+                logger.error("Integrity check failed: hash mismatch for \(metadata.fileName)")
+                let cont = retrievalContinuation
+                retrievalContinuation = nil
+                isRetrieving = false
+                cont?.resume(throwing: MeshCloudError.integrityCheckFailed)
+                return
+            }
+            logger.info("SHA-256 integrity verified for \(metadata.fileName)")
+        }
+
+        logger.info("Successfully recovered backup: \(metadata.fileName) (\(decrypted.count) bytes)")
+
+        // Resume continuation if active (async retrieveBackup flow)
+        if let cont = retrievalContinuation {
+            retrievalContinuation = nil
+            retrievalProgress = 1.0
+            cont.resume(returning: decrypted)
+            return
+        }
+
+        // Fallback: save to Documents (legacy requestRetrieval flow)
+        do {
             let docsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             let fileURL = docsDir.appendingPathComponent("recovered_\(metadata.fileName)")
             try decrypted.write(to: fileURL)
-
-            logger.info("Successfully recovered backup: \(metadata.fileName) (\(decrypted.count) bytes)")
         } catch {
-            logger.error("Failed to decrypt backup: \(error.localizedDescription)")
+            logger.error("Failed to write recovered file: \(error.localizedDescription)")
         }
 
         // Clean up retrieval state

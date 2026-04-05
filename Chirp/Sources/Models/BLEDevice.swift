@@ -42,7 +42,7 @@ struct BLEDevice: Identifiable, Sendable, Codable {
             case .none: "Safe"
             case .low: "Low"
             case .medium: "Unknown"
-            case .high: "Suspicious"
+            case .high: "Flagged"
             }
         }
     }

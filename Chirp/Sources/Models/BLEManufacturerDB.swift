@@ -1,6 +1,6 @@
 import Foundation
 
-/// Static database of Bluetooth SIG company identifiers and threat assessment logic.
+/// Static database of Bluetooth SIG company identifiers and device awareness logic.
 enum BLEManufacturerDB {
 
     // MARK: - Manufacturer Entry
@@ -160,7 +160,7 @@ enum BLEManufacturerDB {
         // Tuya
         0x07D0: Entry("Tuya", .iot),
 
-        // --- Surveillance / Cameras (suspicious) ---
+        // --- Security Cameras ---
 
         // Hikvision
         0x0969: Entry("Hikvision", .camera, surveillance: true),
@@ -182,7 +182,7 @@ enum BLEManufacturerDB {
 
         // --- Infrastructure / Beacons (medium concern) ---
 
-        // RetailNext (retail surveillance/analytics)
+        // RetailNext (retail analytics)
         0x0672: Entry("RetailNext", .infrastructure, surveillance: true),
 
         // Estimote (beacons)
@@ -211,11 +211,11 @@ enum BLEManufacturerDB {
         manufacturers[companyID]
     }
 
-    // MARK: - Threat Assessment
+    // MARK: - Awareness Assessment
 
-    /// Assess the threat level of a detected BLE device.
+    /// Assess the awareness level of a detected BLE device.
     static func assessThreat(device: BLEDevice) -> BLEDevice.ThreatLevel {
-        // Known surveillance / camera manufacturer → high
+        // Known security camera manufacturer → high
         if let mfgID = device.manufacturerID, let entry = manufacturers[mfgID] {
             if entry.isSurveillance {
                 return .high
@@ -228,7 +228,7 @@ enum BLEManufacturerDB {
             return .none
         }
 
-        // Unknown manufacturer with strong signal and no name → suspicious
+        // Unknown manufacturer with strong signal and no name → notable
         if device.manufacturerID != nil && device.name == nil && device.rssi > -40 {
             return .medium
         }

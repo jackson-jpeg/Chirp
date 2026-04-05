@@ -335,7 +335,7 @@ struct BabelView: View {
                 Text(flagEmoji(for: message.targetLanguage))
                     .font(.system(size: 12))
 
-                Text(message.translatedText)
+                Text(message.displayText)
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundStyle(Constants.Colors.textPrimary)
             }

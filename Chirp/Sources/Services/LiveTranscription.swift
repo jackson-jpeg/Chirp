@@ -61,12 +61,12 @@ final class LiveTranscription {
     /// Audio format matching the decoded PCM output from OpusCodec (16 kHz mono Float32).
     /// We use Float32 because SFSpeechAudioBufferRecognitionRequest works best with it,
     /// and the AudioEngine already converts to Float32 for playback.
-    private let transcriptionFormat = AVAudioFormat(
+    private let transcriptionFormat: AVAudioFormat? = AVAudioFormat(
         commonFormat: .pcmFormatFloat32,
         sampleRate: Constants.Opus.sampleRate,
         channels: 1,
         interleaved: false
-    )!
+    )
 
     // MARK: - Init
 
@@ -165,8 +165,9 @@ final class LiveTranscription {
         guard isTranscribing, let recognitionRequest else { return }
 
         // Convert Int16 -> Float32 for the speech recognizer
-        guard let floatBuffer = AVAudioPCMBuffer(
-            pcmFormat: transcriptionFormat,
+        guard let fmt = transcriptionFormat,
+              let floatBuffer = AVAudioPCMBuffer(
+            pcmFormat: fmt,
             frameCapacity: buffer.frameLength
         ) else { return }
 
@@ -223,8 +224,9 @@ final class LiveTranscription {
         history.append(entry)
 
         // Trim to max history size
-        if history.count > maxHistoryCount {
-            history.removeFirst(history.count - maxHistoryCount)
+        let overflow = history.count - maxHistoryCount
+        if overflow > 0 {
+            history.removeFirst(overflow)
         }
 
         logger.info("Transcript saved: '\(text.prefix(60))...' from \(self.currentSpeaker) (\(String(format: "%.1f", duration))s)")

@@ -9,10 +9,10 @@ struct TrackingAlert: Identifiable, Sendable {
     let detectedAt: Date
 
     enum AlertType: String, Sendable {
-        case followingDevice = "Possible Tracker"
-        case hiddenCamera = "Hidden Camera"
-        case stationaryTracker = "Stationary Tracker"
-        case surveillanceInfrastructure = "Tracking Infrastructure"
+        case followingDevice = "Persistent Device"
+        case hiddenCamera = "Security Camera"
+        case stationaryTracker = "Stationary Device"
+        case surveillanceInfrastructure = "Network Infrastructure"
     }
 }
 
@@ -30,7 +30,7 @@ final class PrivacyShield {
     // Dependencies
     private let bleScanner: BLEScanner
 
-    // History for tracking detection
+    // History for device pattern detection
     private var scanSnapshots: [(date: Date, devices: [BLEDevice])] = []
     private var analysisTask: Task<Void, Never>?
     private static let maxSnapshots = 20
@@ -54,7 +54,7 @@ final class PrivacyShield {
             }
         }
 
-        // Detect tracking patterns
+        // Detect notable device patterns
         detectTrackers()
 
         // Calculate privacy score
@@ -79,7 +79,7 @@ final class PrivacyShield {
     private func detectTrackers() {
         var alerts: [TrackingAlert] = []
 
-        // 1. Camera/surveillance devices from current scan
+        // 1. Camera devices from current scan
         for device in bleScanner.discoveredDevices where device.category == .camera {
             alerts.append(TrackingAlert(
                 id: UUID(),
@@ -108,7 +108,7 @@ final class PrivacyShield {
             }
         }
 
-        // 3. Surveillance infrastructure
+        // 3. Network infrastructure
         for device in bleScanner.discoveredDevices where device.category == .infrastructure {
             alerts.append(TrackingAlert(
                 id: UUID(),

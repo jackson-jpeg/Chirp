@@ -351,4 +351,59 @@ final class TextMessageServiceTests: XCTestCase {
         XCTAssertEqual(service.messages(for: "ch-cap").count, 500)
         XCTAssertEqual(service.messages(for: "ch-other").count, 1)
     }
+
+    // MARK: - Delivery ACK updates message status
+
+    func testDeliveryACKUpdatesMessageStatus() {
+        // Send a message so it appears in the channel history with .sent status.
+        service.send(
+            text: "Awaiting ACK",
+            channelID: "ch-1",
+            senderID: "peer-A",
+            senderName: "Alice"
+        )
+
+        let messages = service.messages(for: "ch-1")
+        XCTAssertEqual(messages.count, 1)
+        let messageID = messages.first!.id
+        XCTAssertEqual(messages.first!.deliveryStatus, .sent)
+
+        // Build an ACK payload: "ACK!" prefix + UUID string
+        var ackPayload = Data(MeshTextMessage.ackMagicPrefix)
+        ackPayload.append(Data(messageID.uuidString.utf8))
+
+        // Simulate receiving the ACK through handlePacket
+        service.handlePacket(ackPayload, channelID: "ch-1")
+
+        // The message's deliveryStatus should now be .delivered
+        let updated = service.messages(for: "ch-1")
+        XCTAssertEqual(updated.count, 1)
+        XCTAssertEqual(updated.first!.deliveryStatus, .delivered)
+    }
+
+    func testACKForUnknownMessageIsIgnored() {
+        // Send a real message first so there is something in the channel
+        service.send(
+            text: "Real message",
+            channelID: "ch-1",
+            senderID: "peer-A",
+            senderName: "Alice"
+        )
+
+        let originalMessages = service.messages(for: "ch-1")
+        XCTAssertEqual(originalMessages.count, 1)
+        let originalStatus = originalMessages.first!.deliveryStatus
+
+        // Build an ACK for a random UUID that does not match any sent message
+        let unknownID = UUID()
+        var ackPayload = Data(MeshTextMessage.ackMagicPrefix)
+        ackPayload.append(Data(unknownID.uuidString.utf8))
+
+        // Should not crash and should not change any message status
+        service.handlePacket(ackPayload, channelID: "ch-1")
+
+        let afterMessages = service.messages(for: "ch-1")
+        XCTAssertEqual(afterMessages.count, 1)
+        XCTAssertEqual(afterMessages.first!.deliveryStatus, originalStatus)
+    }
 }

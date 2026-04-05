@@ -11,16 +11,14 @@ final class WiFiAwareManager {
     private(set) var pairedDevices: [WAPairedDevice] = []
     private(set) var isSupported: Bool = false
 
-    nonisolated(unsafe) private var observationTask: Task<Void, Never>?
+    private var observationTask: Task<Void, Never>?
 
     init() {
         isSupported = WACapabilities.supportedFeatures.contains(.wifiAware)
         logger.info("Wi-Fi Aware supported: \(self.isSupported)")
     }
 
-    deinit {
-        observationTask?.cancel()
-    }
+    // Cleanup is handled by stopObservingPairedDevices().
 
     // MARK: - Paired Device Observation
 

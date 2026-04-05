@@ -200,7 +200,7 @@ actor MeshIntelligence {
     /// Returns an ordered list of peer IDs to hop through, or nil if unreachable.
     func bestPath(to destination: String) -> [String]? {
         // BFS from our directly-connected peers to the destination
-        let directPeers = Set(linkMetrics.keys.filter { !linkMetrics[$0]!.isStale })
+        let directPeers = Set(linkMetrics.keys.filter { !(linkMetrics[$0]?.isStale ?? true) })
         guard !directPeers.isEmpty else { return nil }
 
         // If the destination is a direct peer, return immediately
@@ -251,7 +251,7 @@ actor MeshIntelligence {
     var reachableNodeCount: Int {
         get {
             // Direct active peers
-            var reachable = Set(linkMetrics.keys.filter { !linkMetrics[$0]!.isStale })
+            var reachable = Set(linkMetrics.keys.filter { !(linkMetrics[$0]?.isStale ?? true) })
 
             // Transitive peers from topology map
             var frontier = reachable
@@ -269,6 +269,35 @@ actor MeshIntelligence {
 
             return reachable.count
         }
+    }
+
+    /// Compute the path from self to a destination peer, returning the ordered
+    /// list of peer IDs (starting from the first hop, ending at the destination).
+    /// Returns nil if the destination is unreachable.
+    func pathTo(destination: String) -> [String]? {
+        bestPath(to: destination)
+    }
+
+    /// Return the link quality metric (0-1) between two adjacent peers.
+    /// Checks direct link metrics first, then topology-inferred defaults.
+    func linkQuality(from peerA: String, to peerB: String) -> Double {
+        // Check if we have direct metrics for either peer
+        if let metrics = linkMetrics[peerA], !metrics.isStale {
+            // If peerA is a direct peer of ours, use its signal quality
+            // as a proxy for the link peerA<->peerB
+            return metrics.signalQuality
+        }
+        if let metrics = linkMetrics[peerB], !metrics.isStale {
+            return metrics.signalQuality
+        }
+        // No direct metrics — check if they are neighbors in topology
+        if let neighbors = topologyMap[peerA], neighbors.contains(peerB) {
+            return 0.5  // Known link but no quality data
+        }
+        if let neighbors = topologyMap[peerB], neighbors.contains(peerA) {
+            return 0.5
+        }
+        return 0.0  // Unknown link
     }
 
     /// Get link metrics for a specific peer, if available.
@@ -289,6 +318,28 @@ actor MeshIntelligence {
         // Also prune rate tracker
         let rateCutoff = Date().addingTimeInterval(-2)
         relayRateTracker = relayRateTracker.filter { $0.value.windowStart >= rateCutoff }
+
+        // Prune topology map based on remaining active peers
+        let active = Set(linkMetrics.keys)
+        pruneStaleTopology(activePeers: active)
+    }
+
+    /// Remove topology entries for peers that are no longer active,
+    /// and strip stale peer IDs from neighbor sets.
+    func pruneStaleTopology(activePeers: Set<String>) {
+        // Remove keys not in activePeers
+        for key in topologyMap.keys where !activePeers.contains(key) {
+            topologyMap.removeValue(forKey: key)
+        }
+        // Remove stale peer IDs from neighbor sets
+        for (key, neighbors) in topologyMap {
+            let pruned = neighbors.intersection(activePeers)
+            if pruned.isEmpty {
+                topologyMap.removeValue(forKey: key)
+            } else {
+                topologyMap[key] = pruned
+            }
+        }
     }
 
     // MARK: - Pheromone Routing

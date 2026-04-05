@@ -50,9 +50,9 @@ enum Constants {
         static let cardBackground = Color(hex: 0x1E293B)
 
         // Surface
-        static let surfaceGlass = Color.white.opacity(0.06)
-        static let surfaceBorder = Color.white.opacity(0.08)
-        static let surfaceHover = Color.white.opacity(0.12)
+        static let surfaceGlass = Color.white.opacity(0.08)
+        static let surfaceBorder = Color.white.opacity(0.10)
+        static let surfaceHover = Color.white.opacity(0.15)
 
         // Text
         static let textPrimary = Color.white
@@ -64,18 +64,18 @@ enum Constants {
         static let meshHealthFair = Color(hex: 0xFFB800)
         static let meshHealthPoor = Color(hex: 0xFF3B30)
 
-        // Frosted Glass Tints
-        static let glassAmber = Color(hex: 0xFFB800).opacity(0.15)
-        static let glassAmberBorder = Color(hex: 0xFFB800).opacity(0.4)
-        static let glassAmberGlow = Color(hex: 0xFFB800).opacity(0.35)
+        // Frosted Glass Tints — brighter for material refraction
+        static let glassAmber = Color(hex: 0xFFB800).opacity(0.20)
+        static let glassAmberBorder = Color(hex: 0xFFB800).opacity(0.50)
+        static let glassAmberGlow = Color(hex: 0xFFB800).opacity(0.40)
 
-        static let glassGreen = Color(hex: 0x30D158).opacity(0.12)
-        static let glassGreenBorder = Color(hex: 0x30D158).opacity(0.35)
-        static let glassGreenGlow = Color(hex: 0x30D158).opacity(0.3)
+        static let glassGreen = Color(hex: 0x30D158).opacity(0.18)
+        static let glassGreenBorder = Color(hex: 0x30D158).opacity(0.45)
+        static let glassGreenGlow = Color(hex: 0x30D158).opacity(0.35)
 
-        static let glassRed = Color(hex: 0xFF3B30).opacity(0.15)
-        static let glassRedBorder = Color(hex: 0xFF3B30).opacity(0.4)
-        static let glassRedGlow = Color(hex: 0xFF3B30).opacity(0.35)
+        static let glassRed = Color(hex: 0xFF3B30).opacity(0.20)
+        static let glassRedBorder = Color(hex: 0xFF3B30).opacity(0.50)
+        static let glassRedGlow = Color(hex: 0xFF3B30).opacity(0.40)
     }
 
     enum Typography {

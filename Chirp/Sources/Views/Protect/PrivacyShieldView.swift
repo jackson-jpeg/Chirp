@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Full privacy dashboard showing privacy score, tracking alerts, and broadcast analysis.
+/// Full device awareness dashboard showing awareness score, notable devices, and broadcast analysis.
 struct PrivacyShieldView: View {
     @Environment(AppState.self) private var appState
     @State private var expandedBroadcastID: String?
@@ -28,7 +28,7 @@ struct PrivacyShieldView: View {
             .padding(.top, 12)
         }
         .background(Constants.Colors.backgroundPrimary)
-        .navigationTitle("Privacy Shield")
+        .navigationTitle("Device Awareness")
         .navigationBarTitleDisplayMode(.large)
     }
 
@@ -62,7 +62,7 @@ struct PrivacyShieldView: View {
                         .font(.system(size: 48, weight: .heavy, design: .rounded))
                         .foregroundStyle(scoreColor)
                         .contentTransition(.numericText())
-                    Text("Privacy Score")
+                    Text("Awareness Score")
                         .font(Constants.Typography.caption)
                         .foregroundStyle(Constants.Colors.textSecondary)
                 }
@@ -85,7 +85,7 @@ struct PrivacyShieldView: View {
                 )
         )
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Privacy score: \(score) out of 100. \(scoreDescription(for: score))")
+        .accessibilityLabel("Awareness score: \(score) out of 100. \(scoreDescription(for: score))")
         .accessibilityIdentifier(AccessibilityID.privacyScoreGauge)
     }
 
@@ -162,7 +162,7 @@ struct PrivacyShieldView: View {
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(Constants.Colors.hotRed)
-                Text("Tracking Alerts")
+                Text("Notable Devices")
                     .font(Constants.Typography.sectionTitle)
                     .foregroundStyle(Constants.Colors.textPrimary)
             }
@@ -352,9 +352,9 @@ struct PrivacyShieldView: View {
     }
 
     private func scoreDescription(for score: Int) -> String {
-        if score >= 80 { return "Your environment looks safe" }
-        if score >= 50 { return "Some potential threats detected nearby" }
-        return "Multiple tracking risks detected"
+        if score >= 80 { return "No notable devices nearby" }
+        if score >= 50 { return "Some notable devices detected nearby" }
+        return "Several notable devices nearby"
     }
 
     private func colorForThreatLevel(_ level: BLEDevice.ThreatLevel) -> Color {

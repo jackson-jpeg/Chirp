@@ -19,10 +19,29 @@ final class ChannelManager {
     private let activeChannelKey = "com.chirpchirp.activeChannelID"
     private var channelCryptoCache: [String: ChannelCrypto] = [:]
 
+    // MARK: - Key Rotation
+
+    /// Current encryption epoch per channel. Advances on rotation.
+    private var channelEpochs: [String: UInt32] = [:]
+    /// Message count since last rotation per channel.
+    private var epochMessageCounts: [String: Int] = [:]
+    /// Timestamp of last rotation per channel.
+    private var epochRotationDates: [String: Date] = [:]
+    /// Rotate after this many messages.
+    private let rotationMessageThreshold = 100
+    /// Rotate after this interval.
+    private let rotationTimeInterval: TimeInterval = 1800  // 30 minutes
+    /// Called when a key rotation occurs. Payload should be broadcast to mesh.
+    var onKeyRotation: ((Data, String) -> Void)?
+
+    /// Well-known channel ID shared by all devices for the default "General" channel.
+    static let defaultGeneralChannelID = "00000000-0000-0000-0000-000000000001"
+
     // MARK: - Init
 
     init() {
         loadChannels()
+        migrateGeneralChannelID()
     }
 
     // MARK: - Channel Lifecycle
@@ -31,9 +50,10 @@ final class ChannelManager {
     func createChannel(
         name: String,
         accessMode: ChirpChannel.AccessMode = .open,
-        ownerID: String? = nil
+        ownerID: String? = nil,
+        id: String? = nil
     ) -> ChirpChannel {
-        let channelID = UUID().uuidString
+        let channelID = id ?? UUID().uuidString
         var encryptionKeyData: Data?
         var inviteCode: String?
 
@@ -152,6 +172,76 @@ final class ChannelManager {
         return crypto
     }
 
+    // MARK: - Epoch Management
+
+    /// Get the current encryption epoch for a channel.
+    func currentEpoch(for channelID: String) -> UInt32 {
+        channelEpochs[channelID] ?? 0
+    }
+
+    /// Record a message sent on a channel and rotate if thresholds are met.
+    /// Returns the epoch to use for encryption.
+    func recordMessageAndGetEpoch(for channelID: String) -> UInt32 {
+        let count = (epochMessageCounts[channelID] ?? 0) + 1
+        epochMessageCounts[channelID] = count
+
+        let lastRotation = epochRotationDates[channelID] ?? Date.distantPast
+        let timeSinceRotation = Date().timeIntervalSince(lastRotation)
+
+        if count >= rotationMessageThreshold || timeSinceRotation >= rotationTimeInterval {
+            advanceEpoch(for: channelID)
+        }
+
+        return channelEpochs[channelID] ?? 0
+    }
+
+    /// Advance the epoch for a channel. Called locally on threshold or when receiving KRO!.
+    func advanceEpoch(for channelID: String) {
+        let current = channelEpochs[channelID] ?? 0
+        channelEpochs[channelID] = current + 1
+        epochMessageCounts[channelID] = 0
+        epochRotationDates[channelID] = Date()
+        logger.info("Key rotation: channel \(channelID) advanced to epoch \(current + 1)")
+
+        // Broadcast rotation to peers
+        let payload = buildKeyRotationPayload(channelID: channelID)
+        onKeyRotation?(payload, channelID)
+    }
+
+    /// Handle a received KRO! (key rotation) packet. Advance epoch if behind.
+    func handleKeyRotation(channelID: String, peerEpoch: UInt32) {
+        let current = channelEpochs[channelID] ?? 0
+        if peerEpoch > current {
+            channelEpochs[channelID] = peerEpoch
+            epochMessageCounts[channelID] = 0
+            epochRotationDates[channelID] = Date()
+            logger.info("Key rotation from peer: channel \(channelID) jumped to epoch \(peerEpoch)")
+        }
+    }
+
+    /// Build a KRO! packet payload for broadcasting epoch advancement.
+    /// Format: [KRO! magic:4][epoch:4 BE][channelID UTF-8]
+    func buildKeyRotationPayload(channelID: String) -> Data {
+        let epoch = channelEpochs[channelID] ?? 0
+        var payload = Data([0x4B, 0x52, 0x4F, 0x21])  // "KRO!"
+        var epochBE = epoch.bigEndian
+        withUnsafeBytes(of: &epochBE) { payload.append(contentsOf: $0) }
+        payload.append(Data(channelID.utf8))
+        return payload
+    }
+
+    /// Parse a KRO! packet payload. Returns (channelID, epoch) or nil.
+    static func parseKeyRotationPayload(_ payload: Data) -> (channelID: String, epoch: UInt32)? {
+        guard payload.count >= 9,  // 4 magic + 4 epoch + at least 1 byte channel
+              payload[0] == 0x4B, payload[1] == 0x52,
+              payload[2] == 0x4F, payload[3] == 0x21 else {
+            return nil
+        }
+        let epoch = payload[4..<8].withUnsafeBytes { $0.load(as: UInt32.self) }.bigEndian
+        guard let channelID = String(data: payload[8...], encoding: .utf8) else { return nil }
+        return (channelID, epoch)
+    }
+
     /// Kick a peer from a channel. Only the channel owner can kick.
     func kickPeer(channelID: String, peerID: String, requestingOwner: String) -> Bool {
         guard let index = channels.firstIndex(where: { $0.id == channelID }) else {
@@ -179,6 +269,38 @@ final class ChannelManager {
         channels.removeAll { $0.id == id }
         saveChannels()
         logger.info("Deleted channel \(id)")
+    }
+
+    // MARK: - Migration
+
+    /// One-time migration: replace any random-UUID "General" channel with the
+    /// well-known ID so all devices share the same channel.
+    private func migrateGeneralChannelID() {
+        guard let index = channels.firstIndex(where: {
+            $0.name == "General" && $0.accessMode == .open && $0.id != Self.defaultGeneralChannelID
+        }) else { return }
+
+        let old = channels[index]
+        let wasActive = activeChannel?.id == old.id
+
+        channels[index] = ChirpChannel(
+            id: Self.defaultGeneralChannelID,
+            name: old.name,
+            peers: old.peers,
+            createdAt: old.createdAt,
+            accessMode: old.accessMode,
+            ownerID: old.ownerID,
+            inviteCode: old.inviteCode,
+            encryptionKeyData: old.encryptionKeyData
+        )
+
+        if wasActive {
+            activeChannel = channels[index]
+            UserDefaults.standard.set(Self.defaultGeneralChannelID, forKey: activeChannelKey)
+        }
+
+        saveChannels()
+        logger.info("Migrated General channel from \(old.id) to well-known ID")
     }
 
     // MARK: - Persistence

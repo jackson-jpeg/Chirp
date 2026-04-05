@@ -1,6 +1,6 @@
 import Foundation
 
-/// Represents something this device broadcasts that could be used for tracking.
+/// Represents something this device broadcasts that is visible to nearby devices.
 struct OwnBroadcast: Identifiable, Sendable {
     let id: String
     let protocolName: String

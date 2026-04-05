@@ -112,7 +112,8 @@ final class FloorController {
 
         case .transmitting:
             // Collision: compare timestamps, earliest wins
-            if let localTS = localRequestTimestamp, localTS <= timestamp {
+            if let localTS = localRequestTimestamp,
+               (localTS < timestamp || (localTS == timestamp && localPeerID < peerID)) {
                 logger.info("Floor collision — local wins")
             } else {
                 logger.info("Floor collision — remote wins")

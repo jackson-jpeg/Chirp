@@ -100,7 +100,7 @@ final class MeshGateway {
     private func startMonitoring() {
         monitor.pathUpdateHandler = { [weak self] path in
             let connected = path.status == .satisfied
-            DispatchQueue.main.async {
+            Task { @MainActor [weak self] in
                 guard let self else { return }
                 let wasGateway = self.isGatewayNode
                 self.hasInternet = connected
@@ -152,8 +152,7 @@ final class MeshGateway {
         }
     }
 
-    /// Deliver a single message to the outside world.
-    /// Currently logs the attempt — Twilio/SendGrid integration is a future phase.
+    /// Deliver a single message to the outside world via Twilio (SMS) or SendGrid (email).
     private func deliverMessage(_ message: GatewayMessage) {
         if let phone = message.recipientPhone {
             logger.info("GATEWAY SEND [SMS] from=\(message.fromPeerName) to=\(phone) msg=\(message.message.prefix(50))")
@@ -164,10 +163,49 @@ final class MeshGateway {
             return
         }
 
-        sentCount += 1
+        let delivery = GatewayDeliveryService.shared
 
-        // TODO: Phase 3 — POST to Twilio / SendGrid API endpoint
-        // For now the log entry above is the "delivery".
+        Task { @MainActor in
+            let status = await delivery.deliver(message)
+
+            switch status {
+            case .sent:
+                self.sentCount += 1
+                self.logger.info("Gateway delivery succeeded for \(message.id)")
+            case .failed:
+                self.logger.error("Gateway delivery failed for \(message.id)")
+            case .pending:
+                break
+            }
+
+            // Send a delivery receipt back through the mesh so the sender gets feedback
+            self.broadcastDeliveryReceipt(messageID: message.id, status: status)
+        }
+    }
+
+    /// Broadcast a delivery receipt through the mesh for the original sender.
+    private func broadcastDeliveryReceipt(messageID: UUID, status: GatewayDeliveryService.DeliveryStatus) {
+        let delivery = GatewayDeliveryService.shared
+        guard let payload = delivery.encodeDeliveryReceipt(messageID: messageID, status: status) else { return }
+
+        let packet = MeshPacket(
+            type: .control,
+            ttl: MeshPacket.adaptiveTTL(for: .control, priority: .normal),
+            originID: UUID(uuidString: localPeerID) ?? UUID(),
+            packetID: UUID(),
+            sequenceNumber: 0,
+            timestamp: UInt64(Date().timeIntervalSince1970 * 1000),
+            channelID: "",
+            payload: payload
+        )
+
+        NotificationCenter.default.post(
+            name: .meshGatewayDeliveryReceipt,
+            object: nil,
+            userInfo: ["packet": packet.serialize()]
+        )
+
+        logger.info("Broadcast delivery receipt for \(messageID) status=\(status.rawValue)")
     }
 
     // MARK: - Mesh Routing
@@ -206,7 +244,7 @@ final class MeshGateway {
     // MARK: - Incoming Handling
 
     /// Handle a gateway-related payload received from the mesh.
-    /// Dispatches to beacon or request handling based on magic prefix.
+    /// Dispatches to beacon, request, or delivery receipt handling based on magic prefix.
     func handleGatewayPayload(_ data: Data) {
         guard data.count > 3 else { return }
         let magic = Array(data.prefix(3))
@@ -215,6 +253,11 @@ final class MeshGateway {
             handleGatewayBeacon(data)
         } else if magic == Self.requestMagic {
             handleGatewayRequest(data)
+        }
+
+        // GDR! is 4 bytes — check separately
+        if data.count > 4, Array(data.prefix(4)) == GatewayDeliveryService.receiptMagic {
+            GatewayDeliveryService.shared.handleDeliveryReceipt(data)
         }
     }
 
@@ -319,4 +362,7 @@ extension Notification.Name {
 
     /// Posted when a gateway beacon packet is ready for mesh broadcast.
     static let meshGatewayBeaconBroadcast = Notification.Name("com.chirpchirp.meshGatewayBeaconBroadcast")
+
+    /// Posted when a gateway delivery receipt is ready for mesh broadcast.
+    static let meshGatewayDeliveryReceipt = Notification.Name("com.chirpchirp.meshGatewayDeliveryReceipt")
 }

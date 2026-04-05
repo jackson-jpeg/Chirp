@@ -52,7 +52,7 @@ struct WitnessCaptureView: View {
                 }
             }
         }
-        .alert("Error", isPresented: $showError) {
+        .alert("Capture Failed", isPresented: $showError) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(errorMessage)

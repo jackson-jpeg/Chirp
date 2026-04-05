@@ -50,6 +50,7 @@ final class AppState {
     let babelService: BabelService
     let swarmService: SwarmService
     let chorusService: ChorusService
+    let meshGateway: MeshGateway
 
     // MARK: - Link Quality
 
@@ -144,10 +145,14 @@ final class AppState {
     private(set) var connectedPeerCount: Int = 0
     private(set) var meshStats: MeshStats?
 
+    /// For demo/screenshot mode only.
+    func setDemoPeerCount(_ count: Int) { connectedPeerCount = count }
+
     // MARK: - Private
 
     private let logger = Logger.ptt
     private var bitrateAdaptationTask: Task<Void, Never>?
+    private var notificationObservers: [Any] = []
 
     private enum Keys {
         static let peerID = "com.chirpchirp.localPeerID"
@@ -310,6 +315,10 @@ final class AppState {
         let chorusService = ChorusService(localPeerID: peerID)
         self.chorusService = chorusService
 
+        let meshGateway = MeshGateway.shared
+        meshGateway.configure(peerID: peerID, peerName: self.localPeerName)
+        self.meshGateway = meshGateway
+
         // Create MultipeerConnectivity transport (works on any iPhone, zero friction)
         let displayName = UserDefaults.standard.string(forKey: "com.chirpchirp.callsign") ?? UIDevice.current.name
         let transport = MultipeerTransport(displayName: displayName, meshRouter: router, localPeerID: peerID, localPeerName: self.localPeerName)
@@ -325,17 +334,14 @@ final class AppState {
         transport.onPeersChanged = { [weak self] _ in self?.updateUnifiedPeerList() }
         waTransport?.onPeersChanged = { [weak self] _ in self?.updateUnifiedPeerList() }
 
-        // Capture channel manager reference for closures below
-        let chanMgrRef = self.channelManager
-
         // Wire CICADA key derivation (after all properties initialized)
         cicadaService.channelCryptoProvider = { [weak self] channelID in
             self?.channelManager.getChannelCrypto(for: channelID)
         }
 
         // Wire pheromone router send callback -- ACKs go out on both transports
-        pheromoneRouter.onSendPacket = { payload, channelID in
-            let peers = chanMgrRef.activeChannel?.peers ?? []
+        pheromoneRouter.onSendPacket = { [weak self] payload, channelID in
+            let peers = self?.channelManager.activeChannel?.peers ?? []
             if TransportPreference.shouldSendOnMC(peers: peers) {
                 try? transport.sendControlData(payload, channelID: channelID)
             }
@@ -352,6 +358,20 @@ final class AppState {
         // Wire triple-layer encryption into text messaging
         textMessageService.meshShield = self.meshShield
 
+        // Wire key rotation epoch providers
+        textMessageService.epochProvider = { [weak self] channelID in
+            self?.channelManager.recordMessageAndGetEpoch(for: channelID) ?? 0
+        }
+        textMessageService.currentEpochProvider = { [weak self] channelID in
+            self?.channelManager.currentEpoch(for: channelID) ?? 0
+        }
+
+        // Wire key rotation broadcast — send KRO! packets when epoch advances
+        channelManager.onKeyRotation = { [weak self] payload, channelID in
+            try? transport.sendControlData(payload, channelID: channelID)
+            try? waTransport?.sendControlData(payload, channelID: channelID)
+        }
+
         // Wire CICADA steganography into text messaging
         textMessageService.cicadaService = cicadaService
 
@@ -362,6 +382,9 @@ final class AppState {
         meshShield.activeChannelProvider = { [weak self] in
             self?.channelManager.activeChannel?.id
         }
+        meshShield.peerCountProvider = { [weak self] in
+            self?.channelManager.activeChannel?.peers.count ?? 0
+        }
 
         // Wire encryption provider for file transfers on locked channels
         fileTransferService.channelCryptoProvider = { [weak self] channelID in
@@ -369,25 +392,49 @@ final class AppState {
         }
 
         // Wire text message service — quality-aware transport (control = send on both for reliability)
-        textMessageService.onSendPacket = { payload, channelID in
-            let peers = chanMgrRef.activeChannel?.peers ?? []
+        textMessageService.onSendPacket = { [weak self] payload, channelID in
+            let channel = self?.channelManager.channel(withID: channelID)
+                ?? self?.channelManager.activeChannel
+            let peers = channel?.peers ?? []
+            let connectedPeers = peers.filter(\.isConnected)
             let metrics = waTransport?.linkMetrics
             let choice = TransportPreference.preferredTransport(
                 for: .control,
                 wifiAwareMetrics: metrics,
                 peers: peers
             )
-            if TransportPreference.shouldSendOnMC(choice: choice) {
-                try? transport.sendControlData(payload, channelID: channelID)
+
+            if !connectedPeers.isEmpty {
+                // Peers are online — send normally via transports
+                if TransportPreference.shouldSendOnMC(choice: choice) {
+                    try? transport.sendControlData(payload, channelID: channelID)
+                }
+                if TransportPreference.shouldSendOnWA(choice: choice) {
+                    try? waTransport?.sendControlData(payload, channelID: channelID)
+                }
             }
-            if TransportPreference.shouldSendOnWA(choice: choice) {
-                try? waTransport?.sendControlData(payload, channelID: channelID)
+
+            // Store-and-forward: queue for any known peers that are currently offline
+            let offlinePeers = peers.filter { !$0.isConnected }
+            if let relay = self?.storeAndForwardRelay,
+               let senderName = self?.localPeerName {
+                for peer in offlinePeers {
+                    let pending = StoreAndForwardRelay.PendingMessage(
+                        id: UUID(),
+                        recipientPeerID: peer.id,
+                        payload: payload,
+                        channelID: channelID,
+                        senderName: senderName,
+                        timestamp: Date()
+                    )
+                    relay.store(message: pending)
+                }
             }
         }
 
         // Wire BLE scanner — same transport pattern as text messages
-        bleScanner.onSendPacket = { payload, channelID in
-            let peers = chanMgrRef.activeChannel?.peers ?? []
+        bleScanner.onSendPacket = { [weak self] payload, channelID in
+            let peers = self?.channelManager.activeChannel?.peers ?? []
             if TransportPreference.shouldSendOnMC(peers: peers) {
                 try? transport.sendControlData(payload, channelID: channelID)
             }
@@ -397,8 +444,8 @@ final class AppState {
         }
 
         // Wire file transfer service — quality-aware transport (bulk data = prefer highest throughput)
-        fileTransferService.onSendPacket = { payload, channelID in
-            let peers = chanMgrRef.activeChannel?.peers ?? []
+        fileTransferService.onSendPacket = { [weak self] payload, channelID in
+            let peers = self?.channelManager.activeChannel?.peers ?? []
             let metrics = waTransport?.linkMetrics
             let choice = TransportPreference.preferredTransport(
                 for: .bulkData,
@@ -414,8 +461,8 @@ final class AppState {
         }
 
         // Wire V3 services -- same dual-transport send pattern
-        uwbService.onSendPacket = { payload, channelID in
-            let peers = chanMgrRef.activeChannel?.peers ?? []
+        uwbService.onSendPacket = { [weak self] payload, channelID in
+            let peers = self?.channelManager.activeChannel?.peers ?? []
             if TransportPreference.shouldSendOnMC(peers: peers) {
                 try? transport.sendControlData(payload, channelID: channelID)
             }
@@ -424,8 +471,8 @@ final class AppState {
             }
         }
 
-        lighthouseService.onSendPacket = { payload, channelID in
-            let peers = chanMgrRef.activeChannel?.peers ?? []
+        lighthouseService.onSendPacket = { [weak self] payload, channelID in
+            let peers = self?.channelManager.activeChannel?.peers ?? []
             if TransportPreference.shouldSendOnMC(peers: peers) {
                 try? transport.sendControlData(payload, channelID: channelID)
             }
@@ -434,8 +481,8 @@ final class AppState {
             }
         }
 
-        meshWitnessService.onSendPacket = { payload, channelID in
-            let peers = chanMgrRef.activeChannel?.peers ?? []
+        meshWitnessService.onSendPacket = { [weak self] payload, channelID in
+            let peers = self?.channelManager.activeChannel?.peers ?? []
             if TransportPreference.shouldSendOnMC(peers: peers) {
                 try? transport.sendControlData(payload, channelID: channelID)
             }
@@ -444,8 +491,8 @@ final class AppState {
             }
         }
 
-        deadDropService.onSendPacket = { payload, channelID in
-            let peers = chanMgrRef.activeChannel?.peers ?? []
+        deadDropService.onSendPacket = { [weak self] payload, channelID in
+            let peers = self?.channelManager.activeChannel?.peers ?? []
             if TransportPreference.shouldSendOnMC(peers: peers) {
                 try? transport.sendControlData(payload, channelID: channelID)
             }
@@ -454,8 +501,8 @@ final class AppState {
             }
         }
 
-        darkroomService.onSendPacket = { payload, channelID in
-            let peers = chanMgrRef.activeChannel?.peers ?? []
+        darkroomService.onSendPacket = { [weak self] payload, channelID in
+            let peers = self?.channelManager.activeChannel?.peers ?? []
             if TransportPreference.shouldSendOnMC(peers: peers) {
                 try? transport.sendControlData(payload, channelID: channelID)
             }
@@ -464,8 +511,8 @@ final class AppState {
             }
         }
 
-        babelService.onSendPacket = { payload, channelID in
-            let peers = chanMgrRef.activeChannel?.peers ?? []
+        babelService.onSendPacket = { [weak self] payload, channelID in
+            let peers = self?.channelManager.activeChannel?.peers ?? []
             if TransportPreference.shouldSendOnMC(peers: peers) {
                 try? transport.sendControlData(payload, channelID: channelID)
             }
@@ -474,8 +521,8 @@ final class AppState {
             }
         }
 
-        swarmService.onSendPacket = { payload, channelID in
-            let peers = chanMgrRef.activeChannel?.peers ?? []
+        swarmService.onSendPacket = { [weak self] payload, channelID in
+            let peers = self?.channelManager.activeChannel?.peers ?? []
             if TransportPreference.shouldSendOnMC(peers: peers) {
                 try? transport.sendControlData(payload, channelID: channelID)
             }
@@ -484,8 +531,8 @@ final class AppState {
             }
         }
 
-        chorusService.onSendPacket = { payload, channelID in
-            let peers = chanMgrRef.activeChannel?.peers ?? []
+        chorusService.onSendPacket = { [weak self] payload, channelID in
+            let peers = self?.channelManager.activeChannel?.peers ?? []
             if TransportPreference.shouldSendOnMC(peers: peers) {
                 try? transport.sendControlData(payload, channelID: channelID)
             }
@@ -504,6 +551,8 @@ final class AppState {
         // Wire raw audio buffer to sound alert service for emergency sound detection + BABEL
         audioEngine.onRawAudioBuffer = { [weak soundAlertService, weak babelService] buffer, time in
             soundAlertService?.feedAudio(buffer: buffer, time: time)
+            // AVAudioPCMBuffer is not Sendable but is only read (not mutated) by
+            // feedLocalAudio, so this cross-isolation transfer is safe.
             nonisolated(unsafe) let unsafeBuffer = buffer
             Task { @MainActor in
                 babelService?.feedLocalAudio(buffer: unsafeBuffer)
@@ -511,8 +560,8 @@ final class AppState {
         }
 
         // Wire sound alert broadcast — same transport pattern as text messages
-        soundAlertService.onAlertBroadcast = { payload in
-            let peers = chanMgrRef.activeChannel?.peers ?? []
+        soundAlertService.onAlertBroadcast = { [weak self] payload in
+            let peers = self?.channelManager.activeChannel?.peers ?? []
             if TransportPreference.shouldSendOnMC(peers: peers) {
                 try? transport.sendControlData(payload, channelID: "")
             }
@@ -522,8 +571,8 @@ final class AppState {
         }
 
         // Wire mesh cloud service — backup chunks and retrieval requests broadcast on both transports
-        meshCloudService.onSendPacket = { payload, channelID in
-            let peers = chanMgrRef.activeChannel?.peers ?? []
+        meshCloudService.onSendPacket = { [weak self] payload, channelID in
+            let peers = self?.channelManager.activeChannel?.peers ?? []
             if TransportPreference.shouldSendOnMC(peers: peers) {
                 try? transport.sendControlData(payload, channelID: channelID)
             }
@@ -576,6 +625,7 @@ final class AppState {
         let babelSvc = self.babelService
         let swarmSvc = self.swarmService
         let chorusSvc = self.chorusService
+        let gatewaySvc = self.meshGateway
         Task {
             await router.setCallbacks(
                 onLocalDelivery: { (packet: MeshPacket) in
@@ -600,97 +650,127 @@ final class AppState {
                                 audioEng.receiveAudioPacket(audioPacket.opusData, sequenceNumber: audioPacket.sequenceNumber)
                             }
                         case .control:
-                            // Try delivery ACK first (ACK! prefix) -- pheromone backpropagation
-                            if DeliveryACK.from(payload: packet.payload) != nil {
-                                pheroRouter.handleACK(packet.payload, fromPeer: packet.originID.uuidString)
-                                return // ACKs are fully consumed here
+                            // Extract 4-byte magic prefix for O(1) dispatch
+                            let payload = packet.payload
+                            let prefixStr: String
+                            if payload.count >= 4 {
+                                prefixStr = String(data: payload.prefix(4), encoding: .ascii) ?? ""
+                            } else {
+                                prefixStr = ""
                             }
 
-                            // Try text message first (TXT! prefix), pass channelID for decryption
-                            let channelForACK = packet.channelID
-                            let beforeCount = txtService.messagesByChannel[channelForACK]?.count ?? 0
-                            txtService.handlePacket(packet.payload, channelID: channelForACK)
-                            let afterCount = txtService.messagesByChannel[channelForACK]?.count ?? 0
+                            switch prefixStr {
+                            case "ACK!":
+                                pheroRouter.handleACK(payload, fromPeer: packet.originID.uuidString)
 
-                            // If a new text message was delivered, acknowledge via pheromone backpropagation
-                            if afterCount > beforeCount, !channelForACK.isEmpty {
-                                pheroRouter.acknowledgeDelivery(
-                                    packetID: packet.packetID,
-                                    senderID: packet.originID.uuidString,
-                                    channelID: packet.channelID
-                                )
+                            case "TXT!":
+                                let channelForACK = packet.channelID
+                                let beforeCount = txtService.messagesByChannel[channelForACK]?.count ?? 0
+                                txtService.handlePacket(payload, channelID: channelForACK)
+                                let afterCount = txtService.messagesByChannel[channelForACK]?.count ?? 0
 
-                                // Show local notification for background messages
-                                if let lastMsg = txtService.messagesByChannel[channelForACK]?.last {
-                                    let chName = chanMgr.channels.first(where: { $0.id == channelForACK })?.name ?? "Chirp"
-                                    NotificationService.shared.showMessageNotification(
-                                        from: lastMsg.senderName,
-                                        text: lastMsg.text,
-                                        channelName: chName
+                                if afterCount > beforeCount, !channelForACK.isEmpty {
+                                    pheroRouter.acknowledgeDelivery(
+                                        packetID: packet.packetID,
+                                        senderID: packet.originID.uuidString,
+                                        channelID: packet.channelID
                                     )
+                                    if let lastMsg = txtService.messagesByChannel[channelForACK]?.last {
+                                        let chName = chanMgr.channels.first(where: { $0.id == channelForACK })?.name ?? "Chirp"
+                                        NotificationService.shared.showMessageNotification(
+                                            from: lastMsg.senderName,
+                                            text: lastMsg.text,
+                                            channelName: chName
+                                        )
+                                    }
                                 }
-                            }
 
-                            // Try file transfer (FIL! / FLC! / FNK! prefixes)
-                            fileService.handlePacket(packet.payload, channelID: packet.channelID)
+                            case "RXN!":
+                                txtService.handleReaction(payload, channelID: packet.channelID)
 
-                            // Try scan report (SCN! prefix)
-                            bleScan.handleMeshScanReport(packet.payload)
+                            case "FIL!", "FLC!", "FNK!":
+                                fileService.handlePacket(payload, channelID: packet.channelID)
 
-                            // Try sound alert (SND! prefix)
-                            sndAlertService.handleMeshAlert(packet.payload)
+                            case "SCN!":
+                                bleScan.handleMeshScanReport(payload)
 
-                            // Try mesh cloud backup chunk (BCK! prefix)
-                            cloudService.handleBackupChunk(packet.payload)
+                            case "SND!":
+                                sndAlertService.handleMeshAlert(payload)
 
-                            // Try mesh cloud retrieval request (BRQ! prefix)
-                            cloudService.handleRetrievalRequest(packet.payload)
+                            case "BCK!":
+                                cloudService.handleBackupChunk(payload)
 
-                            // V3: UWB token exchange (UWB! prefix)
-                            uwbSvc.handleTokenPacket(packet.payload, fromPeer: packet.originID.uuidString)
+                            case "BRQ!":
+                                cloudService.handleRetrievalRequest(payload)
 
-                            // V3: LIGHTHOUSE (LHQ!/LHR! prefixes)
-                            lighthouseSvc.handlePacket(packet.payload)
+                            case "UWB!":
+                                uwbSvc.handleTokenPacket(payload, fromPeer: packet.originID.uuidString)
 
-                            // V3: Mesh Witness (WRQ!/WCS! prefixes)
-                            witnessService.handlePacket(packet.payload, channelID: packet.channelID)
+                            case "LHQ!", "LHR!":
+                                lighthouseSvc.handlePacket(payload)
 
-                            // V3: Dead Drop (DRP!/DPK! prefixes)
-                            deadDropSvc.handlePacket(packet.payload, channelID: packet.channelID)
+                            case "WRQ!", "WCS!":
+                                witnessService.handlePacket(payload, channelID: packet.channelID)
 
-                            // V3: Darkroom (DRK!/DVK! prefixes)
-                            darkroomSvc.handlePacket(packet.payload, channelID: packet.channelID)
+                            case "DRP!", "DPK!":
+                                deadDropSvc.handlePacket(payload, channelID: packet.channelID)
 
-                            // V3: BABEL (BBL! prefix)
-                            babelSvc.handlePacket(packet.payload, channelID: packet.channelID)
+                            case "DRK!", "DVK!":
+                                darkroomSvc.handlePacket(payload, channelID: packet.channelID)
 
-                            // V3: SWARM (SWM!/SWR!/SWC!/SWA! prefixes)
-                            swarmSvc.handlePacket(packet.payload, fromPeer: packet.originID.uuidString, channelID: packet.channelID)
+                            case "BBL!":
+                                babelSvc.handlePacket(payload, channelID: packet.channelID)
 
-                            // V3: CHORUS (CHR!/CHO!/CHC!/CHX! prefixes)
-                            chorusSvc.handlePacket(packet.payload, fromPeer: packet.originID.uuidString, channelID: packet.channelID)
+                            case "SWM!", "SWR!", "SWC!", "SWA!":
+                                swarmSvc.handlePacket(payload, fromPeer: packet.originID.uuidString, channelID: packet.channelID)
 
-                            // SOS beacon (SOS! prefix)
-                            let sosCountBefore = EmergencyBeacon.shared.receivedAlerts.count
-                            EmergencyBeacon.shared.handleReceivedSOSData(packet.payload)
-                            if EmergencyBeacon.shared.receivedAlerts.count > sosCountBefore,
-                               let sosMsg = EmergencyBeacon.shared.receivedAlerts.first {
-                                NotificationService.shared.showSOSNotification(from: sosMsg.senderName)
-                            }
+                            case "CHR!", "CHO!", "CHC!", "CHX!":
+                                chorusSvc.handlePacket(payload, fromPeer: packet.originID.uuidString, channelID: packet.channelID)
 
-                            if let message = try? MeshCodable.decoder.decode(FloorControlMessage.self, from: packet.payload) {
-                                floorCtrl.handleMessage(message)
+                            case "SOS!":
+                                let sosCountBefore = EmergencyBeacon.shared.receivedAlerts.count
+                                EmergencyBeacon.shared.handleReceivedSOSData(payload)
+                                if EmergencyBeacon.shared.receivedAlerts.count > sosCountBefore,
+                                   let sosMsg = EmergencyBeacon.shared.receivedAlerts.first {
+                                    NotificationService.shared.showSOSNotification(from: sosMsg.senderName)
+                                }
 
-                                // Route heartbeat and peer join/leave to PeerTracker
-                                switch message {
-                                case .heartbeat(let peerID, let timestamp):
-                                    Task { await peerTrk.handleHeartbeat(peerID: peerID, timestamp: timestamp) }
-                                case .peerJoin(let peerID, let peerName):
-                                    Task { await peerTrk.updatePeer(id: peerID, name: peerName) }
-                                case .peerLeave(let peerID):
-                                    Task { await peerTrk.removePeer(id: peerID) }
-                                default:
-                                    break
+                            case "KRO!":
+                                if let rotation = ChannelManager.parseKeyRotationPayload(payload) {
+                                    chanMgr.handleKeyRotation(channelID: rotation.channelID, peerEpoch: rotation.epoch)
+                                }
+
+                            default:
+                                // Gateway uses 3-byte prefixes (GW!, GR!) and 4-byte (GDR!)
+                                if payload.count >= 3 {
+                                    let prefix3 = String(data: payload.prefix(3), encoding: .ascii) ?? ""
+                                    if prefix3 == "GW!" || prefix3 == "GR!" {
+                                        gatewaySvc.handleGatewayPayload(payload)
+                                        break
+                                    }
+                                }
+                                if payload.count >= 4 {
+                                    let prefix4 = String(data: payload.prefix(4), encoding: .ascii) ?? ""
+                                    if prefix4 == "GDR!" {
+                                        gatewaySvc.handleGatewayPayload(payload)
+                                        break
+                                    }
+                                }
+
+                                // FloorControlMessage uses JSON without a magic prefix
+                                if let message = try? MeshCodable.decoder.decode(FloorControlMessage.self, from: payload) {
+                                    floorCtrl.handleMessage(message)
+
+                                    switch message {
+                                    case .heartbeat(let peerID, let timestamp):
+                                        Task { await peerTrk.handleHeartbeat(peerID: peerID, timestamp: timestamp) }
+                                    case .peerJoin(let peerID, let peerName):
+                                        Task { await peerTrk.updatePeer(id: peerID, name: peerName) }
+                                    case .peerLeave(let peerID):
+                                        Task { await peerTrk.removePeer(id: peerID) }
+                                    default:
+                                        break
+                                    }
                                 }
                             }
                         }
@@ -726,19 +806,8 @@ final class AppState {
         // Register for audio session interruption and route change notifications
         AudioSessionManager.registerForNotifications()
 
-        // Wire interruption callbacks to PTTEngine for auto-release on phone calls etc.
-        // The callback fires on .main queue (from registerForNotifications), so
-        // MainActor.assumeIsolated is safe here.
-        let ptt = self.pttEngine
-        AudioSessionManager.onInterruptionBegan = {
-            MainActor.assumeIsolated {
-                ptt.stopTransmitting()
-            }
-        }
-        AudioSessionManager.onInterruptionEnded = {
-            // Session reactivated -- no auto-transmit, just log readiness
-            Logger.audio.info("Audio interruption ended — PTT ready")
-        }
+        // Audio session interruption and route-change callbacks are wired
+        // inside PTTEngine.setupCallbacks() (called from pttEngine.start()).
 
         pttEngine.multipeerTransport = multipeerTransport
         pttEngine.wifiAwareTransport = wifiAwareTransport
@@ -763,9 +832,12 @@ final class AppState {
         )
 
         // Create a default channel if none exist (first launch).
-        // Channels are persisted, so this only runs once.
+        // Uses a well-known ID so all devices share the same "General" channel.
         if channelManager.channels.isEmpty {
-            let defaultChannel = channelManager.createChannel(name: "General")
+            let defaultChannel = channelManager.createChannel(
+                name: "General",
+                id: ChannelManager.defaultGeneralChannelID
+            )
             channelManager.joinChannel(id: defaultChannel.id)
         }
 
@@ -809,7 +881,7 @@ final class AppState {
 
         // Subscribe to mesh topology updates from beacons to feed MeshIntelligence
         let intelligence = self.meshIntelligence
-        NotificationCenter.default.addObserver(
+        notificationObservers.append(NotificationCenter.default.addObserver(
             forName: .meshTopologyUpdate, object: nil, queue: .main
         ) { notification in
             guard let peerID = notification.userInfo?["peerID"] as? String,
@@ -817,10 +889,10 @@ final class AppState {
             Task {
                 await intelligence.updateTopology(peerID: peerID, connectedTo: Set(neighbors))
             }
-        }
+        })
 
         // Subscribe to pheromone trail updates from beacons to merge into MeshIntelligence
-        NotificationCenter.default.addObserver(
+        notificationObservers.append(NotificationCenter.default.addObserver(
             forName: .meshPheromoneUpdate, object: nil, queue: .main
         ) { notification in
             guard let neighborID = notification.userInfo?["neighborID"] as? String,
@@ -828,12 +900,12 @@ final class AppState {
             Task {
                 await intelligence.mergePheromones(from: neighborID, trails: trails)
             }
-        }
+        })
 
         // Route SOS beacon broadcasts through the mesh transports
         let mpTransportForSOS = self.multipeerTransport
         let waTransportForSOS = self.wifiAwareTransport
-        NotificationCenter.default.addObserver(
+        notificationObservers.append(NotificationCenter.default.addObserver(
             forName: .emergencySOSBroadcast, object: nil, queue: .main
         ) { notification in
             guard let data = notification.userInfo?["packet"] as? Data else { return }
@@ -841,12 +913,49 @@ final class AppState {
             Task { @MainActor in
                 waTransportForSOS?.forwardPacket(data, excludePeer: "")
             }
-        }
+        })
+
+        // Emergency mode: auto-join emergency channel and force beacon refresh
+        let chanMgrForEmergency = self.channelManager
+        let beaconForEmergency = self.meshBeacon
+        let peerIDForEmergency = self.localPeerID
+        let callsignForEmergency = self.callsign
+        let routerForEmergency = self.meshRouter
+        notificationObservers.append(NotificationCenter.default.addObserver(
+            forName: .emergencyModeChanged, object: nil, queue: .main
+        ) { notification in
+            guard let active = notification.userInfo?["active"] as? Bool else { return }
+
+            // Toggle mesh router emergency relay
+            Task { await routerForEmergency.setEmergencyRelay(active) }
+
+            guard active else { return }
+
+            // Create emergency channel if it doesn't exist
+            let emergencyID = EmergencyMode.emergencyChannelID
+            if !chanMgrForEmergency.channels.contains(where: { $0.id == emergencyID }) {
+                _ = chanMgrForEmergency.createChannel(
+                    name: EmergencyMode.emergencyChannelName,
+                    id: emergencyID
+                )
+            }
+            // Switch to emergency channel
+            chanMgrForEmergency.joinChannel(id: emergencyID)
+
+            // Force beacon to use emergency interval
+            let channelIDs = chanMgrForEmergency.channels.map(\.id)
+            beaconForEmergency.updateBroadcastInterval(forPeerCount: 0)
+            beaconForEmergency.startBroadcasting(
+                localID: peerIDForEmergency,
+                localName: callsignForEmergency,
+                channels: channelIDs
+            )
+        })
 
         // Route mesh beacon broadcasts through the mesh transports
         let mpTransportForBeacon = self.multipeerTransport
         let waTransportForBeacon = self.wifiAwareTransport
-        NotificationCenter.default.addObserver(
+        notificationObservers.append(NotificationCenter.default.addObserver(
             forName: .meshBeaconBroadcast, object: nil, queue: .main
         ) { notification in
             guard let data = notification.userInfo?["packet"] as? Data else { return }
@@ -854,7 +963,38 @@ final class AppState {
             Task { @MainActor in
                 waTransportForBeacon?.forwardPacket(data, excludePeer: "")
             }
-        }
+        })
+
+        // Route mesh gateway broadcasts through the mesh transports
+        let mpTransportForGW = self.multipeerTransport
+        let waTransportForGW = self.wifiAwareTransport
+        notificationObservers.append(NotificationCenter.default.addObserver(
+            forName: .meshGatewayRequest, object: nil, queue: .main
+        ) { notification in
+            guard let data = notification.userInfo?["packet"] as? Data else { return }
+            mpTransportForGW.forwardPacket(data, excludePeer: "")
+            Task { @MainActor in
+                waTransportForGW?.forwardPacket(data, excludePeer: "")
+            }
+        })
+        notificationObservers.append(NotificationCenter.default.addObserver(
+            forName: .meshGatewayBeaconBroadcast, object: nil, queue: .main
+        ) { notification in
+            guard let data = notification.userInfo?["packet"] as? Data else { return }
+            mpTransportForGW.forwardPacket(data, excludePeer: "")
+            Task { @MainActor in
+                waTransportForGW?.forwardPacket(data, excludePeer: "")
+            }
+        })
+        notificationObservers.append(NotificationCenter.default.addObserver(
+            forName: .meshGatewayDeliveryReceipt, object: nil, queue: .main
+        ) { notification in
+            guard let data = notification.userInfo?["packet"] as? Data else { return }
+            mpTransportForGW.forwardPacket(data, excludePeer: "")
+            Task { @MainActor in
+                waTransportForGW?.forwardPacket(data, excludePeer: "")
+            }
+        })
 
         // Periodically update mesh stats and prune stale intelligence data
         Task { [weak self] in
@@ -878,6 +1018,8 @@ final class AppState {
     func stop() {
         bitrateAdaptationTask?.cancel()
         bitrateAdaptationTask = nil
+        notificationObservers.forEach { NotificationCenter.default.removeObserver($0) }
+        notificationObservers.removeAll()
         clearActiveState()
         pttEngine.stop()
         liveActivityManager.endActivity()

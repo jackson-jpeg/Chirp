@@ -28,10 +28,10 @@ struct ProtectTabView: View {
         } label: {
             protectCard(
                 icon: "shield.lefthalf.filled",
-                title: "Room Scanner",
+                title: String(localized: "Device Scanner"),
                 status: scanner.isScanning
-                    ? "\(deviceCount) device\(deviceCount == 1 ? "" : "s") detected, \(threatCount) threat\(threatCount == 1 ? "" : "s")"
-                    : "Tap to start scanning",
+                    ? String(localized: "\(deviceCount) device\(deviceCount == 1 ? "" : "s") detected, \(threatCount) flagged")
+                    : String(localized: "Tap to start scanning"),
                 statusColor: scanner.isScanning
                     ? (threatCount > 0 ? Constants.Colors.amber : Constants.Colors.electricGreen)
                     : Constants.Colors.textSecondary,
@@ -39,7 +39,7 @@ struct ProtectTabView: View {
                 badgeColor: threatCount >= 3 ? Constants.Colors.hotRed : Constants.Colors.amber
             )
         }
-        .accessibilityLabel("Room Scanner: \(scanner.isScanning ? "\(deviceCount) devices, \(threatCount) threats" : "not scanning")")
+        .accessibilityLabel("Device Scanner: \(scanner.isScanning ? "\(deviceCount) devices, \(threatCount) flagged" : "not scanning")")
     }
 
     // MARK: - Privacy Shield Card
@@ -63,7 +63,7 @@ struct ProtectTabView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Privacy Shield")
+                    Text(String(localized: "Device Awareness"))
                         .font(Constants.Typography.cardTitle)
                         .foregroundStyle(Constants.Colors.textPrimary)
 
@@ -124,10 +124,10 @@ struct ProtectTabView: View {
         } label: {
             protectCard(
                 icon: "waveform.badge.exclamationmark",
-                title: "Sound Alerts",
+                title: String(localized: "Sound Alerts"),
                 status: service.isListening
-                    ? (alertCount > 0 ? "\(alertCount) alert\(alertCount == 1 ? "" : "s") detected" : "Listening...")
-                    : "Activate Emergency Mode",
+                    ? (alertCount > 0 ? String(localized: "\(alertCount) alert\(alertCount == 1 ? "" : "s") detected") : String(localized: "Listening..."))
+                    : String(localized: "Activate Emergency Mode"),
                 statusColor: service.isListening
                     ? (alertCount > 0 ? Constants.Colors.amber : Constants.Colors.electricGreen)
                     : Constants.Colors.textSecondary,
@@ -211,8 +211,8 @@ struct ProtectTabView: View {
     }
 
     private func scoreLabel(_ score: Int) -> String {
-        if score >= 80 { return "Good" }
-        if score >= 50 { return "Fair" }
-        return "At Risk"
+        if score >= 80 { return String(localized: "Good") }
+        if score >= 50 { return String(localized: "Fair") }
+        return String(localized: "At Risk")
     }
 }

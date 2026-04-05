@@ -12,7 +12,7 @@ final class PTTEngine {
 
     /// When true, encoded audio is looped back to the decoder for playback.
     /// Lets you test the full audio pipeline on a single device.
-    var loopbackMode: Bool = true
+    var loopbackMode: Bool = false
 
     // MARK: - Dependencies
 
@@ -32,8 +32,9 @@ final class PTTEngine {
     private let logger = Logger.ptt
     private let localPeerID: String
     private var sequenceNumber: UInt32 = 0
-    nonisolated(unsafe) private var stateObservationTask: Task<Void, Never>?
-    nonisolated(unsafe) private var heartbeatTask: Task<Void, Never>?
+    private var stateObservationTask: Task<Void, Never>?
+    private var heartbeatTask: Task<Void, Never>?
+    private var transmitTimeoutTask: Task<Void, Never>?
 
     // MARK: - Init
 
@@ -47,10 +48,7 @@ final class PTTEngine {
         self.localPeerID = localPeerID
     }
 
-    deinit {
-        stateObservationTask?.cancel()
-        heartbeatTask?.cancel()
-    }
+    // Cleanup is handled by stop(), called by AppState.stop().
 
     // MARK: - Setup
 
@@ -84,10 +82,22 @@ final class PTTEngine {
                     wifiAwareMetrics: metrics,
                     peers: peers
                 )
-                if TransportPreference.shouldSendOnMC(choice: choice) {
+
+                // When sending on both transports, create the MeshPacket once
+                // so both transports share the same packetID for deduplication.
+                if choice == .both,
+                   let router = self.multipeerTransport?.meshRouter ?? self.wifiAwareTransport?.meshRouter {
+                    let meshPacket = await router.createPacket(
+                        type: .audio, payload: serialized, channelID: "", sequenceNumber: seq
+                    )
+                    let meshData = meshPacket.serialize()
+                    var wireData = Data([0xAA]) // meshMagic
+                    wireData.append(meshData)
+                    self.multipeerTransport?.sendRawWireData(wireData)
+                    await self.wifiAwareTransport?.sendRawWireData(wireData)
+                } else if TransportPreference.shouldSendOnMC(choice: choice) {
                     try? self.multipeerTransport?.sendAudio(serialized)
-                }
-                if TransportPreference.shouldSendOnWA(choice: choice) {
+                } else if TransportPreference.shouldSendOnWA(choice: choice) {
                     try? self.wifiAwareTransport?.sendAudio(serialized)
                 }
             }
@@ -111,6 +121,33 @@ final class PTTEngine {
                 if TransportPreference.shouldSendOnWA(choice: choice) {
                     try? self.wifiAwareTransport?.sendControl(message)
                 }
+            }
+        }
+
+        // Audio session interruption: auto-release floor
+        AudioSessionManager.onInterruptionBegan = { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self, self.state == .transmitting else { return }
+                self.logger.warning("Audio interruption began — stopping transmission")
+                self.stopTransmitting()
+            }
+        }
+
+        // Audio session resumed: restart engine if iOS killed it
+        AudioSessionManager.onInterruptionEnded = { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.audioEngine.restartEngineIfNeeded()
+                self.logger.info("Audio interruption ended — engine verified")
+            }
+        }
+
+        // Bluetooth/headset disconnected mid-transmit: stop capture, release floor
+        AudioSessionManager.onInputDeviceLost = { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self, self.state == .transmitting else { return }
+                self.logger.warning("Input device lost — stopping transmission")
+                self.stopTransmitting()
             }
         }
 
@@ -151,18 +188,39 @@ final class PTTEngine {
             return
         }
 
-        sequenceNumber = 0
         audioEngine.resetJitterBuffer()
         wifiAwareTransport?.setRealtimeMode(true)
+
+        // Emergency mode: drop to 8 kbps to conserve bandwidth and battery
+        if EmergencyMode.shared.audioQuality == .emergency {
+            audioEngine.setTargetBitrate(8000)
+        }
+
         audioEngine.startCapture()
+
+        transmitTimeoutTask?.cancel()
+        transmitTimeoutTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(120))
+            guard !Task.isCancelled, let self else { return }
+            self.stopTransmitting()
+        }
+
         syncState()
         logger.info("Transmitting -- audio capture started")
     }
 
     /// Stop transmitting: halt capture and release the floor.
     func stopTransmitting() {
+        transmitTimeoutTask?.cancel()
+        transmitTimeoutTask = nil
         audioEngine.stopCapture()
         wifiAwareTransport?.setRealtimeMode(false)
+
+        // Restore normal bitrate after emergency transmission
+        if EmergencyMode.shared.audioQuality == .emergency {
+            audioEngine.setTargetBitrate(Constants.Opus.bitrate)
+        }
+
         floorController.releaseFloor()
         syncState()
         logger.info("Stopped transmitting")

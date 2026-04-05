@@ -122,4 +122,146 @@ final class BabelTests: XCTestCase {
         let data = Data([0x42, 0x42, 0x4C, 0x21]) // Just the prefix, no JSON
         XCTAssertNil(BabelMessage.from(payload: data))
     }
+
+    // MARK: - Receiver-side: New fields round-trip
+
+    func testNewFieldsRoundTripWithNilTranslatedText() throws {
+        let message = BabelMessage(
+            id: UUID(),
+            senderID: "peer-D",
+            senderName: "Diana",
+            channelID: "ch-4",
+            sourceLanguage: "fr",
+            targetLanguage: "en",
+            originalText: "Bonjour le monde",
+            translatedText: nil,
+            isFinal: true,
+            timestamp: Date()
+        )
+
+        let payload = try message.wirePayload()
+        let decoded = BabelMessage.from(payload: payload)
+
+        XCTAssertNotNil(decoded)
+        XCTAssertEqual(decoded?.originalText, "Bonjour le monde")
+        XCTAssertEqual(decoded?.sourceLanguage, "fr")
+        XCTAssertNil(decoded?.translatedText)
+        // displayText should fall back to originalText
+        XCTAssertEqual(decoded?.displayText, "Bonjour le monde")
+    }
+
+    func testDisplayTextPrefersTranslated() {
+        let message = BabelMessage(
+            id: UUID(),
+            senderID: "peer-E",
+            senderName: "Eve",
+            channelID: "ch-5",
+            sourceLanguage: "es",
+            targetLanguage: "en",
+            originalText: "Hola",
+            translatedText: "Hello",
+            isFinal: true,
+            timestamp: Date()
+        )
+
+        XCTAssertEqual(message.displayText, "Hello")
+    }
+
+    func testDisplayTextFallsBackToOriginal() {
+        let message = BabelMessage(
+            id: UUID(),
+            senderID: "peer-F",
+            senderName: "Frank",
+            channelID: "ch-6",
+            sourceLanguage: "de",
+            targetLanguage: "en",
+            originalText: "Guten Tag",
+            translatedText: nil,
+            isFinal: true,
+            timestamp: Date()
+        )
+
+        XCTAssertEqual(message.displayText, "Guten Tag")
+    }
+
+    // MARK: - Backward compatibility (old format with translatedText)
+
+    func testBackwardCompatOldFormatDecodes() throws {
+        // Simulate an old-format message that always includes translatedText
+        let message = BabelMessage(
+            id: UUID(),
+            senderID: "peer-old",
+            senderName: "Legacy",
+            channelID: "ch-old",
+            sourceLanguage: "en",
+            targetLanguage: "es",
+            originalText: "Good morning",
+            translatedText: "Buenos dias",
+            isFinal: true,
+            timestamp: Date()
+        )
+
+        let payload = try message.wirePayload()
+        let decoded = BabelMessage.from(payload: payload)!
+
+        // Old format messages should decode fine and have translatedText
+        XCTAssertEqual(decoded.translatedText, "Buenos dias")
+        XCTAssertEqual(decoded.originalText, "Good morning")
+        XCTAssertEqual(decoded.displayText, "Buenos dias")
+    }
+
+    // MARK: - Language auto-detection via NLLanguageRecognizer
+
+    @MainActor
+    func testLanguageDetectionEnglish() {
+        let svc = BabelService()
+        let lang = svc.detectLanguage("Hello, how are you doing today? The weather is quite nice.")
+        XCTAssertEqual(lang, "en")
+    }
+
+    @MainActor
+    func testLanguageDetectionSpanish() {
+        let svc = BabelService()
+        let lang = svc.detectLanguage("Hola, como estas? El clima esta muy bonito hoy.")
+        XCTAssertEqual(lang, "es")
+    }
+
+    @MainActor
+    func testLanguageDetectionFrench() {
+        let svc = BabelService()
+        let lang = svc.detectLanguage("Bonjour, comment allez-vous aujourd'hui? Il fait beau dehors.")
+        XCTAssertEqual(lang, "fr")
+    }
+
+    @MainActor
+    func testLanguageDetectionEmptyReturnsNil() {
+        let svc = BabelService()
+        let lang = svc.detectLanguage("")
+        XCTAssertNil(lang)
+    }
+
+    // MARK: - Translation cache
+
+    @MainActor
+    func testTranslationCacheHit() async {
+        let svc = BabelService()
+        // Prime the cache manually via translateText (will fail on Translation
+        // framework unavailability, but the cache mechanics are testable).
+        // We test cache key generation consistency instead.
+        let key1 = svc.testCacheKey(text: "Hello", from: "en", to: "es")
+        let key2 = svc.testCacheKey(text: "Hello", from: "en", to: "es")
+        let key3 = svc.testCacheKey(text: "Hello", from: "en", to: "fr")
+
+        XCTAssertEqual(key1, key2, "Same input should produce same cache key")
+        XCTAssertNotEqual(key1, key3, "Different target language should produce different cache key")
+    }
+
+    @MainActor
+    func testTranslationCacheMiss() async {
+        let svc = BabelService()
+        let key1 = svc.testCacheKey(text: "Hello", from: "en", to: "es")
+        let key2 = svc.testCacheKey(text: "Goodbye", from: "en", to: "es")
+
+        XCTAssertNotEqual(key1, key2, "Different text should produce different cache key")
+    }
 }

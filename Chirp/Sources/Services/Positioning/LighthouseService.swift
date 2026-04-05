@@ -23,7 +23,8 @@ final class LighthouseService {
 
     // MARK: - Dependencies
 
-    private let database: LighthouseDatabase?
+    /// The backing GRDB database, exposed read-only for map trail queries.
+    private(set) var database: LighthouseDatabase?
 
     // MARK: - Public State
 

@@ -11,6 +11,7 @@ struct BackupMetadata: Codable, Sendable, Identifiable {
     let threshold: Int  // k -- minimum shares to reconstruct
     let totalShares: Int  // n
     let timestamp: Date
+    let fileHash: Data?  // SHA-256 of original plaintext for integrity verification
 }
 
 /// A backup chunk carrying an encrypted file piece + key shard.

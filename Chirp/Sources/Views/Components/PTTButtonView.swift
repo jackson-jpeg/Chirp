@@ -33,7 +33,7 @@ struct PTTButtonView: View {
 
     // Progress ring for transmit duration
     @State private var transmitProgress: CGFloat = 0.0
-    @State private var transmitTimer: Timer?
+    @State private var transmitTask: Task<Void, Never>?
 
     private let buttonSize: CGFloat = 160
 
@@ -88,6 +88,32 @@ struct PTTButtonView: View {
     private var isDenied: Bool {
         if case .denied = pttState { return true }
         return false
+    }
+
+    private var pttAccessibilityLabel: String {
+        switch pttState {
+        case .idle:
+            return "Push to talk button"
+        case .transmitting:
+            return "Transmitting, release to stop"
+        case .receiving(let speakerName, _):
+            return "Receiving from \(speakerName)"
+        case .denied:
+            return "Channel busy"
+        }
+    }
+
+    private var pttAccessibilityHint: String {
+        switch pttState {
+        case .idle:
+            return "Hold to transmit voice"
+        case .transmitting:
+            return "Release to stop transmitting"
+        case .receiving:
+            return "Another user is currently transmitting"
+        case .denied:
+            return "The channel is currently in use"
+        }
     }
 
     // MARK: - Body
@@ -161,18 +187,9 @@ struct PTTButtonView: View {
                         .fill(Color.black.opacity(0.5))
                         .frame(width: buttonSize + 4, height: buttonSize + 4)
 
-                    // Button face — dark frosted glass base
+                    // Button face — frosted glass material
                     Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.black.opacity(0.6),
-                                    Color.black.opacity(0.2)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                        .fill(.ultraThinMaterial)
                         .frame(width: buttonSize, height: buttonSize)
 
                     // Color tint overlay
@@ -247,8 +264,8 @@ struct PTTButtonView: View {
             .animation(.spring(response: 0.15, dampingFraction: 0.55), value: isPressed)
             .allowsHitTesting(canInteract)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Push to talk")
-            .accessibilityHint(isTransmitting ? "Release to stop transmitting" : "Hold to transmit voice")
+            .accessibilityLabel(pttAccessibilityLabel)
+            .accessibilityHint(pttAccessibilityHint)
             .accessibilityAddTraits(.startsMediaSession)
             .accessibilityIdentifier(AccessibilityID.pttButton)
             .gesture(
@@ -380,7 +397,8 @@ struct PTTButtonView: View {
         }
 
         // Ring 2 — 0.35s delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(350))
             withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) {
                 ring2Scale = 2.3
                 ring2Opacity = 0.0
@@ -391,7 +409,8 @@ struct PTTButtonView: View {
         }
 
         // Ring 3 — 0.7s delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(700))
             withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) {
                 ring3Scale = 2.3
                 ring3Opacity = 0.0
@@ -409,23 +428,24 @@ struct PTTButtonView: View {
             ring3Scale = 1.0; ring3Opacity = 0.0
             transmitProgress = 0.0
         }
-        transmitTimer?.invalidate()
-        transmitTimer = nil
+        transmitTask?.cancel()
+        transmitTask = nil
     }
 
     // MARK: - Transmit Progress Ring
 
     private func startTransmitProgress() {
         transmitProgress = 0.0
+        transmitTask?.cancel()
         // Fill the ring over ~30 seconds (arbitrary max transmit time visual)
-        transmitTimer?.invalidate()
-        transmitTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-            Task { @MainActor in
-                let increment: CGFloat = 0.1 / 30.0 // Full ring in 30s
-                if transmitProgress < 1.0 {
-                    withAnimation(.linear(duration: 0.1)) {
-                        transmitProgress = min(transmitProgress + increment, 1.0)
-                    }
+        transmitTask = Task { @MainActor in
+            let interval: Duration = .milliseconds(100)
+            let increment: CGFloat = 0.1 / 30.0 // Full ring in 30s
+            while !Task.isCancelled, transmitProgress < 1.0 {
+                try? await Task.sleep(for: interval)
+                guard !Task.isCancelled else { break }
+                withAnimation(.linear(duration: 0.1)) {
+                    transmitProgress = min(transmitProgress + increment, 1.0)
                 }
             }
         }
@@ -449,7 +469,8 @@ struct PTTButtonView: View {
         }
 
         // Ring 2 — 0.3s delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(300))
             withAnimation(.easeIn(duration: 1.2).repeatForever(autoreverses: false)) {
                 rxRing2Scale = 1.0
                 rxRing2Opacity = 0.0
@@ -460,7 +481,8 @@ struct PTTButtonView: View {
         }
 
         // Ring 3 — 0.6s delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(600))
             withAnimation(.easeIn(duration: 1.2).repeatForever(autoreverses: false)) {
                 rxRing3Scale = 1.0
                 rxRing3Opacity = 0.0
@@ -491,18 +513,19 @@ struct PTTButtonView: View {
         }
 
         // Aggressive shake — more dramatic than before
-        let shakeSequence: [(CGFloat, Double)] = [
-            (14, 0.0),
-            (-12, 0.06),
-            (10, 0.12),
-            (-8, 0.18),
-            (5, 0.24),
-            (-3, 0.30),
-            (0, 0.36)
+        let shakeSequence: [(CGFloat, Int)] = [
+            (14, 0),
+            (-12, 60),
+            (10, 120),
+            (-8, 180),
+            (5, 240),
+            (-3, 300),
+            (0, 360)
         ]
 
-        for (offset, delay) in shakeSequence {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+        for (offset, delayMs) in shakeSequence {
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(delayMs))
                 withAnimation(.spring(response: 0.06, dampingFraction: 0.25)) {
                     shakeOffset = offset
                 }

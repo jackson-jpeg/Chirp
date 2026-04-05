@@ -15,8 +15,10 @@ struct GatewayMessageView: View {
     @State private var countryCode: String = "+1"
     @State private var showCountryPicker: Bool = false
     @State private var showSentConfirmation: Bool = false
+    @State private var lastDeliveryFailed: Bool = false
 
     private let gateway = MeshGateway.shared
+    private let delivery = GatewayDeliveryService.shared
     private let localPeerID: String
     private let localPeerName: String
 
@@ -78,6 +80,11 @@ struct GatewayMessageView: View {
                         // Message input
                         messageInput
 
+                        // Delivery status feedback
+                        if lastDeliveryFailed {
+                            deliveryFailedBanner
+                        }
+
                         // Send button
                         sendButton
 
@@ -137,7 +144,7 @@ struct GatewayMessageView: View {
             Spacer()
 
             if gateway.isGatewayNode {
-                Text("YOU")
+                Text(String(localized: "YOU"))
                     .font(.system(size: 10, weight: .black, design: .rounded))
                     .foregroundStyle(.black)
                     .padding(.horizontal, 8)
@@ -170,9 +177,9 @@ struct GatewayMessageView: View {
             let count = gateway.knownGateways.count
             let name = gateway.knownGateways.values.first?.peerName ?? "unknown"
             if count == 1 {
-                return "Via \(name)"
+                return String(localized: "Via \(name)")
             }
-            return "\(count) gateways available"
+            return String(localized: "\(count) gateways available")
         }
         return String(localized: "gateway.status.willQueue")
     }
@@ -192,7 +199,7 @@ struct GatewayMessageView: View {
                         Image(systemName: mode.icon)
                             .font(.system(size: 13, weight: .semibold))
 
-                        Text(mode.rawValue)
+                        Text(String(localized: String.LocalizationValue(mode.rawValue)))
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                     }
                     .foregroundStyle(deliveryMode == mode ? .black : .white.opacity(0.5))
@@ -305,8 +312,9 @@ struct GatewayMessageView: View {
     // MARK: - Send Button
 
     private var canSend: Bool {
-        !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && !recipientValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let trimmedMessage = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedRecipient = recipientValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmedMessage.isEmpty && !trimmedRecipient.isEmpty
     }
 
     private var sendButton: some View {
@@ -331,13 +339,45 @@ struct GatewayMessageView: View {
         .disabled(!canSend)
     }
 
+    // MARK: - Delivery Failed Banner
+
+    private var deliveryFailedBanner: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 13, weight: .semibold))
+
+                Text(String(localized: "Delivery Failed"))
+                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .textCase(.uppercase)
+            }
+            .foregroundStyle(hotRed)
+
+            Text(String(localized: "The message could not be delivered. Check gateway credentials in Settings or try again."))
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.5))
+                .multilineTextAlignment(.center)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(hotRed.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(hotRed.opacity(0.2), lineWidth: 0.5)
+                )
+        )
+        .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+
     // MARK: - Queue Stats
 
     private var queueStats: some View {
         HStack(spacing: 20) {
             if !gateway.pendingOutbound.isEmpty {
                 Label {
-                    Text("\(gateway.pendingOutbound.count) pending")
+                    Text(String(localized: "\(gateway.pendingOutbound.count) pending"))
                         .font(.system(size: 13, weight: .medium, design: .rounded))
                 } icon: {
                     Image(systemName: "clock.fill")
@@ -348,7 +388,7 @@ struct GatewayMessageView: View {
 
             if gateway.sentCount > 0 {
                 Label {
-                    Text("\(gateway.sentCount) sent")
+                    Text(String(localized: "\(gateway.sentCount) sent"))
                         .font(.system(size: 13, weight: .medium, design: .rounded))
                 } icon: {
                     Image(systemName: "checkmark.circle.fill")
@@ -413,14 +453,30 @@ struct GatewayMessageView: View {
             timestamp: Date()
         )
 
+        // Clear any previous failure
+        withAnimation { lastDeliveryFailed = false }
+
         gateway.queueOutbound(gatewayMessage)
 
-        // Show confirmation
+        // Show confirmation overlay
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
             showSentConfirmation = true
         }
 
-        // Dismiss after brief delay
+        // Monitor delivery status if we're the gateway (direct delivery)
+        let messageID = gatewayMessage.id
+        if gateway.isGatewayNode {
+            Task { @MainActor in
+                // Poll for delivery completion (the async delivery runs in MeshGateway)
+                try? await Task.sleep(for: .seconds(2))
+                let status = delivery.deliveryStatuses[messageID]
+                if status == .failed {
+                    withAnimation { lastDeliveryFailed = true }
+                }
+            }
+        }
+
+        // Dismiss confirmation after brief delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             withAnimation(.easeOut(duration: 0.3)) {
                 showSentConfirmation = false

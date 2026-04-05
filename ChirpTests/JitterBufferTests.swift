@@ -118,4 +118,61 @@ final class JitterBufferTests: XCTestCase {
         let pulled = buffer.pull(frameCount: 1)
         XCTAssertNotNil(pulled, "After reset, earlier sequence numbers should be accepted")
     }
+
+    // MARK: - Sequence number wraparound
+
+    func testSequenceNumberWraparoundAtMax() {
+        let pcm = makePCMBuffer()
+
+        // Push frames near UInt32.max
+        let start = UInt32.max - 3
+        for i: UInt32 in 0..<4 {
+            buffer.push(pcmBuffer: pcm, sequenceNumber: start &+ i)
+        }
+
+        // Pull all of them so lastPulledSequence advances to UInt32.max
+        for _ in 0..<4 {
+            _ = buffer.pull(frameCount: 1)
+        }
+
+        // Now push frames starting at 0 (wrapped around)
+        buffer.push(pcmBuffer: pcm, sequenceNumber: 0)
+        buffer.push(pcmBuffer: pcm, sequenceNumber: 1)
+
+        // The buffer should NOT drop seq=0 and seq=1 as "late"
+        let pulled = buffer.pull(frameCount: 1)
+        XCTAssertNotNil(pulled, "Wrapped-around sequence numbers starting at 0 should be accepted after UInt32.max")
+        XCTAssertEqual(buffer.packetsDroppedLate, 0, "No packets should be dropped as late during wraparound")
+    }
+
+    func testLatePacketDetectionAcrossWraparound() {
+        let pcm = makePCMBuffer()
+
+        // Push frames near UInt32.max and pull them
+        let start = UInt32.max - 3
+        for i: UInt32 in 0..<4 {
+            buffer.push(pcmBuffer: pcm, sequenceNumber: start &+ i)
+        }
+        for _ in 0..<4 {
+            _ = buffer.pull(frameCount: 1)
+        }
+        // lastPulledSequence is now UInt32.max
+
+        let droppedBefore = buffer.packetsDroppedLate
+
+        // Push a packet that is genuinely late (behind the last pulled, even considering wraparound)
+        // UInt32.max - 5 is behind UInt32.max, so it should be dropped
+        buffer.push(pcmBuffer: pcm, sequenceNumber: UInt32.max - 5)
+        XCTAssertEqual(
+            buffer.packetsDroppedLate, droppedBefore + 1,
+            "Packet behind lastPulled should be dropped as late even near wraparound boundary"
+        )
+
+        // But seq 0 (wrapped around, ahead) should NOT be dropped
+        buffer.push(pcmBuffer: pcm, sequenceNumber: 0)
+        XCTAssertEqual(
+            buffer.packetsDroppedLate, droppedBefore + 1,
+            "Wrapped-around seq 0 should NOT be dropped — it is ahead of UInt32.max"
+        )
+    }
 }

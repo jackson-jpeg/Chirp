@@ -34,9 +34,13 @@ final class SoundAlertService: NSObject {
 
     // MARK: - SoundAnalysis (accessed only from analysisQueue)
 
+    /// These properties are confined to `analysisQueue` — nonisolated(unsafe) is
+    /// required because the class is @MainActor but these live on a different queue.
     nonisolated(unsafe) private var analyzer: SNAudioStreamAnalyzer?
     nonisolated(unsafe) private var analysisRequest: SNClassifySoundRequest?
-    nonisolated(unsafe) private var isListeningFlag: Bool = false
+
+    /// Thread-safe flag: written from MainActor, read from audio I/O thread.
+    private let _isListeningFlag = OSAllocatedUnfairLock(initialState: false)
 
     private let analysisQueue = DispatchQueue(label: "com.chirpchirp.soundanalysis", qos: .userInitiated)
 
@@ -102,7 +106,7 @@ final class SoundAlertService: NSObject {
     func startListening() {
         guard !isListening else { return }
         isListening = true
-        isListeningFlag = true
+        _isListeningFlag.withLock { $0 = true }
         lastClassifications.removeAll()
         recentBroadcasts.removeAll()
         logger.info("Sound alert listening started")
@@ -111,7 +115,7 @@ final class SoundAlertService: NSObject {
     func stopListening() {
         guard isListening else { return }
         isListening = false
-        isListeningFlag = false
+        _isListeningFlag.withLock { $0 = false }
 
         analysisQueue.async { [weak self] in
             if let request = self?.analysisRequest {
@@ -130,13 +134,13 @@ final class SoundAlertService: NSObject {
 
     /// Called from AudioEngine's onRawAudioBuffer callback on the audio I/O thread.
     nonisolated func feedAudio(buffer: AVAudioPCMBuffer, time: AVAudioTime) {
-        guard isListeningFlag else { return }
+        guard _isListeningFlag.withLock({ $0 }) else { return }
 
         nonisolated(unsafe) let buf = buffer
         let audioTime = time
         analysisQueue.async { [weak self] in
             guard let self else { return }
-            guard self.isListeningFlag else { return }
+            guard self._isListeningFlag.withLock({ $0 }) else { return }
             let buffer = buf; let time = audioTime
 
             // Lazy-create analyzer with the buffer's format on first call

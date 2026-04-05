@@ -127,7 +127,7 @@ final class LighthouseDatabase {
         var config = Configuration()
         #if DEBUG
         config.prepareDatabase { db in
-            db.trace { print("SQL: \($0)") }
+            db.trace { Logger.database.debug("SQL: \($0)") }
         }
         #endif
 
@@ -298,6 +298,38 @@ final class LighthouseDatabase {
             }
         } catch {
             logger.error("Failed to find breadcrumbs: \(error.localizedDescription, privacy: .public)")
+            return []
+        }
+    }
+
+    // MARK: - Trail Queries
+
+    /// Fetch the most recent breadcrumbs for a specific peer, ordered newest-first.
+    func recentBreadcrumbs(forPeer peerID: String, limit: Int = 50) -> [Breadcrumb] {
+        do {
+            let records = try dbQueue.read { db in
+                try BreadcrumbRecord
+                    .filter(Column("peerID") == peerID)
+                    .order(Column("timestamp").desc)
+                    .limit(limit)
+                    .fetchAll(db)
+            }
+            // Reverse so oldest is first (for polyline drawing order).
+            return records.compactMap { $0.toBreadcrumb() }.reversed()
+        } catch {
+            logger.error("Failed to fetch breadcrumbs for peer \(peerID, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            return []
+        }
+    }
+
+    /// Return all distinct peer IDs that have breadcrumb data.
+    func allBreadcrumbPeerIDs() -> [String] {
+        do {
+            return try dbQueue.read { db in
+                try String.fetchAll(db, sql: "SELECT DISTINCT peerID FROM breadcrumbs")
+            }
+        } catch {
+            logger.error("Failed to fetch peer IDs: \(error.localizedDescription, privacy: .public)")
             return []
         }
     }

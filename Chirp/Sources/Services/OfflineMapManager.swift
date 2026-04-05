@@ -31,8 +31,8 @@ final class OfflineMapManager: NSObject {
     private let logger = Logger(subsystem: Constants.subsystem, category: "OfflineMap")
     private var activePack: MLNOfflinePack?
 
-    /// OpenFreeMap Liberty style — free, no API key required.
-    static let styleURL = URL(string: "https://tiles.openfreemap.org/styles/liberty/style.json")!
+    /// OpenFreeMap Dark style — free, no API key required.
+    static let styleURL = URL(string: "https://tiles.openfreemap.org/styles/dark")!
 
     // MARK: - Init
 

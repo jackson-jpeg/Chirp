@@ -21,11 +21,11 @@ struct PairingView: View {
             }
             .frame(maxWidth: .infinity)
             .background(Color.black)
-            .navigationTitle("Pair Devices")
+            .navigationTitle(String(localized: "Pair Devices"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
+                    Button(String(localized: "Done")) {
                         dismiss()
                     }
                     .foregroundStyle(Constants.Colors.amber)
@@ -70,11 +70,11 @@ struct PairingView: View {
                 .foregroundStyle(Constants.Colors.amber)
         }
 
-        Text("Searching for nearby devices...")
+        Text(String(localized: "Searching for nearby devices..."))
             .font(.system(.headline, weight: .semibold))
             .foregroundStyle(.white)
 
-        Text("Open Chirp on the other device too")
+        Text(String(localized: "Open Chirp on the other device too"))
             .font(.system(.subheadline))
             .foregroundStyle(.secondary)
             .padding(.horizontal, 40)
@@ -83,7 +83,7 @@ struct PairingView: View {
         // Paired devices list
         if let waTransport = appState.wifiAwareTransport, waTransport.pairedDeviceCount > 0 {
             VStack(alignment: .leading, spacing: 12) {
-                Text("PAIRED DEVICES")
+                Text(String(localized: "PAIRED DEVICES"))
                     .font(.system(.caption, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 20)
@@ -92,13 +92,13 @@ struct PairingView: View {
                     Image(systemName: "wifi")
                         .foregroundStyle(Constants.Colors.electricGreen)
 
-                    Text("\(waTransport.pairedDeviceCount) paired device\(waTransport.pairedDeviceCount == 1 ? "" : "s")")
+                    Text(String(localized: "\(waTransport.pairedDeviceCount) paired device\(waTransport.pairedDeviceCount == 1 ? "" : "s")"))
                         .foregroundStyle(.white)
 
                     Spacer()
 
                     if waTransport.connectedPeerCount > 0 {
-                        Text("\(waTransport.connectedPeerCount) connected")
+                        Text(String(localized: "\(waTransport.connectedPeerCount) connected"))
                             .font(.system(.caption, weight: .semibold))
                             .foregroundStyle(Constants.Colors.electricGreen)
                     }
@@ -115,10 +115,10 @@ struct PairingView: View {
             DevicePairingView(
                 .wifiAware(.connecting(to: service, from: .selected([])))
             ) {
-                Text("Waiting for nearby devices...")
+                Text(String(localized: "Waiting for nearby devices..."))
                     .foregroundStyle(.secondary)
             } fallback: {
-                Text("Wi-Fi Aware pairing not supported on this device.")
+                Text(String(localized: "Wi-Fi Aware pairing not supported on this device."))
                     .foregroundStyle(.secondary)
             }
             .frame(height: 200)
@@ -136,11 +136,11 @@ struct PairingView: View {
                 .font(.system(size: 56, weight: .light))
                 .foregroundStyle(Constants.Colors.hotRed.opacity(0.7))
 
-            Text("Wi-Fi Aware Not Supported")
+            Text(String(localized: "Wi-Fi Aware Not Supported"))
                 .font(.system(.title2, weight: .bold))
                 .foregroundStyle(.white)
 
-            Text("This device doesn't support Wi-Fi Aware.\nChirp requires iOS 26+ and compatible hardware.")
+            Text(String(localized: "This device doesn't support Wi-Fi Aware.\nChirp requires iOS 26+ and compatible hardware."))
                 .font(.system(.body))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

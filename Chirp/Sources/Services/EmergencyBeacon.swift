@@ -48,7 +48,7 @@ final class EmergencyBeacon: NSObject {
 
     // MARK: - Private
 
-    private var broadcastTimer: Timer?
+    private var broadcastTask: Task<Void, Never>?
     private var locationManager: CLLocationManager?
     private var activeSenderID: String?
     private var activeSenderName: String?
@@ -88,16 +88,12 @@ final class EmergencyBeacon: NSObject {
 
         // Fire the first broadcast immediately, then every 5 seconds.
         broadcastSOS()
-        broadcastTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.broadcastSOS()
+        broadcastTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(5))
+                guard let self else { break }
+                self.broadcastSOS()
             }
-        }
-
-        // Keep timer alive in common run loop mode so it fires while scrolling
-        // or when the app is in a modal presentation.
-        if let timer = broadcastTimer {
-            RunLoop.main.add(timer, forMode: .common)
         }
     }
 
@@ -108,8 +104,8 @@ final class EmergencyBeacon: NSObject {
         logger.info("SOS beacon deactivated after \(self.broadcastCount) broadcasts")
 
         isActive = false
-        broadcastTimer?.invalidate()
-        broadcastTimer = nil
+        broadcastTask?.cancel()
+        broadcastTask = nil
         locationManager?.stopUpdatingLocation()
         locationManager = nil
         activeSenderID = nil

@@ -134,8 +134,8 @@ final class MeshBeacon {
     // MARK: - Private
 
     private let logger = Logger(subsystem: Constants.subsystem, category: "MeshBeacon")
-    private var broadcastTimer: Timer?
-    private var pruneTimer: Timer?
+    private var broadcastTask: Task<Void, Never>?
+    private var pruneTask: Task<Void, Never>?
     private var localID: String?
     private var localName: String?
     private var cachedBatteryLevel: Float = 0
@@ -188,38 +188,31 @@ final class MeshBeacon {
 
         logger.info("Mesh beacon broadcasting started as \(localName, privacy: .public)")
 
-        // Broadcast timer.
-        broadcastTimer = Timer.scheduledTimer(
-            withTimeInterval: currentBroadcastInterval,
-            repeats: true
-        ) { [weak self] _ in
-            Task { @MainActor in self?.broadcastBeacon() }
-        }
-        if let timer = broadcastTimer {
-            RunLoop.main.add(timer, forMode: .common)
+        // Broadcast loop.
+        broadcastTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { break }
+                self.broadcastBeacon()
+                try? await Task.sleep(for: .seconds(self.currentBroadcastInterval))
+            }
         }
 
-        // Prune timer runs at half the stale threshold.
-        pruneTimer = Timer.scheduledTimer(
-            withTimeInterval: Self.staleThreshold / 2,
-            repeats: true
-        ) { [weak self] _ in
-            Task { @MainActor in self?.pruneStale() }
+        // Prune loop runs at half the stale threshold.
+        pruneTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(Self.staleThreshold / 2))
+                guard let self else { break }
+                self.pruneStale()
+            }
         }
-        if let timer = pruneTimer {
-            RunLoop.main.add(timer, forMode: .common)
-        }
-
-        // Fire immediately.
-        broadcastBeacon()
     }
 
     /// Stop broadcasting beacons.
     func stopBroadcasting() {
-        broadcastTimer?.invalidate()
-        broadcastTimer = nil
-        pruneTimer?.invalidate()
-        pruneTimer = nil
+        broadcastTask?.cancel()
+        broadcastTask = nil
+        pruneTask?.cancel()
+        pruneTask = nil
     }
 
     /// Update the channel list for future beacon broadcasts.
@@ -233,7 +226,11 @@ final class MeshBeacon {
     @MainActor
     func updateBroadcastInterval(forPeerCount peerCount: Int) {
         let newInterval: TimeInterval
-        if peerCount > 10 {
+
+        // Emergency mode overrides density-based scaling — beacon aggressively
+        if EmergencyMode.shared.isActive {
+            newInterval = EmergencyMode.shared.beaconInterval
+        } else if peerCount > 10 {
             // Scale linearly: 10 peers -> 2s, 20 peers -> 8s, capped at max
             let scale = min(1.0, Double(peerCount - 10) / 10.0)
             newInterval = Self.baseBroadcastInterval
@@ -242,22 +239,13 @@ final class MeshBeacon {
             newInterval = Self.baseBroadcastInterval
         }
 
-        // Only reschedule the timer if the interval actually changed
+        // Only update if the interval actually changed
         guard abs(newInterval - currentBroadcastInterval) > 0.5 else { return }
         currentBroadcastInterval = newInterval
         logger.info("Beacon interval adjusted to \(newInterval, format: .fixed(precision: 1))s for \(peerCount) peers")
 
-        // Reschedule the broadcast timer with the new interval
-        broadcastTimer?.invalidate()
-        broadcastTimer = Timer.scheduledTimer(
-            withTimeInterval: currentBroadcastInterval,
-            repeats: true
-        ) { [weak self] _ in
-            Task { @MainActor in self?.broadcastBeacon() }
-        }
-        if let timer = broadcastTimer {
-            RunLoop.main.add(timer, forMode: .common)
-        }
+        // The broadcast Task loop reads currentBroadcastInterval each iteration,
+        // so the new interval takes effect on the next cycle automatically.
     }
 
     // MARK: - Receiving

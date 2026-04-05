@@ -461,6 +461,96 @@
         }
       }
     },
+    "chat.empty.accessibility" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No messages yet. Messages are end-to-end encrypted."
+          }
+        }
+      }
+    },
+    "chat.empty.encrypted" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Messages are end-to-end encrypted"
+          }
+        }
+      }
+    },
+    "chat.empty.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start the conversation"
+          }
+        }
+      }
+    },
+    "chat.search.noResults" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No results"
+          }
+        }
+      }
+    },
+    "chat.search.placeholder" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search messages..."
+          }
+        }
+      }
+    },
+    "chat.typing.many %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld people are typing..."
+          }
+        }
+      }
+    },
+    "chat.typing.one %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is typing..."
+          }
+        }
+      }
+    },
+    "chat.typing.two %@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@ are typing..."
+          }
+        }
+      }
+    },
+    "chat.voiceNote.sent" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voice note sent"
+          }
+        }
+      }
+    },
     "channelCreation.create.button" : {
       "extractionState" : "stale",
       "localizations" : {

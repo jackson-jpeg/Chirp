@@ -3,34 +3,180 @@ import Foundation
 
 /// Text steganography using invisible Unicode characters.
 ///
-/// Encodes a hidden byte payload between visible characters of a cover message
-/// using zero-width Unicode characters (U+200B = bit 0, U+200C = bit 1).
-/// The hidden payload is AES-GCM encrypted before embedding.
+/// Supports three encoding modes:
+/// - `.zeroWidth`: Invisible Unicode chars between visible chars (high capacity, detectable by regex)
+/// - `.homoglyph`: Cyrillic/Greek look-alikes for Latin chars (medium capacity, visually undetectable)
+/// - `.whitespace`: Thin space vs regular space at word boundaries (low capacity, extremely subtle)
 enum TextStego {
+
+    // MARK: - Mode
+
+    enum StegoMode: Int, CaseIterable {
+        case zeroWidth = 0
+        case homoglyph = 1
+        case whitespace = 2
+    }
 
     // MARK: - Public API
 
     /// Encode hidden data into a cover text string.
     /// Returns nil if the cover text doesn't have enough capacity.
+    /// Defaults to `.zeroWidth` for backward compatibility.
     static func encode(cover: String, hidden: Data, key: SymmetricKey) -> String? {
+        encode(cover: cover, hidden: hidden, key: key, mode: .zeroWidth)
+    }
+
+    /// Encode hidden data into a cover text using the specified mode.
+    static func encode(cover: String, hidden: Data, key: SymmetricKey, mode: StegoMode) -> String? {
         guard !hidden.isEmpty, !cover.isEmpty else { return nil }
 
         // 1. Encrypt the hidden data
         guard let encrypted = encryptPayload(hidden, key: key) else { return nil }
 
-        // 2. Check capacity
+        // 2. Dispatch to mode-specific encoder
+        let result: String?
+        switch mode {
+        case .zeroWidth:
+            result = encodeZeroWidth(cover: cover, encrypted: encrypted)
+        case .homoglyph:
+            result = encodeHomoglyph(cover: cover, encrypted: encrypted)
+        case .whitespace:
+            result = encodeWhitespace(cover: cover, encrypted: encrypted)
+        }
+
+        // 3. Verify total length fits MeshTextMessage limit
+        guard let encoded = result, encoded.count <= MeshTextMessage.maxTextLength else { return nil }
+        return result
+    }
+
+    /// Decode hidden data from a text string.
+    /// Auto-detects the encoding mode.
+    /// Returns nil if no hidden data found or decryption fails.
+    static func decode(_ text: String, key: SymmetricKey) -> Data? {
+        let mode = detectMode(text)
+        guard let mode else { return nil }
+
+        let encrypted: Data
+        switch mode {
+        case .zeroWidth:
+            let bitPairs = extractBitPairs(from: text)
+            guard !bitPairs.isEmpty else { return nil }
+            encrypted = bitPairsToBytes(bitPairs)
+        case .homoglyph:
+            encrypted = decodeHomoglyphBits(from: text)
+        case .whitespace:
+            encrypted = decodeWhitespaceBits(from: text)
+        }
+
+        guard !encrypted.isEmpty else { return nil }
+        return decryptPayload(encrypted, key: key)
+    }
+
+    /// Invisible Unicode scalars used for zero-width encoding.
+    private static let stegoScalars: Set<Unicode.Scalar> = ["\u{200B}", "\u{200C}"]
+
+    /// Quick check: does this text contain hidden stego content (any mode)?
+    static func hasHiddenContent(_ text: String) -> Bool {
+        detectMode(text) != nil
+    }
+
+    /// Detect which stego mode was used, or nil if no hidden content.
+    static func detectMode(_ text: String) -> StegoMode? {
+        // Check homoglyph: any Cyrillic homoglyph characters?
+        if text.contains(where: { Constants.CICADA.cyrillicHomoglyphs.contains($0) }) {
+            return .homoglyph
+        }
+        // Check whitespace: any thin spaces?
+        if text.unicodeScalars.contains(where: { $0 == "\u{2009}" }) {
+            return .whitespace
+        }
+        // Check zero-width: any zero-width chars?
+        if text.unicodeScalars.contains(where: { stegoScalars.contains($0) }) {
+            return .zeroWidth
+        }
+        return nil
+    }
+
+    /// Calculate the maximum number of hidden bytes a cover text can carry for a given mode.
+    static func capacity(coverLength: Int, mode: StegoMode = .zeroWidth) -> Int {
+        guard coverLength > 1 else { return 0 }
+
+        let totalBits: Int
+        switch mode {
+        case .zeroWidth:
+            let positions = coverLength - 1
+            totalBits = positions * Constants.CICADA.bitsPerPosition
+        case .homoglyph:
+            // Approximate: assume ~30% of chars are eligible homoglyphs in English text.
+            // For exact capacity, caller should use capacity(cover:mode:).
+            // Here we use coverLength directly as upper bound of eligible positions.
+            totalBits = coverLength  // 1 bit per eligible char (worst case = all eligible)
+        case .whitespace:
+            // ~1 bit per word boundary. Approximate words = coverLength / 5.
+            let approxSpaces = max(0, coverLength / 5 - 1)
+            totalBits = approxSpaces
+        }
+
+        let totalBytes = totalBits / 8
+        let usable = totalBytes - Constants.CICADA.cryptoOverhead
+        return max(0, usable)
+    }
+
+    /// Calculate exact capacity for a specific cover string and mode.
+    static func capacity(cover: String, mode: StegoMode) -> Int {
+        let totalBits: Int
+        switch mode {
+        case .zeroWidth:
+            let positions = cover.count - 1
+            totalBits = positions * Constants.CICADA.bitsPerPosition
+        case .homoglyph:
+            totalBits = cover.reduce(0) { count, ch in
+                count + (Constants.CICADA.homoglyphMap[ch] != nil ? 1 : 0)
+            }
+        case .whitespace:
+            totalBits = cover.reduce(0) { count, ch in
+                count + (ch == " " ? 1 : 0)
+            }
+        }
+
+        let totalBytes = totalBits / 8
+        let usable = totalBytes - Constants.CICADA.cryptoOverhead
+        return max(0, usable)
+    }
+
+    /// Extract only the visible text (strip invisible chars, normalize homoglyphs back to Latin).
+    static func visibleText(_ text: String) -> String {
+        var result = ""
+        for scalar in text.unicodeScalars {
+            if stegoScalars.contains(scalar) {
+                // Zero-width char → skip
+                continue
+            } else if scalar == "\u{2009}" {
+                // Thin space → regular space
+                result.append(" ")
+            } else if let latin = Constants.CICADA.homoglyphReverse[Character(scalar)] {
+                // Cyrillic homoglyph → Latin original
+                result.append(latin)
+            } else {
+                result.append(Character(scalar))
+            }
+        }
+        return result
+    }
+
+    // MARK: - Zero-Width Encoder/Decoder
+
+    private static func encodeZeroWidth(cover: String, encrypted: Data) -> String? {
         let visibleChars = Array(cover)
-        let positions = visibleChars.count - 1  // inter-character positions
+        let positions = visibleChars.count - 1
         guard positions > 0 else { return nil }
 
         let bitsAvailable = positions * Constants.CICADA.bitsPerPosition
         let bitsNeeded = encrypted.count * 8
         guard bitsAvailable >= bitsNeeded else { return nil }
 
-        // 3. Convert encrypted bytes to bit pairs
         let bitPairs = bytesToBitPairs(encrypted)
 
-        // 4. Interleave invisible chars between visible chars
         var result = String(visibleChars[0])
         for i in 1..<visibleChars.count {
             let pairIndex = i - 1
@@ -42,54 +188,83 @@ enum TextStego {
             result.append(visibleChars[i])
         }
 
-        // 5. Verify total length fits MeshTextMessage limit
-        guard result.count <= MeshTextMessage.maxTextLength else { return nil }
-
         return result
     }
 
-    /// Decode hidden data from a text string.
-    /// Returns nil if no hidden data found or decryption fails.
-    static func decode(_ text: String, key: SymmetricKey) -> Data? {
-        // 1. Extract invisible characters between visible chars
-        let bitPairs = extractBitPairs(from: text)
-        guard !bitPairs.isEmpty else { return nil }
+    // MARK: - Homoglyph Encoder/Decoder
 
-        // 2. Convert bit pairs to bytes
-        let encrypted = bitPairsToBytes(bitPairs)
-        guard !encrypted.isEmpty else { return nil }
+    private static func encodeHomoglyph(cover: String, encrypted: Data) -> String? {
+        // Count eligible positions
+        let chars = Array(cover)
+        let eligibleCount = chars.reduce(0) { $0 + (Constants.CICADA.homoglyphMap[$1] != nil ? 1 : 0) }
+        let bitsNeeded = encrypted.count * 8
+        guard eligibleCount >= bitsNeeded else { return nil }
 
-        // 3. Decrypt
-        return decryptPayload(encrypted, key: key)
-    }
+        // Convert bytes to individual bits
+        let bits = bytesToBits(encrypted)
 
-    /// Invisible Unicode scalars used for encoding.
-    private static let stegoScalars: Set<Unicode.Scalar> = ["\u{200B}", "\u{200C}"]
-
-    /// Quick check: does this text contain invisible stego characters?
-    static func hasHiddenContent(_ text: String) -> Bool {
-        text.unicodeScalars.contains { stegoScalars.contains($0) }
-    }
-
-    /// Calculate the maximum number of hidden bytes a cover text of this length can carry.
-    static func capacity(coverLength: Int) -> Int {
-        guard coverLength > 1 else { return 0 }
-        let positions = coverLength - 1
-        let totalBits = positions * Constants.CICADA.bitsPerPosition
-        let totalBytes = totalBits / 8
-        let usable = totalBytes - Constants.CICADA.cryptoOverhead
-        return max(0, usable)
-    }
-
-    /// Extract only the visible text (strip invisible chars).
-    static func visibleText(_ text: String) -> String {
         var result = ""
-        for scalar in text.unicodeScalars {
-            if !stegoScalars.contains(scalar) {
-                result.append(Character(scalar))
+        var bitIndex = 0
+        for ch in chars {
+            if bitIndex < bits.count, let cyrillic = Constants.CICADA.homoglyphMap[ch] {
+                // Eligible position: Latin (0) or Cyrillic (1)
+                result.append(bits[bitIndex] ? cyrillic : ch)
+                bitIndex += 1
+            } else {
+                result.append(ch)
             }
         }
+
         return result
+    }
+
+    private static func decodeHomoglyphBits(from text: String) -> Data {
+        var bits: [Bool] = []
+        for ch in text {
+            if Constants.CICADA.cyrillicHomoglyphs.contains(ch) {
+                bits.append(true)  // Cyrillic = 1
+            } else if Constants.CICADA.homoglyphMap[ch] != nil {
+                bits.append(false) // Latin eligible char = 0
+            }
+            // Non-eligible chars are ignored
+        }
+        return bitsToBytes(bits)
+    }
+
+    // MARK: - Whitespace Encoder/Decoder
+
+    private static func encodeWhitespace(cover: String, encrypted: Data) -> String? {
+        // Count space positions
+        let spaceCount = cover.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
+        let bitsNeeded = encrypted.count * 8
+        guard spaceCount >= bitsNeeded else { return nil }
+
+        let bits = bytesToBits(encrypted)
+
+        var result = ""
+        var bitIndex = 0
+        for ch in cover {
+            if ch == " " && bitIndex < bits.count {
+                result.append(bits[bitIndex] ? Constants.CICADA.space1 : Constants.CICADA.space0)
+                bitIndex += 1
+            } else {
+                result.append(ch)
+            }
+        }
+
+        return result
+    }
+
+    private static func decodeWhitespaceBits(from text: String) -> Data {
+        var bits: [Bool] = []
+        for scalar in text.unicodeScalars {
+            if scalar == "\u{2009}" {
+                bits.append(true)  // thin space = 1
+            } else if scalar == "\u{0020}" {
+                bits.append(false) // regular space = 0
+            }
+        }
+        return bitsToBytes(bits)
     }
 
     // MARK: - Encryption
@@ -180,6 +355,31 @@ enum TextStego {
             if pairs[i + 2].1 { byte |= 0x04 }
             if pairs[i + 3].0 { byte |= 0x02 }
             if pairs[i + 3].1 { byte |= 0x01 }
+            bytes.append(byte)
+        }
+        return bytes
+    }
+
+    /// Convert bytes to individual bits (MSB first).
+    private static func bytesToBits(_ data: Data) -> [Bool] {
+        var bits: [Bool] = []
+        bits.reserveCapacity(data.count * 8)
+        for byte in data {
+            for shift in stride(from: 7, through: 0, by: -1) {
+                bits.append((byte >> shift) & 1 == 1)
+            }
+        }
+        return bits
+    }
+
+    /// Convert individual bits back to bytes.
+    private static func bitsToBytes(_ bits: [Bool]) -> Data {
+        var bytes = Data()
+        for i in stride(from: 0, to: bits.count - 7, by: 8) {
+            var byte: UInt8 = 0
+            for j in 0..<8 {
+                if bits[i + j] { byte |= (1 << (7 - j)) }
+            }
             bytes.append(byte)
         }
         return bytes

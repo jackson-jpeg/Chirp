@@ -55,7 +55,7 @@ struct DetectedDeviceRow: View {
         .padding(.vertical, 10)
         .padding(.horizontal, Constants.Layout.cardPadding)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(device.manufacturerName ?? "Unknown") device, \(device.threatLevel.label) threat, signal \(signalLevel) of 4")
+        .accessibilityLabel("\(device.manufacturerName ?? "Unknown") device, \(device.threatLevel.label), signal \(signalLevel) of 4")
     }
 
     // MARK: - Helpers

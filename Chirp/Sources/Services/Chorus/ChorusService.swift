@@ -310,6 +310,7 @@ final class ChorusService {
             )
 
             let input = try MLDictionaryFeatureProvider(dictionary: ["input": multiArray])
+            // MLModel is not Sendable but prediction is read-only — safe to cross isolation.
             nonisolated(unsafe) let unsafeModel = model
             let prediction = try await unsafeModel.prediction(from: input)
 

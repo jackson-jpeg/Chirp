@@ -34,6 +34,10 @@ final class PheromoneRouter {
     private var localPeerID: String = ""
     private var localPeerName: String = ""
 
+    /// Ring buffer of recently forwarded ACK packet IDs for deduplication.
+    private var forwardedACKs: [UUID] = []
+    private static let forwardedACKsCapacity = 500
+
     // MARK: - Init
 
     init() {}
@@ -96,6 +100,11 @@ final class PheromoneRouter {
             return true
         }
 
+        // Deduplicate: skip if we already forwarded this ACK
+        if forwardedACKs.contains(ack.ackedPacketID) {
+            return true
+        }
+
         // Forward ACK toward original sender with incremented hop count
         ack.hopCount += 1
         if ack.hopCount < 8 { // Cap ACK propagation
@@ -103,6 +112,13 @@ final class PheromoneRouter {
                 onSendPacket?(forwardPayload, "")
             }
         }
+
+        // Track forwarded ACK for dedup
+        forwardedACKs.append(ack.ackedPacketID)
+        if forwardedACKs.count > Self.forwardedACKsCapacity {
+            forwardedACKs.removeFirst()
+        }
+
         return true
     }
 
