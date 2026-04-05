@@ -386,7 +386,10 @@ final class BabelService {
         guard let session = translationSession else {
             throw BabelError.translationSessionNotConfigured
         }
-        let response = try await session.translate(text)
+        // TranslationSession is not Sendable but is safe to use across async boundaries
+        // since we only access it from @MainActor.
+        nonisolated(unsafe) let s = session
+        let response = try await s.translate(text)
         return response.targetText
         #else
         logger.warning("Translation framework not available, returning original text")
