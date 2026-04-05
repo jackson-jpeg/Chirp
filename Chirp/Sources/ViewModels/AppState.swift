@@ -800,8 +800,10 @@ final class AppState {
         // Load peer fingerprint
         self.peerFingerprint = await PeerIdentity.shared.fingerprint
 
-        // Request mic permission early
-        await requestMicPermission()
+        // Request mic permission early (but not during onboarding — handled there)
+        if isOnboardingComplete {
+            await requestMicPermission()
+        }
 
         // Register for audio session interruption and route change notifications
         AudioSessionManager.registerForNotifications()

@@ -22,7 +22,9 @@ struct ChirpApp: App {
             .onChange(of: scenePhase) { _, newPhase in
                 switch newPhase {
                 case .active:
-                    Task { await appState.requestMicPermission() }
+                    if appState.isOnboardingComplete {
+                        Task { await appState.requestMicPermission() }
+                    }
                     appState.backgroundService.enterForeground()
                 case .background:
                     appState.backgroundService.enterBackground()
