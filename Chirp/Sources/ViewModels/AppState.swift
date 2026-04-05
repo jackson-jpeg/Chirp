@@ -862,14 +862,14 @@ final class AppState {
             channels: channelIDs
         )
 
-        // Request notification permission for background message alerts
-        NotificationService.shared.requestPermission()
-
-        // Request location permission and start updates for location sharing
-        locationService.onPermissionDenied = { [weak self] in
-            self?.handleLocationPermissionDenied()
+        // Request permissions only after onboarding (onboarding handles mic separately)
+        if isOnboardingComplete {
+            NotificationService.shared.requestPermission()
+            locationService.onPermissionDenied = { [weak self] in
+                self?.handleLocationPermissionDenied()
+            }
+            locationService.requestPermission()
         }
-        locationService.requestPermission()
         locationService.startUpdating()
 
         // Start LIGHTHOUSE recording
