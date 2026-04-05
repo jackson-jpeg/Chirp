@@ -367,7 +367,7 @@ final class AppState {
         }
 
         // Wire key rotation broadcast — send KRO! packets when epoch advances
-        channelManager.onKeyRotation = { [weak self] payload, channelID in
+        channelManager.onKeyRotation = { payload, channelID in
             try? transport.sendControlData(payload, channelID: channelID)
             try? waTransport?.sendControlData(payload, channelID: channelID)
         }
@@ -924,32 +924,34 @@ final class AppState {
         notificationObservers.append(NotificationCenter.default.addObserver(
             forName: .emergencyModeChanged, object: nil, queue: .main
         ) { notification in
-            guard let active = notification.userInfo?["active"] as? Bool else { return }
+            MainActor.assumeIsolated {
+                guard let active = notification.userInfo?["active"] as? Bool else { return }
 
-            // Toggle mesh router emergency relay
-            Task { await routerForEmergency.setEmergencyRelay(active) }
+                // Toggle mesh router emergency relay
+                Task { await routerForEmergency.setEmergencyRelay(active) }
 
-            guard active else { return }
+                guard active else { return }
 
-            // Create emergency channel if it doesn't exist
-            let emergencyID = EmergencyMode.emergencyChannelID
-            if !chanMgrForEmergency.channels.contains(where: { $0.id == emergencyID }) {
-                _ = chanMgrForEmergency.createChannel(
-                    name: EmergencyMode.emergencyChannelName,
-                    id: emergencyID
+                // Create emergency channel if it doesn't exist
+                let emergencyID = EmergencyMode.emergencyChannelID
+                if !chanMgrForEmergency.channels.contains(where: { $0.id == emergencyID }) {
+                    _ = chanMgrForEmergency.createChannel(
+                        name: EmergencyMode.emergencyChannelName,
+                        id: emergencyID
+                    )
+                }
+                // Switch to emergency channel
+                chanMgrForEmergency.joinChannel(id: emergencyID)
+
+                // Force beacon to use emergency interval
+                let channelIDs = chanMgrForEmergency.channels.map(\.id)
+                beaconForEmergency.updateBroadcastInterval(forPeerCount: 0)
+                beaconForEmergency.startBroadcasting(
+                    localID: peerIDForEmergency,
+                    localName: callsignForEmergency,
+                    channels: channelIDs
                 )
             }
-            // Switch to emergency channel
-            chanMgrForEmergency.joinChannel(id: emergencyID)
-
-            // Force beacon to use emergency interval
-            let channelIDs = chanMgrForEmergency.channels.map(\.id)
-            beaconForEmergency.updateBroadcastInterval(forPeerCount: 0)
-            beaconForEmergency.startBroadcasting(
-                localID: peerIDForEmergency,
-                localName: callsignForEmergency,
-                channels: channelIDs
-            )
         })
 
         // Route mesh beacon broadcasts through the mesh transports
