@@ -91,7 +91,7 @@ struct MoreView: View {
                 }
 
                 NavigationLink {
-                    DeadDropMapView()
+                    DeadDropMapView(channelID: appState.channelManager.activeChannel?.id ?? "")
                 } label: {
                     moreRow(
                         icon: "mappin.and.ellipse",
