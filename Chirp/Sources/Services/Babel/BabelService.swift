@@ -373,11 +373,10 @@ final class BabelService {
         let sourceLang = Locale.Language(identifier: source)
         let targetLang = Locale.Language(identifier: target)
 
-        let configuration = TranslationSession.Configuration(
-            source: sourceLang,
+        translationSession = try await TranslationSession(
+            installedSource: sourceLang,
             target: targetLang
         )
-        translationSession = try await TranslationSession(configuration: configuration)
         logger.info("Translation session configured: \(source) -> \(target)")
     }
     #endif
