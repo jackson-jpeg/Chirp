@@ -49,11 +49,20 @@ struct ChatView: View {
 
     // MARK: - Body
 
-    /// Messages matching the current search query.
+    /// Messages matching the current search query (text or sender name).
     private var searchResults: [UUID] {
         guard !searchText.isEmpty else { return [] }
         let query = searchText.lowercased()
-        return messages.filter { $0.text.lowercased().contains(query) }.map(\.id)
+        return messages.filter {
+            $0.text.lowercased().contains(query) || $0.senderName.lowercased().contains(query)
+        }.map(\.id)
+    }
+
+    /// Messages to display — filtered when searching, all otherwise.
+    private var displayMessages: [MeshTextMessage] {
+        guard isSearching, !searchText.isEmpty else { return messages }
+        let matchIDs = Set(searchResults)
+        return messages.filter { matchIDs.contains($0.id) }
     }
 
     var body: some View {
@@ -66,8 +75,10 @@ struct ChatView: View {
                     }
 
                     // Messages list
-                    if messages.isEmpty && searchText.isEmpty {
+                    if displayMessages.isEmpty && searchText.isEmpty {
                         emptyState
+                    } else if displayMessages.isEmpty && !searchText.isEmpty {
+                        searchEmptyState
                     } else {
                         messagesList(proxy: proxy)
                     }
@@ -212,6 +223,22 @@ struct ChatView: View {
         }
         .frame(maxWidth: .infinity)
         .accessibilityLabel(String(localized: "chat.empty.accessibility"))
+    }
+
+    // MARK: - Search Empty State
+
+    private var searchEmptyState: some View {
+        VStack(spacing: 12) {
+            Spacer()
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 36, weight: .thin))
+                .foregroundStyle(Constants.Colors.textTertiary.opacity(0.5))
+            Text(String(localized: "chat.search.noResults"))
+                .font(Constants.Typography.cardTitle)
+                .foregroundStyle(Constants.Colors.textSecondary)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Messages List
@@ -524,7 +551,8 @@ struct ChatView: View {
 
     /// Clusters consecutive messages from the same sender and inserts date separators.
     private var clusteredMessages: [ChatItem] {
-        guard !messages.isEmpty else { return [] }
+        let msgs = displayMessages
+        guard !msgs.isEmpty else { return [] }
 
         var items: [ChatItem] = []
         let calendar = Calendar.current
@@ -533,8 +561,8 @@ struct ChatView: View {
 
         // Group consecutive messages by same sender
         var i = 0
-        while i < messages.count {
-            let message = messages[i]
+        while i < msgs.count {
+            let message = msgs[i]
 
             // Insert date separator for new days or large time gaps (>15 min)
             if let prev = previousDate {
@@ -549,11 +577,11 @@ struct ChatView: View {
             // Collect cluster of consecutive messages from same sender (within 2 min)
             var cluster: [MeshTextMessage] = [message]
             var j = i + 1
-            while j < messages.count,
-                  messages[j].senderID == message.senderID {
+            while j < msgs.count,
+                  msgs[j].senderID == message.senderID {
                 guard let lastMessage = cluster.last else { break }
-                guard messages[j].timestamp.timeIntervalSince(lastMessage.timestamp) < 120 else { break }
-                cluster.append(messages[j])
+                guard msgs[j].timestamp.timeIntervalSince(lastMessage.timestamp) < 120 else { break }
+                cluster.append(msgs[j])
                 j += 1
             }
 

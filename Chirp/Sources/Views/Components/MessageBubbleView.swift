@@ -51,11 +51,18 @@ struct MessageBubbleView: View {
             VStack(alignment: isFromSelf ? .trailing : .leading, spacing: 0) {
                 // Sender name — only for first/solo in cluster (others only)
                 if !isFromSelf && (clusterPosition == .first || clusterPosition == .solo) {
-                    Text(message.senderName)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(senderColor)
-                        .padding(.leading, 12)
-                        .padding(.bottom, 2)
+                    Group {
+                        if !searchHighlight.isEmpty,
+                           message.senderName.lowercased().contains(searchHighlight.lowercased()) {
+                            highlightedText(message.senderName, highlight: searchHighlight)
+                        } else {
+                            Text(message.senderName)
+                        }
+                    }
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(senderColor)
+                    .padding(.leading, 12)
+                    .padding(.bottom, 2)
                 }
 
                 // Bubble content
