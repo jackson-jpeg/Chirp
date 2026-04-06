@@ -12,6 +12,7 @@ import OSLog
 /// `@unchecked Sendable` is required because MCSessionDelegate methods run on arbitrary
 /// internal queues. Mutable state (`peers`, `previousPeerCount`, `reconnectBackoff`) is
 /// dispatched to main queue via `updatePeerList()` to prevent data races with UI reads.
+/// Auto-reconnection uses exponential backoff (2s→4s→8s→16s→30s) with jitter.
 final class MultipeerTransport: NSObject, @unchecked Sendable {
 
     // MARK: - Properties
@@ -32,9 +33,13 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
 
     private var reconnectTask: Task<Void, Never>?
     private var previousPeerCount: Int = 0
-    private var reconnectBackoff: TimeInterval = 2.0
+    private var reconnectAttempt: Int = 0
     private static let maxBackoff: TimeInterval = 30.0
     private static let initialBackoff: TimeInterval = 2.0
+    private static let maxReconnectAttempts: Int = 10
+
+    /// Called when reconnection fails after all attempts are exhausted.
+    var onReconnectFailed: (() -> Void)?
 
     // MARK: - Mesh Networking
 
@@ -97,7 +102,7 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
         session.disconnect()
         peers.removeAll()
         previousPeerCount = 0
-        reconnectBackoff = Self.initialBackoff
+        reconnectAttempt = 0
         logger.info("MultipeerTransport stopped")
     }
 
@@ -225,14 +230,14 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
             self.onPeersChanged?(newPeers)
             self.logger.info("Peers updated: \(newPeers.count) connected")
 
-            // Auto-reconnection: if we had peers but now have none, schedule reconnect
+            // Auto-reconnection: if we had peers but now have none, start reconnect loop
             if currentCount == 0 && self.previousPeerCount > 0 {
-                self.scheduleReconnect()
+                self.startReconnectLoop()
             } else if currentCount > 0 {
-                // We have peers again — cancel any pending reconnect and reset backoff
+                // We have peers again — cancel any pending reconnect and reset attempt counter
                 self.reconnectTask?.cancel()
                 self.reconnectTask = nil
-                self.reconnectBackoff = Self.initialBackoff
+                self.reconnectAttempt = 0
             }
 
             self.previousPeerCount = currentCount
@@ -241,32 +246,65 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
 
     // MARK: - Auto-Reconnection
 
-    /// Restart advertising + browsing with exponential backoff when all peers drop.
-    private func scheduleReconnect() {
+    /// Compute backoff delay for a given attempt: min(2^attempt * 2, 30) + jitter(0…1s).
+    private static func backoffDelay(attempt: Int) -> TimeInterval {
+        let base = min(pow(2.0, Double(attempt)) * initialBackoff, maxBackoff)
+        let jitter = Double.random(in: 0...1.0)
+        return base + jitter
+    }
+
+    /// Start an exponential-backoff reconnection loop after all peers are lost.
+    /// Each iteration restarts advertising + browsing. The loop cancels automatically
+    /// when a peer connects (via `updatePeerList`) or after `maxReconnectAttempts`.
+    private func startReconnectLoop() {
         reconnectTask?.cancel()
-        let delay = reconnectBackoff
-        logger.info("All peers lost — scheduling reconnect in \(delay)s")
+        reconnectAttempt = 0
 
         reconnectTask = Task { [weak self] in
-            do {
-                try await Task.sleep(for: .seconds(delay))
-            } catch {
-                return  // Cancelled
+            guard let self else { return }
+
+            while !Task.isCancelled && self.reconnectAttempt < Self.maxReconnectAttempts {
+                let attempt = self.reconnectAttempt
+                let delay = Self.backoffDelay(attempt: attempt)
+                self.logger.info("All peers lost — reconnect attempt \(attempt + 1)/\(Self.maxReconnectAttempts) in \(String(format: "%.1f", delay))s")
+
+                do {
+                    try await Task.sleep(for: .seconds(delay))
+                } catch {
+                    return  // Cancelled (peer reconnected or stop() called)
+                }
+                guard !Task.isCancelled else { return }
+
+                self.logger.info("Reconnecting: restarting advertising + browsing (attempt \(attempt + 1))")
+
+                // Stop and restart discovery
+                self.advertiser?.stopAdvertisingPeer()
+                self.browser?.stopBrowsingForPeers()
+                self.advertiser?.startAdvertisingPeer()
+                self.browser?.startBrowsingForPeers()
+
+                self.reconnectAttempt += 1
+
+                // Brief grace period for peers to appear before next iteration
+                do {
+                    try await Task.sleep(for: .seconds(3))
+                } catch {
+                    return
+                }
+
+                // If peers appeared during grace period, updatePeerList cancels this task
+                if !self.session.connectedPeers.isEmpty {
+                    return
+                }
             }
-            guard let self, !Task.isCancelled else { return }
 
-            self.logger.info("Reconnecting: restarting advertising + browsing")
-
-            // Stop and restart discovery
-            self.advertiser?.stopAdvertisingPeer()
-            self.browser?.stopBrowsingForPeers()
-            self.advertiser?.startAdvertisingPeer()
-            self.browser?.startBrowsingForPeers()
-
-            // Increase backoff for next attempt (exponential, capped)
-            self.reconnectBackoff = min(self.reconnectBackoff * 2.0, Self.maxBackoff)
-
-            // If still no peers after restart, updatePeerList will trigger another cycle
+            // Exhausted all attempts
+            if !Task.isCancelled {
+                self.logger.warning("Reconnection failed after \(Self.maxReconnectAttempts) attempts")
+                await MainActor.run {
+                    self.onReconnectFailed?()
+                }
+            }
         }
     }
 }
