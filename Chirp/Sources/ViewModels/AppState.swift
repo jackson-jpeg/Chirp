@@ -334,6 +334,17 @@ final class AppState {
         transport.onPeersChanged = { [weak self] _ in self?.updateUnifiedPeerList() }
         waTransport?.onPeersChanged = { [weak self] _ in self?.updateUnifiedPeerList() }
 
+        // Wire peer ghost detection — auto-prune peers with no heartbeat for >45s
+        Task {
+            await peerTracker.setGhostCallback { [weak self] peerID in
+                Task { @MainActor in
+                    guard let self else { return }
+                    self.updateUnifiedPeerList()
+                    Logger.ptt.info("Peer ghosted and pruned: \(peerID)")
+                }
+            }
+        }
+
         // Wire CICADA key derivation (after all properties initialized)
         cicadaService.channelCryptoProvider = { [weak self] channelID in
             self?.channelManager.getChannelCrypto(for: channelID)

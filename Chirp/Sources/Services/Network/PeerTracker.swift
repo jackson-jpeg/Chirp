@@ -9,6 +9,13 @@ actor PeerTracker {
     /// Called when a peer is marked stale (no heartbeat for >15s). Parameter is the peer ID.
     var onPeerStale: (@Sendable (String) -> Void)?
 
+    /// Called when a peer is pruned after no heartbeat for >45s. Parameter is the peer ID.
+    var onPeerGhost: (@Sendable (String) -> Void)?
+
+    func setGhostCallback(_ callback: (@Sendable (String) -> Void)?) {
+        onPeerGhost = callback
+    }
+
     // MARK: - Peer Management
 
     func updatePeer(id: String, name: String) {
@@ -59,7 +66,7 @@ actor PeerTracker {
         healthCheckTask = Task { [weak self] in
             guard let self else { return }
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(5))
+                try? await Task.sleep(for: .seconds(15))
                 guard !Task.isCancelled else { break }
                 await self.runHealthCheck()
             }
@@ -74,9 +81,18 @@ actor PeerTracker {
     private func runHealthCheck() {
         let now = Date()
         let staleThreshold: TimeInterval = 15.0
+        let ghostThreshold: TimeInterval = 45.0
 
         for (id, var peer) in peers {
-            if peer.isConnected && now.timeIntervalSince(peer.lastHeartbeat) > staleThreshold {
+            let elapsed = now.timeIntervalSince(peer.lastHeartbeat)
+
+            if elapsed > ghostThreshold {
+                // Peer is a ghost — fully remove it
+                peers.removeValue(forKey: id)
+                logger.warning("Peer \(peer.name) (\(id)) ghosted — pruned after >\(ghostThreshold)s with no heartbeat")
+                onPeerGhost?(id)
+            } else if peer.isConnected && elapsed > staleThreshold {
+                // Peer is stale — mark disconnected but keep tracking
                 peer.isConnected = false
                 peers[id] = peer
                 logger.warning("Peer \(peer.name) (\(id)) marked disconnected — no heartbeat for >\(staleThreshold)s")
