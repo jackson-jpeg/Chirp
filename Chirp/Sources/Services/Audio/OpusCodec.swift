@@ -12,6 +12,12 @@ final class OpusCodec: @unchecked Sendable {
     /// Current encoder bitrate in bits per second.
     private(set) var currentBitrate: Int = Constants.Opus.bitrate
 
+    /// Whether in-band Forward Error Correction is enabled.
+    private(set) var fecEnabled: Bool = false
+
+    /// Expected packet loss percentage (0-100) used by FEC to tune redundancy.
+    private(set) var expectedPacketLossPercent: Int = 0
+
     let format: AVAudioFormat
 
     // MARK: - Adaptive Bitrate
@@ -64,10 +70,17 @@ final class OpusCodec: @unchecked Sendable {
         chirp_opus_set_bitrate(enc, Int32(Constants.Opus.bitrate))
         self.currentBitrate = Constants.Opus.bitrate
 
+        // Enable in-band FEC for packet loss recovery (~2kbps overhead)
+        chirp_opus_set_inband_fec(enc, 1)
+        self.fecEnabled = true
+        // Assume 10% loss as a reasonable default for BLE mesh
+        chirp_opus_set_packet_loss_perc(enc, 10)
+        self.expectedPacketLossPercent = 10
+
         // Decoder uses the Swift wrapper (no CTL needed)
         self.decoder = try Opus.Decoder(format: fmt, application: .voip)
 
-        Logger.audio.info("OpusCodec initialized: \(Constants.Opus.sampleRate)Hz, \(Constants.Opus.channels)ch, \(Constants.Opus.bitrate)bps")
+        Logger.audio.info("OpusCodec initialized: \(Constants.Opus.sampleRate)Hz, \(Constants.Opus.channels)ch, \(Constants.Opus.bitrate)bps, FEC enabled")
     }
 
     deinit {
@@ -85,6 +98,29 @@ final class OpusCodec: @unchecked Sendable {
             Logger.audio.info("Opus bitrate changed to \(clamped) bps")
         } else {
             Logger.audio.error("Failed to set Opus bitrate to \(clamped): error \(result)")
+        }
+    }
+
+    /// Enable or disable in-band Forward Error Correction.
+    func setFEC(enabled: Bool) {
+        let result = chirp_opus_set_inband_fec(encoder, enabled ? 1 : 0)
+        if result == 0 {
+            fecEnabled = enabled
+            Logger.audio.info("Opus FEC \(enabled ? "enabled" : "disabled")")
+        } else {
+            Logger.audio.error("Failed to set Opus FEC: error \(result)")
+        }
+    }
+
+    /// Set expected packet loss percentage (0-100) to tune FEC redundancy.
+    func setExpectedPacketLoss(_ percent: Int) {
+        let clamped = max(0, min(100, percent))
+        let result = chirp_opus_set_packet_loss_perc(encoder, Int32(clamped))
+        if result == 0 {
+            expectedPacketLossPercent = clamped
+            Logger.audio.info("Opus expected packet loss set to \(clamped)%")
+        } else {
+            Logger.audio.error("Failed to set Opus packet loss: error \(result)")
         }
     }
 

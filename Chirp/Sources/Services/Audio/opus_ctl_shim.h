@@ -28,4 +28,10 @@ int32_t chirp_opus_set_bitrate(ChirpOpusEncoder encoder, int32_t bitrate);
 /// Get current encoder bitrate. Returns bitrate or negative error.
 int32_t chirp_opus_get_bitrate(ChirpOpusEncoder encoder);
 
+/// Enable or disable in-band Forward Error Correction (FEC). Returns 0 on success.
+int32_t chirp_opus_set_inband_fec(ChirpOpusEncoder encoder, int32_t enabled);
+
+/// Set expected packet loss percentage (0-100). Helps FEC decide redundancy level. Returns 0 on success.
+int32_t chirp_opus_set_packet_loss_perc(ChirpOpusEncoder encoder, int32_t percentage);
+
 #endif /* OPUS_CTL_SHIM_H */
