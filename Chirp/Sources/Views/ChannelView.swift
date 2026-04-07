@@ -384,7 +384,12 @@ struct ChannelView: View {
                     attachmentType: .voiceNote
                 )
                 toast = ToastItem(message: String(localized: "chat.voiceNote.sent"), type: .success)
-            }
+            },
+            onLoadOlder: {
+                appState.textMessageService.loadOlderMessages(for: channel.id)
+            },
+            hasLoadedAll: appState.textMessageService.fullyLoadedChannels.contains(channel.id),
+            isLoadingOlder: appState.textMessageService.isLoadingOlderMessages
         )
     }
 

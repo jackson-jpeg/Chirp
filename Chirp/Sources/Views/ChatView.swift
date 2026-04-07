@@ -27,6 +27,12 @@ struct ChatView: View {
     var onMessageAppeared: ((UUID) -> Void)?
     /// Called when a voice note is recorded: (duration, audioData).
     var onSendVoiceNote: ((TimeInterval, Data) -> Void)?
+    /// Called when the user scrolls to the top to load older messages.
+    var onLoadOlder: (() -> Void)?
+    /// Whether all history has been loaded (hides the loading spinner at top).
+    var hasLoadedAll: Bool = true
+    /// Whether an older-messages fetch is currently in progress.
+    var isLoadingOlder: Bool = false
 
     @State private var composedText: String = ""
     @State private var hiddenText: String = ""
@@ -246,6 +252,22 @@ struct ChatView: View {
     private func messagesList(proxy: ScrollViewProxy) -> some View {
         ScrollView {
             LazyVStack(spacing: 2) {
+                // Pagination sentinel — triggers loading older messages
+                if !hasLoadedAll {
+                    Group {
+                        if isLoadingOlder {
+                            ProgressView()
+                                .tint(Constants.Colors.textTertiary)
+                        } else {
+                            Color.clear
+                                .onAppear { onLoadOlder?() }
+                        }
+                    }
+                    .frame(height: 32)
+                    .frame(maxWidth: .infinity)
+                    .id("pagination-top")
+                }
+
                 ForEach(Array(clusteredMessages.enumerated()), id: \.offset) { _, item in
                     switch item {
                     case .dateSeparator(let date):

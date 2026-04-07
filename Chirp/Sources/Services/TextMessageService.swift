@@ -52,8 +52,17 @@ final class TextMessageService {
 
     private let logger = Logger(subsystem: Constants.subsystem, category: "TextMessage")
 
-    /// Maximum messages retained per channel.
-    private let maxMessagesPerChannel = 500
+    /// Maximum messages retained per channel in memory.
+    private let maxMessagesPerChannel = 200
+
+    /// Number of messages to load per page (initial + each older batch).
+    private let pageSize = 50
+
+    /// Channels that have no more older messages in the database.
+    private(set) var fullyLoadedChannels: Set<String> = []
+
+    /// True while an older-messages fetch is in progress (prevents duplicate requests).
+    private(set) var isLoadingOlderMessages: Bool = false
 
     /// Seen message IDs for deduplication.
     private var seenIDs: [UUID: Date] = [:]
@@ -585,19 +594,73 @@ final class TextMessageService {
     // MARK: - Private
 
     /// Hydrate the in-memory cache from the database for a channel, once per session.
+    /// Loads only the most recent `pageSize` messages initially.
     private func hydrateIfNeeded(channelID: String) {
         guard !hydratedChannels.contains(channelID) else { return }
         hydratedChannels.insert(channelID)
 
         guard let db = database else { return }
 
-        let records = db.messages(forChannel: channelID, limit: maxMessagesPerChannel)
+        let records = db.messages(forChannel: channelID, limit: pageSize)
         let messages = records.compactMap { $0.toMeshTextMessage() }
 
         if !messages.isEmpty {
             messagesByChannel[channelID] = messages
             logger.info("Hydrated \(messages.count) messages for channel \(channelID, privacy: .public)")
         }
+
+        // If we got fewer than a full page, there's nothing older to load.
+        if messages.count < pageSize {
+            fullyLoadedChannels.insert(channelID)
+        }
+    }
+
+    /// Load the next batch of older messages for a channel.
+    /// Prepends them to the in-memory cache, capping at `maxMessagesPerChannel`.
+    /// Returns the number of messages loaded (0 means no more history).
+    @discardableResult
+    func loadOlderMessages(for channelID: String) -> Int {
+        guard !fullyLoadedChannels.contains(channelID),
+              !isLoadingOlderMessages,
+              let db = database else { return 0 }
+
+        hydrateIfNeeded(channelID: channelID)
+
+        guard let oldestMessage = messagesByChannel[channelID]?.first else {
+            fullyLoadedChannels.insert(channelID)
+            return 0
+        }
+
+        isLoadingOlderMessages = true
+        defer { isLoadingOlderMessages = false }
+
+        let oldestTimestamp = ISO8601DateFormatter().string(from: oldestMessage.timestamp)
+        let records = db.messagesBefore(
+            timestamp: oldestTimestamp,
+            forChannel: channelID,
+            limit: pageSize
+        )
+        let olderMessages = records.compactMap { $0.toMeshTextMessage() }
+
+        if olderMessages.isEmpty {
+            fullyLoadedChannels.insert(channelID)
+            return 0
+        }
+
+        if olderMessages.count < pageSize {
+            fullyLoadedChannels.insert(channelID)
+        }
+
+        // Prepend older messages and trim from the end if over the cap.
+        var history = messagesByChannel[channelID] ?? []
+        history.insert(contentsOf: olderMessages, at: 0)
+        if history.count > maxMessagesPerChannel {
+            history.removeLast(history.count - maxMessagesPerChannel)
+        }
+        messagesByChannel[channelID] = history
+
+        logger.info("Loaded \(olderMessages.count) older messages for channel \(channelID, privacy: .public), total: \(history.count)")
+        return olderMessages.count
     }
 
     /// Append a message to its channel history, enforcing the per-channel cap.

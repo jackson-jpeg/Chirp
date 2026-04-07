@@ -99,18 +99,42 @@ final class MessageDatabase {
 
     // MARK: - Queries
 
-    /// Fetch messages for a channel, ordered by timestamp ascending.
+    /// Fetch the most recent messages for a channel, ordered by timestamp ascending.
     func messages(forChannel channelID: String, limit: Int) -> [MessageRecord] {
         do {
+            // Subquery: grab the N newest rows, then re-sort ascending.
             return try dbQueue.read { db in
-                try MessageRecord
+                let rows = try MessageRecord
                     .filter(Column("channelID") == channelID)
-                    .order(Column("timestamp").asc)
+                    .order(Column("timestamp").desc)
                     .limit(limit)
                     .fetchAll(db)
+                return rows.reversed()
             }
         } catch {
             logger.error("Failed to fetch messages: \(error.localizedDescription, privacy: .public)")
+            return []
+        }
+    }
+
+    /// Fetch messages older than the given ISO 8601 timestamp, ordered ascending.
+    /// Used for paginating backwards through history.
+    func messagesBefore(
+        timestamp: String,
+        forChannel channelID: String,
+        limit: Int
+    ) -> [MessageRecord] {
+        do {
+            return try dbQueue.read { db in
+                let rows = try MessageRecord
+                    .filter(Column("channelID") == channelID && Column("timestamp") < timestamp)
+                    .order(Column("timestamp").desc)
+                    .limit(limit)
+                    .fetchAll(db)
+                return rows.reversed()
+            }
+        } catch {
+            logger.error("Failed to fetch older messages: \(error.localizedDescription, privacy: .public)")
             return []
         }
     }
