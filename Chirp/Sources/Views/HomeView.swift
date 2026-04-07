@@ -1176,6 +1176,7 @@ struct HomeView: View {
     @State private var showChannelCreation = false
     @State private var showPairing = false
     @State private var showGatewayMessage = false
+    @State private var showDiagnostics = false
     @State private var toast: ToastItem?
     @State private var connectedPeerCount = 0
     @State private var isRefreshing = false
@@ -1290,6 +1291,9 @@ struct HomeView: View {
                     localPeerID: appState.localPeerID,
                     localPeerName: appState.localPeerName
                 )
+            }
+            .sheet(isPresented: $showDiagnostics) {
+                DiagnosticsView()
             }
             .alert(String(localized: "home.sos.alertTitle"), isPresented: $showSOSConfirm) {
                 Button(String(localized: "home.sos.sendButton"), role: .destructive) {
@@ -1492,6 +1496,9 @@ struct HomeView: View {
                     isEncrypted: channelIsEncrypted,
                     isEmergencyActive: EmergencyMode.shared.isActive
                 )
+                .onLongPressGesture {
+                    showDiagnostics = true
+                }
             }
         }
         .onChange(of: appState.pttState) { _, newValue in
