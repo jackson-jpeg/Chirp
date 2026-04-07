@@ -20,7 +20,7 @@ struct DiagnosticsView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 32)
             }
-            .background(Constants.Colors.background)
+            .background(Constants.Colors.backgroundPrimary)
             .navigationTitle(String(localized: "diagnostics.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
@@ -239,7 +239,7 @@ struct DiagnosticsView: View {
 
             Text(value)
                 .font(.system(size: 14, weight: .bold, design: .monospaced))
-                .foregroundStyle(Constants.Colors.slate300)
+                .foregroundStyle(Constants.Colors.slate400)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
