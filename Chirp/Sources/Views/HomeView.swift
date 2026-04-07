@@ -228,15 +228,30 @@ private struct ChannelCard: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            // Channel icon
-            ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(isActive ? Constants.Colors.blue500.opacity(0.15) : Constants.Colors.slate700.opacity(0.6))
-                    .frame(width: 50, height: 50)
+            // Channel icon with peer badge
+            ZStack(alignment: .topTrailing) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(isActive ? Constants.Colors.blue500.opacity(0.15) : Constants.Colors.slate700.opacity(0.6))
+                        .frame(width: 50, height: 50)
 
-                Image(systemName: channel.accessMode == .locked ? "lock.fill" : "waveform")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(isActive ? Constants.Colors.blue500 : Constants.Colors.slate400)
+                    Image(systemName: channel.accessMode == .locked ? "lock.fill" : "waveform")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundStyle(isActive ? Constants.Colors.blue500 : Constants.Colors.slate400)
+                }
+
+                // Live peer-count badge
+                if channel.activePeerCount > 0 {
+                    Text("\(channel.activePeerCount)")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .frame(minWidth: 18, minHeight: 18)
+                        .background(
+                            Circle()
+                                .fill(Constants.Colors.electricGreen)
+                        )
+                        .offset(x: 6, y: -6)
+                }
             }
 
             // Channel info
