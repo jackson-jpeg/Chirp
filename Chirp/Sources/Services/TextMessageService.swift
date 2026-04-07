@@ -535,8 +535,10 @@ final class TextMessageService {
         }
 
         // Update the message's delivery status in memory.
+        // Only upgrade: don't downgrade .read back to .delivered.
         if var messages = messagesByChannel[channelID] {
-            if let index = messages.firstIndex(where: { $0.id == messageID }) {
+            if let index = messages.firstIndex(where: { $0.id == messageID }),
+               messages[index].deliveryStatus == .sent {
                 messages[index].deliveryStatus = .delivered
                 messagesByChannel[channelID] = messages
                 logger.info("Message \(messageID.uuidString, privacy: .public) delivered")
