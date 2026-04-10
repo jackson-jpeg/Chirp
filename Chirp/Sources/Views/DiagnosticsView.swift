@@ -7,6 +7,7 @@ struct DiagnosticsView: View {
 
     @State private var peers: [ChirpPeer] = []
     @State private var meshStats: MeshStats?
+    @State private var linkMetrics: [WALinkMetrics] = []
 
     var body: some View {
         NavigationStack {
@@ -15,6 +16,9 @@ struct DiagnosticsView: View {
                     meshOverviewSection
                     peersSection
                     packetStatsSection
+                    if !linkMetrics.isEmpty {
+                        wifiAwareSection
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
@@ -28,6 +32,7 @@ struct DiagnosticsView: View {
                 while !Task.isCancelled {
                     peers = await appState.peerTracker.allPeers
                     meshStats = appState.meshStats
+                    linkMetrics = Array(appState.wifiAwareLinkMetrics.values)
                     try? await Task.sleep(for: .seconds(2))
                 }
             }
@@ -188,6 +193,87 @@ struct DiagnosticsView: View {
                 .background(glassBackground)
             }
         }
+    }
+
+    // MARK: - WiFi Aware
+
+    private var wifiAwareSection: some View {
+        VStack(spacing: 12) {
+            sectionHeader(String(localized: "diagnostics.wifiAware"), icon: "wifi")
+
+            VStack(spacing: 0) {
+                ForEach(linkMetrics) { metric in
+                    wifiAwareRow(metric)
+
+                    if metric.id != linkMetrics.last?.id {
+                        Divider().background(Constants.Colors.slate700)
+                    }
+                }
+            }
+            .background(glassBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    private func wifiAwareRow(_ metric: WALinkMetrics) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text(metric.deviceName)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Constants.Colors.textPrimary)
+
+                Spacer()
+
+                Text(metric.qualityLabel)
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundStyle(qualityColor(metric))
+            }
+
+            HStack(spacing: 16) {
+                if let sig = metric.signalStrength {
+                    metricLabel("Signal", value: String(format: "%.0f dBm", sig))
+                }
+                if let cap = metric.capacityRatio {
+                    metricLabel("Capacity", value: String(format: "%.0f%%", cap * 100))
+                }
+                if let latency = metric.bestEffortLatency {
+                    metricLabel("Latency", value: formatDuration(latency))
+                }
+                if let uptime = metric.connectionUptime {
+                    metricLabel("Uptime", value: formatDuration(uptime))
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+
+    private func metricLabel(_ label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(label)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(Constants.Colors.slate500)
+            Text(value)
+                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .foregroundStyle(Constants.Colors.slate400)
+        }
+    }
+
+    private func qualityColor(_ metric: WALinkMetrics) -> Color {
+        guard let ratio = metric.capacityRatio else { return Constants.Colors.slate500 }
+        if ratio > 0.7 { return Constants.Colors.electricGreen }
+        if ratio > 0.4 { return Constants.Colors.amber }
+        return Constants.Colors.slate400
+    }
+
+    private func formatDuration(_ d: Duration) -> String {
+        let seconds = d.components.seconds
+        let attoseconds = d.components.attoseconds
+        let ms = Double(seconds) * 1000 + Double(attoseconds) / 1_000_000_000_000_000
+        if ms < 1000 {
+            return String(format: "%.0fms", ms)
+        }
+        return String(format: "%.1fs", ms / 1000)
     }
 
     // MARK: - Components
