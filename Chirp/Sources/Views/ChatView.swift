@@ -162,7 +162,7 @@ struct ChatView: View {
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Constants.Colors.textSecondary)
                 }
-                .accessibilityLabel(isSearching ? "Close search" : "Search messages")
+                .accessibilityLabel(isSearching ? String(localized: "accessibility.closeSearch") : String(localized: "accessibility.searchMessages"))
             }
         }
         .sheet(isPresented: $showImagePicker) {
@@ -384,7 +384,7 @@ struct ChatView: View {
                     .font(Constants.Typography.body)
                     .foregroundStyle(Constants.Colors.textPrimary)
                     .autocorrectionDisabled()
-                    .accessibilityLabel("Search messages")
+                    .accessibilityLabel(String(localized: "accessibility.searchMessages"))
                     .accessibilityIdentifier(AccessibilityID.chatSearchField)
 
                 if !searchText.isEmpty {
@@ -401,7 +401,7 @@ struct ChatView: View {
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(Constants.Colors.textSecondary)
                         }
-                        .accessibilityLabel("Previous search result")
+                        .accessibilityLabel(String(localized: "accessibility.previousSearchResult"))
 
                         Button {
                             navigateSearch(direction: 1, proxy: proxy)
@@ -410,7 +410,7 @@ struct ChatView: View {
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(Constants.Colors.textSecondary)
                         }
-                        .accessibilityLabel("Next search result")
+                        .accessibilityLabel(String(localized: "accessibility.nextSearchResult"))
                     } else {
                         Text(String(localized: "chat.search.noResults"))
                             .font(Constants.Typography.monoSmall)
@@ -425,7 +425,7 @@ struct ChatView: View {
                             .font(.system(size: 14))
                             .foregroundStyle(Constants.Colors.textTertiary)
                     }
-                    .accessibilityLabel("Clear search")
+                    .accessibilityLabel(String(localized: "accessibility.clearSearch"))
                 }
             }
             .padding(.horizontal, 12)
@@ -566,7 +566,7 @@ struct ChatView: View {
                 .frame(height: 0.5)
         }
         .padding(.horizontal, 24)
-        .accessibilityLabel("Messages from \(formattedDateSeparator(date))")
+        .accessibilityLabel(String(localized: "accessibility.messagesFrom \(formattedDateSeparator(date))"))
     }
 
     // MARK: - Message Clustering
