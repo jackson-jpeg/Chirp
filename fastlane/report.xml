@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="fastlane.lanes">
+    
+    
+    
+      
+      <testcase classname="fastlane.lanes" name="0: setup_ci" time="0.000861">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="1: security unlock-keychain -p &apos;Xugzj8G3aq1GhbyOO8vGZDsAwfUCNT4ttXvWRhM8&apos; sanger-ci.keychain-db" time="0.16578">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="2: security list-keychains -d user -s &quot;sanger-ci.keychain-db&quot; $(security list-keychains -d user | sed &apos;s/&quot;//g&apos; | tr -d &apos; &apos;)" time="0.255146">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="3: app_store_connect_api_key" time="0.038226">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="4: match" time="5.999789">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="5: security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k &apos;Xugzj8G3aq1GhbyOO8vGZDsAwfUCNT4ttXvWRhM8&apos; /Users/jackson/Library/Keychains/sanger-ci.keychain-db 2&gt;&amp;1 | tail -3 || true" time="0.505171">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="6: cd .. &amp;&amp; xcodegen generate 2&gt;&amp;1 | tail -2" time="0.64355">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="7: build_app" time="423.193685">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="8: xcrun devicectl list devices 2&gt;/dev/null | awk &apos;/available.*paired/ &amp;&amp; /iPhone/ {print $(NF-3); exit}&apos;" time="1.040041">
+        
+      </testcase>
+    
+  </testsuite>
+</testsuites>

@@ -2,64 +2,70 @@ name: ChirpChirp
 options:
   bundleIdPrefix: com.chirpchirp
   deploymentTarget:
-    iOS: "26.0"
-  xcodeVersion: "26.0"
-
+    iOS: '26.0'
+  xcodeVersion: '26.0'
 packages:
   Opus:
     url: https://github.com/alta/swift-opus
-    from: "0.0.1"
+    from: 0.0.1
   GRDB:
     url: https://github.com/groue/GRDB.swift
-    from: "7.0.0"
+    from: 7.0.0
   MapLibreNative:
     url: https://github.com/maplibre/maplibre-gl-native-distribution
-    from: "6.9.0"
-
+    from: 6.9.0
 settings:
   base:
-    SWIFT_VERSION: "6.0"
+    SWIFT_VERSION: '6.0'
     SWIFT_STRICT_CONCURRENCY: complete
     INFOPLIST_FILE: Chirp/Info.plist
     CODE_SIGN_ENTITLEMENTS: Chirp/Chirp.entitlements
-    TARGETED_DEVICE_FAMILY: "1"
+    TARGETED_DEVICE_FAMILY: '1'
     SUPPORTED_PLATFORMS: iphoneos iphonesimulator
     DEVELOPMENT_TEAM: 2MU4PC84GZ
     CODE_SIGN_STYLE: Automatic
     DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
-    GCC_GENERATE_DEBUGGING_SYMBOLS: YES
+    GCC_GENERATE_DEBUGGING_SYMBOLS: true
     SWIFT_COMPILATION_MODE: singlefile
-
 targets:
   Chirp:
     type: application
     platform: iOS
     sources:
-      - path: Chirp/Sources
-      - path: Chirp/Resources
+    - path: Chirp/Sources
+    - path: Chirp/Resources
     dependencies:
-      - package: Opus
-        product: Opus
-      - package: GRDB
-        product: GRDB
-      - package: MapLibreNative
-        product: MapLibre
-      - sdk: CoreBluetooth.framework
-      - sdk: SoundAnalysis.framework
-      - sdk: NearbyInteraction.framework
-      - sdk: CoreMotion.framework
-      - sdk: NetworkExtension.framework
-      - sdk: CoreML.framework
-      - sdk: NaturalLanguage.framework
-      - sdk: Metal.framework
-      - sdk: MetalKit.framework
+    - package: Opus
+      product: Opus
+    - package: GRDB
+      product: GRDB
+    - package: MapLibreNative
+      product: MapLibre
+    - sdk: CoreBluetooth.framework
+    - sdk: SoundAnalysis.framework
+    - sdk: NearbyInteraction.framework
+    - sdk: CoreMotion.framework
+    - sdk: NetworkExtension.framework
+    - sdk: CoreML.framework
+    - sdk: NaturalLanguage.framework
+    - sdk: Metal.framework
+    - sdk: MetalKit.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp
-        MARKETING_VERSION: "1.0.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: 1.0.0
+        CURRENT_PROJECT_VERSION: '1'
         GENERATE_INFOPLIST_FILE: false
         SWIFT_OBJC_BRIDGING_HEADER: Chirp/Sources/Services/Audio/Chirp-Bridging-Header.h
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: 2MU4PC84GZ
+      configs:
+        Debug:
+          CODE_SIGN_IDENTITY: Apple Development
+          PROVISIONING_PROFILE_SPECIFIER: match Development com.jacksonmsanger.chirpchirp
+        Release:
+          CODE_SIGN_IDENTITY: Apple Distribution
+          PROVISIONING_PROFILE_SPECIFIER: match AppStore com.jacksonmsanger.chirpchirp
     info:
       path: Chirp/Info.plist
       properties:
@@ -67,58 +73,85 @@ targets:
         UILaunchScreen:
           UIColorName: LaunchBackground
         UISupportedInterfaceOrientations:
-          - UIInterfaceOrientationPortrait
-          - UIInterfaceOrientationLandscapeLeft
-          - UIInterfaceOrientationLandscapeRight
-          - UIInterfaceOrientationPortraitUpsideDown
-        NSMicrophoneUsageDescription: "ChirpChirps uses your microphone for real-time voice communication with nearby devices."
-        NSCameraUsageDescription: "ChirpChirps uses your camera to capture and share media with nearby devices."
-        NSPhotoLibraryUsageDescription: "ChirpChirps accesses your photo library to share images with nearby devices."
-        NSPhotoLibraryAddUsageDescription: "ChirpChirps saves received images to your photo library."
+        - UIInterfaceOrientationPortrait
+        - UIInterfaceOrientationLandscapeLeft
+        - UIInterfaceOrientationLandscapeRight
+        - UIInterfaceOrientationPortraitUpsideDown
+        NSMicrophoneUsageDescription: ChirpChirps uses your microphone for real-time
+          voice communication with nearby devices.
+        NSCameraUsageDescription: ChirpChirps uses your camera to capture and share
+          media with nearby devices.
+        NSPhotoLibraryUsageDescription: ChirpChirps accesses your photo library to
+          share images with nearby devices.
+        NSPhotoLibraryAddUsageDescription: ChirpChirps saves received images to your
+          photo library.
         ITSAppUsesNonExemptEncryption: false
-        NSBluetoothAlwaysUsageDescription: "ChirpChirps uses Bluetooth to discover nearby devices for peer-to-peer communication."
-        NSNearbyInteractionUsageDescription: "ChirpChirps uses Ultra-Wideband to precisely locate nearby mesh peers for indoor positioning."
-        NSMotionUsageDescription: "ChirpChirps uses motion sensors to improve positioning when GPS is unavailable."
-        NSSpeechRecognitionUsageDescription: "ChirpChirps uses speech recognition for real-time translation of voice communication."
-        NSLocationWhenInUseUsageDescription: "ChirpChirps uses your location to share your position with nearby peers."
-        NSLocationAlwaysAndWhenInUseUsageDescription: "ChirpChirps uses background location for emergency SOS broadcasting in critical situations."
-        NSLocalNetworkUsageDescription: "ChirpChirps uses your local network to connect directly to nearby devices without internet."
+        NSBluetoothAlwaysUsageDescription: ChirpChirps uses Bluetooth to discover
+          nearby devices for peer-to-peer communication.
+        NSNearbyInteractionUsageDescription: ChirpChirps uses Ultra-Wideband to precisely
+          locate nearby mesh peers for indoor positioning.
+        NSMotionUsageDescription: ChirpChirps uses motion sensors to improve positioning
+          when GPS is unavailable.
+        NSSpeechRecognitionUsageDescription: ChirpChirps uses speech recognition for
+          real-time translation of voice communication.
+        NSLocationWhenInUseUsageDescription: ChirpChirps uses your location to share
+          your position with nearby peers.
+        NSLocationAlwaysAndWhenInUseUsageDescription: ChirpChirps uses background
+          location for emergency SOS broadcasting in critical situations.
+        NSLocalNetworkUsageDescription: ChirpChirps uses your local network to connect
+          directly to nearby devices without internet.
         NSBonjourServices:
-          - "_chirp-ptt._udp"
-          - "_chirp-ptt._tcp"
+        - _chirp-ptt._udp
+        - _chirp-ptt._tcp
         NSSupportsLiveActivities: true
         UIBackgroundModes:
-          - audio
+        - audio
         BGTaskSchedulerPermittedIdentifiers:
-          - com.chirpchirp.mesh.refresh
-          - com.chirpchirp.swarm.compute
-
+        - com.chirpchirp.mesh.refresh
+        - com.chirpchirp.swarm.compute
   ChirpLiveActivity:
     type: app-extension
     platform: iOS
     sources:
-      - path: ChirpLiveActivity
-      - path: Chirp/Sources/Models/ChirpActivityAttributes.swift
+    - path: ChirpLiveActivity
+    - path: Chirp/Sources/Models/ChirpActivityAttributes.swift
     dependencies: []
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp.live-activity
         INFOPLIST_FILE: ChirpLiveActivity/Info.plist
-        MARKETING_VERSION: "1.0.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: 1.0.0
+        CURRENT_PROJECT_VERSION: '1'
         GENERATE_INFOPLIST_FILE: false
-        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
-        SWIFT_VERSION: "6.0"
-        TARGETED_DEVICE_FAMILY: "1"
+        LD_RUNPATH_SEARCH_PATHS: $(inherited) @executable_path/Frameworks @executable_path/../../Frameworks
+        SWIFT_VERSION: '6.0'
+        TARGETED_DEVICE_FAMILY: '1'
         SUPPORTED_PLATFORMS: iphoneos iphonesimulator
-
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: 2MU4PC84GZ
+      configs:
+        Debug:
+          CODE_SIGN_IDENTITY: Apple Development
+          PROVISIONING_PROFILE_SPECIFIER: match Development com.jacksonmsanger.chirpchirp.live-activity
+        Release:
+          CODE_SIGN_IDENTITY: Apple Distribution
+          PROVISIONING_PROFILE_SPECIFIER: match AppStore com.jacksonmsanger.chirpchirp.live-activity
   ChirpTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - path: ChirpTests
+    - path: ChirpTests
     dependencies:
-      - target: Chirp
+    - target: Chirp
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp.tests
+schemes:
+  Chirp:
+    build:
+      targets:
+        Chirp: all
+    run:
+      config: Debug
+    archive:
+      config: Release

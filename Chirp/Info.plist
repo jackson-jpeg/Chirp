@@ -25,25 +25,35 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>ChirpChirps uses Bluetooth to discover nearby devices for peer-to-peer communication.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_chirp-ptt._udp</string>
 		<string>_chirp-ptt._tcp</string>
 	</array>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>ChirpChirps uses your location to share your position with nearby peers.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>ChirpChirps uses background location for emergency SOS broadcasting in critical situations.</string>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>ChirpChirps uses your local network to connect directly to nearby devices without internet.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>ChirpChirps uses your microphone for real-time voice communication with nearby devices.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>ChirpChirps uses your camera to capture and share media with nearby devices.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>ChirpChirps accesses your photo library to share images with nearby devices.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>ChirpChirps uses your local network to connect directly to nearby devices without internet.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>ChirpChirps uses background location for emergency SOS broadcasting in critical situations.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>ChirpChirps uses your location to share your position with nearby peers.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>ChirpChirps uses your microphone for real-time voice communication with nearby devices.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>ChirpChirps uses motion sensors to improve positioning when GPS is unavailable.</string>
+	<key>NSNearbyInteractionUsageDescription</key>
+	<string>ChirpChirps uses Ultra-Wideband to precisely locate nearby mesh peers for indoor positioning.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>ChirpChirps saves received images to your photo library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ChirpChirps accesses your photo library to share images with nearby devices.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>ChirpChirps uses speech recognition for real-time translation of voice communication.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIBackgroundModes</key>
@@ -62,15 +72,5 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 	</array>
-	<key>NSNearbyInteractionUsageDescription</key>
-	<string>ChirpChirps uses Ultra-Wideband to precisely locate nearby mesh peers for indoor positioning.</string>
-	<key>NSMotionUsageDescription</key>
-	<string>ChirpChirps uses motion sensors to improve positioning when GPS is unavailable.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>ChirpChirps uses speech recognition for real-time translation of voice communication.</string>
-	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>ChirpChirps uses Bluetooth to discover nearby devices for peer-to-peer communication.</string>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
 </dict>
 </plist>

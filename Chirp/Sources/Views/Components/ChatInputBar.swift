@@ -69,7 +69,7 @@ struct ChatInputBar: View {
                                 onTyping?()
                             }
                         }
-                        .accessibilityLabel("Message input")
+                        .accessibilityLabel(String(localized: "accessibility.messageInput"))
                         .accessibilityIdentifier(AccessibilityID.chatInputField)
 
                     // Character counter (always visible, opacity increases near limit)
@@ -146,7 +146,7 @@ struct ChatInputBar: View {
                     .font(.system(size: 18))
                     .foregroundStyle(Constants.Colors.textTertiary)
             }
-            .accessibilityLabel("Dismiss reply")
+            .accessibilityLabel(String(localized: "accessibility.dismissReply"))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
@@ -193,7 +193,7 @@ struct ChatInputBar: View {
                 .foregroundStyle(Constants.Colors.textTertiary)
                 .frame(width: 36, height: 36)
         }
-        .accessibilityLabel("Attachments")
+        .accessibilityLabel(String(localized: "accessibility.attachments"))
         .accessibilityIdentifier(AccessibilityID.chatAttachmentMenu)
     }
 
@@ -218,8 +218,8 @@ struct ChatInputBar: View {
                         .shadow(color: Constants.Colors.amber.opacity(0.4), radius: 6, y: 2)
                 }
                 .transition(.scale(scale: 0.5).combined(with: .opacity))
-                .accessibilityLabel("Send message")
-                .accessibilityHint("Sends your message to the channel")
+                .accessibilityLabel(String(localized: "accessibility.sendMessage"))
+                .accessibilityHint(String(localized: "accessibility.sendMessage.hint"))
                 .simultaneousGesture(
                     LongPressGesture(minimumDuration: 0.5)
                         .onEnded { _ in
@@ -240,8 +240,8 @@ struct ChatInputBar: View {
                         Circle()
                             .fill(Constants.Colors.surfaceGlass)
                     )
-                    .accessibilityLabel("Send message")
-                    .accessibilityHint("Type a message first")
+                    .accessibilityLabel(String(localized: "accessibility.sendMessage"))
+                    .accessibilityHint(String(localized: "accessibility.sendMessage.disabledHint"))
                     .accessibilityIdentifier(AccessibilityID.chatSendButton)
             }
         }
@@ -276,8 +276,8 @@ struct ChatInputBar: View {
                     dragOffset = 0
                 }
         )
-        .accessibilityLabel("Record voice note")
-        .accessibilityHint("Hold to record, release to send, swipe left to cancel")
+        .accessibilityLabel(String(localized: "accessibility.recordVoiceNote"))
+        .accessibilityHint(String(localized: "accessibility.recordVoiceNote.hint"))
         .accessibilityIdentifier(AccessibilityID.chatVoiceNoteButton)
     }
 
