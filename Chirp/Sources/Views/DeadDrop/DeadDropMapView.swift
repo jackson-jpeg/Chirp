@@ -64,7 +64,7 @@ struct DeadDropMapView: View {
 
     private var backgroundGradient: some View {
         LinearGradient(
-            colors: [.black, Color(red: 0.02, green: 0.02, blue: 0.12)],
+            colors: [.black, Constants.Colors.backgroundDeep],
             startPoint: .top,
             endPoint: .bottom
         )
