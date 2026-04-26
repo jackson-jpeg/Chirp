@@ -47,6 +47,7 @@ enum Constants {
         static let backgroundPrimary = Color(hex: 0x0F172A)
         static let backgroundSecondary = Color(hex: 0x0F172A)
         static let backgroundTertiary = Color(hex: 0x1E293B)
+        static let backgroundDeep = Color(hex: 0x05051F)
         static let cardBackground = Color(hex: 0x1E293B)
 
         // Surface
