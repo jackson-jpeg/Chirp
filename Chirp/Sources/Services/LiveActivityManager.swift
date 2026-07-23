@@ -48,7 +48,7 @@ final class LiveActivityManager {
         peerCount: Int,
         inputLevel: Double
     ) {
-        guard let activity = currentActivity else { return }
+        guard currentActivity != nil else { return }
 
         let pttStateString: String
         var speakerName: String?
@@ -74,13 +74,15 @@ final class LiveActivityManager {
         )
 
         Task {
-            await activity.update(.init(state: updatedState, staleDate: nil))
+            for activity in Activity<ChirpActivityAttributes>.activities {
+                await activity.update(.init(state: updatedState, staleDate: nil))
+            }
         }
     }
 
     /// End the Live Activity when leaving a channel.
     func endActivity() {
-        guard let activity = currentActivity else { return }
+        guard currentActivity != nil else { return }
 
         let finalState = ChirpActivityAttributes.ContentState(
             pttState: "idle",
@@ -91,10 +93,12 @@ final class LiveActivityManager {
         )
 
         Task {
-            await activity.end(
-                .init(state: finalState, staleDate: nil),
-                dismissalPolicy: .immediate
-            )
+            for activity in Activity<ChirpActivityAttributes>.activities {
+                await activity.end(
+                    .init(state: finalState, staleDate: nil),
+                    dismissalPolicy: .immediate
+                )
+            }
         }
         currentActivity = nil
         logger.info("Ended Live Activity")
