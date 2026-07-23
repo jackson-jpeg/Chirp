@@ -61,7 +61,7 @@ targets:
         DEVELOPMENT_TEAM: 2MU4PC84GZ
       configs:
         Debug:
-          CODE_SIGN_IDENTITY: Apple Development
+          CODE_SIGN_IDENTITY: 'Apple Development: Created via API (PJ8D2LN86F)'
           PROVISIONING_PROFILE_SPECIFIER: match Development com.jacksonmsanger.chirpchirp
         Release:
           CODE_SIGN_IDENTITY: Apple Distribution
@@ -131,7 +131,7 @@ targets:
         DEVELOPMENT_TEAM: 2MU4PC84GZ
       configs:
         Debug:
-          CODE_SIGN_IDENTITY: Apple Development
+          CODE_SIGN_IDENTITY: 'Apple Development: Created via API (PJ8D2LN86F)'
           PROVISIONING_PROFILE_SPECIFIER: match Development com.jacksonmsanger.chirpchirp.live-activity
         Release:
           CODE_SIGN_IDENTITY: Apple Distribution
