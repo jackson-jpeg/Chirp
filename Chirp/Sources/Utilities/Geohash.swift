@@ -153,9 +153,9 @@ enum Geohash {
 
     private static let neighborLookup: [Axis: (even: String, odd: String)] = [
         .north: ("p0r21436x8zb9dcf5h7kjnmqesgutwvy", "bc01fg45238967deuvhjyznpkmstqrwx"),
-        .south: ("14365h7k9dcfesgujnmqp0r2twvyx8zb", "238967debc01afgh4567kmstuvhjyznpqrwx"),
+        .south: ("14365h7k9dcfesgujnmqp0r2twvyx8zb", "238967debc01fg45kmstqrwxuvhjyznp"),
         .east:  ("bc01fg45238967deuvhjyznpkmstqrwx", "p0r21436x8zb9dcf5h7kjnmqesgutwvy"),
-        .west:  ("238967debc01afgh4567kmstuvhjyznpqrwx", "14365h7k9dcfesgujnmqp0r2twvyx8zb"),
+        .west:  ("238967debc01fg45kmstqrwxuvhjyznp", "14365h7k9dcfesgujnmqp0r2twvyx8zb"),
     ]
 
     private static let borderLookup: [Axis: (even: String, odd: String)] = [

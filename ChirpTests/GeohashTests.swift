@@ -150,4 +150,107 @@ final class GeohashTests: XCTestCase {
         let neighbors = Geohash.neighbors(of: "")
         XCTAssertTrue(neighbors.isEmpty)
     }
+
+    // MARK: - Neighbor lookup table integrity (regression)
+
+    /// The neighbor lookup tables must each be a permutation of the 32-character
+    /// base32 alphabet. Two of them were 36 characters long, which made
+    /// `adjacentCardinal` index past the end of the 32-element `base32` array and
+    /// trap with "Index out of range" for any hash ending in q, r, w or x — and
+    /// return wrong neighbors (from the duplicated entries) for several others.
+    ///
+    /// The tables are private, so these tests assert the property through the
+    /// public API instead: sweep enough of the globe to hit all 32 possible
+    /// terminal characters, at both an even- and an odd-length precision, and
+    /// check the results against an independent geometric oracle.
+
+    /// Every terminal character must be exercised, otherwise a sweep can pass by
+    /// simply never reaching the broken rows — which is how the original bug
+    /// survived. Guards the two tests below.
+    func testSweepCoversAllThirtyTwoTerminalCharacters() {
+        for precision in [6, 7] {
+            var seen = Set<Character>()
+            for hash in Self.sweepHashes(precision: precision) {
+                if let last = hash.last { seen.insert(last) }
+            }
+            XCTAssertEqual(
+                seen.count, 32,
+                "precision \(precision): sweep reached only \(seen.count)/32 terminal characters"
+            )
+        }
+    }
+
+    /// No coordinate may crash or produce a malformed neighbor.
+    func testNeighborsAreWellFormedAcrossTheGlobe() {
+        for precision in [6, 7] {
+            for hash in Self.sweepHashes(precision: precision) {
+                let neighbors = Geohash.neighbors(of: hash)
+                XCTAssertEqual(neighbors.count, 8, "\(hash): expected 8 neighbors")
+                XCTAssertEqual(Set(neighbors).count, 8, "\(hash): neighbors not distinct")
+                XCTAssertFalse(Set(neighbors).contains(hash), "\(hash): neighbors include the center")
+                for n in neighbors {
+                    XCTAssertEqual(n.count, hash.count, "\(hash) -> \(n): wrong length")
+                    XCTAssertNotNil(Geohash.decode(n), "\(hash) -> \(n): does not decode")
+                }
+            }
+        }
+    }
+
+    /// The neighbors must be the *correct* cells, not merely well-formed ones.
+    /// Oracle: encode the eight coordinates one cell away from this cell's center.
+    /// This catches the silent half of the bug — the duplicated table entries
+    /// returned plausible-looking but wrong neighbors without crashing.
+    func testNeighborsMatchGeometricOracle() {
+        for precision in [6, 7] {
+            let (latSize, lonSize) = Self.cellSize(precision: precision)
+            for hash in Self.sweepHashes(precision: precision) {
+                guard let center = Geohash.decode(hash) else {
+                    XCTFail("\(hash): center does not decode")
+                    continue
+                }
+                var expected = Set<String>()
+                for dLat in [-1.0, 0.0, 1.0] {
+                    for dLon in [-1.0, 0.0, 1.0] {
+                        if dLat == 0 && dLon == 0 { continue }
+                        expected.insert(Geohash.encode(
+                            latitude: center.latitude + dLat * latSize,
+                            longitude: center.longitude + dLon * lonSize,
+                            precision: precision
+                        ))
+                    }
+                }
+                XCTAssertEqual(
+                    Set(Geohash.neighbors(of: hash)), expected,
+                    "\(hash): neighbors do not match the eight adjacent cells"
+                )
+            }
+        }
+    }
+
+    // MARK: - Sweep helpers
+
+    /// Hashes covering a wide grid, away from the poles and the antimeridian so
+    /// that the geometric oracle does not have to model wrapping.
+    private static func sweepHashes(precision: Int) -> [String] {
+        var hashes: [String] = []
+        for lat in stride(from: -57.0, through: 57.0, by: 3.0) {
+            for lon in stride(from: -171.0, through: 171.0, by: 3.0) {
+                hashes.append(encode(latitude: lat, longitude: lon, precision: precision))
+            }
+        }
+        return hashes
+    }
+
+    private static func encode(latitude: Double, longitude: Double, precision: Int) -> String {
+        Geohash.encode(latitude: latitude, longitude: longitude, precision: precision)
+    }
+
+    /// Degrees of latitude/longitude spanned by one cell at the given precision.
+    /// A geohash spends 5 bits per character, alternating longitude first.
+    private static func cellSize(precision: Int) -> (lat: Double, lon: Double) {
+        let bits = 5 * precision
+        let lonBits = (bits + 1) / 2
+        let latBits = bits / 2
+        return (180.0 / pow(2.0, Double(latBits)), 360.0 / pow(2.0, Double(lonBits)))
+    }
 }
