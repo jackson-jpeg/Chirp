@@ -46,6 +46,19 @@ enum TransportPreference {
     /// Protected by an unfair lock to avoid data races across isolation boundaries.
     private static let _currentAudioTransport = OSAllocatedUnfairLock(initialState: TransportChoice.both)
 
+    /// Current hysteresis state, for tests and diagnostics.
+    ///
+    /// Reads and writes go through the same lock as the production path in
+    /// `audioTransportChoice`, so exposing this cannot introduce a data race.
+    /// It exists because the state was previously a plain `static var` of this
+    /// name; when it was wrapped in a lock the accessor was dropped, which broke
+    /// compilation of `ChirpTests/TransportPreferenceTests.swift` — undetected,
+    /// because the test target was not in any scheme and had never been built.
+    static var currentAudioTransport: TransportChoice {
+        get { _currentAudioTransport.withLock { $0 } }
+        set { _currentAudioTransport.withLock { $0 = newValue } }
+    }
+
     // MARK: - Thresholds
 
     /// Switch TO wifiAwareOnly when latency drops below this (ms).
