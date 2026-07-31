@@ -9,3 +9,9 @@ Package.resolved
 *.ipa
 *.dSYM.zip
 *.dSYM
+
+# fastlane run artefacts. report.xml records every shell command fastlane ran,
+# including ones with credentials interpolated into them. It was committed to a
+# PUBLIC repo with the CI keychain password in it. Never track it.
+fastlane/report.xml
+fastlane/README.md
