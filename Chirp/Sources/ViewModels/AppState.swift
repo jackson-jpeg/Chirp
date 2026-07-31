@@ -45,7 +45,6 @@ final class AppState {
     let deadDropService: DeadDropService
     let darkroomService: DarkroomService
     let babelService: BabelService
-    let chorusService: ChorusService
     let meshGateway: MeshGateway
 
     // MARK: - Link Quality
@@ -304,8 +303,6 @@ final class AppState {
         self.babelService = babelService
 
 
-        let chorusService = ChorusService(localPeerID: peerID)
-        self.chorusService = chorusService
 
         let meshGateway = MeshGateway.shared
         meshGateway.configure(peerID: peerID, peerName: self.localPeerName)
@@ -524,16 +521,6 @@ final class AppState {
             }
         }
 
-        chorusService.onSendPacket = { [weak self] payload, channelID in
-            let peers = self?.channelManager.activeChannel?.peers ?? []
-            if TransportPreference.shouldSendOnMC(peers: peers) {
-                try? transport.sendControlData(payload, channelID: channelID)
-            }
-            if TransportPreference.shouldSendOnWA(peers: peers) {
-                try? waTransport?.sendControlData(payload, channelID: channelID)
-            }
-        }
-
         // Wire UWB measurement callback
         uwbService.onMeasurement = { measurement in
             Task {
@@ -616,7 +603,6 @@ final class AppState {
         let deadDropSvc = self.deadDropService
         let darkroomSvc = self.darkroomService
         let babelSvc = self.babelService
-        let chorusSvc = self.chorusService
         let gatewaySvc = self.meshGateway
         Task {
             await router.setCallbacks(
@@ -712,9 +698,6 @@ final class AppState {
 
                             case "BBL!":
                                 babelSvc.handlePacket(payload, channelID: packet.channelID)
-
-                            case "CHR!", "CHO!", "CHC!", "CHX!":
-                                chorusSvc.handlePacket(payload, fromPeer: packet.originID.uuidString, channelID: packet.channelID)
 
                             case "SOS!":
                                 let sosCountBefore = EmergencyBeacon.shared.receivedAlerts.count

@@ -82,15 +82,6 @@ import XCTest
         }
     }
 
-    // MARK: - Chorus (CHR!)
-
-    func testChorusActivationSurvivesMalformed() {
-        for payload in payloads + prefixedPayloads([0x43, 0x48, 0x52, 0x21]) {
-            let result = ChorusActivation.from(payload: payload)
-            _ = result
-        }
-    }
-
     // MARK: - Floor Control (JSON, no prefix)
 
     func testFloorControlSurvivesMalformed() {

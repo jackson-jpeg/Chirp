@@ -129,16 +129,6 @@ struct MoreView: View {
                     )
                 }
 
-                NavigationLink {
-                    ChorusView()
-                } label: {
-                    moreRow(
-                        icon: "waveform.path",
-                        iconColor: Constants.Colors.amberLight,
-                        title: String(localized: "more.chorus.title"),
-                        description: String(localized: "more.chorus.description")
-                    )
-                }
             } header: {
                 sectionHeader(String(localized: "more.section.network"))
             }

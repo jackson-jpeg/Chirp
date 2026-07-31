@@ -1861,26 +1861,6 @@
         }
       }
     },
-    "more.chorus.description": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pipeline inference across mesh"
-          }
-        }
-      }
-    },
-    "more.chorus.title": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chorus"
-          }
-        }
-      }
-    },
     "more.darkroom.description": {
       "localizations": {
         "en": {
