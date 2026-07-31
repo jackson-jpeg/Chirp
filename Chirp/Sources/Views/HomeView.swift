@@ -1203,16 +1203,6 @@ struct HomeView: View {
     @State private var inputLevel: Float = 0.0
     @State private var transmitStartTime: Date?
 
-    private var connectionStatus: ConnectionStatus {
-        let mpPeers = appState.connectedPeerCount
-
-        if mpPeers > 0 {
-            return .connected(peerCount: mpPeers)
-        }
-
-        return .searching
-    }
-
     var body: some View {
         NavigationStack {
             ZStack {
