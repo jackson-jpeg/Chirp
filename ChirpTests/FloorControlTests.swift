@@ -1,25 +1,59 @@
+import os
 import XCTest
 @testable import Chirp
+
+/// Records what ``FloorController`` broadcasts.
+///
+/// `FloorController.sendToAllPeers` is typed `@Sendable`, so the production
+/// contract is "may be invoked from any isolation domain". A recorder that
+/// appended to main-actor test state would only be correct under an assumption
+/// that type does not make — which is what the previous version of these tests
+/// did, and why the compiler reported nine isolation warnings against them.
+///
+/// This recorder is correct under the contract as written: the array lives
+/// behind the same lock primitive the app uses in `TransportPreference`.
+private final class BroadcastRecorder: Sendable {
+    private let storage = OSAllocatedUnfairLock(initialState: [FloorControlMessage]())
+
+    var messages: [FloorControlMessage] { storage.withLock { $0 } }
+
+    func record(_ message: FloorControlMessage) {
+        storage.withLock { $0.append(message) }
+    }
+
+    func reset() {
+        storage.withLock { $0.removeAll() }
+    }
+}
 
 @MainActor
 final class FloorControlTests: XCTestCase {
 
     private var controller: FloorController!
-    private var broadcastedMessages: [FloorControlMessage]!
+    private var recorder: BroadcastRecorder!
 
-    override func setUp() {
-        super.setUp()
-        broadcastedMessages = []
+    private var broadcastedMessages: [FloorControlMessage] { recorder.messages }
+
+    // `setUp()`/`tearDown()` are declared nonisolated on XCTestCase, so a
+    // synchronous override stays nonisolated even inside a @MainActor class —
+    // the class annotation does not reach it. These tests were therefore
+    // constructing and configuring a @MainActor FloorController off the main
+    // actor, which is a state the app never reaches. The async overrides do
+    // pick up the class's isolation, so setup now runs where the app runs.
+    override func setUp() async throws {
+        try await super.setUp()
+        recorder = BroadcastRecorder()
         controller = FloorController(localPeerID: "local-1", localPeerName: "LocalUser")
-        controller.sendToAllPeers = { [weak self] message in
-            self?.broadcastedMessages.append(message)
-        }
+        // Capture the recorder, not `self`: XCTestCase is not Sendable and the
+        // closure is.
+        let recorder = self.recorder!
+        controller.sendToAllPeers = { message in recorder.record(message) }
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         controller = nil
-        broadcastedMessages = nil
-        super.tearDown()
+        recorder = nil
+        try await super.tearDown()
     }
 
     // MARK: - requestFloor
@@ -81,7 +115,7 @@ final class FloorControlTests: XCTestCase {
 
     func testReleaseFloorBroadcastsFloorRelease() {
         controller.requestFloor()
-        broadcastedMessages.removeAll()
+        recorder.reset()
 
         controller.releaseFloor()
 

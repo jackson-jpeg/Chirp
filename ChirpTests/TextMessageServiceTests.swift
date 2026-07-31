@@ -7,8 +7,19 @@ final class TextMessageServiceTests: XCTestCase {
     private var service: TextMessageService!
     private var sentPayloads: [(Data, String)]!
 
-    override func setUp() {
-        super.setUp()
+    // Same defect as FloorControlTests had: a synchronous `setUp()` override
+    // stays nonisolated even inside a @MainActor class, because XCTestCase
+    // declares it nonisolated and an override cannot change that. This was
+    // constructing and configuring a @MainActor TextMessageService off the main
+    // actor — a state the app never reaches. The async overrides do pick up the
+    // class's isolation.
+    //
+    // Unlike FloorController.sendToAllPeers, `onSendPacket` is not @Sendable:
+    // it is a plain closure on a @MainActor type, so it is only ever invoked on
+    // the main actor and main-actor recording state is correct here. No lock
+    // is needed; the isolation of setUp was the whole problem.
+    override func setUp() async throws {
+        try await super.setUp()
         sentPayloads = []
         service = TextMessageService()
         service.onSendPacket = { [weak self] payload, channelID in
@@ -16,10 +27,10 @@ final class TextMessageServiceTests: XCTestCase {
         }
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         service = nil
         sentPayloads = nil
-        super.tearDown()
+        try await super.tearDown()
     }
 
     // MARK: - Send creates message with correct fields and calls onSendPacket
