@@ -215,15 +215,21 @@ struct MeshPacket: Sendable {
     static func deserialize(_ data: Data) -> MeshPacket? {
         guard data.count >= minWireSize else { return nil }
 
+        // Every read below is an OFFSET from data.startIndex, not an absolute
+        // index. `data[0]` is out of bounds for a slice rather than its first
+        // byte, and `count` gives no warning of it, so a caller that handed
+        // this a slice instead of a fresh Data would have crashed the process
+        // on the first line. Both transports happen to pass `Data(...)` today;
+        // that is no longer what keeps this safe. See Data+WireFormat.
         var offset = 0
 
         // Type (1)
-        guard let packetType = PacketType(rawValue: data[offset]) else { return nil }
+        guard let typeByte = data.byte(at: offset),
+              let packetType = PacketType(rawValue: typeByte) else { return nil }
         offset += 1
 
         // TTL (1)
-        let ttl = data[offset]
-        guard ttl <= maxTTL else { return nil }
+        guard let ttl = data.byte(at: offset), ttl <= maxTTL else { return nil }
         offset += 1
 
         // Origin ID (16)
@@ -235,26 +241,24 @@ struct MeshPacket: Sendable {
         offset += 16
 
         // Sequence number (4)
-        let seq: UInt32 = readBigEndian(data, at: offset)
+        guard let seq = data.readBigEndian(UInt32.self, at: offset) else { return nil }
         offset += 4
 
         // Timestamp (8)
-        let ts: UInt64 = readBigEndian(data, at: offset)
+        guard let ts = data.readBigEndian(UInt64.self, at: offset) else { return nil }
         offset += 8
 
         // Channel ID length (2)
-        guard offset + 2 <= data.count else { return nil }
-        let channelLen: UInt16 = readBigEndian(data, at: offset)
+        guard let channelLen = data.readBigEndian(UInt16.self, at: offset) else { return nil }
         offset += 2
 
         // Channel ID (N)
-        guard offset + Int(channelLen) <= data.count else { return nil }
-        let channelData = data[offset ..< offset + Int(channelLen)]
-        guard let channelID = String(data: channelData, encoding: .utf8) else { return nil }
+        guard let channelData = data.slice(at: offset, length: Int(channelLen)),
+              let channelID = String(data: channelData, encoding: .utf8) else { return nil }
         offset += Int(channelLen)
 
         // Payload (remaining)
-        let payload = data[offset...]
+        guard let payload = data.bytes(from: offset) else { return nil }
 
         return MeshPacket(
             type: packetType,
@@ -299,8 +303,7 @@ struct MeshPacket: Sendable {
 
     /// Reconstruct a UUID from 16 raw bytes in `data` starting at `offset`.
     private static func uuid(from data: Data, at offset: Int) -> UUID? {
-        guard offset + 16 <= data.count else { return nil }
-        let bytes = data[offset ..< offset + 16]
+        guard let bytes = data.slice(at: offset, length: 16) else { return nil }
         let b = Array(bytes)
         return UUID(uuid: (
             b[0],  b[1],  b[2],  b[3],
@@ -308,16 +311,5 @@ struct MeshPacket: Sendable {
             b[8],  b[9],  b[10], b[11],
             b[12], b[13], b[14], b[15]
         ))
-    }
-
-    /// Read a fixed-width big-endian integer from `data` at `offset`.
-    /// Uses byte-by-byte reading to avoid misaligned pointer access.
-    private static func readBigEndian<T: FixedWidthInteger>(_ data: Data, at offset: Int) -> T {
-        let size = MemoryLayout<T>.size
-        var value: T = 0
-        for i in 0..<size {
-            value = (value << 8) | T(data[offset + i])
-        }
-        return value
     }
 }

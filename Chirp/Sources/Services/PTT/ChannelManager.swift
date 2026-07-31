@@ -232,13 +232,18 @@ final class ChannelManager {
 
     /// Parse a KRO! packet payload. Returns (channelID, epoch) or nil.
     static func parseKeyRotationPayload(_ payload: Data) -> (channelID: String, epoch: UInt32)? {
+        // Offset-relative throughout. `payload[0]` addresses the underlying
+        // buffer's first byte, not this value's, so the old absolute subscripts
+        // read the wrong bytes — or went out of bounds and killed the process —
+        // for any caller that passed a slice. See Data+WireFormat.
         guard payload.count >= 9,  // 4 magic + 4 epoch + at least 1 byte channel
-              payload[0] == 0x4B, payload[1] == 0x52,
-              payload[2] == 0x4F, payload[3] == 0x21 else {
+              payload.byte(at: 0) == 0x4B, payload.byte(at: 1) == 0x52,
+              payload.byte(at: 2) == 0x4F, payload.byte(at: 3) == 0x21,
+              let epoch = payload.readBigEndian(UInt32.self, at: 4),
+              let channelBytes = payload.bytes(from: 8),
+              let channelID = String(data: channelBytes, encoding: .utf8) else {
             return nil
         }
-        let epoch = payload[4..<8].withUnsafeBytes { $0.load(as: UInt32.self) }.bigEndian
-        guard let channelID = String(data: payload[8...], encoding: .utf8) else { return nil }
         return (channelID, epoch)
     }
 

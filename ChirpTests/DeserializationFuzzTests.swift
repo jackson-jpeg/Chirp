@@ -21,13 +21,28 @@ import XCTest
     /// Build payloads with a valid magic prefix but garbage body
     private func prefixedPayloads(_ magic: [UInt8]) -> [Data] {
         let prefix = Data(magic)
-        return [
+        let bodies: [Data] = [
             prefix,                                              // prefix only, no body
             prefix + Data([0x00]),                                // prefix + 1 byte
             prefix + Data(repeating: 0xFF, count: 4),            // prefix + 4 garbage
             prefix + Data(repeating: 0x00, count: 16),           // prefix + 16 null
             prefix + Data(repeating: 0xAB, count: 100),          // prefix + 100 garbage
         ]
+        // Every body again as a SLICE of a larger buffer, at offsets that are
+        // and are not multiples of four.
+        //
+        // Everything above is freshly constructed and therefore zero-based, so
+        // for the life of this suite it only ever exercised `startIndex == 0`.
+        // That is the one case where absolute indexing is accidentally correct
+        // and where `load(as:)` is accidentally aligned — which is why a fuzz
+        // suite this thorough sat green over a family of crashes for months.
+        return bodies + bodies.flatMap { body in
+            [1, 2, 3, 4].map { offset -> Data in
+                var backing = Data(repeating: 0xEE, count: offset)
+                backing.append(body)
+                return backing[backing.startIndex.advanced(by: offset)...]
+            }
+        }
     }
 
     // MARK: - Text Message (TXT!)
@@ -126,6 +141,29 @@ import XCTest
     }
 
     // MARK: - Babel (BBL!)
+
+    // MARK: - Key Rotation (KRO!)
+
+    /// KRO! had no fuzz coverage. It is the packet that moves the channel to a
+    /// new encryption epoch, so a peer can send it unprompted at any time —
+    /// which makes it the shortest path from a hostile device to this parser.
+    func testKeyRotationSurvivesMalformed() {
+        for payload in payloads + prefixedPayloads([0x4B, 0x52, 0x4F, 0x21]) {
+            _ = ChannelManager.parseKeyRotationPayload(payload)
+        }
+    }
+
+    /// The specific shapes the length guard has to get right: exactly at the
+    /// 9-byte minimum, one short of it, and a channel ID that is not valid UTF-8.
+    func testKeyRotationBoundaryLengths() {
+        let magic = Data([0x4B, 0x52, 0x4F, 0x21])
+        let epoch = Data([0x00, 0x00, 0x00, 0x01])
+
+        XCTAssertNil(ChannelManager.parseKeyRotationPayload(magic + epoch))        // 8 bytes
+        XCTAssertNotNil(ChannelManager.parseKeyRotationPayload(magic + epoch + Data([0x41])))
+        XCTAssertNil(ChannelManager.parseKeyRotationPayload(magic + epoch + Data([0xFF, 0xFE])))
+        XCTAssertNil(ChannelManager.parseKeyRotationPayload(Data([0x4B, 0x52, 0x4F, 0x22]) + epoch + Data([0x41])))
+    }
 
     func testBabelSurvivesMalformed() {
         let service = BabelService()

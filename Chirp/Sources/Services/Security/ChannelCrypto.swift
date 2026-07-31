@@ -106,7 +106,11 @@ struct ChannelCrypto: Sendable {
             return try AES.GCM.open(sealedBox, using: key)
         }
 
-        let embeddedEpoch = UInt32(bigEndian: ciphertext.prefix(4).withUnsafeBytes { $0.load(as: UInt32.self) })
+        // Byte-by-byte, offset-relative: see Data.readBigEndian. `count > 4` is
+        // already guaranteed above, so nil here would mean the guard changed.
+        guard let embeddedEpoch = ciphertext.readBigEndian(UInt32.self, at: 0) else {
+            throw EncryptionError.sealedBoxCombinedUnavailable
+        }
         let sealedData = Data(ciphertext.dropFirst(4))
 
         // Try the embedded epoch first

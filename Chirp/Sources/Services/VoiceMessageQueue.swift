@@ -231,21 +231,20 @@ final class VoiceMessageQueue {
         let header = Array(data.prefix(magic.count))
         guard header == magic else { return nil }
 
+        // All offsets relative to data.startIndex — see Data+WireFormat.
         var offset = magic.count
-        let metaLenBytes = data[offset..<(offset + 4)]
-        let metaLen = metaLenBytes.withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        guard let metaLen = data.readBigEndian(UInt32.self, at: offset) else { return nil }
         offset += 4
 
-        guard offset + Int(metaLen) <= data.count else { return nil }
-        let metadataJSON = data[offset..<(offset + Int(metaLen))]
+        guard let metadataJSON = data.slice(at: offset, length: Int(metaLen)) else { return nil }
         offset += Int(metaLen)
 
         guard let message = try? JSONDecoder().decode(PendingMessage.self, from: Data(metadataJSON)) else {
             return nil
         }
 
-        let audioData = Data(data[offset...])
-        return (message, audioData)
+        guard let audioBytes = data.bytes(from: offset) else { return nil }
+        return (message, Data(audioBytes))
     }
 
     // MARK: - Audio Playback Support
@@ -266,24 +265,29 @@ final class VoiceMessageQueue {
     private func decodeFrames(from data: Data) -> [Data]? {
         guard data.count >= 4 else { return nil }
 
+        // `offset` advances by a frame length read out of the file, which for a
+        // received voice message means a peer chose it. Any length that is not a
+        // multiple of four left the next read misaligned and trapped the
+        // process — a remote crash needing nothing but a malformed message.
+        // Byte-by-byte reads have no alignment requirement, so the offset being
+        // odd is now simply uninteresting. See Data+WireFormat.
         var offset = 0
-        let frameCount = data[offset..<(offset + 4)].withUnsafeBytes {
-            $0.load(as: UInt32.self).bigEndian
-        }
+        guard let frameCount = data.readBigEndian(UInt32.self, at: offset) else { return nil }
         offset += 4
 
+        // Bound the reservation by what the buffer could possibly hold: a frame
+        // costs at least its 4-byte length prefix, and frameCount is attacker-
+        // supplied, so reserving it directly is an allocation of up to 4 GiB on
+        // a 9-byte file.
         var frames: [Data] = []
-        frames.reserveCapacity(Int(frameCount))
+        frames.reserveCapacity(min(Int(frameCount), data.count / 4))
 
         for _ in 0..<frameCount {
-            guard offset + 4 <= data.count else { return nil }
-            let frameLen = data[offset..<(offset + 4)].withUnsafeBytes {
-                $0.load(as: UInt32.self).bigEndian
-            }
+            guard let frameLen = data.readBigEndian(UInt32.self, at: offset) else { return nil }
             offset += 4
 
-            guard offset + Int(frameLen) <= data.count else { return nil }
-            frames.append(Data(data[offset..<(offset + Int(frameLen))]))
+            guard let frame = data.slice(at: offset, length: Int(frameLen)) else { return nil }
+            frames.append(Data(frame))
             offset += Int(frameLen)
         }
 
