@@ -53,7 +53,10 @@ final class TextMessageService {
     private let logger = Logger(subsystem: Constants.subsystem, category: "TextMessage")
 
     /// Maximum messages retained per channel in memory.
-    private let maxMessagesPerChannel = 200
+    ///
+    /// Defined once in ``Constants/TextMessages/maxPerChannel`` so the tests
+    /// assert against the same value this service enforces.
+    private let maxMessagesPerChannel = Constants.TextMessages.maxPerChannel
 
     /// Number of messages to load per page (initial + each older batch).
     private let pageSize = 50

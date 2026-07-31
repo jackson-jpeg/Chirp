@@ -21,6 +21,17 @@ enum Constants {
         static let intervalSeconds: TimeInterval = 5.0
     }
 
+    enum TextMessages {
+        /// Maximum messages retained per channel, in memory and on disk.
+        ///
+        /// Single source of truth: `TextMessageService` enforces it and
+        /// `ChirpTests/TextMessageServiceTests.swift` asserts against it. The
+        /// number was previously held independently in both places, which let
+        /// them drift — the service trimmed to 200 while the tests expected 500 —
+        /// with nothing to catch it, because the test target had never been built.
+        static let maxPerChannel = 200
+    }
+
     enum Colors {
         // Primary
         static let amber = Color(hex: 0xFFB800)

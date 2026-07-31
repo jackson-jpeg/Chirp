@@ -278,11 +278,17 @@ final class TextMessageServiceTests: XCTestCase {
         XCTAssertEqual(service.unreadCount(for: "ch-1"), 0)
     }
 
-    // MARK: - Per-channel message cap (500) enforced -- oldest trimmed
+    // MARK: - Per-channel message cap enforced -- oldest trimmed
+
+    /// The cap under test. Read from the app's own constant rather than
+    /// restated here: these tests previously hard-coded 500 while the service
+    /// enforced 200, and nothing detected the drift because the test target had
+    /// never been built. Neither number was "right" — holding it twice was the bug.
+    private var cap: Int { Constants.TextMessages.maxPerChannel }
 
     func testPerChannelMessageCapEnforced() throws {
-        // Fill channel to 500 via handlePacket
-        for i in 0..<500 {
+        // Fill the channel exactly to the cap via handlePacket
+        for i in 0..<cap {
             let msg = MeshTextMessage(
                 id: UUID(),
                 senderID: "peer-B",
@@ -295,7 +301,7 @@ final class TextMessageServiceTests: XCTestCase {
             )
             service.handlePacket(try msg.wirePayload(), channelID: "ch-cap")
         }
-        XCTAssertEqual(service.messages(for: "ch-cap").count, 500)
+        XCTAssertEqual(service.messages(for: "ch-cap").count, cap)
 
         // Add one more -- should trim the oldest
         let overflow = MeshTextMessage(
@@ -311,7 +317,7 @@ final class TextMessageServiceTests: XCTestCase {
         service.handlePacket(try overflow.wirePayload(), channelID: "ch-cap")
 
         let messages = service.messages(for: "ch-cap")
-        XCTAssertEqual(messages.count, 500)
+        XCTAssertEqual(messages.count, cap)
         // Oldest message ("Message 0") should have been trimmed
         XCTAssertEqual(messages.first?.text, "Message 1")
         // Newest message should be the overflow
@@ -332,8 +338,8 @@ final class TextMessageServiceTests: XCTestCase {
         )
         service.handlePacket(try otherMsg.wirePayload(), channelID: "ch-other")
 
-        // Fill ch-cap beyond the limit
-        for i in 0..<501 {
+        // Fill ch-cap one past the limit
+        for i in 0..<(cap + 1) {
             let msg = MeshTextMessage(
                 id: UUID(),
                 senderID: "peer-B",
@@ -347,8 +353,8 @@ final class TextMessageServiceTests: XCTestCase {
             service.handlePacket(try msg.wirePayload(), channelID: "ch-cap")
         }
 
-        // ch-cap trimmed to 500, ch-other untouched
-        XCTAssertEqual(service.messages(for: "ch-cap").count, 500)
+        // ch-cap trimmed to the cap, ch-other untouched
+        XCTAssertEqual(service.messages(for: "ch-cap").count, cap)
         XCTAssertEqual(service.messages(for: "ch-other").count, 1)
     }
 
