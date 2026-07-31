@@ -1,4 +1,3 @@
-import ActivityKit
 import AVFAudio
 import Foundation
 import Observation
@@ -18,7 +17,6 @@ final class AppState {
     let pttEngine: PTTEngine
     let channelManager: ChannelManager
     let peerTracker: PeerTracker
-    let liveActivityManager: LiveActivityManager
     let multipeerTransport: MultipeerTransport
     let friendsManager: FriendsManager
     let meshRouter: MeshRouter
@@ -197,7 +195,6 @@ final class AppState {
         self.floorController = floorController
         self.pttEngine = pttEngine
         self.channelManager = channelManager
-        self.liveActivityManager = LiveActivityManager()
 
         self.friendsManager = FriendsManager()
 
@@ -860,11 +857,6 @@ final class AppState {
         // Save active state for crash recovery
         saveActiveState()
 
-        // Live Activity disabled until widget extension signing is resolved
-        // if let channel = channelManager.activeChannel {
-        //     liveActivityManager.startActivity(channelName: channel.name)
-        // }
-
         // Start mesh beacon broadcasting for presence detection
         let channelIDs = channelManager.channels.map(\.id)
         meshBeacon.startBroadcasting(
@@ -1038,7 +1030,6 @@ final class AppState {
         notificationObservers.removeAll()
         clearActiveState()
         pttEngine.stop()
-        liveActivityManager.endActivity()
         bleScanner.stopScanning()
         soundAlertService.stopListening()
         meshShield.stop()
@@ -1191,18 +1182,5 @@ final class AppState {
                 Logger.audio.debug("Adaptive bitrate: minCapacity=\(Int(minCapacity))bps, available=\(availableBps)bps, tier=\(tier.rawValue)bps")
             }
         }
-    }
-
-    // MARK: - Live Activity
-
-    /// Call this whenever PTT state or audio level changes to keep the Dynamic Island in sync.
-    func updateLiveActivity() {
-        let channel = channelManager.activeChannel
-        liveActivityManager.updateActivity(
-            state: pttState,
-            channelName: channel?.name ?? "ChirpChirps",
-            peerCount: channel?.activePeerCount ?? 0,
-            inputLevel: Double(inputLevel)
-        )
     }
 }

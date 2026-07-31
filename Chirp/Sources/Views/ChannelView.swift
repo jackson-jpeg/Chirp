@@ -126,13 +126,9 @@ struct ChannelView: View {
             withAnimation(.easeInOut(duration: 0.15)) {
                 pttState = newValue
             }
-            appState.updateLiveActivity()
         }
         .onChange(of: appState.inputLevel) { _, newValue in
             inputLevel = newValue
-            if pttState == .transmitting || isReceiving {
-                appState.updateLiveActivity()
-            }
         }
     }
 
