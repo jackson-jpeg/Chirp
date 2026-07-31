@@ -123,6 +123,140 @@ final class FloorMeshTests: XCTestCase {
         )
     }
 
+    // MARK: - A device that never heard the request
+
+    /// The dual-transmit case. peer-B never receives peer-A's floor request —
+    /// it was in flight while peer-B was in `.denied`, or the radio dropped it
+    /// — so peer-B believes the floor is free and takes it.
+    ///
+    /// peer-A wins the resulting collision on timestamp. What used to happen
+    /// then was nothing: the winner said nothing, and peer-B had never seen the
+    /// request it would have needed in order to work out that it had lost. Both
+    /// microphones stayed open until somebody let go.
+    func testDeviceThatNeverHeardTheRequestStopsOnceTheHolderRestatesIt() throws {
+        harness["peer-A"].requestFloor()
+        XCTAssertEqual(harness.dropMessages(from: "peer-A").count, 1, "peer-B must not hear this")
+
+        harness["peer-B"].requestFloor()
+
+        XCTAssertEqual(
+            harness.transmittingNodeIDs.sorted(),
+            ["peer-A", "peer-B"],
+            "Both believe they hold the floor — this is the state the fix has to get out of"
+        )
+
+        try harness.deliverAll()
+
+        XCTAssertEqual(
+            harness.transmittingNodeIDs,
+            ["peer-A"],
+            "peer-B must give up the floor once it learns peer-A asked first"
+        )
+        XCTAssertEqual(
+            harness["peer-B"].state,
+            .receiving(speakerName: "Alice", speakerID: "peer-A"),
+            "peer-B should be shown the speaker's name, which it can only have learned from the restatement"
+        )
+    }
+
+    /// The same situation with a third device that also missed the request.
+    /// Both latecomers have to yield, and the mesh still has to settle.
+    func testTwoDevicesThatMissedTheRequestBothYieldToTheHolder() throws {
+        harness = FloorMeshHarness(peers: [
+            (id: "peer-A", name: "Alice"),
+            (id: "peer-B", name: "Bob"),
+            (id: "peer-C", name: "Carol"),
+        ])
+
+        harness["peer-A"].requestFloor()
+        harness.dropMessages(from: "peer-A")
+
+        harness["peer-B"].requestFloor()
+        harness["peer-C"].requestFloor()
+        try harness.deliverAll()
+
+        XCTAssertEqual(
+            harness.transmittingNodeIDs,
+            ["peer-A"],
+            "Every device that took the floor without knowing about peer-A must have given it up"
+        )
+        XCTAssertEqual(harness.speakerIDs["peer-B"], "peer-A")
+
+        // NOT asserted: that peer-C also ends up naming peer-A as the speaker.
+        // It does not. peer-C hears peer-B's request first, enters `.receiving`,
+        // and `.receiving` ignores every later request — so peer-C is left
+        // displaying peer-B as the speaker while peer-B is itself listening to
+        // peer-A. That is a separate, pre-existing defect: a device that is
+        // already receiving never re-evaluates who holds the floor. No
+        // microphone is open in that state, so it costs a wrong name rather
+        // than crossed audio, and fixing it changes what the user sees
+        // mid-transmission — queued rather than folded into this commit.
+    }
+
+    /// Losing the floor has to be announced, because the microphone is owned by
+    /// `PTTEngine` and it has no other way to find out.
+    func testLosingTheFloorFiresTheRevokeCallbackOnTheLoserOnly() throws {
+        var revokedNodes: [String] = []
+        for node in harness.nodes {
+            let id = node.id
+            node.controller.onFloorRevoked = { revokedNodes.append(id) }
+        }
+
+        harness["peer-A"].requestFloor()
+        harness.dropMessages(from: "peer-A")
+        harness["peer-B"].requestFloor()
+        try harness.deliverAll()
+
+        XCTAssertEqual(
+            revokedNodes,
+            ["peer-B"],
+            "Only the device that lost a floor it was actively holding should be told"
+        )
+    }
+
+    func testWinningAnUncontestedFloorNeverFiresTheRevokeCallback() throws {
+        var revokedNodes: [String] = []
+        for node in harness.nodes {
+            let id = node.id
+            node.controller.onFloorRevoked = { revokedNodes.append(id) }
+        }
+
+        harness["peer-A"].requestFloor()
+        try harness.deliverAll()
+        harness["peer-A"].releaseFloor()
+        try harness.deliverAll()
+
+        XCTAssertTrue(revokedNodes.isEmpty, "Nobody lost a floor here: \(revokedNodes)")
+    }
+
+    /// A device that was never transmitting has no microphone to close, so a
+    /// denied request must not raise the revoke signal.
+    func testADeniedRequestDoesNotFireTheRevokeCallback() throws {
+        var revoked = false
+        harness["peer-B"].onFloorRevoked = { revoked = true }
+
+        harness["peer-A"].requestFloor()
+        try harness.deliverAll()
+        harness["peer-B"].requestFloor()
+        try harness.deliverAll()
+
+        XCTAssertEqual(harness["peer-B"].state, .denied)
+        XCTAssertFalse(revoked)
+    }
+
+    /// The restatement is the fix's only new traffic, so it must not appear
+    /// when there was no collision — otherwise every transmission would carry
+    /// avoidable chatter.
+    func testTheHolderOnlyRestatesItsClaimWhenChallenged() throws {
+        harness["peer-A"].requestFloor()
+        try harness.deliverAll()
+
+        let requestsFromA = harness.delivered.filter {
+            $0.from == "peer-A" && $0.message.isFloorRequest
+        }
+        XCTAssertEqual(requestsFromA.count, 1, "An unchallenged speaker should ask exactly once")
+    }
+
     // MARK: - Ordering
 
     /// The floor request lands before the second user presses talk, so there is

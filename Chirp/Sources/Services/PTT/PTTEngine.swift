@@ -124,6 +124,20 @@ final class PTTEngine {
             }
         }
 
+        // Floor lost to a peer mid-transmission: close the microphone.
+        //
+        // Until now the only things that stopped capture were the user letting
+        // go of the button, an audio interruption, the input device
+        // disappearing, and the 120-second timeout. A peer winning the floor
+        // was not one of them — so the floor controller would move to
+        // `.receiving` and show someone else talking while this device's
+        // microphone stayed open and kept sending audio frames.
+        floorController.onFloorRevoked = { [weak self] in
+            guard let self, self.state == .transmitting else { return }
+            self.logger.warning("Floor revoked by a peer — stopping transmission")
+            self.stopTransmitting()
+        }
+
         // Audio session interruption: auto-release floor
         AudioSessionManager.onInterruptionBegan = { [weak self] in
             Task { @MainActor [weak self] in
@@ -198,10 +212,17 @@ final class PTTEngine {
 
         audioEngine.startCapture()
 
+        // SAFETY NET, not a mechanism. Every ordinary way of stopping —
+        // releasing the button, losing the floor to a peer, an interruption,
+        // the input device disappearing — cancels this before it fires. If it
+        // ever does fire, something above it failed and the device has been
+        // holding an open microphone for two minutes. Treat a hit here as a
+        // defect report, not as the design working.
         transmitTimeoutTask?.cancel()
         transmitTimeoutTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(120))
             guard !Task.isCancelled, let self else { return }
+            self.logger.error("Transmit timeout fired after 120s — nothing else stopped this transmission")
             self.stopTransmitting()
         }
 
