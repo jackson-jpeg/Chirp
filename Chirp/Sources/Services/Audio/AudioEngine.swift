@@ -139,33 +139,22 @@ final class AudioEngine: @unchecked Sendable {
             guard let self, self.isCapturing else { return }
             guard buffer.frameLength > 0 else { return }
 
-            // Update level on audio thread (fast)
-            self.updateInputLevelFromRawBuffer(buffer)
+            // COPY, then leave. `buffer` belongs to the audio engine and its
+            // backing store is only valid for the duration of this callback —
+            // the engine refills it as soon as we return. The previous code
+            // handed this exact buffer to processingQueue and read it there,
+            // which meant the samples it encoded were whatever the engine had
+            // written since. `CapturedFrames` is numbers, so it outlives the
+            // callback legitimately and crosses the queue as a Sendable value
+            // rather than as a pointer with an escape hatch on it.
+            guard let captured = CapturedFrames(copying: buffer, at: time) else {
+                Logger.audio.warning("Unsupported tap format \(buffer.format) — dropping buffer")
+                return
+            }
 
-            // Feed raw audio to sound analysis (if wired)
-            self.onRawAudioBuffer?(buffer, time)
-
-            // Process on separate queue to avoid blocking audio thread.
-            // AVAudioPCMBuffer is not Sendable but is only read on processingQueue.
-            nonisolated(unsafe) let buf = buffer
             self.processingQueue.async { [weak self] in
                 guard let self, self.isCapturing else { return }
-
-                // Create converter lazily from actual buffer format
-                let fmt = buf.format
-                if self.converter == nil {
-                    if fmt.sampleRate > 0 && (fmt.sampleRate != Constants.Opus.sampleRate || fmt.channelCount != 1 || fmt.commonFormat != .pcmFormatInt16) {
-                        self.converter = AVAudioConverter(from: fmt, to: self.targetFormat)
-                        Logger.audio.info("Converter created: \(fmt.sampleRate)Hz/\(fmt.channelCount)ch/fmt\(fmt.commonFormat.rawValue) -> 16kHz/1ch/Int16")
-                    } else if fmt.sampleRate == 0 {
-                        Logger.audio.warning("Buffer has 0Hz format — skipping")
-                        return
-                    } else {
-                        Logger.audio.info("No converter needed — buffer already 16kHz/1ch/Int16")
-                    }
-                }
-
-                self.processInputBuffer(buf)
+                self.consume(captured)
             }
         }
 
@@ -338,7 +327,133 @@ final class AudioEngine: @unchecked Sendable {
         }
     }
 
+    // MARK: - Captured Frames
+
+    /// One tap callback's samples, lifted out of the audio engine's storage.
+    ///
+    /// The engine owns the buffer it passes to a tap and refills it the moment
+    /// the callback returns, so anything that outlives the callback must copy
+    /// rather than retain. This is that copy: plain numbers plus the few format
+    /// facts needed to rebuild an `AVAudioPCMBuffer` on the far side, which
+    /// makes it `Sendable` by construction rather than by assertion.
+    ///
+    /// Channel 0 only. Every device this app runs on captures mono, and the
+    /// pipeline downstream has always taken `channelData[0]` anyway.
+    /// Internal rather than private purely so the tests can reach it: the whole
+    /// point of this type is that a copy survives the engine overwriting the
+    /// original, and that is not observable through AudioEngine's public surface
+    /// without real capture hardware.
+    struct CapturedFrames: Sendable {
+        enum Samples: Sendable {
+            case float32([Float])
+            case int16([Int16])
+        }
+
+        let samples: Samples
+        let sampleRate: Double
+        let frameCount: AVAudioFrameCount
+        let sampleTime: AVAudioFramePosition
+
+        init?(copying buffer: AVAudioPCMBuffer, at time: AVAudioTime) {
+            let frames = Int(buffer.frameLength)
+            guard frames > 0, buffer.format.sampleRate > 0 else { return nil }
+
+            if let channels = buffer.floatChannelData {
+                samples = .float32(Array(UnsafeBufferPointer(start: channels[0], count: frames)))
+            } else if let channels = buffer.int16ChannelData {
+                samples = .int16(Array(UnsafeBufferPointer(start: channels[0], count: frames)))
+            } else {
+                // Int32 and other exotic formats are not produced by any input
+                // hardware we support. Declining loudly beats copying garbage.
+                return nil
+            }
+
+            sampleRate = buffer.format.sampleRate
+            frameCount = buffer.frameLength
+            sampleTime = time.sampleTime
+        }
+
+        /// Rebuild a mono `AVAudioPCMBuffer` owned entirely by the caller.
+        func makeBuffer() -> AVAudioPCMBuffer? {
+            let commonFormat: AVAudioCommonFormat
+            switch samples {
+            case .float32: commonFormat = .pcmFormatFloat32
+            case .int16:   commonFormat = .pcmFormatInt16
+            }
+            guard let format = AVAudioFormat(
+                commonFormat: commonFormat,
+                sampleRate: sampleRate,
+                channels: 1,
+                interleaved: false
+            ), let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else {
+                return nil
+            }
+            buffer.frameLength = frameCount
+
+            switch samples {
+            case .float32(let values):
+                guard let dest = buffer.floatChannelData else { return nil }
+                values.withUnsafeBufferPointer { dest[0].update(from: $0.baseAddress!, count: values.count) }
+            case .int16(let values):
+                guard let dest = buffer.int16ChannelData else { return nil }
+                values.withUnsafeBufferPointer { dest[0].update(from: $0.baseAddress!, count: values.count) }
+            }
+            return buffer
+        }
+
+        /// RMS level for the waveform, computed from the copy.
+        var rmsLevel: Float {
+            let sumOfSquares: Float
+            let count: Int
+            switch samples {
+            case .float32(let values):
+                count = values.count
+                sumOfSquares = values.reduce(0) { $0 + $1 * $1 }
+            case .int16(let values):
+                count = values.count
+                sumOfSquares = values.reduce(0) {
+                    let normalized = Float($1) / Float(Int16.max)
+                    return $0 + normalized * normalized
+                }
+            }
+            guard count > 0 else { return 0 }
+            return min(1.0, sqrt(sumOfSquares / Float(count)) * 5.0)
+        }
+    }
+
     // MARK: - Private
+
+    /// Everything the tap used to do inline on the audio I/O thread. Runs on
+    /// `processingQueue`: the level maths, the client callback, the converter
+    /// setup and the encode. A real-time thread must not allocate, take locks,
+    /// or call unbounded client code, and the tap closure did all three.
+    private func consume(_ captured: CapturedFrames) {
+        inputLevel = captured.rmsLevel
+
+        guard let buffer = captured.makeBuffer() else {
+            Logger.audio.warning("Could not rebuild captured buffer — dropping")
+            return
+        }
+
+        // Client callback now receives a buffer this method exclusively owns,
+        // off the render thread. Consumers previously had to make their own
+        // copy of a buffer that was already stale by the time they saw it.
+        if let onRawAudioBuffer {
+            let time = AVAudioTime(sampleTime: captured.sampleTime, atRate: captured.sampleRate)
+            onRawAudioBuffer(buffer, time)
+        }
+
+        let fmt = buffer.format
+        if converter == nil,
+           fmt.sampleRate != Constants.Opus.sampleRate
+            || fmt.channelCount != 1
+            || fmt.commonFormat != .pcmFormatInt16 {
+            converter = AVAudioConverter(from: fmt, to: targetFormat)
+            Logger.audio.info("Converter created: \(fmt.sampleRate)Hz/\(fmt.channelCount)ch/fmt\(fmt.commonFormat.rawValue) -> 16kHz/1ch/Int16")
+        }
+
+        processInputBuffer(buffer)
+    }
 
     private func processInputBuffer(_ buffer: AVAudioPCMBuffer) {
         guard buffer.frameLength > 0 else { return }
@@ -389,10 +504,10 @@ final class AudioEngine: @unchecked Sendable {
     }
 
     private func accumulateAndEncode(_ samples: [Int16]) {
-
-        // Update input level
-        updateInputLevel(samples: samples)
-
+        // The input level is set once, in consume(), from the raw captured
+        // frames. It used to be recomputed here from the post-conversion
+        // samples as well, so two different measurements of the same audio
+        // raced to be the one the waveform showed.
         // Accumulate samples until we have a full frame
         captureAccumulator.append(contentsOf: samples)
 
@@ -425,50 +540,5 @@ final class AudioEngine: @unchecked Sendable {
         }
     }
 
-    private func updateInputLevel(samples: [Int16]) {
-        guard !samples.isEmpty else { return }
 
-        var sumOfSquares: Float = 0
-        for sample in samples {
-            let normalized = Float(sample) / Float(Int16.max)
-            sumOfSquares += normalized * normalized
-        }
-        let rms = sqrt(sumOfSquares / Float(samples.count))
-        // Amplify for better visual feedback (raw RMS is usually 0.01-0.1)
-        let amplified = min(1.0, rms * 5.0)
-        inputLevel = amplified
-    }
-
-    /// Update input level directly from a raw AVAudioPCMBuffer in any format.
-    /// Works before the converter is created — ensures waveform always responds.
-    private func updateInputLevelFromRawBuffer(_ buffer: AVAudioPCMBuffer) {
-        let frameLength = Int(buffer.frameLength)
-        guard frameLength > 0 else { return }
-
-        var rms: Float = 0
-
-        if let floatData = buffer.floatChannelData {
-            // Float32 format
-            let samples = floatData[0]
-            var sumOfSquares: Float = 0
-            for i in 0..<frameLength {
-                sumOfSquares += samples[i] * samples[i]
-            }
-            rms = sqrt(sumOfSquares / Float(frameLength))
-        } else if let int16Data = buffer.int16ChannelData {
-            // Int16 format
-            let samples = int16Data[0]
-            var sumOfSquares: Float = 0
-            for i in 0..<frameLength {
-                let normalized = Float(samples[i]) / Float(Int16.max)
-                sumOfSquares += normalized * normalized
-            }
-            rms = sqrt(sumOfSquares / Float(frameLength))
-        } else {
-            return
-        }
-
-        let amplified = min(1.0, rms * 5.0)
-        inputLevel = amplified
-    }
 }
