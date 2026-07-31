@@ -4,7 +4,6 @@
 <dict>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>com.chirpchirp.mesh.refresh</string>
 		<string>com.chirpchirp.swarm.compute</string>
 	</array>
 	<key>CFBundleDevelopmentRegion</key>

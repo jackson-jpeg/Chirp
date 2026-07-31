@@ -21,7 +21,6 @@ final class AppState {
     let friendsManager: FriendsManager
     let meshRouter: MeshRouter
     let meshIntelligence: MeshIntelligence
-    let backgroundService: BackgroundMeshService
     let textMessageService: TextMessageService
     let locationService: LocationService
     let storeAndForwardRelay: StoreAndForwardRelay
@@ -212,7 +211,6 @@ final class AppState {
         let router = MeshRouter(localPeerID: originUUID)
         self.meshRouter = router
         self.meshIntelligence = MeshIntelligence()
-        self.backgroundService = BackgroundMeshService.shared
 
         // Text messaging service
         let textMessageService = TextMessageService()
@@ -880,9 +878,6 @@ final class AppState {
 
         // Register SWARM background tasks
         swarmService.registerBackgroundTask()
-
-        // Register background tasks to keep mesh alive
-        backgroundService.registerBackgroundTasks()
 
         // Subscribe to mesh topology updates from beacons to feed MeshIntelligence
         let intelligence = self.meshIntelligence

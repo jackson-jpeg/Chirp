@@ -117,7 +117,6 @@ targets:
         UIBackgroundModes:
         - audio
         BGTaskSchedulerPermittedIdentifiers:
-        - com.chirpchirp.mesh.refresh
         - com.chirpchirp.swarm.compute
   ChirpTests:
     type: bundle.unit-test
