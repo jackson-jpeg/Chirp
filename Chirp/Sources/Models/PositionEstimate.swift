@@ -18,7 +18,6 @@ struct PositionEstimate: Codable, Sendable, Equatable {
         case gps = 0
         case uwbAnchored = 1           // UWB ranging with at least one GPS-anchored node
         case meshCorrected = 2          // Dead reckoning corrected by mesh UWB measurements
-        case lighthouseWifi = 3         // WiFi/BLE fingerprint match from LIGHTHOUSE DB
         case deadReckoning = 4          // Inertial dead reckoning only
         case uwbRelative = 5            // UWB ranging, no GPS anchor (relative only)
         case unknown = 255
@@ -30,7 +29,6 @@ struct PositionEstimate: Codable, Sendable, Equatable {
             case .gps: return "GPS"
             case .uwbAnchored: return "UWB + GPS"
             case .meshCorrected: return "Mesh Corrected"
-            case .lighthouseWifi: return "Indoor Map"
             case .deadReckoning: return "Dead Reckoning"
             case .uwbRelative: return "UWB Relative"
             case .unknown: return "Unknown"

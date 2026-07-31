@@ -95,18 +95,6 @@ import XCTest
         }
     }
 
-    // MARK: - Lighthouse (LHQ! / LHR!)
-
-    func testLighthouseSurvivesMalformed() {
-        let service = LighthouseService()
-        for payload in payloads + prefixedPayloads([0x4C, 0x48, 0x51, 0x21]) {
-            service.handlePacket(payload)
-        }
-        for payload in payloads + prefixedPayloads([0x4C, 0x48, 0x52, 0x21]) {
-            service.handlePacket(payload)
-        }
-    }
-
     // MARK: - Witness (WRQ! / WCS!)
 
     func testWitnessSurvivesMalformed() {

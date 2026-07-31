@@ -82,16 +82,6 @@ struct DeadDropPin: Equatable {
 
 // MARK: - Peer Trail Data
 
-struct PeerTrail: Equatable {
-    let peerID: String
-    let coordinates: [CLLocationCoordinate2D]
-    let timestamps: [Date]
-
-    static func == (lhs: PeerTrail, rhs: PeerTrail) -> Bool {
-        lhs.peerID == rhs.peerID && lhs.coordinates.count == rhs.coordinates.count
-    }
-}
-
 // MARK: - GeoMapView
 
 /// A single segment of a hop path for geographic overlay rendering.
@@ -116,7 +106,6 @@ struct GeoMapView: UIViewRepresentable {
     var hopSegments: [GeoHopSegment] = []
     var hopCount: Int = 0
     var deadDropPins: [DeadDropPin] = []
-    var peerTrails: [PeerTrail] = []
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -154,7 +143,6 @@ struct GeoMapView: UIViewRepresentable {
         updateAnnotations(mapView: mapView, coordinator: context.coordinator)
         updateHopPathOverlay(mapView: mapView, coordinator: context.coordinator)
         updateDeadDropAnnotations(mapView: mapView, coordinator: context.coordinator)
-        updatePeerTrailOverlays(mapView: mapView, coordinator: context.coordinator)
     }
 
     // MARK: - Annotations
@@ -276,42 +264,6 @@ struct GeoMapView: UIViewRepresentable {
         UIColor(red: 0.95, green: 0.77, blue: 0.26, alpha: 1.0),  // yellow
         UIColor(red: 0.36, green: 0.91, blue: 0.84, alpha: 1.0),  // teal
     ]
-
-    private func updatePeerTrailOverlays(mapView: MLNMapView, coordinator: Coordinator) {
-        // Remove existing trail polylines
-        for polyline in coordinator.trailPolylines {
-            mapView.removeAnnotation(polyline)
-        }
-        coordinator.trailPolylines.removeAll()
-        coordinator.trailColorMap.removeAll()
-
-        guard !peerTrails.isEmpty else { return }
-
-        for (trailIndex, trail) in peerTrails.enumerated() {
-            guard trail.coordinates.count >= 2 else { continue }
-
-            let colorIndex = trailIndex % Self.trailPalette.count
-            let baseColor = Self.trailPalette[colorIndex]
-
-            // Draw trail as segments with decreasing opacity (recent = opaque, old = faded).
-            // Each segment is a 2-point polyline so we can vary opacity per segment.
-            let totalSegments = trail.coordinates.count - 1
-            for i in 0..<totalSegments {
-                var segCoords = [trail.coordinates[i], trail.coordinates[i + 1]]
-                let polyline = MLNPolyline(coordinates: &segCoords, count: 2)
-
-                // Opacity: segment 0 (oldest) = 0.2, last segment (newest) = 1.0
-                let progress = Double(i) / Double(max(1, totalSegments - 1))
-                let opacity = 0.2 + 0.8 * progress
-
-                // Encode trail metadata in title: "trail-<colorIndex>-<opacity>"
-                polyline.title = "trail-\(colorIndex)-\(String(format: "%.2f", opacity))"
-                mapView.addAnnotation(polyline)
-                coordinator.trailPolylines.append(polyline)
-                coordinator.trailColorMap[ObjectIdentifier(polyline)] = (baseColor, CGFloat(opacity))
-            }
-        }
-    }
 
     // MARK: - Coordinator
 

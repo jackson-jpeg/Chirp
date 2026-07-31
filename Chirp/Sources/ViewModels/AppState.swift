@@ -39,7 +39,6 @@ final class AppState {
     let uwbService: UWBService
     let deadReckoningService: DeadReckoningService
     let positioningEngine: PositioningEngine
-    let lighthouseService: LighthouseService
     let meshWitnessService: MeshWitnessService
     let deadDropService: DeadDropService
     let darkroomService: DarkroomService
@@ -266,22 +265,6 @@ final class AppState {
         let positioningEngine = PositioningEngine()
         self.positioningEngine = positioningEngine
 
-        let lighthouseService: LighthouseService
-        if let lighthouseDB = try? LighthouseDatabase() {
-            lighthouseService = LighthouseService(database: lighthouseDB)
-        } else {
-            // Database init failed (e.g. disk full) — create with a fresh retry.
-            // If still fails, create a no-database instance so the app can still launch.
-            Logger.ptt.error("Failed to initialize LighthouseDatabase — retrying once")
-            if let retryDB = try? LighthouseDatabase() {
-                lighthouseService = LighthouseService(database: retryDB)
-            } else {
-                Logger.ptt.error("LighthouseDatabase retry failed — positioning features will be unavailable")
-                lighthouseService = LighthouseService()
-            }
-        }
-        self.lighthouseService = lighthouseService
-
         // V3 Crypto
         let meshWitnessService = MeshWitnessService()
         self.meshWitnessService = meshWitnessService
@@ -459,16 +442,6 @@ final class AppState {
             }
         }
 
-        lighthouseService.onSendPacket = { [weak self] payload, channelID in
-            let peers = self?.channelManager.activeChannel?.peers ?? []
-            if TransportPreference.shouldSendOnMC(peers: peers) {
-                try? transport.sendControlData(payload, channelID: channelID)
-            }
-            if TransportPreference.shouldSendOnWA(peers: peers) {
-                try? waTransport?.sendControlData(payload, channelID: channelID)
-            }
-        }
-
         meshWitnessService.onSendPacket = { [weak self] payload, channelID in
             let peers = self?.channelManager.activeChannel?.peers ?? []
             if TransportPreference.shouldSendOnMC(peers: peers) {
@@ -586,7 +559,6 @@ final class AppState {
         let pheroRouter = self.pheromoneRouter
         let cloudService = self.meshCloudService
         let uwbSvc = self.uwbService
-        let lighthouseSvc = self.lighthouseService
         let witnessService = self.meshWitnessService
         let deadDropSvc = self.deadDropService
         let darkroomSvc = self.darkroomService
@@ -671,9 +643,6 @@ final class AppState {
 
                             case "UWB!":
                                 uwbSvc.handleTokenPacket(payload, fromPeer: packet.originID.uuidString)
-
-                            case "LHQ!", "LHR!":
-                                lighthouseSvc.handlePacket(payload)
 
                             case "WRQ!", "WCS!":
                                 witnessService.handlePacket(payload, channelID: packet.channelID)
@@ -818,9 +787,6 @@ final class AppState {
             locationService.requestPermission()
         }
         locationService.startUpdating()
-
-        // Start LIGHTHOUSE recording
-        lighthouseService.startRecording(peerID: localPeerID)
 
         // Subscribe to mesh topology updates from beacons to feed MeshIntelligence
         let intelligence = self.meshIntelligence

@@ -25,7 +25,6 @@ actor PositioningEngine {
     private var lastGPS: PositionEstimate?
     private var lastDR: PositionEstimate?
     private var lastUWB: PositionEstimate?
-    private var lastLighthouse: PositionEstimate?
 
     /// Known positions of remote peers, keyed by peer ID.
     private var peerPositions: [String: PositionEstimate] = [:]
@@ -56,7 +55,6 @@ actor PositioningEngine {
         if let t = lastGPS?.timestamp, t > cutoff { count += 1 }
         if let t = lastDR?.timestamp, t > cutoff { count += 1 }
         if let t = lastUWB?.timestamp, t > cutoff { count += 1 }
-        if let t = lastLighthouse?.timestamp, t > cutoff { count += 1 }
         return count
     }
 
@@ -138,12 +136,6 @@ actor PositioningEngine {
     }
 
     /// Ingest a LIGHTHOUSE WiFi fingerprint position estimate.
-    func updateLighthouse(_ estimate: PositionEstimate) {
-        lastLighthouse = estimate
-        logger.debug("LIGHTHOUSE update: \(estimate.latitude, privacy: .public), \(estimate.longitude, privacy: .public)")
-        recordFusedPosition()
-    }
-
     /// Register or update a remote peer's position for mesh correction.
     func updatePeerPosition(peerID: String, position: PositionEstimate) {
         peerPositions[peerID] = position
@@ -163,7 +155,6 @@ actor PositioningEngine {
         var sources: [PositionEstimate] = []
         if let s = lastGPS, s.timestamp > cutoff { sources.append(s) }
         if let s = lastUWB, s.timestamp > cutoff { sources.append(s) }
-        if let s = lastLighthouse, s.timestamp > cutoff { sources.append(s) }
         if let s = lastDR, s.timestamp > cutoff { sources.append(s) }
 
         guard !sources.isEmpty else { return nil }

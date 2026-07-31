@@ -1111,19 +1111,6 @@ struct MeshMapView: View {
         }
     }
 
-    /// Build peer movement trails from LighthouseDatabase breadcrumbs.
-    private var peerMovementTrails: [PeerTrail] {
-        guard let db = appState.lighthouseService.database else { return [] }
-        let peerIDs = db.allBreadcrumbPeerIDs()
-        return peerIDs.compactMap { peerID in
-            let crumbs = db.recentBreadcrumbs(forPeer: peerID, limit: 50)
-            guard crumbs.count >= 2 else { return nil }
-            let coords = crumbs.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
-            let timestamps = crumbs.map(\.timestamp)
-            return PeerTrail(peerID: peerID, coordinates: coords, timestamps: timestamps)
-        }
-    }
-
     private var geoMapContent: some View {
         ZStack {
             GeoMapView(
@@ -1131,8 +1118,7 @@ struct MeshMapView: View {
                 peers: peerPins,
                 hopSegments: geoHopSegments,
                 hopCount: activeHopPath?.hopCount ?? 0,
-                deadDropPins: deadDropMapPins,
-                peerTrails: peerMovementTrails
+                deadDropPins: deadDropMapPins
             )
             .ignoresSafeArea(edges: .bottom)
 

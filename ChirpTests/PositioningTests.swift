@@ -47,7 +47,7 @@ final class PositioningTests: XCTestCase {
 
     func testAllPositionSourceCasesRoundTrip() {
         let sources: [PositionEstimate.PositionSource] = [
-            .gps, .uwbAnchored, .meshCorrected, .lighthouseWifi,
+            .gps, .uwbAnchored, .meshCorrected,
             .deadReckoning, .uwbRelative, .unknown
         ]
 
