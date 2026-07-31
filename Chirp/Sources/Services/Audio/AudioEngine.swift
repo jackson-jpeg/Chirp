@@ -158,6 +158,9 @@ final class AudioEngine: @unchecked Sendable {
             }
         }
 
+        #if DEBUG
+        AudioTelemetry.shared.mark("capture-start")
+        #endif
         Logger.audio.info("Capture started")
     }
 
@@ -175,6 +178,9 @@ final class AudioEngine: @unchecked Sendable {
             self?.captureAccumulator.removeAll()
         }
 
+        #if DEBUG
+        AudioTelemetry.shared.mark("capture-stop")
+        #endif
         Logger.audio.info("Capture stopped")
     }
 
@@ -278,6 +284,19 @@ final class AudioEngine: @unchecked Sendable {
 
         // Feed decoded PCM to live transcription (if wired)
         onDecodedPCM?(floatBuffer)
+
+        #if DEBUG
+        // Receive-side envelope. This is the LAST point at which the audio is
+        // visible to software — everything after `scheduleBuffer` is inside
+        // AVAudioEngine and then the hardware. An assertion here therefore
+        // means "the app produced this signal and handed it to the OS to play",
+        // which is the strongest claim any automated check can make. Whether it
+        // reached a speaker is not knowable from in here; see
+        // DEVICE-TEST-AUTOMATION.md, "What cannot be automated".
+        if let rms = AudioTelemetry.rms(of: floatBuffer) {
+            AudioTelemetry.shared.recordPlayback(rms: rms)
+        }
+        #endif
 
         // Schedule on player node
         playerNode.scheduleBuffer(floatBuffer)
@@ -429,6 +448,12 @@ final class AudioEngine: @unchecked Sendable {
     /// or call unbounded client code, and the tap closure did all three.
     private func consume(_ captured: CapturedFrames) {
         inputLevel = captured.rmsLevel
+
+        #if DEBUG
+        // Send-side envelope for the device harness. Recorded here rather than
+        // in the tap because the tap is the render thread.
+        AudioTelemetry.shared.recordCapture(rms: captured.rmsLevel)
+        #endif
 
         guard let buffer = captured.makeBuffer() else {
             Logger.audio.warning("Could not rebuild captured buffer — dropping")
