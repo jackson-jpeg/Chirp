@@ -15,7 +15,6 @@ struct ChatInputBar: View {
     var onTakePhoto: (() -> Void)?
     var onPickPhoto: (() -> Void)?
     var onPickDocument: (() -> Void)?
-    var onLongPressSend: (() -> Void)?
     /// Called when user starts/continues typing (for typing indicators).
     var onTyping: (() -> Void)?
     /// Called when a voice note is recorded: (duration, audioData).
@@ -220,12 +219,6 @@ struct ChatInputBar: View {
                 .transition(.scale(scale: 0.5).combined(with: .opacity))
                 .accessibilityLabel(String(localized: "accessibility.sendMessage"))
                 .accessibilityHint(String(localized: "accessibility.sendMessage.hint"))
-                .simultaneousGesture(
-                    LongPressGesture(minimumDuration: 0.5)
-                        .onEnded { _ in
-                            onLongPressSend?()
-                        }
-                )
                 .accessibilityIdentifier(AccessibilityID.chatSendButton)
             } else if onSendVoiceNote != nil {
                 // Mic button for voice notes (hold to record)

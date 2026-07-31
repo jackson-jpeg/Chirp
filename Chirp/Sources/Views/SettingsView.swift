@@ -520,27 +520,6 @@ struct SettingsView: View {
                         Spacer()
                     }
                 }
-
-                glassRow {
-                    Toggle(isOn: Binding(
-                        get: { appState.cicadaService.isEnabled },
-                        set: { appState.cicadaService.isEnabled = $0 }
-                    )) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "eye.slash.fill")
-                                .foregroundStyle(amber)
-                                .frame(width: 24)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("CICADA")
-                                    .foregroundStyle(Constants.Colors.textPrimary)
-                                Text("Hidden messages in plain sight")
-                                    .font(.system(.caption2))
-                                    .foregroundStyle(Constants.Colors.textTertiary)
-                            }
-                        }
-                    }
-                    .tint(amber)
-                }
             }
             .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous))
         }

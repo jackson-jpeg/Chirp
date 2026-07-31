@@ -123,53 +123,6 @@ enum Constants {
         static let springDamping: Double = 0.8
         static let quickFade: Double = 0.2
     }
-
-    enum CICADA {
-        /// Version byte prepended to encrypted hidden payload.
-        static let version: UInt8 = 0x01
-        /// HKDF salt for deriving CICADA keys from channel keys.
-        static let keySalt = "CICADA-v1"
-        /// Zero-width space — represents bit 0.
-        static let bit0: Character = "\u{200B}"
-        /// Zero-width non-joiner — represents bit 1.
-        static let bit1: Character = "\u{200C}"
-        /// Set of invisible characters used for stego.
-        static let invisibleChars: Set<Character> = ["\u{200B}", "\u{200C}"]
-        /// Crypto overhead: 1 version + 2 length + 12 nonce + 16 tag = 31 bytes
-        static let cryptoOverhead = 31
-        /// Bits encoded per inter-character position (2 invisible chars = 2 bits).
-        static let bitsPerPosition = 2
-
-        // MARK: - Homoglyph Mode
-
-        /// Latin → Cyrillic homoglyph map. Latin char = bit 0, Cyrillic = bit 1.
-        static let homoglyphMap: [Character: Character] = [
-            "a": "\u{0430}", "c": "\u{0441}", "e": "\u{0435}",
-            "o": "\u{043E}", "p": "\u{0440}", "x": "\u{0445}",
-            "y": "\u{0443}", "s": "\u{0455}", "i": "\u{0456}",
-            "j": "\u{0458}",
-        ]
-
-        /// Reverse map: Cyrillic → Latin.
-        static let homoglyphReverse: [Character: Character] = {
-            var rev: [Character: Character] = [:]
-            for (latin, cyrillic) in homoglyphMap { rev[cyrillic] = latin }
-            return rev
-        }()
-
-        /// All Cyrillic homoglyph characters (for detection).
-        static let cyrillicHomoglyphs: Set<Character> = Set(homoglyphMap.values)
-
-        // MARK: - Whitespace Mode
-
-        /// Regular space — represents bit 0.
-        static let space0: Character = "\u{0020}"
-        /// Thin space — represents bit 1.
-        static let space1: Character = "\u{2009}"
-
-        /// UserDefaults key for preferred stego mode.
-        static let preferredModeKey = "com.chirpchirp.cicada.preferredMode"
-    }
 }
 
 extension Color {

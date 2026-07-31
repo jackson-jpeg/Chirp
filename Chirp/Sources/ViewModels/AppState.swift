@@ -36,7 +36,6 @@ final class AppState {
     let soundAlertService: SoundAlertService
     let pheromoneRouter: PheromoneRouter
     let meshCloudService: MeshCloudService
-    let cicadaService: CICADAService
     let uwbService: UWBService
     let deadReckoningService: DeadReckoningService
     let positioningEngine: PositioningEngine
@@ -256,9 +255,6 @@ final class AppState {
         let meshCloudService = MeshCloudService(localPeerID: peerID, localFingerprint: "")
         self.meshCloudService = meshCloudService
 
-        // CICADA steganography
-        let cicadaService = CICADAService()
-        self.cicadaService = cicadaService
 
         // V3 Positioning
         let uwbService = UWBService(localPeerID: peerID)
@@ -334,11 +330,6 @@ final class AppState {
             }
         }
 
-        // Wire CICADA key derivation (after all properties initialized)
-        cicadaService.channelCryptoProvider = { [weak self] channelID in
-            self?.channelManager.getChannelCrypto(for: channelID)
-        }
-
         // Wire pheromone router send callback -- ACKs go out on both transports
         pheromoneRouter.onSendPacket = { [weak self] payload, channelID in
             let peers = self?.channelManager.activeChannel?.peers ?? []
@@ -371,9 +362,6 @@ final class AppState {
             try? transport.sendControlData(payload, channelID: channelID)
             try? waTransport?.sendControlData(payload, channelID: channelID)
         }
-
-        // Wire CICADA steganography into text messaging
-        textMessageService.cicadaService = cicadaService
 
         // Wire channel crypto into MeshShield so cover traffic is encrypted with channel key
         meshShield.channelCryptoProvider = { [weak self] channelID in

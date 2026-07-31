@@ -34,8 +34,6 @@ final class TextMessageService {
     /// Triple-layer encryption for locked channels.
     var meshShield: MeshShield?
 
-    /// CICADA steganography service for hidden message detection.
-    var cicadaService: CICADAService?
 
     /// Epoch provider: returns current epoch and records message for rotation tracking.
     /// Wired by AppState to ``ChannelManager/recordMessageAndGetEpoch(for:)``.
@@ -492,9 +490,6 @@ final class TextMessageService {
 
         // Clear typing indicator for this sender — they sent a message.
         clearTypingState(senderName: message.senderName, channelID: message.channelID)
-
-        // CICADA: check for hidden steganographic content
-        cicadaService?.decodeAndStore(message: message, channelID: channelID)
 
         // Send delivery ACK back to sender.
         sendACK(for: message.id, channelID: channelID)

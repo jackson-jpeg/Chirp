@@ -18,7 +18,6 @@ struct ChatView: View {
     var onSendImage: ((String) -> Void)?
     var onSendFile: ((URL) -> Void)?
     var onSendReaction: ((String, UUID) -> Void)?
-    var cicadaService: CICADAService?
     /// Typing peers for the current channel.
     var typingPeers: Set<String> = []
     /// Called when the user starts/continues typing (debounced by caller).
@@ -35,9 +34,6 @@ struct ChatView: View {
     var isLoadingOlder: Bool = false
 
     @State private var composedText: String = ""
-    @State private var hiddenText: String = ""
-    @State private var showCICADAInput: Bool = false
-    @State private var revealMessageID: UUID?
     @State private var replyingTo: MeshTextMessage?
     @State private var showScrollToBottom: Bool = false
     @State private var isNearBottom: Bool = true
@@ -94,22 +90,6 @@ struct ChatView: View {
                         typingIndicatorView
                     }
 
-                    // CICADA hidden message overlay
-                    if showCICADAInput {
-                        CICADAInputOverlay(
-                            hiddenText: $hiddenText,
-                            coverTextLength: composedText.count,
-                            capacity: cicadaService?.capacity(coverLength: composedText.count) ?? 0,
-                            onSend: sendMessage,
-                            onDismiss: {
-                                withAnimation(.spring(response: Constants.Animations.springResponse, dampingFraction: Constants.Animations.springDamping)) {
-                                    showCICADAInput = false
-                                    hiddenText = ""
-                                }
-                            }
-                        )
-                    }
-
                     // Input bar
                     ChatInputBar(
                         text: $composedText,
@@ -127,12 +107,6 @@ struct ChatView: View {
                         },
                         onPickDocument: onSendFile != nil ? {
                             showDocumentPicker = true
-                        } : nil,
-                        onLongPressSend: cicadaService?.isEnabled == true ? {
-                            withAnimation(.spring(response: Constants.Animations.springResponse, dampingFraction: Constants.Animations.springDamping)) {
-                                showCICADAInput.toggle()
-                                if !showCICADAInput { hiddenText = "" }
-                            }
                         } : nil,
                         onTyping: onTyping,
                         onSendVoiceNote: onSendVoiceNote
@@ -175,24 +149,6 @@ struct ChatView: View {
                 onSendFile?(url)
             }
         }
-        .overlay {
-            if let revealID = revealMessageID,
-               let message = findMessage(id: revealID),
-               let hidden = cicadaService?.hiddenText(for: message.id) {
-                ZStack {
-                    Color.black.opacity(0.5)
-                        .ignoresSafeArea()
-                        .onTapGesture { revealMessageID = nil }
-
-                    CICADARevealView(
-                        hiddenText: hidden,
-                        onDismiss: { revealMessageID = nil }
-                    )
-                }
-                .transition(.opacity)
-            }
-        }
-        .animation(.easeInOut(duration: Constants.Animations.quickFade), value: revealMessageID)
     }
 
     // MARK: - Empty State
@@ -282,10 +238,6 @@ struct ChatView: View {
                             message: message,
                             isFromSelf: isFromSelf,
                             replyToMessage: replyTo,
-                            hasHiddenContent: cicadaService?.hasHiddenContent(message.text) ?? false,
-                            onRevealHidden: {
-                                revealMessageID = message.id
-                            },
                             clusterPosition: position,
                             onSwipeReply: {
                                 replyingTo = message
@@ -646,19 +598,9 @@ struct ChatView: View {
         let trimmed = composedText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
-        var textToSend = trimmed
-
-        // Encode hidden message via CICADA if active
-        if showCICADAInput && !hiddenText.isEmpty,
-           let encoded = cicadaService?.encodeText(cover: trimmed, hidden: hiddenText, channelID: channelID) {
-            textToSend = encoded
-        }
-
         HapticsManager.shared.pttUp()
-        onSend(textToSend, replyingTo?.id)
+        onSend(trimmed, replyingTo?.id)
         composedText = ""
-        hiddenText = ""
-        showCICADAInput = false
         replyingTo = nil
         isNearBottom = true
         showScrollToBottom = false

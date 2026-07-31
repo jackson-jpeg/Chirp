@@ -12,8 +12,6 @@ struct MessageBubbleView: View {
     let isFromSelf: Bool
     /// The original message this one replies to, if any.
     let replyToMessage: MeshTextMessage?
-    var hasHiddenContent: Bool = false
-    var onRevealHidden: (() -> Void)?
 
     /// Position within a cluster of consecutive messages from the same sender.
     var clusterPosition: ClusterPosition = .solo
@@ -184,16 +182,6 @@ struct MessageBubbleView: View {
                     Text(formattedTime)
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(Constants.Colors.textTertiary.opacity(0.7))
-
-                    if hasHiddenContent {
-                        Button(action: { onRevealHidden?() }) {
-                            Image(systemName: "eye.slash.circle.fill")
-                                .font(.system(size: 11))
-                                .foregroundStyle(Constants.Colors.glassAmberBorder)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Reveal hidden message")
-                    }
 
                     // Delivery indicator for self messages
                     if isFromSelf {

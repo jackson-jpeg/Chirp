@@ -354,7 +354,6 @@ struct ChannelView: View {
                     senderName: appState.localPeerName
                 )
             },
-            cicadaService: appState.cicadaService,
             typingPeers: appState.textMessageService.typingPeersByChannel[channel.id] ?? [],
             onTyping: {
                 appState.textMessageService.sendTypingIndicator(

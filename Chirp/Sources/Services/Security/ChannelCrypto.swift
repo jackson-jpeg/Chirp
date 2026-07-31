@@ -147,16 +147,6 @@ struct ChannelCrypto: Sendable {
         HMAC<SHA256>.isValidAuthenticationCode(signature, authenticating: data, using: key)
     }
 
-    /// Derive a subkey for a specific purpose (e.g., CICADA steganography).
-    func deriveSubkey(salt: String, info: Data = Data()) -> SymmetricKey {
-        HKDF<SHA256>.deriveKey(
-            inputKeyMaterial: key,
-            salt: Data(salt.utf8),
-            info: info,
-            outputByteCount: 32
-        )
-    }
-
     /// Derive the MeshShield Layer 1 key from an ephemeral public key.
     ///
     /// Binds the ephemeral DH material to the channel key so that only channel
