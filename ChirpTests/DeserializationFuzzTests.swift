@@ -162,13 +162,4 @@ import XCTest
             service.handlePacket(payload, channelID: "test")
         }
     }
-
-    // MARK: - Swarm (SWM!)
-
-    func testSwarmSurvivesMalformed() {
-        let service = SwarmService(localPeerID: "test-peer")
-        for payload in payloads + prefixedPayloads([0x53, 0x57, 0x4D, 0x21]) {
-            service.handlePacket(payload, fromPeer: "test-peer", channelID: "test")
-        }
-    }
 }

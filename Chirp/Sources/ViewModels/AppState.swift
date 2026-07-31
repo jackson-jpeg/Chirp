@@ -45,7 +45,6 @@ final class AppState {
     let deadDropService: DeadDropService
     let darkroomService: DarkroomService
     let babelService: BabelService
-    let swarmService: SwarmService
     let chorusService: ChorusService
     let meshGateway: MeshGateway
 
@@ -304,8 +303,6 @@ final class AppState {
         let babelService = BabelService()
         self.babelService = babelService
 
-        let swarmService = SwarmService(localPeerID: peerID)
-        self.swarmService = swarmService
 
         let chorusService = ChorusService(localPeerID: peerID)
         self.chorusService = chorusService
@@ -527,16 +524,6 @@ final class AppState {
             }
         }
 
-        swarmService.onSendPacket = { [weak self] payload, channelID in
-            let peers = self?.channelManager.activeChannel?.peers ?? []
-            if TransportPreference.shouldSendOnMC(peers: peers) {
-                try? transport.sendControlData(payload, channelID: channelID)
-            }
-            if TransportPreference.shouldSendOnWA(peers: peers) {
-                try? waTransport?.sendControlData(payload, channelID: channelID)
-            }
-        }
-
         chorusService.onSendPacket = { [weak self] payload, channelID in
             let peers = self?.channelManager.activeChannel?.peers ?? []
             if TransportPreference.shouldSendOnMC(peers: peers) {
@@ -629,7 +616,6 @@ final class AppState {
         let deadDropSvc = self.deadDropService
         let darkroomSvc = self.darkroomService
         let babelSvc = self.babelService
-        let swarmSvc = self.swarmService
         let chorusSvc = self.chorusService
         let gatewaySvc = self.meshGateway
         Task {
@@ -726,9 +712,6 @@ final class AppState {
 
                             case "BBL!":
                                 babelSvc.handlePacket(payload, channelID: packet.channelID)
-
-                            case "SWM!", "SWR!", "SWC!", "SWA!":
-                                swarmSvc.handlePacket(payload, fromPeer: packet.originID.uuidString, channelID: packet.channelID)
 
                             case "CHR!", "CHO!", "CHC!", "CHX!":
                                 chorusSvc.handlePacket(payload, fromPeer: packet.originID.uuidString, channelID: packet.channelID)
@@ -875,9 +858,6 @@ final class AppState {
 
         // Start LIGHTHOUSE recording
         lighthouseService.startRecording(peerID: localPeerID)
-
-        // Register SWARM background tasks
-        swarmService.registerBackgroundTask()
 
         // Subscribe to mesh topology updates from beacons to feed MeshIntelligence
         let intelligence = self.meshIntelligence

@@ -116,8 +116,6 @@ targets:
         - _chirp-ptt._tcp
         UIBackgroundModes:
         - audio
-        BGTaskSchedulerPermittedIdentifiers:
-        - com.chirpchirp.swarm.compute
   ChirpTests:
     type: bundle.unit-test
     platform: iOS

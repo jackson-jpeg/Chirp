@@ -130,17 +130,6 @@ struct MoreView: View {
                 }
 
                 NavigationLink {
-                    SwarmView()
-                } label: {
-                    moreRow(
-                        icon: "cpu",
-                        iconColor: Constants.Colors.electricGreen,
-                        title: String(localized: "more.swarm.title"),
-                        description: String(localized: "more.swarm.description")
-                    )
-                }
-
-                NavigationLink {
                     ChorusView()
                 } label: {
                     moreRow(

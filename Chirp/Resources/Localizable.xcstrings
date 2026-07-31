@@ -2061,26 +2061,6 @@
         }
       }
     },
-    "more.swarm.description": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Distributed compute across peers"
-          }
-        }
-      }
-    },
-    "more.swarm.title": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Swarm"
-          }
-        }
-      }
-    },
     "more.voiceMessages.description": {
       "localizations": {
         "en": {
