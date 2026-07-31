@@ -67,7 +67,7 @@ Separately worth knowing, and **verified independently**: Tailscale SSH
 (`ssh macbook`) genuinely does discard the remote exit status
 (`ssh macbook "exit 7"` → `$? == 0`), while `ssh macbook-tunnel` preserves it
 (`→ 7`). That bug class is catalogued across all repos in
-`/root/CROSS-REPO-SSH.md` (22 instances, including this repo's `sync.sh`, since
+`/root/ios-toolkit/docs/CROSS-REPO-SSH.md` (22 instances, including this repo's `sync.sh`, since
 fixed in `4dbc4e7`). `bin/ios` was already on the safe transport; it now also
 **refuses** an unsafe `MAC_SSH` override rather than producing unverifiable
 results.
