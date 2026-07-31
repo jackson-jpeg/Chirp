@@ -74,14 +74,6 @@ import XCTest
         }
     }
 
-    // MARK: - Emergency SOS (SOS!)
-
-    func testSOSBeaconSurvivesMalformed() {
-        for payload in payloads + prefixedPayloads([0x53, 0x4F, 0x53, 0x21]) {
-            EmergencyBeacon.shared.handleReceivedSOSData(payload)
-        }
-    }
-
     // MARK: - Floor Control (JSON, no prefix)
 
     func testFloorControlSurvivesMalformed() {

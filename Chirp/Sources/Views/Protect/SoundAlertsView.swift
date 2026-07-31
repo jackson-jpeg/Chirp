@@ -68,18 +68,11 @@ struct SoundAlertsView: View {
                     .fill(Constants.Colors.textTertiary)
                     .frame(width: 10, height: 10)
 
-                NavigationLink {
-                    EmergencySOSView()
-                } label: {
-                    HStack(spacing: 4) {
-                        Text("Activate Emergency Mode to enable")
-                            .font(Constants.Typography.body)
-                            .foregroundStyle(Constants.Colors.textSecondary)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(Constants.Colors.textTertiary)
-                    }
-                }
+                // Emergency Mode is now reached from Settings; the SOS screen
+                // that used to be linked here has been cut for v1.
+                Text("Activate Emergency Mode in Settings to enable")
+                    .font(Constants.Typography.body)
+                    .foregroundStyle(Constants.Colors.textSecondary)
             }
 
             Spacer()

@@ -415,17 +415,6 @@
         }
       }
     },
-    "channel.quickAction.sos": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "SOS"
-          }
-        }
-      }
-    },
     "channel.radar.peersHint": {
       "extractionState": "stale",
       "localizations": {
@@ -1162,36 +1151,6 @@
         }
       }
     },
-    "emergency.overlay.sosBeacon": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "SOS Beacon"
-          }
-        }
-      }
-    },
-    "emergency.overlay.broadcasting": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Broadcasting"
-          }
-        }
-      }
-    },
-    "emergency.overlay.standby": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Standby"
-          }
-        }
-      }
-    },
     "emergency.overlay.audioQuality": {
       "localizations": {
         "en": {
@@ -1804,39 +1763,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "New Channel"
-          }
-        }
-      }
-    },
-    "home.sos.alertMessage": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This will broadcast an emergency signal to all nearby mesh devices. Use only in a real emergency."
-          }
-        }
-      }
-    },
-    "home.sos.alertTitle": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Activate SOS Beacon?"
-          }
-        }
-      }
-    },
-    "home.sos.sendButton": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Send SOS"
           }
         }
       }

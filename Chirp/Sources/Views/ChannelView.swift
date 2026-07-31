@@ -1075,26 +1075,6 @@ struct ChannelView: View {
                 toast = ToastItem(message: String(localized: "channel.toast.locationShared"), type: .success)
             }
             .accessibilityIdentifier(AccessibilityID.quickActionLocation)
-
-            quickActionButton(
-                icon: EmergencyBeacon.shared.isActive ? "xmark.circle.fill" : "sos",
-                label: EmergencyBeacon.shared.isActive ? String(localized: "channel.quickAction.stopSOS") : String(localized: "channel.quickAction.sos"),
-                color: Constants.Colors.hotRed,
-                size: 48
-            ) {
-                if EmergencyBeacon.shared.isActive {
-                    EmergencyBeacon.shared.deactivate()
-                    toast = ToastItem(message: String(localized: "channel.toast.sosBeaconStopped"), type: .info)
-                } else {
-                    HapticsManager.shared.denied()
-                    EmergencyBeacon.shared.activate(
-                        senderID: appState.localPeerID,
-                        senderName: appState.callsign
-                    )
-                    toast = ToastItem(message: String(localized: "channel.toast.sosBeaconActive"), type: .warning)
-                }
-            }
-            .accessibilityIdentifier(AccessibilityID.quickActionSOS)
         }
         .padding(.horizontal, Constants.Layout.horizontalPadding)
     }

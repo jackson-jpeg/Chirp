@@ -120,17 +120,6 @@ struct EmergencyModeOverlay: View {
                 color: emergencyMode.locationBroadcastInterval > 0 ? green : .secondary
             )
 
-            // SOS beacon status
-            let beaconActive = EmergencyBeacon.shared.isActive
-            statusRow(
-                icon: "sos",
-                label: String(localized: "emergency.overlay.sosBeacon"),
-                value: beaconActive
-                    ? String(localized: "emergency.overlay.broadcasting")
-                    : String(localized: "emergency.overlay.standby"),
-                color: beaconActive ? red : .secondary
-            )
-
             // Audio quality
             statusRow(
                 icon: "waveform",

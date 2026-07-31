@@ -31,21 +31,6 @@ final class NotificationService {
         UNUserNotificationCenter.current().add(request)
     }
 
-    func showSOSNotification(from sender: String) {
-        let content = UNMutableNotificationContent()
-        content.title = "SOS ALERT"
-        content.body = "\(sender) activated emergency beacon"
-        content.sound = UNNotificationSound.defaultCritical
-        content.interruptionLevel = .critical
-
-        let request = UNNotificationRequest(
-            identifier: "sos-\(UUID().uuidString)",
-            content: content,
-            trigger: nil
-        )
-        UNUserNotificationCenter.current().add(request)
-    }
-
     func clearBadge() {
         UNUserNotificationCenter.current().setBadgeCount(0)
     }

@@ -561,95 +561,6 @@ private struct ChannelEmptyState: View {
 
 /// A long-press-activated SOS button that prevents accidental triggers.
 /// Shows red only when held; requires deliberate press to confirm.
-private struct SOSToolbarButton: View {
-    @Binding var showConfirm: Bool
-
-    @State private var isHolding = false
-    @State private var holdProgress: CGFloat = 0
-    @State private var holdTask: Task<Void, Never>?
-
-    private let holdDuration: TimeInterval = 1.5
-
-    var body: some View {
-        Button {
-            // Tap does nothing -- must long press
-        } label: {
-            ZStack {
-                Circle()
-                    .trim(from: 0, to: holdProgress)
-                    .stroke(Constants.Colors.hotRed, lineWidth: 2.5)
-                    .rotationEffect(.degrees(-90))
-                    .frame(width: 30, height: 30)
-
-                Text("SOS")
-                    .font(.system(size: 10, weight: .black, design: .rounded))
-                    .foregroundStyle(isHolding ? .white : Constants.Colors.hotRed.opacity(0.6))
-            }
-            .frame(width: 34, height: 34)
-            .background(
-                Circle()
-                    .fill(isHolding ? Constants.Colors.hotRed.opacity(0.3) : Color.clear)
-            )
-        }
-        .simultaneousGesture(
-            LongPressGesture(minimumDuration: holdDuration)
-                .onChanged { _ in
-                    startHold()
-                }
-                .onEnded { _ in
-                    completeHold()
-                }
-        )
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onEnded { _ in
-                    cancelHold()
-                }
-        )
-        .accessibilityLabel("SOS Emergency Beacon")
-        .accessibilityHint("Long press for \(String(format: "%.1f", holdDuration)) seconds to activate emergency beacon")
-    }
-
-    private func startHold() {
-        isHolding = true
-        holdProgress = 0
-        holdTask?.cancel()
-
-        let interval: Duration = .milliseconds(50)
-        let totalSteps = holdDuration / 0.05
-
-        holdTask = Task { @MainActor in
-            var currentStep: Double = 0
-            while !Task.isCancelled, currentStep < totalSteps {
-                try? await Task.sleep(for: interval)
-                guard !Task.isCancelled else { break }
-                currentStep += 1
-                let progress = CGFloat(currentStep / totalSteps)
-                withAnimation(.linear(duration: 0.05)) {
-                    holdProgress = progress
-                }
-            }
-        }
-    }
-
-    private func completeHold() {
-        holdTask?.cancel()
-        holdTask = nil
-        isHolding = false
-        holdProgress = 0
-        showConfirm = true
-    }
-
-    private func cancelHold() {
-        holdTask?.cancel()
-        holdTask = nil
-        withAnimation(.easeOut(duration: 0.2)) {
-            isHolding = false
-            holdProgress = 0
-        }
-    }
-}
-
 // MARK: - Ambient Mesh Background
 
 /// Lightweight particle field that gives the Talk tab a living, breathing feel.
@@ -1195,7 +1106,6 @@ struct HomeView: View {
     @State private var toast: ToastItem?
     @State private var connectedPeerCount = 0
     @State private var isRefreshing = false
-    @State private var showSOSConfirm = false
     @State private var showPermissionAlert = false
     @State private var permissionAlert: AppState.PermissionDeniedAlert?
     @State private var selectedTab: HomeTab = .talk
@@ -1278,10 +1188,6 @@ struct HomeView: View {
                         }
                     }
                 }
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    SOSToolbarButton(showConfirm: $showSOSConfirm)
-                }
             }
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showChannelCreation) {
@@ -1299,14 +1205,6 @@ struct HomeView: View {
             }
             .sheet(isPresented: $showDiagnostics) {
                 DiagnosticsView()
-            }
-            .alert(String(localized: "home.sos.alertTitle"), isPresented: $showSOSConfirm) {
-                Button(String(localized: "home.sos.sendButton"), role: .destructive) {
-                    activateSOS()
-                }
-                Button(String(localized: "common.cancel"), role: .cancel) {}
-            } message: {
-                Text(String(localized: "home.sos.alertMessage"))
             }
             .chirpToast($toast)
             .onChange(of: appState.permissionDeniedAlert) { _, newAlert in
@@ -1656,26 +1554,4 @@ struct HomeView: View {
 
     // MARK: - SOS
 
-    private func activateSOS() {
-        let sosPayload: [String: String] = [
-            "type": "SOS",
-            "from": appState.callsign,
-            "peerID": appState.localPeerID,
-            "time": ISO8601DateFormatter().string(from: Date()),
-        ]
-        guard let data = try? JSONEncoder().encode(sosPayload) else { return }
-
-        Task {
-            let packet = await appState.meshRouter.createPacket(
-                type: .control,
-                payload: data,
-                channelID: "",
-                sequenceNumber: 0,
-                priority: .critical
-            )
-            appState.multipeerTransport.forwardPacket(packet.serialize(), excludePeer: "")
-        }
-
-        toast = ToastItem(message: "SOS beacon activated", type: .error)
-    }
 }

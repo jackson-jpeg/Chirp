@@ -687,14 +687,6 @@ final class AppState {
                             case "BBL!":
                                 babelSvc.handlePacket(payload, channelID: packet.channelID)
 
-                            case "SOS!":
-                                let sosCountBefore = EmergencyBeacon.shared.receivedAlerts.count
-                                EmergencyBeacon.shared.handleReceivedSOSData(payload)
-                                if EmergencyBeacon.shared.receivedAlerts.count > sosCountBefore,
-                                   let sosMsg = EmergencyBeacon.shared.receivedAlerts.first {
-                                    NotificationService.shared.showSOSNotification(from: sosMsg.senderName)
-                                }
-
                             case "KRO!":
                                 if let rotation = ChannelManager.parseKeyRotationPayload(payload) {
                                     chanMgr.handleKeyRotation(channelID: rotation.channelID, peerEpoch: rotation.epoch)
@@ -850,19 +842,6 @@ final class AppState {
                   let trails = notification.userInfo?["trails"] as? [String: Double] else { return }
             Task {
                 await intelligence.mergePheromones(from: neighborID, trails: trails)
-            }
-        })
-
-        // Route SOS beacon broadcasts through the mesh transports
-        let mpTransportForSOS = self.multipeerTransport
-        let waTransportForSOS = self.wifiAwareTransport
-        notificationObservers.append(NotificationCenter.default.addObserver(
-            forName: .emergencySOSBroadcast, object: nil, queue: .main
-        ) { notification in
-            guard let data = notification.userInfo?["packet"] as? Data else { return }
-            mpTransportForSOS.forwardPacket(data, excludePeer: "")
-            Task { @MainActor in
-                waTransportForSOS?.forwardPacket(data, excludePeer: "")
             }
         })
 

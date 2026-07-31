@@ -8,7 +8,6 @@ enum AccessibilityID {
     static let meshMapButton = "meshMapButton"
     static let settingsButton = "settingsButton"
     static let newChannelButton = "newChannelButton"
-    static let sosButton = "sosButton"
     static let gatewayButton = "gatewayButton"
     static let friendsRow = "friendsRow"
     static let createFirstChannel = "createFirstChannel"
@@ -20,7 +19,6 @@ enum AccessibilityID {
     static let quickActionCamera = "quickActionCamera"
     static let quickActionChat = "quickActionChat"
     static let quickActionLocation = "quickActionLocation"
-    static let quickActionSOS = "quickActionSOS"
     static let statusPill = "statusPill"
     static let peerCountPill = "peerCountPill"
     static let waveform = "waveform"
@@ -51,9 +49,6 @@ enum AccessibilityID {
     static let chatTypingIndicator = "chatTypingIndicator"
 
     // MARK: - Emergency
-    static let emergencySOSView = "emergencySOSView"
-    static let sosActivateButton = "sosActivateButton"
-    static let sosCancelButton = "sosCancelButton"
 
     // MARK: - Onboarding
     static let onboardingView = "onboardingView"
