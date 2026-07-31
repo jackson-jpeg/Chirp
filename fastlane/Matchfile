@@ -6,7 +6,14 @@ storage_mode("git")
 type("appstore")
 app_identifier([
   "com.jacksonmsanger.chirpchirp",
-  "com.jacksonmsanger.chirpchirp.live-activity"
+  "com.jacksonmsanger.chirpchirp.live-activity",
+  # UI-test runner. Xcode synthesises an application to host the XCUITest
+  # bundle, named "<test bundle id>.xctrunner", and it must be signed and
+  # installed on the device like any other app. There is no Xcode account on
+  # this Mac — signing is App Store Connect API + match — so automatic
+  # provisioning cannot mint this one and it has to be managed here.
+  # Development profiles only; this is never shipped.
+  "com.jacksonmsanger.chirpchirp.uitests.xctrunner"
 ])
 team_id(ENV["MATCH_TEAM_ID"] || "2MU4PC84GZ")
 keychain_name("sanger-ci.keychain-db")

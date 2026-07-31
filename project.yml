@@ -126,6 +126,35 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp.tests
+  # Device automation. Runs ONLY on physical hardware — it drives the real PTT
+  # button on a real radio. Deliberately in its own target and its own scheme so
+  # that `ios test chirp` (simulator, unit) is completely unaffected: a UI test
+  # bundle in the Chirp scheme would make every simulator run try to launch an
+  # app and fail.
+  #
+  # Signing: Manual, against a match-managed Development profile, exactly like
+  # the app. Automatic was tried first and cannot work here — there is no Xcode
+  # account on this Mac (signing is App Store Connect API key + match), so
+  # `-allowProvisioningUpdates` fails with "No Accounts: Add a new account in
+  # Accounts settings". The runner's bundle ID is therefore registered in
+  # fastlane/Matchfile and `ios certs refresh chirp` mints its profile.
+  ChirpUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+    - path: ChirpUITests
+    dependencies:
+    - target: Chirp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp.uitests
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: 'Apple Development: Created via API (PJ8D2LN86F)'
+        PROVISIONING_PROFILE_SPECIFIER: match Development com.jacksonmsanger.chirpchirp.uitests.xctrunner
+        CODE_SIGN_ENTITLEMENTS: ''
+        GENERATE_INFOPLIST_FILE: true
+        INFOPLIST_FILE: ''
+        TEST_TARGET_NAME: Chirp
 schemes:
   Chirp:
     build:
@@ -145,3 +174,15 @@ schemes:
       config: Debug
     archive:
       config: Release
+  # Separate scheme, physical devices only. See the ChirpUITests target comment.
+  ChirpDeviceTests:
+    build:
+      targets:
+        Chirp: all
+        ChirpUITests: [test]
+    test:
+      config: Debug
+      targets:
+        - ChirpUITests
+    run:
+      config: Debug
