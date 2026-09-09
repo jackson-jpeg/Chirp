@@ -150,13 +150,22 @@ final class VoiceMessageQueue {
 
             // Load audio data from disk.
             let filePath = voiceDirectory.appendingPathComponent(message.fileName)
-            guard let audioData = try? Data(contentsOf: filePath) else {
-                logger.error("Audio file missing for message \(message.id.uuidString)")
+            let audioData: Data
+            do {
+                audioData = try Data(contentsOf: filePath)
+            } catch {
+                logger.error("Cannot read audio for message \(message.id.uuidString): \(error.localizedDescription)")
                 continue
             }
 
             // Build the delivery payload: metadata JSON + separator + audio data.
-            guard let metadataJSON = try? JSONEncoder().encode(message) else { continue }
+            let metadataJSON: Data
+            do {
+                metadataJSON = try JSONEncoder().encode(message)
+            } catch {
+                logger.error("Cannot encode metadata for message \(message.id.uuidString): \(error.localizedDescription)")
+                continue
+            }
 
             var deliveryPayload = Data()
             // Header: "VMQ!" magic + metadata length (4 bytes) + metadata + audio
@@ -253,8 +262,11 @@ final class VoiceMessageQueue {
     /// Returns an array of individual Opus frames.
     func loadOpusFrames(for message: PendingMessage) -> [Data]? {
         let filePath = voiceDirectory.appendingPathComponent(message.fileName)
-        guard let rawData = try? Data(contentsOf: filePath) else {
-            logger.error("Cannot load audio for message \(message.id.uuidString)")
+        let rawData: Data
+        do {
+            rawData = try Data(contentsOf: filePath)
+        } catch {
+            logger.error("Cannot load audio for message \(message.id.uuidString): \(error.localizedDescription)")
             return nil
         }
 
@@ -358,29 +370,42 @@ final class VoiceMessageQueue {
     }
 
     private func load() {
-        let pendingURL = voiceDirectory.appendingPathComponent(Self.indexFileName)
-        if let data = try? Data(contentsOf: pendingURL),
-           let messages = try? JSONDecoder().decode([PendingMessage].self, from: data) {
-            pendingMessages = messages
-            logger.info("Loaded \(messages.count) pending voice messages")
-        }
+        pendingMessages = loadIndex(named: Self.indexFileName, label: "pending")
+        receivedMessages = loadIndex(named: Self.receivedIndexFileName, label: "received")
+    }
 
-        let receivedURL = voiceDirectory.appendingPathComponent(Self.receivedIndexFileName)
-        if let data = try? Data(contentsOf: receivedURL),
-           let messages = try? JSONDecoder().decode([PendingMessage].self, from: data) {
-            receivedMessages = messages
-            logger.info("Loaded \(messages.count) received voice messages")
+    /// A missing index is normal (first launch, nothing queued yet); an index
+    /// that exists but won't read or decode is corruption and gets logged.
+    private func loadIndex(named fileName: String, label: String) -> [PendingMessage] {
+        let indexURL = voiceDirectory.appendingPathComponent(fileName)
+        guard fileManager.fileExists(atPath: indexURL.path) else { return [] }
+        do {
+            let data = try Data(contentsOf: indexURL)
+            let messages = try JSONDecoder().decode([PendingMessage].self, from: data)
+            logger.info("Loaded \(messages.count) \(label, privacy: .public) voice messages")
+            return messages
+        } catch {
+            logger.error("Corrupt \(label, privacy: .public) voice index — starting empty: \(error.localizedDescription)")
+            return []
         }
     }
 
     private func ensureDirectoryExists() {
         if !fileManager.fileExists(atPath: voiceDirectory.path) {
-            try? fileManager.createDirectory(at: voiceDirectory, withIntermediateDirectories: true)
+            do {
+                try fileManager.createDirectory(at: voiceDirectory, withIntermediateDirectories: true)
+            } catch {
+                logger.error("Cannot create voice message directory — nothing will persist: \(error.localizedDescription)")
+            }
         }
     }
 
     private func deleteAudioFile(_ fileName: String) {
         let filePath = voiceDirectory.appendingPathComponent(fileName)
-        try? fileManager.removeItem(at: filePath)
+        do {
+            try fileManager.removeItem(at: filePath)
+        } catch {
+            logger.error("Could not delete audio file \(fileName, privacy: .public): \(error.localizedDescription)")
+        }
     }
 }

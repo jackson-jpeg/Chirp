@@ -48,12 +48,18 @@ final class OpusCodec: @unchecked Sendable {
     init() throws {
         self.samplesPerFrame = Constants.Opus.samplesPerFrame
 
-        let fmt = AVAudioFormat(
+        // This initializer is already throwing, so a format failure — however
+        // unlikely for 16kHz mono Int16 — surfaces as a caught setup error
+        // instead of a crash on the audio path.
+        guard let fmt = AVAudioFormat(
             commonFormat: .pcmFormatInt16,
             sampleRate: Constants.Opus.sampleRate,
             channels: AVAudioChannelCount(Constants.Opus.channels),
             interleaved: true
-        )!
+        ) else {
+            Logger.audio.error("OpusCodec: cannot create \(Constants.Opus.sampleRate)Hz Int16 format")
+            throw OpusCodecError.formatCreationFailed
+        }
         self.format = fmt
 
         // Create encoder via C shim (application: 2048 = OPUS_APPLICATION_VOIP)
@@ -168,6 +174,7 @@ final class OpusCodec: @unchecked Sendable {
 
 enum OpusCodecError: Error, Sendable {
     case bufferAllocationFailed
+    case formatCreationFailed
     case encodeFailed
     case decodeFailed
 }

@@ -90,8 +90,12 @@ enum AudioSessionManager {
 
         let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
 
-        // Notification observer runs on queue: .main, so we can assume MainActor.
-        MainActor.assumeIsolated {
+        // The observer queue is .main, but the closure itself is nonisolated —
+        // hop to the main actor with the values already parsed rather than
+        // asserting isolation. The tick of latency this adds is nothing next
+        // to an interruption that has already silenced the session, and the
+        // callbacks this reaches hop through their own MainActor tasks anyway.
+        Task { @MainActor in
             switch type {
             case .began:
                 Logger.audio.warning("Audio session interruption BEGAN — releasing floor")
@@ -101,7 +105,14 @@ enum AudioSessionManager {
                 let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
                 if options.contains(.shouldResume) {
                     Logger.audio.info("Audio session interruption ENDED — shouldResume, reactivating")
-                    try? AVAudioSession.sharedInstance().setActive(true, options: [])
+                    do {
+                        try AVAudioSession.sharedInstance().setActive(true, options: [])
+                    } catch {
+                        // The engine-restart path in onInterruptionEnded gets
+                        // another chance; this failure is worth seeing, not
+                        // worth swallowing.
+                        Logger.audio.error("Reactivating audio session failed: \(error.localizedDescription)")
+                    }
                     onInterruptionEnded?()
                 } else {
                     Logger.audio.info("Audio session interruption ENDED — no shouldResume flag")
@@ -144,8 +155,9 @@ enum AudioSessionManager {
         // may become invalid. Notify PTTEngine to stop capture and release the floor.
         if reason == .oldDeviceUnavailable {
             Logger.audio.warning("Audio input device lost — notifying PTTEngine")
-            // Notification observer runs on queue: .main, so we can assume MainActor.
-            MainActor.assumeIsolated {
+            // Same hop as handleInterruption: reach the @MainActor callback
+            // without asserting the observer's isolation.
+            Task { @MainActor in
                 onInputDeviceLost?()
             }
         }

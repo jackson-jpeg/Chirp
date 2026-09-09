@@ -63,7 +63,13 @@ final class PheromoneRouter {
             hopCount: 0
         )
 
-        guard let payload = try? ack.wirePayload() else { return }
+        let payload: Data
+        do {
+            payload = try ack.wirePayload()
+        } catch {
+            logger.error("Delivery ACK for \(packetID.uuidString.prefix(8)) failed to encode: \(error.localizedDescription)")
+            return
+        }
         onSendPacket?(payload, "")  // Broadcast channel for ACKs
 
         // Also deposit pheromone locally -- we successfully reached this channel
@@ -108,8 +114,10 @@ final class PheromoneRouter {
         // Forward ACK toward original sender with incremented hop count
         ack.hopCount += 1
         if ack.hopCount < 8 { // Cap ACK propagation
-            if let forwardPayload = try? ack.wirePayload() {
-                onSendPacket?(forwardPayload, "")
+            do {
+                onSendPacket?(try ack.wirePayload(), "")
+            } catch {
+                logger.error("ACK forward for \(ack.ackedPacketID.uuidString.prefix(8)) failed to encode: \(error.localizedDescription)")
             }
         }
 

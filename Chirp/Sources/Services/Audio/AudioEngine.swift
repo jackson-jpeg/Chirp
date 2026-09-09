@@ -1,11 +1,14 @@
 @preconcurrency import AVFoundation
 import Observation
+import os
 import OSLog
 
 /// `@unchecked Sendable` is required because AVAudioEngine tap callbacks run on the
 /// audio I/O thread. Mutable state: `captureAccumulator` and `converter` are accessed
-/// exclusively on `processingQueue`; `inputLevel` is a display-only float written from
-/// the audio thread (benign race for UI animation).
+/// exclusively on `processingQueue`; `isCapturing` is read on the render thread and
+/// the processing queue, so it lives behind an `OSAllocatedUnfairLock`; `inputLevel`
+/// is a display-only float written from the processing queue (benign race for UI
+/// animation).
 @Observable
 final class AudioEngine: @unchecked Sendable {
     var onEncodedAudio: (@Sendable (Data) -> Void)?
@@ -25,7 +28,17 @@ final class AudioEngine: @unchecked Sendable {
     private var captureAccumulator: [Int16] = []
     private var sequenceNumber: UInt32 = 0
     private var converter: AVAudioConverter?
-    private var isCapturing = false
+
+    /// Read on the audio render thread (the tap) and on `processingQueue`,
+    /// written from the main actor in `startCapture`/`stopCapture`. A plain
+    /// `Bool` here is a data race the sanitizer can actually hit — a torn read
+    /// is vanishingly unlikely, but the unordered one means a tap callback can
+    /// keep consuming after `stopCapture` believed it had fenced them out.
+    private let capturingFlag = OSAllocatedUnfairLock(initialState: false)
+    private var isCapturing: Bool {
+        get { capturingFlag.withLock { $0 } }
+        set { capturingFlag.withLock { $0 = newValue } }
+    }
     private let processingQueue = DispatchQueue(label: "com.chirpchirp.audio.processing", qos: .userInteractive)
     private var playbackTimer: DispatchSourceTimer?
     private let playbackQueue = DispatchQueue(label: "com.chirpchirp.audio.playback", qos: .userInteractive)
@@ -123,16 +136,23 @@ final class AudioEngine: @unchecked Sendable {
         guard let engine, !isCapturing else { return }
 
         isCapturing = true
-        captureAccumulator.removeAll()
+
+        // `converter` and `captureAccumulator` belong to `processingQueue`.
+        // The queue is serial, so this reset is ordered before any `consume`
+        // the new tap enqueues — same effect as resetting inline, without
+        // touching queue-owned state from the main actor.
+        // (Dropping the converter matters: pass nil format to installTap —
+        // inputNode.outputFormat can LIE (reports 24kHz when hardware is
+        // 48kHz), and on repeated taps iOS detects the mismatch and crashes
+        // with "Failed to create tap due to format mismatch". nil format =
+        // "give me whatever format you have" — so the converter must be
+        // rebuilt from whatever format the new tap actually delivers.)
+        processingQueue.async { [weak self] in
+            self?.converter = nil
+            self?.captureAccumulator.removeAll()
+        }
 
         let inputNode = engine.inputNode
-
-        // IMPORTANT: Pass nil format to installTap.
-        // inputNode.outputFormat can LIE (reports 24kHz when hardware is 48kHz).
-        // On repeated taps, iOS detects the mismatch and crashes with
-        // "Failed to create tap due to format mismatch".
-        // nil format = "give me whatever format you have" — always safe.
-        converter = nil
 
         inputNode.installTap(onBus: 0, bufferSize: 4096, format: nil) {
             [weak self] buffer, time in

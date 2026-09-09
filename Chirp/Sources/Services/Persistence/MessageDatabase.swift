@@ -14,13 +14,16 @@ enum DatabaseError: Error, LocalizedError {
     }
 }
 
-/// Encrypted SQLite message store backed by GRDB.
+/// SQLite message store backed by GRDB.
 ///
 /// The database file lives at `Documents/chirp_messages.db`, excluded from
-/// iCloud/iTunes backup. Encryption uses a device-specific key from the
-/// Keychain (see ``KeychainHelper``). If GRDB's SQLCipher passphrase API is
-/// unavailable, the file relies on iOS Data Protection
-/// (`NSFileProtectionCompleteUntilFirstUserAuthentication`).
+/// iCloud/iTunes backup. At-rest protection is iOS Data Protection
+/// (`NSFileProtectionCompleteUntilFirstUserAuthentication`) — the file is
+/// encrypted whenever the device is locked, after first unlock.
+///
+/// Schema changes go through ``migrator``: append a new
+/// `registerMigration` block, never edit an existing one. GRDB records which
+/// migrations have run, so existing installs pick up only what's new.
 @MainActor
 final class MessageDatabase {
 
@@ -36,35 +39,48 @@ final class MessageDatabase {
         }
         let dbURL = documentsURL.appendingPathComponent("chirp_messages.db")
 
-        // GRDB standard doesn't include SQLCipher. Instead, rely on iOS Data Protection
-        // for encryption at rest. The DB file is protected by NSFileProtectionCompleteUntilFirstUserAuthentication
-        // which means it's encrypted whenever the device is locked (after first unlock).
-        // Combined with Keychain-stored app secrets, this provides strong at-rest protection.
         let config = Configuration()
         dbQueue = try DatabaseQueue(path: dbURL.path, configuration: config)
 
-        // Exclude from backup
-        var resourceURL = dbURL
-        var resourceValues = URLResourceValues()
-        resourceValues.isExcludedFromBackup = true
-        try? resourceURL.setResourceValues(resourceValues)
+        // Exclude from backup. Failing is survivable (the store still works),
+        // but it means message history would land in device backups.
+        do {
+            var resourceURL = dbURL
+            var resourceValues = URLResourceValues()
+            resourceValues.isExcludedFromBackup = true
+            try resourceURL.setResourceValues(resourceValues)
+        } catch {
+            logger.error("Could not exclude database from backup: \(error.localizedDescription, privacy: .public)")
+        }
 
-        // Apply iOS file protection
-        try? fileManager.setAttributes(
-            [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
-            ofItemAtPath: dbURL.path
-        )
+        // Apply iOS file protection — this is the at-rest encryption story,
+        // so a failure is worth more than silence.
+        do {
+            try fileManager.setAttributes(
+                [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
+                ofItemAtPath: dbURL.path
+            )
+        } catch {
+            logger.error("Could not apply file protection to database: \(error.localizedDescription, privacy: .public)")
+        }
 
-        // Create schema
-        try createTablesIfNeeded()
+        try Self.migrator.migrate(dbQueue)
 
         logger.info("MessageDatabase opened at \(dbURL.path, privacy: .public)")
     }
 
     // MARK: - Schema
 
-    private func createTablesIfNeeded() throws {
-        try dbQueue.write { db in
+    /// All schema history, in order. v1 is the schema as shipped in 1.0.0.
+    ///
+    /// The v1 statements keep `IF NOT EXISTS` because installs from before the
+    /// migrator existed already have the table but no migration record; v1 must
+    /// re-run cleanly on them. Later migrations start from a recorded state and
+    /// should not need that guard.
+    private static var migrator: DatabaseMigrator {
+        var migrator = DatabaseMigrator()
+
+        migrator.registerMigration("v1") { db in
             try db.execute(sql: """
                 CREATE TABLE IF NOT EXISTS messages (
                     id TEXT PRIMARY KEY,
@@ -82,6 +98,8 @@ final class MessageDatabase {
                 ON messages(channelID, timestamp)
                 """)
         }
+
+        return migrator
     }
 
     // MARK: - Insert

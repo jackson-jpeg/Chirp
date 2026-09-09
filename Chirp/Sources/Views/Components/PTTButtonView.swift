@@ -262,7 +262,11 @@ struct PTTButtonView: View {
             .scaleEffect(isPressed ? 0.87 : 1.0)
             .offset(x: shakeOffset)
             .animation(.spring(response: 0.15, dampingFraction: 0.55), value: isPressed)
-            .allowsHitTesting(canInteract)
+            // Interaction is gated inside the gesture, NOT with
+            // `.allowsHitTesting(canInteract)`: pulling hit testing while a
+            // drag is live tears the gesture down without ever delivering
+            // `onEnded`, so a press that loses the floor mid-hold left
+            // `isPressed` true and the guard below refused every press after.
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(pttAccessibilityLabel)
             .accessibilityHint(pttAccessibilityHint)
@@ -278,6 +282,11 @@ struct PTTButtonView: View {
                         onPressDown()
                     }
                     .onEnded { _ in
+                        // No `canInteract` here: however the state changed
+                        // while the finger was down, lifting it must always
+                        // clear the press and release the floor. Releasing a
+                        // floor this device no longer holds is a no-op in the
+                        // floor machine, so this is safe to send unconditionally.
                         guard isPressed else { return }
                         isPressed = false
                         HapticsManager.shared.pttUp()

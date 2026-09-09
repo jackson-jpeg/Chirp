@@ -125,6 +125,29 @@ final class PTTEngineFloorLossTests: XCTestCase {
         XCTAssertEqual(engine.state, .transmitting)
     }
 
+    /// The finger is still down when the floor is lost, and lifts afterwards.
+    /// The PTT button now always delivers that lift (it no longer tears the
+    /// gesture down on state change), so the release it sends must be a
+    /// harmless no-op: no false release on the wire, no disturbing the
+    /// speaker we are now receiving.
+    func testLiftingTheFingerAfterLosingTheFloorIsANoOp() {
+        let sent = ControlMessageLog()
+        floorSession.sendToAllPeers = { sent.record($0) }
+
+        engine.startTransmitting()
+        floorSession.handleMessage(floorRequestFromAlice(secondsAgo: 10))
+        XCTAssertEqual(engine.state, .receiving(speakerName: "Alice", speakerID: "peer-A"))
+
+        engine.stopTransmitting()
+
+        XCTAssertEqual(
+            engine.state,
+            .receiving(speakerName: "Alice", speakerID: "peer-A"),
+            "A release of a floor this device no longer holds must not disturb the speaker"
+        )
+        XCTAssertTrue(sent.releases.isEmpty, "Sent an unwarranted release: \(sent.messages)")
+    }
+
     func testReleasingNormallyStillReturnsToIdle() {
         engine.startTransmitting()
         XCTAssertEqual(engine.state, .transmitting)

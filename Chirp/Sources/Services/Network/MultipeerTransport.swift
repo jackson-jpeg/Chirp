@@ -10,8 +10,11 @@ import OSLog
 /// There is no legacy code path -- every byte on the wire starts with meshMagic 0xAA.
 ///
 /// `@unchecked Sendable` is required because MCSessionDelegate methods run on arbitrary
-/// internal queues. Mutable state (`peers`, `previousPeerCount`, `reconnectBackoff`) is
-/// dispatched to main queue via `updatePeerList()` to prevent data races with UI reads.
+/// internal queues. Mutable state (`peers`, `previousPeerCount`, `reconnectAttempt`,
+/// `reconnectTask`, `advertiser`, `browser`) is confined to the main actor: delegate
+/// callbacks hop there via `updatePeerList()`, and `start()`/`stop()`/the reconnect
+/// loop are all `@MainActor`, so lifecycle and reconnect state have one isolation
+/// domain instead of racing pull-to-refresh restarts against the backoff task.
 /// Auto-reconnection uses exponential backoff (2s→4s→8s→16s→30s) with jitter.
 final class MultipeerTransport: NSObject, @unchecked Sendable {
 
@@ -73,6 +76,7 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
 
     // MARK: - Start / Stop
 
+    @MainActor
     func start() {
         // Advertise ourselves
         advertiser = MCNearbyServiceAdvertiser(
@@ -94,6 +98,7 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
         logger.info("MultipeerTransport started -- advertising + browsing as '\(self.myPeerID.displayName)'")
     }
 
+    @MainActor
     func stop() {
         reconnectTask?.cancel()
         reconnectTask = nil
@@ -109,7 +114,11 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
     // MARK: - Send
 
     func sendAudio(_ data: Data, sequenceNumber: UInt32 = 0, channelID: String? = nil) throws {
-        guard !session.connectedPeers.isEmpty else { return }
+        // Capture the recipients now. The send happens inside a Task, after an
+        // await — re-reading session.connectedPeers there meant the last peer
+        // dropping in that window turned the send into a silent no-op.
+        let targets = session.connectedPeers
+        guard !targets.isEmpty else { return }
 
         let router = meshRouter
         Task {
@@ -123,7 +132,7 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
             var wireData = Data([Self.meshMagic])
             wireData.append(serialized)
             do {
-                try self.session.send(wireData, toPeers: self.session.connectedPeers, with: .unreliable)
+                try self.session.send(wireData, toPeers: targets, with: .unreliable)
             } catch {
                 self.logger.error("MultipeerTransport send failed: \(error.localizedDescription)")
             }
@@ -143,7 +152,11 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
     }
 
     func sendControl(_ message: FloorControlMessage, channelID: String? = nil) throws {
-        guard !session.connectedPeers.isEmpty else { return }
+        // See sendAudio: recipients are captured before the async hop so a
+        // peer dropping mid-flight surfaces as a logged send error, not a
+        // message that silently went nowhere.
+        let targets = session.connectedPeers
+        guard !targets.isEmpty else { return }
         let payload = try MeshCodable.encoder.encode(message)
 
         let router = meshRouter
@@ -158,7 +171,7 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
             var wireData = Data([Self.meshMagic])
             wireData.append(serialized)
             do {
-                try self.session.send(wireData, toPeers: self.session.connectedPeers, with: .reliable)
+                try self.session.send(wireData, toPeers: targets, with: .reliable)
             } catch {
                 self.logger.error("MultipeerTransport send failed: \(error.localizedDescription)")
             }
@@ -168,7 +181,11 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
     /// Send pre-encoded control data (e.g. text messages already wrapped with TXT! prefix).
     /// The data is wrapped in a MeshPacket and sent reliably to all peers.
     func sendControlData(_ data: Data, channelID: String? = nil) throws {
-        guard !session.connectedPeers.isEmpty else { return }
+        // See sendAudio: recipients are captured before the async hop so a
+        // peer dropping mid-flight surfaces as a logged send error, not a
+        // message that silently went nowhere.
+        let targets = session.connectedPeers
+        guard !targets.isEmpty else { return }
 
         let router = meshRouter
         Task {
@@ -182,7 +199,7 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
             var wireData = Data([Self.meshMagic])
             wireData.append(serialized)
             do {
-                try self.session.send(wireData, toPeers: self.session.connectedPeers, with: .reliable)
+                try self.session.send(wireData, toPeers: targets, with: .reliable)
             } catch {
                 self.logger.error("MultipeerTransport send failed: \(error.localizedDescription)")
             }
@@ -256,11 +273,16 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
     /// Start an exponential-backoff reconnection loop after all peers are lost.
     /// Each iteration restarts advertising + browsing. The loop cancels automatically
     /// when a peer connects (via `updatePeerList`) or after `maxReconnectAttempts`.
+    ///
+    /// The loop body runs on the main actor, same as `start()`/`stop()` and the
+    /// callers of this method — otherwise its writes to `reconnectAttempt` and
+    /// its advertiser/browser restarts race a pull-to-refresh `stop()`/`start()`.
+    @MainActor
     private func startReconnectLoop() {
         reconnectTask?.cancel()
         reconnectAttempt = 0
 
-        reconnectTask = Task { [weak self] in
+        reconnectTask = Task { @MainActor [weak self] in
             guard let self else { return }
 
             while !Task.isCancelled && self.reconnectAttempt < Self.maxReconnectAttempts {
@@ -301,9 +323,7 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
             // Exhausted all attempts
             if !Task.isCancelled {
                 self.logger.warning("Reconnection failed after \(Self.maxReconnectAttempts) attempts")
-                await MainActor.run {
-                    self.onReconnectFailed?()
-                }
+                self.onReconnectFailed?()
             }
         }
     }
@@ -324,14 +344,19 @@ extension MultipeerTransport: MCSessionDelegate {
         logger.info("Peer '\(peerID.displayName)' -> \(stateName)")
         updatePeerList()
 
-        // Broadcast peer join/leave control messages so the mesh can track liveness
-        switch state {
-        case .connected:
-            try? sendControl(.peerJoin(peerID: localPeerID, peerName: localPeerName))
-        case .notConnected:
-            try? sendControl(.peerLeave(peerID: localPeerID))
-        default:
-            break
+        // Announce ourselves to a newly connected peer so the mesh can track
+        // liveness. There is deliberately no broadcast on `.notConnected`: that
+        // event is about the OTHER device, and the old code answered it with
+        // `.peerLeave(peerID: localPeerID)` — announcing that WE had left. A
+        // peer's departure is not ours to announce (the floor machine drops
+        // third-party leave claims as impersonation anyway); each device
+        // observes the disconnect through its own session and ghost tracking.
+        if state == .connected {
+            do {
+                try sendControl(.peerJoin(peerID: localPeerID, peerName: localPeerName))
+            } catch {
+                logger.error("peerJoin announcement failed to encode: \(error.localizedDescription)")
+            }
         }
     }
 

@@ -98,12 +98,18 @@ final class OfflineMapManager: NSObject {
         downloadProgress = 0.0
 
         MLNOfflineStorage.shared.addPack(for: region, withContext: metadataData) { [weak self] pack, error in
-            // MLNOfflineStorage calls this on the main queue.
+            // MLNOfflineStorage calls this on the main queue, but the closure
+            // is typed nonisolated and MLNOfflinePack is not Sendable. The
+            // pack crosses to the main actor exactly once, right here, with no
+            // other reference alive — nonisolated(unsafe) states that
+            // single-transfer fact; the Task makes the hop explicit instead of
+            // asserting the caller's isolation.
             nonisolated(unsafe) let unsafePack = pack
-            MainActor.assumeIsolated {
+            let failureDescription = error?.localizedDescription
+            Task { @MainActor in
                 guard let self else { return }
-                if let error {
-                    self.logger.error("Failed to create offline pack: \(error.localizedDescription)")
+                if let failureDescription {
+                    self.logger.error("Failed to create offline pack: \(failureDescription)")
                     self.isDownloading = false
                     return
                 }

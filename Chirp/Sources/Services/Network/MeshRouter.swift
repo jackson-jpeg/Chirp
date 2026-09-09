@@ -40,11 +40,6 @@ actor MeshRouter {
     private(set) var packetsBlocked: UInt64 = 0
     private(set) var maxHopsObserved: UInt8 = 0
 
-    // MARK: - Emergency
-
-    /// When true, relay all packets regardless of TTL (emergency mode).
-    var emergencyRelayAll: Bool = false
-
     // MARK: - Callbacks
 
     /// Called when a packet should be played / processed by the local device.
@@ -68,11 +63,6 @@ actor MeshRouter {
 
     init(localPeerID: UUID) {
         self.localPeerID = localPeerID
-    }
-
-    /// Toggle emergency relay mode from outside the actor.
-    func setEmergencyRelay(_ enabled: Bool) {
-        emergencyRelayAll = enabled
     }
 
     /// Replace the set of blocked origins. Non-UUID IDs are ignored.
@@ -154,8 +144,7 @@ actor MeshRouter {
         onLocalDelivery?(packet)
 
         // 4c. Forward to other peers if hops remain.
-        // In emergency mode, relay everything regardless of TTL.
-        if packet.ttl > 1 || emergencyRelayAll, let forwarded = packet.forwarded() {
+        if packet.ttl > 1, let forwarded = packet.forwarded() {
             packetsRelayed += 1
             onForward?(forwarded, fromPeer)
             logger.trace("Forwarded packet \(packet.packetID.uuidString, privacy: .public) TTL \(forwarded.ttl)")
@@ -193,10 +182,8 @@ actor MeshRouter {
         priority: MeshPacket.MessagePriority? = nil
     ) -> MeshPacket {
         let resolvedPriority = priority ?? MeshPacket.inferPriority(type: type, payload: payload)
-        // Emergency mode: use maximum TTL for all packets to maximize reach
-        let baseTTL = MeshPacket.adaptiveTTL(for: type, priority: resolvedPriority)
         let ttl = min(
-            emergencyRelayAll ? MeshPacket.maxTTL : baseTTL,
+            MeshPacket.adaptiveTTL(for: type, priority: resolvedPriority),
             MeshPacket.maxTTL
         )
         let packet = MeshPacket(
