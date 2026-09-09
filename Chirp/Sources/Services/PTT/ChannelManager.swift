@@ -42,6 +42,7 @@ final class ChannelManager {
     init() {
         loadChannels()
         migrateGeneralChannelID()
+        migrateLockedChannelKeys()
     }
 
     // MARK: - Channel Lifecycle
@@ -54,13 +55,15 @@ final class ChannelManager {
         id: String? = nil
     ) -> ChirpChannel {
         let channelID = id ?? UUID().uuidString
-        var encryptionKeyData: Data?
         var inviteCode: String?
 
         if accessMode == .locked {
-            let key = ChannelCrypto.generateKey()
-            encryptionKeyData = key.withUnsafeBytes { Data($0) }
-            inviteCode = ChannelCrypto.createInviteCode(channelID: channelID, key: key)
+            let seed = ChannelCrypto.generateInviteSeed()
+            inviteCode = ChannelCrypto.createInviteCode(channelID: channelID, seed: seed)
+            if !ChannelKeyStore.storeSeed(seed, for: channelID) {
+                logger.error("Keychain rejected seed for channel \(channelID) — invite code will not survive relaunch")
+            }
+            let key = ChannelCrypto.keyFromInviteSeed(seed, channelID: channelID)
             channelCryptoCache[channelID] = ChannelCrypto(key: key)
         }
 
@@ -71,8 +74,7 @@ final class ChannelManager {
             createdAt: Date(),
             accessMode: accessMode,
             ownerID: ownerID,
-            inviteCode: inviteCode,
-            encryptionKeyData: encryptionKeyData
+            inviteCode: inviteCode
         )
         channels.append(channel)
         saveChannels()
@@ -126,30 +128,40 @@ final class ChannelManager {
     }
 
     /// Join a locked channel using an invite code. Returns true on success.
+    ///
+    /// The code itself carries the channel ID and key seed, so this works even
+    /// for channels this device has never seen: a local record is created on
+    /// the fly and the seed goes into the Keychain.
     func joinWithInviteCode(_ code: String) -> Bool {
-        // Find the channel whose invite code matches
-        guard let index = channels.firstIndex(where: { $0.inviteCode == code }) else {
-            logger.warning("joinWithInviteCode failed — no channel matches code")
-            return false
-        }
-
-        let channel = channels[index]
-
-        // Derive the crypto key from the invite code
-        guard let key = ChannelCrypto.keyFromInviteCode(code) else {
+        let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let parsed = ChannelCrypto.parseInviteCode(trimmed) else {
             logger.warning("joinWithInviteCode failed — invalid invite code")
             return false
         }
 
-        channelCryptoCache[channel.id] = ChannelCrypto(key: key)
-
-        if activeChannel != nil {
-            leaveChannel()
+        if !ChannelKeyStore.storeSeed(parsed.seed, for: parsed.channelID) {
+            logger.error("Keychain rejected seed for joined channel \(parsed.channelID)")
         }
+        channelCryptoCache[parsed.channelID] = ChannelCrypto(key: parsed.key)
 
-        activeChannel = channel
-        UserDefaults.standard.set(channel.id, forKey: activeChannelKey)
-        logger.info("Joined locked channel '\(channel.name)' via invite code")
+        if let index = channels.firstIndex(where: { $0.id == parsed.channelID }) {
+            channels[index].inviteCode = trimmed
+            syncActiveChannel(channelID: parsed.channelID, at: index)
+        } else {
+            let channel = ChirpChannel(
+                id: parsed.channelID,
+                name: String(localized: "channel.locked.defaultName"),
+                peers: [],
+                createdAt: Date(),
+                accessMode: .locked,
+                inviteCode: trimmed
+            )
+            channels.append(channel)
+        }
+        saveChannels()
+
+        joinChannel(id: parsed.channelID)
+        logger.info("Joined locked channel \(parsed.channelID) via invite code")
         return true
     }
 
@@ -160,13 +172,12 @@ final class ChannelManager {
             return cached
         }
 
-        // Try to reconstruct from stored key data
-        guard let channel = channels.first(where: { $0.id == channelID }),
-              let keyData = channel.encryptionKeyData else {
+        // Reconstruct from the Keychain seed
+        guard let seed = ChannelKeyStore.loadSeed(for: channelID) else {
             return nil
         }
 
-        let key = SymmetricKey(data: keyData)
+        let key = ChannelCrypto.keyFromInviteSeed(seed, channelID: channelID)
         let crypto = ChannelCrypto(key: key)
         channelCryptoCache[channelID] = crypto
         return crypto
@@ -272,6 +283,8 @@ final class ChannelManager {
             UserDefaults.standard.removeObject(forKey: activeChannelKey)
         }
         channels.removeAll { $0.id == id }
+        channelCryptoCache.removeValue(forKey: id)
+        ChannelKeyStore.deleteSeed(for: id)
         saveChannels()
         logger.info("Deleted channel \(id)")
     }
@@ -306,6 +319,41 @@ final class ChannelManager {
 
         saveChannels()
         logger.info("Migrated General channel from \(old.id) to well-known ID")
+    }
+
+    /// One-time migration of locked-channel keys into the Keychain.
+    ///
+    /// Legacy saves kept a raw AES key in UserDefaults next to an invite code
+    /// that never round-tripped, so no other device can hold a legacy
+    /// channel's key. That makes re-seeding safe: mint a fresh seed in the
+    /// Keychain and derive the key and the (now working) invite code from it.
+    /// Message history is stored decrypted locally, so nothing is lost.
+    private func migrateLockedChannelKeys() {
+        for index in channels.indices where channels[index].accessMode == .locked {
+            let channelID = channels[index].id
+
+            var seed = ChannelKeyStore.loadSeed(for: channelID)
+            if seed == nil {
+                let newSeed = ChannelCrypto.generateInviteSeed()
+                if ChannelKeyStore.storeSeed(newSeed, for: channelID) {
+                    seed = newSeed
+                    logger.info("Migrated locked channel \(channelID) key to Keychain")
+                } else {
+                    logger.error("Keychain migration failed for channel \(channelID)")
+                }
+            }
+
+            if let seed {
+                channels[index].inviteCode = ChannelCrypto.createInviteCode(
+                    channelID: channelID, seed: seed
+                )
+            }
+            channels[index].encryptionKeyData = nil
+            syncActiveChannel(channelID: channelID, at: index)
+        }
+        // Re-save regardless: the encoder no longer writes key material, so
+        // one pass scrubs any legacy keys out of UserDefaults.
+        saveChannels()
     }
 
     // MARK: - Persistence

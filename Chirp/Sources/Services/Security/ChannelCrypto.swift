@@ -18,39 +18,77 @@ struct ChannelCrypto: Sendable {
         SymmetricKey(size: .bits256)
     }
 
-    /// Create an invite code from a channel key + channel ID
-    /// Format: base62-encoded (channelID prefix + key material)
-    static func createInviteCode(channelID: String, key: SymmetricKey) -> String {
-        let keyData = key.withUnsafeBytes { Data($0) }
-        // Take first 4 bytes of channel ID hash + 16 bytes of key = 20 bytes
-        let channelHash = SHA256.hash(data: Data(channelID.utf8))
-        var combined = Data(channelHash.prefix(4))
-        combined.append(keyData.prefix(16))
-        return combined.base64EncodedString()
-            .replacingOccurrences(of: "+", with: "")
-            .replacingOccurrences(of: "/", with: "")
-            .replacingOccurrences(of: "=", with: "")
-            .prefix(12)
-            .uppercased()
+    // MARK: - Invite Codes (v1)
+    //
+    // An invite code is base64url(channelID UUID bytes [16] ‖ seed [16]) — a
+    // 43-character string with no padding. The seed, not the derived key, is
+    // the shared secret: the channel key is HKDF-derived from the seed, bound
+    // to the channel ID, so both the creator and anyone holding the code
+    // arrive at the same key. The previous scheme truncated the encoding to
+    // 12 uppercased characters, which could never be decoded back — invite
+    // codes did not round-trip at all.
+
+    /// Byte length of the invite seed embedded in every invite code.
+    static let inviteSeedLength = 16
+
+    /// Generate a fresh random invite seed for a locked channel.
+    static func generateInviteSeed() -> Data {
+        SymmetricKey(size: .bits128).withUnsafeBytes { Data($0) }
     }
 
-    /// Reconstruct a channel key from an invite code
-    /// Returns nil if the code is invalid
-    static func keyFromInviteCode(_ code: String) -> SymmetricKey? {
-        // Pad base64 string back
-        var base64 = code
-        while base64.count % 4 != 0 { base64 += "=" }
-        guard let data = Data(base64Encoded: base64), data.count >= 20 else {
-            return nil
-        }
-        // Extract key material (skip 4-byte channel hash prefix)
-        let keyMaterial = data.suffix(from: 4)
-        // Expand 16 bytes to 32 bytes via HKDF
-        let expanded = HKDF<SHA256>.deriveKey(
-            inputKeyMaterial: SymmetricKey(data: keyMaterial),
+    /// Derive the channel key from an invite seed, bound to the channel ID.
+    static func keyFromInviteSeed(_ seed: Data, channelID: String) -> SymmetricKey {
+        HKDF<SHA256>.deriveKey(
+            inputKeyMaterial: SymmetricKey(data: seed),
+            salt: Data("ChirpChannelInvite-v1".utf8),
+            info: Data(channelID.utf8),
             outputByteCount: 32
         )
-        return expanded
+    }
+
+    /// Encode a channel ID + seed into a shareable invite code.
+    /// Returns nil if the channel ID is not a UUID or the seed length is wrong.
+    static func createInviteCode(channelID: String, seed: Data) -> String? {
+        guard let uuid = UUID(uuidString: channelID),
+              seed.count == inviteSeedLength else {
+            return nil
+        }
+        var combined = withUnsafeBytes(of: uuid.uuid) { Data($0) }
+        combined.append(seed)
+        return base64URLEncode(combined)
+    }
+
+    /// Decode an invite code back into its channel ID, seed, and derived key.
+    /// Returns nil for anything that is not a well-formed v1 code.
+    static func parseInviteCode(_ code: String) -> (channelID: String, seed: Data, key: SymmetricKey)? {
+        guard let data = base64URLDecode(code), data.count == 16 + inviteSeedLength else {
+            return nil
+        }
+        let bytes = [UInt8](data.prefix(16))
+        let uuid = UUID(uuid: (
+            bytes[0], bytes[1], bytes[2], bytes[3],
+            bytes[4], bytes[5], bytes[6], bytes[7],
+            bytes[8], bytes[9], bytes[10], bytes[11],
+            bytes[12], bytes[13], bytes[14], bytes[15]
+        ))
+        let channelID = uuid.uuidString
+        let seed = Data(data.suffix(inviteSeedLength))
+        return (channelID, seed, keyFromInviteSeed(seed, channelID: channelID))
+    }
+
+    private static func base64URLEncode(_ data: Data) -> String {
+        data.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
+
+    private static func base64URLDecode(_ string: String) -> Data? {
+        var base64 = string
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        while base64.count % 4 != 0 { base64 += "=" }
+        return Data(base64Encoded: base64)
     }
 
     /// Errors that can occur during encryption operations.
@@ -149,19 +187,5 @@ struct ChannelCrypto: Sendable {
     /// Verify HMAC-SHA256 signature
     func verify(signature: Data, for data: Data) -> Bool {
         HMAC<SHA256>.isValidAuthenticationCode(signature, authenticating: data, using: key)
-    }
-
-    /// Derive the MeshShield Layer 1 key from an ephemeral public key.
-    ///
-    /// Binds the ephemeral DH material to the channel key so that only channel
-    /// members can strip Layer 1. Without this, the ephemeral public key (sent
-    /// in cleartext) would be sufficient to reconstruct the Layer 1 key.
-    func deriveLayer1Key(ephemeralKeyData: Data) -> SymmetricKey {
-        HKDF<SHA256>.deriveKey(
-            inputKeyMaterial: SymmetricKey(data: ephemeralKeyData),
-            salt: Data("ChirpMeshShield-L1".utf8),
-            info: key.withUnsafeBytes { Data($0) },
-            outputByteCount: 32
-        )
     }
 }

@@ -586,7 +586,7 @@ private struct ChannelInfoCard: View {
     @State private var showPicker = false
 
     private var isEncrypted: Bool {
-        channel?.encryptionKeyData != nil || channel?.accessMode == .locked
+        channel?.accessMode == .locked
     }
 
     private var subtitle: String {
@@ -1208,8 +1208,7 @@ struct HomeView: View {
     }
 
     private var channelIsEncrypted: Bool {
-        let ch = appState.channelManager.activeChannel
-        return ch?.encryptionKeyData != nil || ch?.accessMode == .locked
+        appState.channelManager.activeChannel?.accessMode == .locked
     }
 
     private var pttHomeContent: some View {

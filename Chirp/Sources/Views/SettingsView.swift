@@ -361,7 +361,7 @@ struct SettingsView: View {
                         Image(systemName: "lock.fill")
                             .foregroundStyle(green)
                             .frame(width: 24)
-                        Text(String(localized: "settings.privacySecurity.e2eEncryption"))
+                        Text(String(localized: "settings.privacySecurity.channelEncryption"))
                             .foregroundStyle(Constants.Colors.textPrimary)
                         Spacer()
                         statusBadge(text: String(localized: "settings.status.on"), color: green)

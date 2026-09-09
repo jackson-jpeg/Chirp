@@ -21,6 +21,8 @@ struct ChannelCreationView: View {
     @State private var inviteCode = ""
     @State private var isPrivate = false
     @State private var joinFailed = false
+    @State private var createdInviteCode: String?
+    @State private var copiedInviteCode = false
     @FocusState private var isNameFocused: Bool
     @FocusState private var isCodeFocused: Bool
 
@@ -32,17 +34,21 @@ struct ChannelCreationView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Segmented picker
-                Picker("Mode", selection: $mode) {
-                    ForEach(Mode.allCases, id: \.self) { m in
-                        Text(m.label).tag(m)
+                if createdInviteCode == nil {
+                    Picker("Mode", selection: $mode) {
+                        ForEach(Mode.allCases, id: \.self) { m in
+                            Text(m.label).tag(m)
+                        }
                     }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 20)
+                    .padding(.bottom, 28)
                 }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, 24)
-                .padding(.top, 20)
-                .padding(.bottom, 28)
 
-                if mode == .create {
+                if let code = createdInviteCode {
+                    inviteShareContent(code: code)
+                } else if mode == .create {
                     createModeContent
                 } else {
                     joinModeContent
@@ -214,12 +220,13 @@ struct ChannelCreationView: View {
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
                     .autocorrectionDisabled()
-                    .textInputAutocapitalization(.characters)
+                    .textInputAutocapitalization(.never)
                     .focused($isCodeFocused)
                     .submitLabel(.go)
                     .onSubmit { joinChannel() }
                     .onChange(of: inviteCode) { _, newValue in
-                        inviteCode = String(newValue.uppercased().prefix(12))
+                        // Invite codes are 43 chars of case-sensitive base64url.
+                        inviteCode = String(newValue.filter { !$0.isWhitespace }.prefix(64))
                     }
                     .padding(.horizontal, 24)
 
@@ -290,7 +297,101 @@ struct ChannelCreationView: View {
             ownerID: ownerID
         )
         appState.channelManager.joinChannel(id: channel.id)
-        dismiss()
+
+        // A locked channel is unusable to anyone else without its invite code,
+        // and this is the only moment the creator is guaranteed to see it.
+        if let code = channel.inviteCode {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                createdInviteCode = code
+            }
+        } else {
+            dismiss()
+        }
+    }
+
+    // MARK: - Invite Share
+
+    private func inviteShareContent(code: String) -> some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 12)
+
+            VStack(spacing: 16) {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 36, weight: .light))
+                    .foregroundStyle(amber.opacity(0.8))
+
+                Text(String(localized: "channelCreation.invite.title"))
+                    .font(.system(.title3, weight: .bold))
+                    .foregroundStyle(.white)
+
+                Text(String(localized: "channelCreation.invite.hint"))
+                    .font(.system(.caption))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+
+                Text(code)
+                    .font(.system(.subheadline, design: .monospaced, weight: .semibold))
+                    .foregroundStyle(amber)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(amber.opacity(0.08))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(amber.opacity(0.25), lineWidth: 1)
+                    )
+                    .padding(.horizontal, 24)
+                    .textSelection(.enabled)
+
+                HStack(spacing: 12) {
+                    Button {
+                        UIPasteboard.general.string = code
+                        withAnimation { copiedInviteCode = true }
+                    } label: {
+                        Label(
+                            copiedInviteCode
+                                ? String(localized: "channelCreation.invite.copied")
+                                : String(localized: "channelCreation.invite.copy"),
+                            systemImage: copiedInviteCode ? "checkmark" : "doc.on.doc"
+                        )
+                        .font(.system(.subheadline, weight: .semibold))
+                        .foregroundStyle(copiedInviteCode ? green : amber)
+                    }
+                    .buttonStyle(.plain)
+
+                    ShareLink(item: code) {
+                        Label(String(localized: "channelCreation.invite.share"), systemImage: "square.and.arrow.up")
+                            .font(.system(.subheadline, weight: .semibold))
+                            .foregroundStyle(amber)
+                    }
+                }
+                .padding(.top, 4)
+            }
+            .padding(.horizontal, 24)
+
+            Spacer()
+
+            Button {
+                dismiss()
+            } label: {
+                Text(String(localized: "common.done"))
+                    .font(.system(.headline, weight: .bold))
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 54)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(amber)
+                    )
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 20)
+        }
     }
 
     private func joinChannel() {

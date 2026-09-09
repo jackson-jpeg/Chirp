@@ -386,6 +386,16 @@
         }
       }
     },
+    "channel.locked.defaultName": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Private Channel"
+          }
+        }
+      }
+    },
     "channel.loopback.on": {
       "extractionState": "stale",
       "localizations": {
@@ -711,6 +721,56 @@
           "stringUnit": {
             "state": "translated",
             "value": "SUGGESTIONS"
+          }
+        }
+      }
+    },
+    "channelCreation.invite.copied": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copied"
+          }
+        }
+      }
+    },
+    "channelCreation.invite.copy": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy"
+          }
+        }
+      }
+    },
+    "channelCreation.invite.hint": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share this code with people you want in the channel. Anyone with the code can join and read messages — messages are encrypted between channel members."
+          }
+        }
+      }
+    },
+    "channelCreation.invite.share": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share"
+          }
+        }
+      }
+    },
+    "channelCreation.invite.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invite Code"
           }
         }
       }
@@ -1896,7 +1956,7 @@
         }
       }
     },
-    "settings.privacySecurity.e2eEncryption": {
+    "settings.privacySecurity.channelEncryption": {
       "extractionState": "stale",
       "localizations": {
         "en": {

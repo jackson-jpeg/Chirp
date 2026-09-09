@@ -16,9 +16,7 @@ GLOW_COLOR = (255, 187, 0)
 SCREENSHOTS = [
     ("01-talk-without-signal", (255, 170, 0)),    # warm amber
     ("02-relay-through-mesh", (50, 130, 255)),     # blue
-    ("03-translate-any-language", (255, 187, 0)),  # amber
     ("04-text-off-grid", (100, 140, 255)),         # indigo
-    ("05-encrypt-everything", (48, 209, 88)),      # green
 ]
 
 BASE = "/root/Chirp/screenshots"
