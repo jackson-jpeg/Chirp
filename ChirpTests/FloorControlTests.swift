@@ -11,7 +11,7 @@ import XCTest
 /// did, and why the compiler reported nine isolation warnings against them.
 ///
 /// This recorder is correct under the contract as written: the array lives
-/// behind the same lock primitive the app uses in `TransportPreference`.
+/// behind an `OSAllocatedUnfairLock`, safe from any isolation domain.
 private final class BroadcastRecorder: Sendable {
     private let storage = OSAllocatedUnfairLock(initialState: [FloorControlMessage]())
 

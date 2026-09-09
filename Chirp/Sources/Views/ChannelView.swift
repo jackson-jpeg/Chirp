@@ -14,7 +14,6 @@ struct ChannelView: View {
     @State private var channelMode: ChannelMode = .talk
     @State private var hasUsedPTT: Bool = false
     @State private var showHoldHint: Bool = true
-    @State private var showPairingSheet: Bool = false
     @State private var showCameraPicker: Bool = false
 
     enum ChannelMode: CaseIterable {
@@ -93,23 +92,6 @@ struct ChannelView: View {
                 }
                 .accessibilityLabel(String(localized: "common.back"))
             }
-            // Show "Boost" pairing button when Wi-Fi Aware is available
-            if appState.wifiAwareTransport != nil {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showPairingSheet = true
-                    } label: {
-                        Image(systemName: "wifi")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(Constants.Colors.amber)
-                    }
-                    .accessibilityLabel(String(localized: "channel.a11y.boostConnection"))
-                }
-            }
-        }
-        .sheet(isPresented: $showPairingSheet) {
-            PairingView()
-                .environment(appState)
         }
         .sheet(isPresented: $showCameraPicker) {
             ImagePickerView(source: .camera) { image in
@@ -840,8 +822,7 @@ struct ChannelView: View {
             VStack(spacing: 4) {
                 PeerAvatarView(
                     peer: peer,
-                    isActiveSpeaker: isActive,
-                    linkQuality: appState.wifiAwareLinkMetrics[peer.id]
+                    isActiveSpeaker: isActive
                 )
                 .scaleEffect(isActive ? 1.3 : 1.0)
                 .shadow(

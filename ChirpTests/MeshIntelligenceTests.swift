@@ -45,10 +45,10 @@ final class MeshIntelligenceTests: XCTestCase {
         XCTAssertFalse(result, "Low-priority packets should be dropped at critical battery (<10%)")
     }
 
-    func testShouldRelayReturnsTrueForCriticalSOSAtCriticalBattery() async {
+    func testShouldRelayReturnsTrueForCriticalPriorityAtCriticalBattery() async {
         let packet = makePacket(type: .control)
         let result = await intel.shouldRelay(packet: packet, batteryLevel: 0.05, priority: .critical)
-        XCTAssertTrue(result, "Critical SOS packets should still relay even at critical battery")
+        XCTAssertTrue(result, "Critical-priority packets should still relay even at critical battery")
     }
 
     func testShouldRelayReturnsFalseForLowPriorityAtLowBattery() async {

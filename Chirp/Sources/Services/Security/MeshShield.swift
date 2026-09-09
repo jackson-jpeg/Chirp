@@ -1,112 +1,23 @@
-import CryptoKit
 import Foundation
 import Observation
 import OSLog
 
-// MARK: - Errors
-
-enum MeshShieldError: Error {
-    case sealedBoxCombinedNil
-}
-
-// MARK: - Triple-Layer Encryption
-
-/// Triple-layer encryption for all mesh messages.
-///
-/// Wire format (outermost to innermost):
-/// ```
-/// [ephemeralPubKey:32][AES-GCM nonce+ciphertext+tag from Layer 1]
-///   └── contains: [Ed25519 signature:64][AES-GCM nonce+ciphertext+tag from Layer 2]
-///        └── contains: [original message payload]
-/// ```
-enum MeshShieldCrypto {
-
-    /// Wrap a payload in three layers of encryption.
-    ///
-    /// - Layer 1 (outermost): One-time Curve25519 DH, AES-GCM-256.
-    ///   Ephemeral key destroyed after use. Ciphertext randomisation.
-    /// - Layer 2 (group): AES-GCM-256 with channel key. Proves channel membership.
-    /// - Layer 3 (innermost): Ed25519 signature. Confirms sender identity.
-    ///
-    /// Signature and ephemeral key are inside the encrypted layers —
-    /// an interceptor cannot determine sender or recipient.
-    static func encrypt(
-        _ plaintext: Data,
-        channelCrypto: ChannelCrypto,
-        peerIdentity: PeerIdentity,
-        epoch: UInt32 = 0
-    ) async throws -> Data {
-
-        // Layer 3: Sign the plaintext
-        let signature = try await peerIdentity.sign(plaintext)
-
-        // Layer 2: Encrypt with channel key (epoch-rotated)
-        let layer2Ciphertext = try channelCrypto.encrypt(plaintext, epoch: epoch)
-
-        // Combine: [signature:64][layer2 ciphertext]
-        var innerPackage = Data(capacity: 64 + layer2Ciphertext.count)
-        innerPackage.append(signature)
-        innerPackage.append(layer2Ciphertext)
-
-        // Layer 1: Ephemeral key + channel key bound via HKDF
-        let ephemeralPrivate = Curve25519.KeyAgreement.PrivateKey()
-        let ephemeralPublic = ephemeralPrivate.publicKey
-        let symmetricKey = channelCrypto.deriveLayer1Key(ephemeralKeyData: ephemeralPublic.rawRepresentation)
-        let sealed = try AES.GCM.seal(innerPackage, using: symmetricKey)
-        guard let combined = sealed.combined else {
-            throw MeshShieldError.sealedBoxCombinedNil
-        }
-
-        // Wire: [ephemeralPubKey:32][nonce+ciphertext+tag]
-        var wire = Data(capacity: 32 + combined.count)
-        wire.append(ephemeralPublic.rawRepresentation)
-        wire.append(combined)
-
-        // Ephemeral private key destroyed when it goes out of scope
-        return wire
-    }
-
-    /// Attempt to unwrap a triple-encrypted payload.
-    /// Returns the original plaintext, or `nil` if decryption fails.
-    static func decrypt(
-        _ wire: Data,
-        channelCrypto: ChannelCrypto,
-        currentEpoch: UInt32 = 0
-    ) -> Data? {
-        guard wire.count > 32 + 28 + 64 + 28 else { return nil }
-
-        let ephemeralKeyData = Data(wire.prefix(32))
-        let layer1Ciphertext = Data(wire.dropFirst(32))
-
-        // Layer 1 decrypt — requires channel key to derive symmetric key
-        let symmetricKey = channelCrypto.deriveLayer1Key(ephemeralKeyData: ephemeralKeyData)
-        guard let sealedBox = try? AES.GCM.SealedBox(combined: layer1Ciphertext),
-              let innerPackage = try? AES.GCM.open(sealedBox, using: symmetricKey) else {
-            return nil
-        }
-
-        guard innerPackage.count > 64 + 28 else { return nil }
-        let layer2Ciphertext = Data(innerPackage.dropFirst(64))
-
-        // Layer 2 decrypt (epoch-aware with lookback)
-        guard let plaintext = try? channelCrypto.decrypt(layer2Ciphertext, currentEpoch: currentEpoch) else {
-            return nil
-        }
-
-        return plaintext
-    }
-}
-
 // MARK: - MeshShield
 
-/// Always-on traffic analysis protection. Not a feature — infrastructure.
+/// Traffic-analysis resistance. Not a feature — infrastructure.
 ///
+/// What it does, precisely:
 /// 1. **Cover traffic**: Continuously injects encrypted packets indistinguishable
 ///    from real messages. Random origin IDs, packet types, TTLs, payload sizes.
-/// 2. **Triple encryption**: All real messages on locked channels are wrapped in
-///    ephemeral DH + channel AES-GCM + Ed25519 signature.
-/// 3. Every node relays everything. An observer capturing traffic cannot determine
-///    who is communicating, which packets are real, or who authored them.
+/// 2. Every node relays everything, so an observer capturing traffic cannot tell
+///    who is communicating or which packets are real.
+///
+/// What it does NOT do: message confidentiality lives in ``ChannelCrypto`` —
+/// AES-GCM-256 under the shared channel key. That is the app's one encryption
+/// layer, and it is exactly what the UI tells the user: messages are encrypted
+/// between channel members. There is no ephemeral-DH layer and no per-message
+/// signature; an earlier design claimed both without delivering either, and the
+/// code was removed rather than left as a false promise.
 @Observable
 @MainActor
 final class MeshShield {
@@ -117,7 +28,6 @@ final class MeshShield {
     static let coverMagic: [UInt8] = [0xDE, 0xAD, 0xBE, 0xEF]
 
     private var multipeerTransport: MultipeerTransport?
-    private var wifiAwareTransport: WiFiAwareTransport?
     private var fakeTrafficTask: Task<Void, Never>?
 
     /// Returns the ChannelCrypto for a given channel ID, if the channel is locked.
@@ -146,13 +56,9 @@ final class MeshShield {
 
     // MARK: - Lifecycle
 
-    /// Wire transports and start cover traffic. Called once from AppState.start().
-    func start(
-        transport: MultipeerTransport,
-        waTransport: WiFiAwareTransport?
-    ) {
+    /// Wire the transport and start cover traffic. Called once from AppState.start().
+    func start(transport: MultipeerTransport) {
         self.multipeerTransport = transport
-        self.wifiAwareTransport = waTransport
         startCoverTraffic()
         logger.info("MeshShield active")
     }
@@ -160,28 +66,6 @@ final class MeshShield {
     func stop() {
         fakeTrafficTask?.cancel()
         fakeTrafficTask = nil
-    }
-
-    // MARK: - Encryption API
-
-    /// Triple-encrypt a payload. Used by TextMessageService for locked channels.
-    func encrypt(_ plaintext: Data, channelCrypto: ChannelCrypto, epoch: UInt32 = 0) async -> Data? {
-        do {
-            return try await MeshShieldCrypto.encrypt(
-                plaintext,
-                channelCrypto: channelCrypto,
-                peerIdentity: PeerIdentity.shared,
-                epoch: epoch
-            )
-        } catch {
-            logger.error("Encryption failed: \(error.localizedDescription)")
-            return nil
-        }
-    }
-
-    /// Triple-decrypt a payload. Returns plaintext or nil if not triple-encrypted.
-    nonisolated func decrypt(_ ciphertext: Data, channelCrypto: ChannelCrypto, currentEpoch: UInt32 = 0) -> Data? {
-        MeshShieldCrypto.decrypt(ciphertext, channelCrypto: channelCrypto, currentEpoch: currentEpoch)
     }
 
     /// Check if a payload is cover traffic (silently discard).
@@ -262,8 +146,6 @@ final class MeshShield {
             payload: wirePayload
         )
 
-        let serialized = packet.serialize()
-        multipeerTransport?.forwardPacket(serialized, excludePeer: "")
-        wifiAwareTransport?.forwardPacket(serialized, excludePeer: "")
+        multipeerTransport?.forwardPacket(packet.serialize(), excludePeer: "")
     }
 }

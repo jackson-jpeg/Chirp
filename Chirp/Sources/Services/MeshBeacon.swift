@@ -29,9 +29,6 @@ final class MeshBeacon {
         var longitude: Double?
         /// Pheromone trail summary: top destination->score pairs for cross-node trail sharing.
         var pheromoneTrails: [String: Double]?
-        var positionSource: UInt8?          // PositionEstimate.PositionSource.rawValue
-        var positionAccuracy: Double?       // Horizontal accuracy in meters
-        var deadReckonDrift: Double?        // Accumulated DR drift for mesh correction
 
         /// True if this node was heard directly (1 hop away).
         var isDirect: Bool { hopCount <= 1 }
@@ -39,7 +36,6 @@ final class MeshBeacon {
         enum CodingKeys: String, CodingKey {
             case id, name, channels, hopCount, batteryLevel, timestamp, lastSeen, neighborIDs
             case latitude, longitude, pheromoneTrails
-            case positionSource, positionAccuracy, deadReckonDrift
         }
 
         init(
@@ -53,10 +49,7 @@ final class MeshBeacon {
             neighborIDs: [String] = [],
             latitude: Double? = nil,
             longitude: Double? = nil,
-            pheromoneTrails: [String: Double]? = nil,
-            positionSource: UInt8? = nil,
-            positionAccuracy: Double? = nil,
-            deadReckonDrift: Double? = nil
+            pheromoneTrails: [String: Double]? = nil
         ) {
             self.id = id
             self.name = name
@@ -69,9 +62,6 @@ final class MeshBeacon {
             self.latitude = latitude
             self.longitude = longitude
             self.pheromoneTrails = pheromoneTrails
-            self.positionSource = positionSource
-            self.positionAccuracy = positionAccuracy
-            self.deadReckonDrift = deadReckonDrift
         }
 
         init(from decoder: Decoder) throws {
@@ -90,10 +80,6 @@ final class MeshBeacon {
             longitude = try container.decodeIfPresent(Double.self, forKey: .longitude)
             // Backwards compatible: older beacons may omit pheromone trails
             pheromoneTrails = try container.decodeIfPresent([String: Double].self, forKey: .pheromoneTrails)
-            // Backwards compatible: older beacons may omit position fields
-            positionSource = try container.decodeIfPresent(UInt8.self, forKey: .positionSource)
-            positionAccuracy = try container.decodeIfPresent(Double.self, forKey: .positionAccuracy)
-            deadReckonDrift = try container.decodeIfPresent(Double.self, forKey: .deadReckonDrift)
         }
     }
 
@@ -227,10 +213,7 @@ final class MeshBeacon {
     func updateBroadcastInterval(forPeerCount peerCount: Int) {
         let newInterval: TimeInterval
 
-        // Emergency mode overrides density-based scaling — beacon aggressively
-        if EmergencyMode.shared.isActive {
-            newInterval = EmergencyMode.shared.beaconInterval
-        } else if peerCount > 10 {
+        if peerCount > 10 {
             // Scale linearly: 10 peers -> 2s, 20 peers -> 8s, capped at max
             let scale = min(1.0, Double(peerCount - 10) / 10.0)
             newInterval = Self.baseBroadcastInterval

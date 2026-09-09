@@ -52,15 +52,6 @@ targets:
       product: GRDB
     - package: MapLibreNative
       product: MapLibre
-    - sdk: CoreBluetooth.framework
-    - sdk: SoundAnalysis.framework
-    - sdk: NearbyInteraction.framework
-    - sdk: CoreMotion.framework
-    - sdk: NetworkExtension.framework
-    - sdk: CoreML.framework
-    - sdk: NaturalLanguage.framework
-    - sdk: Metal.framework
-    - sdk: MetalKit.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp
@@ -81,41 +72,30 @@ targets:
       path: Chirp/Info.plist
       properties:
         CFBundleDisplayName: ChirpChirps
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen:
           UIColorName: LaunchBackground
         UISupportedInterfaceOrientations:
         - UIInterfaceOrientationPortrait
-        - UIInterfaceOrientationLandscapeLeft
-        - UIInterfaceOrientationLandscapeRight
-        - UIInterfaceOrientationPortraitUpsideDown
         NSMicrophoneUsageDescription: ChirpChirps uses your microphone for real-time
           voice communication with nearby devices.
         NSCameraUsageDescription: ChirpChirps uses your camera to capture and share
           media with nearby devices.
-        NSPhotoLibraryUsageDescription: ChirpChirps accesses your photo library to
-          share images with nearby devices.
         NSPhotoLibraryAddUsageDescription: ChirpChirps saves received images to your
           photo library.
-        ITSAppUsesNonExemptEncryption: false
-        NSBluetoothAlwaysUsageDescription: ChirpChirps uses Bluetooth to discover
-          nearby devices for peer-to-peer communication.
-        NSNearbyInteractionUsageDescription: ChirpChirps uses Ultra-Wideband to precisely
-          locate nearby mesh peers for indoor positioning.
-        NSMotionUsageDescription: ChirpChirps uses motion sensors to improve positioning
-          when GPS is unavailable.
-        NSSpeechRecognitionUsageDescription: ChirpChirps uses speech recognition for
-          real-time translation of voice communication.
+        # AES-GCM under a shared channel key -- Apple OS-provided crypto only,
+        # qualifies as exempt, but the key must still be declared true.
+        ITSAppUsesNonExemptEncryption: true
+        NSSpeechRecognitionUsageDescription: ChirpChirps uses on-device speech recognition
+          to show live transcripts of incoming voice transmissions.
         NSLocationWhenInUseUsageDescription: ChirpChirps uses your location to share
-          your position with nearby peers.
-        NSLocationAlwaysAndWhenInUseUsageDescription: ChirpChirps uses background
-          location for emergency SOS broadcasting in critical situations.
+          your position on the map with nearby peers.
         NSLocalNetworkUsageDescription: ChirpChirps uses your local network to connect
           directly to nearby devices without internet.
         NSBonjourServices:
         - _chirp-ptt._udp
         - _chirp-ptt._tcp
-        UIBackgroundModes:
-        - audio
   ChirpTests:
     type: bundle.unit-test
     platform: iOS

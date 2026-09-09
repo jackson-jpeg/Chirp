@@ -156,19 +156,6 @@ final class PheromoneRoutingTests: XCTestCase {
         XCTAssertTrue(result?.contains("p1") == true, "Should include top pheromone peer")
     }
 
-    // MARK: - Critical packets bypass pheromone
-
-    func testCriticalPacketsBroadcast() async {
-        await intel.depositPheromone(destination: "channel:sos-channel", viaNeighbor: "p1")
-
-        // SOS payload triggers critical priority
-        let sosPayload = Data("{\"type\":\"SOS\"}".utf8)
-        let packet = makePacket(type: .control, channelID: "sos-channel", payload: sosPayload)
-
-        let result = await intel.selectRelayPeers(for: packet, allPeers: ["p1", "p2", "p3"])
-        XCTAssertNil(result, "Critical packets should return nil to broadcast to all peers")
-    }
-
     // MARK: - Broadcast packets bypass pheromone
 
     func testBroadcastPacketsReturnNil() async {

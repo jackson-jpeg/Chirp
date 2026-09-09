@@ -56,8 +56,7 @@ final class FloorMeshHarness {
     ///
     /// `FloorController.sendToAllPeers` is declared `@Sendable`, so the send
     /// closure may not capture this main-actor harness. The queue lives behind
-    /// a lock instead — the same primitive the app uses in
-    /// `TransportPreference` — and the closures capture the queue.
+    /// an `OSAllocatedUnfairLock` instead, and the closures capture the queue.
     private final class SendQueue: Sendable {
         private let storage = OSAllocatedUnfairLock(initialState: [InFlightMessage]())
 

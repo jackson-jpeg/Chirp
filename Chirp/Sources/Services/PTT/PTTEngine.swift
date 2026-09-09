@@ -19,13 +19,9 @@ final class PTTEngine {
     let audioEngine: AudioEngine
     let floorController: FloorController
     var multipeerTransport: MultipeerTransport?
-    var wifiAwareTransport: WiFiAwareTransport?
 
-    /// Provides the current peer list for transport preference decisions.
+    /// Provides the current peer list.
     var peerListProvider: (() -> [ChirpPeer])?
-
-    /// Provides current Wi-Fi Aware link metrics for quality-aware transport selection.
-    var wifiAwareMetricsProvider: (() -> [String: WALinkMetrics])?
 
     // MARK: - Private
 
@@ -73,53 +69,23 @@ final class PTTEngine {
                     timestamp: Self.currentTimestamp(),
                     opusData: opusData
                 )
-                // Send via preferred transport(s) — quality-aware for audio
                 let serialized = packet.serialize()
-                let peers = self.peerListProvider?() ?? []
-                let metrics = self.wifiAwareMetricsProvider?()
-                let choice = TransportPreference.preferredTransport(
-                    for: .audio,
-                    wifiAwareMetrics: metrics,
-                    peers: peers
-                )
-
-                // When sending on both transports, create the MeshPacket once
-                // so both transports share the same packetID for deduplication.
-                if choice == .both,
-                   let router = self.multipeerTransport?.meshRouter ?? self.wifiAwareTransport?.meshRouter {
-                    let meshPacket = await router.createPacket(
-                        type: .audio, payload: serialized, channelID: "", sequenceNumber: seq
-                    )
-                    let meshData = meshPacket.serialize()
-                    var wireData = Data([0xAA]) // meshMagic
-                    wireData.append(meshData)
-                    self.multipeerTransport?.sendRawWireData(wireData)
-                    await self.wifiAwareTransport?.sendRawWireData(wireData)
-                } else if TransportPreference.shouldSendOnMC(choice: choice) {
-                    try? self.multipeerTransport?.sendAudio(serialized)
-                } else if TransportPreference.shouldSendOnWA(choice: choice) {
-                    try? self.wifiAwareTransport?.sendAudio(serialized)
+                do {
+                    try self.multipeerTransport?.sendAudio(serialized)
+                } catch {
+                    self.logger.error("Audio frame send failed (seq \(seq)): \(error.localizedDescription)")
                 }
             }
         }
 
-        // Floor control -> network: broadcast control messages to all peers
-        // via both transports for reliability (quality-aware: control always sends on both).
+        // Floor control -> network: broadcast control messages to all peers.
         floorController.sendToAllPeers = { [weak self] message in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                let peers = self.peerListProvider?() ?? []
-                let metrics = self.wifiAwareMetricsProvider?()
-                let choice = TransportPreference.preferredTransport(
-                    for: .control,
-                    wifiAwareMetrics: metrics,
-                    peers: peers
-                )
-                if TransportPreference.shouldSendOnMC(choice: choice) {
-                    try? self.multipeerTransport?.sendControl(message)
-                }
-                if TransportPreference.shouldSendOnWA(choice: choice) {
-                    try? self.wifiAwareTransport?.sendControl(message)
+                do {
+                    try self.multipeerTransport?.sendControl(message)
+                } catch {
+                    self.logger.error("Floor control send failed: \(error.localizedDescription)")
                 }
             }
         }
@@ -203,13 +169,6 @@ final class PTTEngine {
         }
 
         audioEngine.resetJitterBuffer()
-        wifiAwareTransport?.setRealtimeMode(true)
-
-        // Emergency mode: drop to 8 kbps to conserve bandwidth and battery
-        if EmergencyMode.shared.audioQuality == .emergency {
-            audioEngine.setTargetBitrate(8000)
-        }
-
         audioEngine.startCapture()
 
         // SAFETY NET, not a mechanism. Every ordinary way of stopping —
@@ -235,13 +194,6 @@ final class PTTEngine {
         transmitTimeoutTask?.cancel()
         transmitTimeoutTask = nil
         audioEngine.stopCapture()
-        wifiAwareTransport?.setRealtimeMode(false)
-
-        // Restore normal bitrate after emergency transmission
-        if EmergencyMode.shared.audioQuality == .emergency {
-            audioEngine.setTargetBitrate(Constants.Opus.bitrate)
-        }
-
         floorController.releaseFloor()
         syncState()
         logger.info("Stopped transmitting")
@@ -256,18 +208,10 @@ final class PTTEngine {
                 try? await Task.sleep(for: .seconds(5))
                 guard !Task.isCancelled, let self else { break }
                 let heartbeat = FloorControlMessage.heartbeat(peerID: self.localPeerID, timestamp: Date())
-                let peers = self.peerListProvider?() ?? []
-                let metrics = self.wifiAwareMetricsProvider?()
-                let choice = TransportPreference.preferredTransport(
-                    for: .control,
-                    wifiAwareMetrics: metrics,
-                    peers: peers
-                )
-                if TransportPreference.shouldSendOnMC(choice: choice) {
-                    try? self.multipeerTransport?.sendControl(heartbeat)
-                }
-                if TransportPreference.shouldSendOnWA(choice: choice) {
-                    try? self.wifiAwareTransport?.sendControl(heartbeat)
+                do {
+                    try self.multipeerTransport?.sendControl(heartbeat)
+                } catch {
+                    self.logger.error("Heartbeat send failed: \(error.localizedDescription)")
                 }
             }
         }

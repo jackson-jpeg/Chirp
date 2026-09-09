@@ -18,7 +18,6 @@ struct ChannelCreationView: View {
 
     @State private var mode: Mode = .create
     @State private var channelName = ""
-    @State private var showPairingPrompt = false
     @State private var inviteCode = ""
     @State private var isPrivate = false
     @State private var joinFailed = false
@@ -62,33 +61,6 @@ struct ChannelCreationView: View {
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(24)
-        .sheet(isPresented: $showPairingPrompt, onDismiss: { dismiss() }) {
-            VStack(spacing: 24) {
-                Image(systemName: "wifi")
-                    .font(.system(size: 48, weight: .light))
-                    .foregroundStyle(Constants.Colors.amber)
-
-                Text("Boost Your Range")
-                    .font(.system(.title2, weight: .bold))
-                    .foregroundStyle(.white)
-
-                Text("Pair with nearby devices over Wi-Fi Aware for 200m+ range and lower latency.")
-                    .font(.system(.body))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-
-                PairingView()
-                    .environment(appState)
-
-                Button("Skip for Now") { dismiss() }
-                    .foregroundStyle(.secondary)
-                    .padding(.bottom, 16)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.black)
-            .presentationDetents([.large])
-        }
     }
 
     // MARK: - Create Mode
@@ -318,13 +290,7 @@ struct ChannelCreationView: View {
             ownerID: ownerID
         )
         appState.channelManager.joinChannel(id: channel.id)
-
-        // Offer Wi-Fi Aware pairing for best range
-        if appState.wifiAwareTransport != nil {
-            showPairingPrompt = true
-        } else {
-            dismiss()
-        }
+        dismiss()
     }
 
     private func joinChannel() {

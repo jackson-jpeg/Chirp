@@ -10,7 +10,5 @@ struct ChirpPeer: Identifiable, Equatable, Sendable, Codable {
 
     enum TransportType: String, Codable, Sendable {
         case multipeer
-        case wifiAware
-        case both
     }
 }

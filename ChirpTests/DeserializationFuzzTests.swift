@@ -71,24 +71,6 @@ import XCTest
         }
     }
 
-    // MARK: - BLE Scan Report (SCN!)
-
-    func testBLEScanReportSurvivesMalformed() {
-        let scanner = BLEScanner()
-        for payload in payloads + prefixedPayloads([0x53, 0x43, 0x4E, 0x21]) {
-            scanner.handleMeshScanReport(payload)
-        }
-    }
-
-    // MARK: - Sound Alert (SND!)
-
-    func testSoundAlertSurvivesMalformed() {
-        let service = SoundAlertService(locationService: LocationService())
-        for payload in payloads + prefixedPayloads([0x53, 0x4E, 0x44, 0x21]) {
-            service.handleMeshAlert(payload)
-        }
-    }
-
     // MARK: - Floor Control (JSON, no prefix)
 
     func testFloorControlSurvivesMalformed() {
@@ -97,50 +79,6 @@ import XCTest
             _ = result
         }
     }
-
-    // MARK: - Mesh Cloud (BCK! / BRQ!)
-
-    func testMeshCloudSurvivesMalformed() {
-        let service = MeshCloudService(localPeerID: "test-peer", localFingerprint: "test-fingerprint")
-        for payload in payloads + prefixedPayloads([0x42, 0x43, 0x4B, 0x21]) {
-            service.handleBackupChunk(payload)
-        }
-        for payload in payloads + prefixedPayloads([0x42, 0x52, 0x51, 0x21]) {
-            service.handleRetrievalRequest(payload)
-        }
-    }
-
-    // MARK: - Witness (WRQ! / WCS!)
-
-    func testWitnessSurvivesMalformed() {
-        let service = MeshWitnessService()
-        for payload in payloads + prefixedPayloads([0x57, 0x52, 0x51, 0x21]) {
-            service.handlePacket(payload, channelID: "test")
-        }
-        for payload in payloads + prefixedPayloads([0x57, 0x43, 0x53, 0x21]) {
-            service.handlePacket(payload, channelID: "test")
-        }
-    }
-
-    // MARK: - Dead Drop (DRP! / DPK!)
-
-    func testDeadDropSurvivesMalformed() {
-        let service = DeadDropService()
-        for payload in payloads + prefixedPayloads([0x44, 0x52, 0x50, 0x21]) {
-            service.handlePacket(payload, channelID: "test")
-        }
-    }
-
-    // MARK: - Darkroom (DRK! / DVK!)
-
-    func testDarkroomSurvivesMalformed() {
-        let service = DarkroomService()
-        for payload in payloads + prefixedPayloads([0x44, 0x52, 0x4B, 0x21]) {
-            service.handlePacket(payload, channelID: "test")
-        }
-    }
-
-    // MARK: - Babel (BBL!)
 
     // MARK: - Key Rotation (KRO!)
 
@@ -163,12 +101,5 @@ import XCTest
         XCTAssertNotNil(ChannelManager.parseKeyRotationPayload(magic + epoch + Data([0x41])))
         XCTAssertNil(ChannelManager.parseKeyRotationPayload(magic + epoch + Data([0xFF, 0xFE])))
         XCTAssertNil(ChannelManager.parseKeyRotationPayload(Data([0x4B, 0x52, 0x4F, 0x22]) + epoch + Data([0x41])))
-    }
-
-    func testBabelSurvivesMalformed() {
-        let service = BabelService()
-        for payload in payloads + prefixedPayloads([0x42, 0x42, 0x4C, 0x21]) {
-            service.handlePacket(payload, channelID: "test")
-        }
     }
 }

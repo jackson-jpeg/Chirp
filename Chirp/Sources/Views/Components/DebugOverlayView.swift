@@ -86,9 +86,10 @@ struct DebugOverlayView: View {
 
                     Spacer()
 
-                    Text("\(appState.wifiAwareManager.pairedDevices.count)")
+                    let peerCount = appState.channelManager.activeChannel?.peers.filter(\.isConnected).count ?? 0
+                    Text("\(peerCount)")
                         .foregroundStyle(
-                            appState.wifiAwareManager.pairedDevices.count > 0
+                            peerCount > 0
                                 ? Constants.Colors.electricGreen
                                 : .white.opacity(0.5)
                         )

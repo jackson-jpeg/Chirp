@@ -56,7 +56,7 @@ actor MeshIntelligence {
         batteryLevel: Float,
         priority: MeshPacket.MessagePriority
     ) -> Bool {
-        // Critical battery (<10%): only relay SOS
+        // Critical battery (<10%): only relay critical-priority packets
         if batteryLevel < 0.10 {
             if priority < .critical {
                 logger.info("Skipping relay — battery critical (\(batteryLevel * 100, format: .fixed(precision: 0))%%), priority \(priority.rawValue)")

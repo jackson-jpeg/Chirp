@@ -11,7 +11,6 @@ struct SettingsView: View {
     @State private var debugExpanded = false
     @State private var howItWorksExpanded = false
     @State private var copiedID = false
-    @State private var showActionButtonSetup = false
     @State private var showResetIdentityConfirm = false
     @State private var showClearDataConfirm = false
 
@@ -28,12 +27,8 @@ struct SettingsView: View {
             VStack(spacing: 24) {
                 profileHeroCard
                 meshNetworkSection
-                LinkHealthSection()
                 audioHapticsSection
-                quickAccessSection
-                emergencySection
                 privacySecuritySection
-                meshCloudSection
                 aboutSection
                 dangerZoneSection
                 #if DEBUG
@@ -66,9 +61,6 @@ struct SettingsView: View {
         .accessibilityIdentifier(AccessibilityID.settingsView)
         .navigationTitle(String(localized: "settings.title"))
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showActionButtonSetup) {
-            ActionButtonSetupView()
-        }
     }
 
     // MARK: - Profile Hero Card
@@ -181,22 +173,6 @@ struct SettingsView: View {
             sectionHeader(icon: "point.3.connected.trianglepath.dotted", title: String(localized: "settings.meshNetwork.title"))
 
             VStack(spacing: 1) {
-                // Wi-Fi Aware status
-                glassRow {
-                    HStack(spacing: 12) {
-                        Image(systemName: "wifi")
-                            .foregroundStyle(appState.wifiAwareTransport != nil ? green : .secondary)
-                            .frame(width: 24)
-                        Text(String(localized: "settings.meshNetwork.wifiAware"))
-                            .foregroundStyle(Constants.Colors.textPrimary)
-                        Spacer()
-                        statusBadge(
-                            text: appState.wifiAwareTransport != nil ? String(localized: "settings.status.active") : String(localized: "settings.status.unavailable"),
-                            color: appState.wifiAwareTransport != nil ? green : .secondary
-                        )
-                    }
-                }
-
                 // Nearby peers
                 glassRow {
                     HStack(spacing: 12) {
@@ -209,22 +185,6 @@ struct SettingsView: View {
                         Text("\(appState.connectedPeerCount)")
                             .font(.system(.body, design: .monospaced, weight: .semibold))
                             .foregroundStyle(appState.connectedPeerCount > 0 ? green : .secondary)
-                            .contentTransition(.numericText())
-                    }
-                }
-
-                // Paired devices
-                glassRow {
-                    HStack(spacing: 12) {
-                        Image(systemName: "link")
-                            .foregroundStyle(amber)
-                            .frame(width: 24)
-                        Text(String(localized: "settings.meshNetwork.pairedDevices"))
-                            .foregroundStyle(Constants.Colors.textPrimary)
-                        Spacer()
-                        Text("\(appState.wifiAwareTransport?.pairedDeviceCount ?? 0)")
-                            .font(.system(.body, design: .monospaced, weight: .semibold))
-                            .foregroundStyle(Constants.Colors.textSecondary)
                             .contentTransition(.numericText())
                     }
                 }
@@ -389,86 +349,6 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Quick Access
-
-    private var quickAccessSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            sectionHeader(icon: "bolt.fill", title: String(localized: "settings.quickAccess.title"))
-
-            VStack(spacing: 1) {
-                glassRow {
-                    Button {
-                        showActionButtonSetup = true
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "button.horizontal.top.press.fill")
-                                .foregroundStyle(amber)
-                                .frame(width: 24)
-                            Text(String(localized: "settings.quickAccess.actionButton"))
-                                .foregroundStyle(Constants.Colors.textPrimary)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                glassRow {
-                    HStack(spacing: 12) {
-                        Image(systemName: "mic.circle")
-                            .foregroundStyle(amber)
-                            .frame(width: 24)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(String(localized: "settings.quickAccess.siriShortcut"))
-                                .foregroundStyle(Constants.Colors.textPrimary)
-                            Text(String(localized: "settings.quickAccess.siriShortcutHint"))
-                                .font(.system(.caption2))
-                                .foregroundStyle(Constants.Colors.textTertiary)
-                        }
-                        Spacer()
-                    }
-                }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous))
-        }
-    }
-
-    // MARK: - Emergency
-
-    private var emergencySection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            sectionHeader(icon: "sos", title: String(localized: "settings.emergency.title"))
-
-            VStack(spacing: 1) {
-                glassRow {
-                    Toggle(isOn: Binding(
-                        get: { EmergencyMode.shared.isActive },
-                        set: { newValue in
-                            if newValue {
-                                EmergencyMode.shared.activate()
-                            } else {
-                                EmergencyMode.shared.deactivate()
-                            }
-                        }
-                    )) {
-                        settingsRow(icon: "exclamationmark.octagon.fill", title: String(localized: "settings.emergency.emergencyMode"))
-                    }
-                    .tint(Constants.Colors.emergencyRed)
-                }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous))
-
-            Text(String(localized: "settings.emergency.emergencyModeDescription"))
-                .font(.system(.caption2))
-                .foregroundStyle(Constants.Colors.textTertiary)
-                .padding(.horizontal, 4)
-                .padding(.top, 8)
-        }
-    }
-
-
     // MARK: - Privacy & Security
 
     private var privacySecuritySection: some View {
@@ -525,51 +405,6 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Mesh Cloud
-
-    private var meshCloudSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            sectionHeader(icon: "cloud.fill", title: "Mesh Cloud")
-
-            VStack(spacing: 1) {
-                glassRow {
-                    NavigationLink {
-                        MeshCloudView()
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "cloud.fill")
-                                .foregroundStyle(amber)
-                                .frame(width: 24)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Distributed Backup")
-                                    .foregroundStyle(Constants.Colors.textPrimary)
-                                Text(meshCloudStatusText)
-                                    .font(.system(.caption2))
-                                    .foregroundStyle(Constants.Colors.textTertiary)
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous))
-        }
-    }
-
-    private var meshCloudStatusText: String {
-        let service = appState.meshCloudService
-        if service.isDonating {
-            let usedMB = Double(service.storageDonated) / (1024.0 * 1024.0)
-            return String(format: "Donating %.1f / %d MB", usedMB, service.storageQuotaMB)
-        } else {
-            return "Storage donation paused"
-        }
-    }
-
     // MARK: - About
 
     private var aboutSection: some View {
@@ -603,8 +438,6 @@ struct SettingsView: View {
                 if howItWorksExpanded {
                     glassRow {
                         VStack(alignment: .leading, spacing: 14) {
-                            infoItem(icon: "wifi", title: String(localized: "settings.about.wifiAware.title"),
-                                     text: String(localized: "settings.about.wifiAware.description"))
                             infoItem(icon: "mic.fill", title: String(localized: "settings.about.pushToTalk.title"),
                                      text: String(localized: "settings.about.pushToTalk.description"))
                             infoItem(icon: "person.2.fill", title: String(localized: "settings.about.channels.title"),
@@ -880,15 +713,6 @@ struct SettingsView: View {
                             if let active = appState.channelManager.activeChannel {
                                 debugRow("Active Channel", value: active.name)
                             }
-
-                            debugRow("Wi-Fi Aware",
-                                     value: appState.wifiAwareTransport != nil ? "Active" : "Unsupported")
-
-                            debugRow("Paired Devices (WA)",
-                                     value: "\(appState.wifiAwareTransport?.pairedDeviceCount ?? 0)")
-
-                            debugRow("Connected (WA)",
-                                     value: "\(appState.wifiAwareTransport?.connectedPeerCount ?? 0)")
 
                             debugRow("Jitter Buffer",
                                      value: "init \(Constants.JitterBuffer.initialDepthMs)ms / max \(Constants.JitterBuffer.maxDepthMs)ms")

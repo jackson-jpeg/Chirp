@@ -35,72 +35,6 @@ private struct CompactHeader: View {
     }
 }
 
-// MARK: - Inline Status Strip
-
-private struct InlineStatusStrip: View {
-    let peerCount: Int
-    let threatCount: Int
-    let isScanning: Bool
-    let isEmergencyActive: Bool
-
-    private var threatColor: Color {
-        if threatCount == 0 { return Constants.Colors.electricGreen }
-        if threatCount <= 2 { return Constants.Colors.amber }
-        return Constants.Colors.hotRed
-    }
-
-    private var modeText: String {
-        if isEmergencyActive { return String(localized: "home.status.emergency") }
-        if isScanning { return String(localized: "home.status.scanning") }
-        return String(localized: "home.status.normal")
-    }
-
-    private var modeColor: Color {
-        if isEmergencyActive { return Constants.Colors.emergencyRed }
-        if isScanning { return Constants.Colors.amber }
-        return Constants.Colors.electricGreen
-    }
-
-    var body: some View {
-        HStack(spacing: 16) {
-            statusPill(
-                icon: "antenna.radiowaves.left.and.right",
-                text: String(localized: "home.status.peerCount \(peerCount)"),
-                color: peerCount > 0 ? Constants.Colors.electricGreen : Constants.Colors.slate500
-            )
-
-            statusPill(
-                icon: "shield.fill",
-                text: String(localized: "home.status.threatCount \(threatCount)"),
-                color: threatColor
-            )
-
-            statusPill(
-                icon: "circle.fill",
-                text: modeText,
-                color: modeColor,
-                iconSize: 6
-            )
-
-            Spacer()
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 8)
-    }
-
-    private func statusPill(icon: String, text: String, color: Color, iconSize: CGFloat = 11) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: icon)
-                .font(.system(size: iconSize, weight: .semibold))
-                .foregroundStyle(color)
-
-            Text(text)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Constants.Colors.slate400)
-        }
-    }
-}
-
 // MARK: - Friend Avatar Bubble
 
 private struct FriendAvatarBubble: View {
@@ -557,10 +491,6 @@ private struct ChannelEmptyState: View {
     }
 }
 
-// MARK: - SOS Toolbar Button
-
-/// A long-press-activated SOS button that prevents accidental triggers.
-/// Shows red only when held; requires deliberate press to confirm.
 // MARK: - Ambient Mesh Background
 
 /// Lightweight particle field that gives the Talk tab a living, breathing feel.
@@ -880,7 +810,6 @@ private struct MeshStatusStrip: View {
     let peerCount: Int
     let meshStats: MeshStats?
     let isEncrypted: Bool
-    let isEmergencyActive: Bool
 
     private var meshLabel: String {
         guard let stats = meshStats, peerCount > 0 else { return String(localized: "home.mesh.noMesh") }
@@ -931,7 +860,7 @@ private struct MeshStatusStrip: View {
                     Image(systemName: "lock.fill")
                         .font(.system(size: 9, weight: .bold))
 
-                    Text("E2E")
+                    Text(String(localized: "home.mesh.encrypted"))
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                 }
                 .foregroundStyle(Constants.Colors.electricGreen.opacity(0.8))
@@ -945,23 +874,10 @@ private struct MeshStatusStrip: View {
                                 .strokeBorder(Constants.Colors.electricGreen.opacity(0.2), lineWidth: 0.5)
                         )
                 )
-                .accessibilityLabel(String(localized: "home.mesh.e2eEncrypted"))
+                .accessibilityLabel(String(localized: "home.mesh.encryptedChannel"))
             }
 
             Spacer()
-
-            if isEmergencyActive {
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(Constants.Colors.emergencyRed)
-                        .frame(width: 6, height: 6)
-
-                    Text(String(localized: "home.mesh.sos"))
-                        .font(.system(size: 10, weight: .black, design: .monospaced))
-                        .foregroundStyle(Constants.Colors.emergencyRed)
-                }
-                .accessibilityLabel(String(localized: "home.mesh.emergencyActive"))
-            }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
@@ -983,14 +899,12 @@ enum HomeTab: String, CaseIterable {
     case talk = "Talk"
     case messages = "Messages"
     case map = "Map"
-    case more = "More"
 
     var icon: String {
         switch self {
         case .talk: return "waveform"
         case .messages: return "bubble.left.and.bubble.right"
         case .map: return "map"
-        case .more: return "ellipsis"
         }
     }
 }
@@ -1100,9 +1014,8 @@ struct HomeView: View {
     @Environment(AppState.self) private var appState
 
     @State private var showChannelCreation = false
-    @State private var showPairing = false
-    @State private var showGatewayMessage = false
     @State private var showDiagnostics = false
+    @State private var showOfflineMapDownload = false
     @State private var toast: ToastItem?
     @State private var connectedPeerCount = 0
     @State private var isRefreshing = false
@@ -1160,48 +1073,34 @@ struct HomeView: View {
                     }
                 }
 
-                // Emergency mode overlay -- always on top
-                EmergencyModeOverlay(emergencyMode: EmergencyMode.shared)
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    HStack(spacing: 12) {
-                        NavigationLink {
-                            MeshMapView()
-                        } label: {
-                            Image(systemName: "point.3.connected.trianglepath.dotted")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundStyle(Constants.Colors.slate400)
-                        }
-                        .accessibilityLabel("Mesh Map")
-                        .accessibilityIdentifier(AccessibilityID.meshMapButton)
-
-                        if MeshGateway.shared.gatewayAvailable {
-                            Button {
-                                showGatewayMessage = true
-                            } label: {
-                                Image(systemName: "antenna.radiowaves.left.and.right")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundStyle(Constants.Colors.electricGreen)
-                            }
-                            .accessibilityLabel("Gateway")
-                        }
+                    NavigationLink {
+                        VoiceMessagesView()
+                    } label: {
+                        Image(systemName: "waveform.circle")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(Constants.Colors.slate400)
                     }
+                    .accessibilityLabel("Voice Messages")
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        SettingsView()
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(Constants.Colors.slate400)
+                    }
+                    .accessibilityLabel("Settings")
+                    .accessibilityIdentifier(AccessibilityID.settingsButton)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showChannelCreation) {
                 ChannelCreationView()
-            }
-            .sheet(isPresented: $showPairing) {
-                PairingView()
-                    .onAppearAnimations()
-            }
-            .sheet(isPresented: $showGatewayMessage) {
-                GatewayMessageView(
-                    localPeerID: appState.localPeerID,
-                    localPeerName: appState.localPeerName
-                )
             }
             .sheet(isPresented: $showDiagnostics) {
                 DiagnosticsView()
@@ -1234,12 +1133,6 @@ struct HomeView: View {
                     try? await Task.sleep(for: .seconds(2))
                 }
             }
-            .onReceive(NotificationCenter.default.publisher(for: .chirpPTTShortcutTriggered)) { _ in
-                // Action Button / Shortcut triggered — switch to Talk tab
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    selectedTab = .talk
-                }
-            }
         }
     }
 
@@ -1252,14 +1145,6 @@ struct HomeView: View {
             pttHomeContent
 
         case .messages:
-            // Inline status strip
-            InlineStatusStrip(
-                peerCount: appState.connectedPeerCount,
-                threatCount: appState.bleScanner.threatDevices.count,
-                isScanning: appState.bleScanner.isScanning,
-                isEmergencyActive: EmergencyMode.shared.isActive
-            )
-
             // Friends quick-access row
             if !appState.friendsManager.friends.isEmpty {
                 friendsQuickAccess
@@ -1274,9 +1159,23 @@ struct HomeView: View {
                 peers: mapPeerPins
             )
             .ignoresSafeArea(edges: .bottom)
-
-        case .more:
-            MoreView()
+            .overlay(alignment: .bottomTrailing) {
+                Button {
+                    showOfflineMapDownload = true
+                } label: {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(Constants.Colors.amber)
+                        .padding(10)
+                        .background(Circle().fill(Constants.Colors.slate800.opacity(0.85)))
+                }
+                .accessibilityLabel(String(localized: "map.downloadOffline"))
+                .padding(.trailing, 16)
+                .padding(.bottom, 24)
+            }
+            .sheet(isPresented: $showOfflineMapDownload) {
+                OfflineMapDownloadSheet()
+            }
         }
     }
 
@@ -1396,8 +1295,7 @@ struct HomeView: View {
                 MeshStatusStrip(
                     peerCount: appState.connectedPeerCount,
                     meshStats: appState.meshStats,
-                    isEncrypted: channelIsEncrypted,
-                    isEmergencyActive: EmergencyMode.shared.isActive
+                    isEncrypted: channelIsEncrypted
                 )
                 .onLongPressGesture {
                     showDiagnostics = true
@@ -1551,7 +1449,4 @@ struct HomeView: View {
 
         isRefreshing = false
     }
-
-    // MARK: - SOS
-
 }

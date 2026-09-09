@@ -192,18 +192,6 @@ final class MeshPacketTests: XCTestCase {
         XCTAssertEqual(priority, .low)
     }
 
-    func testInferPrioritySOSIsCritical() {
-        let sosPayload = Data("{\"type\":\"SOS\",\"lat\":0}".utf8)
-        let priority = MeshPacket.inferPriority(type: .control, payload: sosPayload)
-        XCTAssertEqual(priority, .critical)
-    }
-
-    func testInferPrioritySOSCaseInsensitive() {
-        let sosPayload = Data("{\"sos\":true}".utf8)
-        let priority = MeshPacket.inferPriority(type: .control, payload: sosPayload)
-        XCTAssertEqual(priority, .critical)
-    }
-
     func testInferPriorityBeaconIsNormal() {
         // BCN! magic: 0x42, 0x43, 0x4E, 0x21
         let beaconPayload = Data([0x42, 0x43, 0x4E, 0x21, 0x01, 0x02])
@@ -218,7 +206,7 @@ final class MeshPacketTests: XCTestCase {
     }
 
     func testInferPriorityShortControlIsHigh() {
-        // Less than 4 bytes -- not enough for beacon or SOS detection
+        // Less than 4 bytes -- not enough for magic-prefix detection
         let priority = MeshPacket.inferPriority(type: .control, payload: Data([0x01]))
         XCTAssertEqual(priority, .high)
     }

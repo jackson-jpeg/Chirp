@@ -5,10 +5,8 @@ enum AccessibilityID {
     // MARK: - Home
     static let homeView = "homeView"
     static let channelCard = "channelCard"
-    static let meshMapButton = "meshMapButton"
     static let settingsButton = "settingsButton"
     static let newChannelButton = "newChannelButton"
-    static let gatewayButton = "gatewayButton"
     static let friendsRow = "friendsRow"
     static let createFirstChannel = "createFirstChannel"
 
@@ -23,12 +21,6 @@ enum AccessibilityID {
     static let peerCountPill = "peerCountPill"
     static let waveform = "waveform"
 
-    // MARK: - Mesh Map
-    static let meshMap = "meshMap"
-    static let meshMapCanvas = "meshMapCanvas"
-    static let meshHealthScore = "meshHealthScore"
-    static let meshStatsBar = "meshStatsBar"
-
     // MARK: - Settings
     static let settingsView = "settingsView"
     static let callsignField = "callsignField"
@@ -36,7 +28,6 @@ enum AccessibilityID {
     static let hapticToggle = "hapticToggle"
     static let chirpSoundsToggle = "chirpSoundsToggle"
     static let loopbackToggle = "loopbackToggle"
-    static let emergencyModeToggle = "emergencyModeToggle"
 
     // MARK: - Chat
     static let chatView = "chatView"
@@ -48,25 +39,11 @@ enum AccessibilityID {
     static let chatVoiceNoteBubble = "chatVoiceNoteBubble"
     static let chatTypingIndicator = "chatTypingIndicator"
 
-    // MARK: - Emergency
-
     // MARK: - Onboarding
     static let onboardingView = "onboardingView"
     static let getStartedButton = "getStartedButton"
 
-    // MARK: - Protect (V3)
-    static let protectStatusBar = "protectStatusBar"
-    static let protectTabPicker = "protectTabPicker"
-    static let roomScannerView = "roomScannerView"
-    static let scanButton = "scanButton"
-    static let shareWithMeshButton = "shareWithMeshButton"
-    static let privacyShieldView = "privacyShieldView"
-    static let privacyScoreGauge = "privacyScoreGauge"
-    static let soundAlertsView = "soundAlertsView"
-    static let meshCloudView = "meshCloudView"
-    static let storageDonationToggle = "storageDonationToggle"
-
-    // MARK: - File Transfer (V3)
+    // MARK: - File Transfer
     static let documentPickerButton = "documentPickerButton"
     static let fileTransferBubble = "fileTransferBubble"
 }

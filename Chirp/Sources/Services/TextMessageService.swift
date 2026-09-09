@@ -31,10 +31,6 @@ final class TextMessageService {
     /// Wired by AppState to ``ChannelManager/getChannelCrypto(for:)``.
     var channelCryptoProvider: ((String) -> ChannelCrypto?)?
 
-    /// Triple-layer encryption for locked channels.
-    var meshShield: MeshShield?
-
-
     /// Epoch provider: returns current epoch and records message for rotation tracking.
     /// Wired by AppState to ``ChannelManager/recordMessageAndGetEpoch(for:)``.
     var epochProvider: ((String) -> UInt32)?
@@ -151,39 +147,20 @@ final class TextMessageService {
         // and won't be duplicated if they echo back through the mesh.
         seenIDs[message.id] = Date()
 
-        // Encode, encrypt, and hand off to transport.
+        // Encode, encrypt (AES-GCM under the shared channel key on locked
+        // channels), and hand off to transport. If encryption fails on a locked
+        // channel we fail closed: the message is never sent in plaintext.
         do {
             let rawPayload = try message.wirePayload()
             let epoch = epochProvider?(channelID) ?? 0
-            if let crypto = channelCryptoProvider?(channelID),
-               let shield = meshShield {
-                // Triple encryption (async due to PeerIdentity actor)
-                let sendHook = onSendPacket
-                let log = logger
-                Task { @MainActor in
-                    if let encrypted = await shield.encrypt(rawPayload, channelCrypto: crypto, epoch: epoch) {
-                        sendHook?(encrypted, channelID)
-                    } else {
-                        // Fallback to standard channel encryption
-                        if let fallback = try? crypto.encrypt(rawPayload, epoch: epoch) {
-                            sendHook?(fallback, channelID)
-                        } else {
-                            log.error("Both triple-layer and fallback encryption failed for message \(message.id.uuidString, privacy: .public) — sending raw payload")
-                            sendHook?(rawPayload, channelID)
-                        }
-                    }
-                    log.info("Sent encrypted text message \(message.id.uuidString, privacy: .public) on channel \(channelID, privacy: .public)")
-                }
-            } else {
-                var payload = rawPayload
-                if let crypto = channelCryptoProvider?(channelID) {
-                    payload = try crypto.encrypt(payload, epoch: epoch)
-                }
-                onSendPacket?(payload, channelID)
-                logger.info("Sent text message \(message.id.uuidString, privacy: .public) on channel \(channelID, privacy: .public)")
+            var payload = rawPayload
+            if let crypto = channelCryptoProvider?(channelID) {
+                payload = try crypto.encrypt(payload, epoch: epoch)
             }
+            onSendPacket?(payload, channelID)
+            logger.info("Sent text message \(message.id.uuidString, privacy: .public) on channel \(channelID, privacy: .public)")
         } catch {
-            logger.error("Failed to encode text message: \(error.localizedDescription, privacy: .public)")
+            logger.error("Encryption or encoding failed for message \(message.id.uuidString, privacy: .public) — not sent: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -439,16 +416,12 @@ final class TextMessageService {
     ///   - data: Raw control payload (may be encrypted).
     ///   - channelID: Channel this packet arrived on (from ``MeshPacket/channelID``).
     func handlePacket(_ data: Data, channelID: String = "") {
-        // Decrypt: try triple-layer first, fall back to standard channel encryption.
+        // Decrypt with the channel key (locked channels only).
         let epoch = currentEpochProvider?(channelID) ?? 0
         var decrypted = data
-        if let crypto = channelCryptoProvider?(channelID) {
-            if let shield = meshShield,
-               let plain = shield.decrypt(data, channelCrypto: crypto, currentEpoch: epoch) {
-                decrypted = plain
-            } else if let plain = try? crypto.decrypt(data, currentEpoch: epoch) {
-                decrypted = plain
-            }
+        if let crypto = channelCryptoProvider?(channelID),
+           let plain = try? crypto.decrypt(data, currentEpoch: epoch) {
+            decrypted = plain
         }
 
         // Check for typing indicators.

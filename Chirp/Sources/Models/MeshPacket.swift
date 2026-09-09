@@ -42,7 +42,7 @@ struct MeshPacket: Sendable {
         case low = 0        // Audio relay
         case normal = 1     // Beacons
         case high = 2       // Text messages, location shares
-        case critical = 3   // SOS / Emergency
+        case critical = 3   // Reserved
 
         static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
     }
@@ -62,7 +62,7 @@ struct MeshPacket: Sendable {
     /// Higher-priority messages propagate further through the mesh.
     static func adaptiveTTL(for type: PacketType, priority: MessagePriority) -> UInt8 {
         switch priority {
-        case .critical: return 8   // SOS: max reach
+        case .critical: return 8   // Reserved: max reach
         case .high:     return 6   // Text: wide propagation
         case .normal:   return 4   // Beacons: medium
         case .low:      return 2   // Audio: real-time, no point relaying far
@@ -75,88 +75,24 @@ struct MeshPacket: Sendable {
         case .audio:
             return .low
         case .control:
-            // Check for SOS marker in the payload (JSON key "sos" or beacon magic)
             if payload.count >= 4 {
-                // Look for SOS marker -- matches {"type":"SOS"}, {"sos":...}, etc.
-                if let text = String(data: payload, encoding: .utf8),
-                   text.localizedCaseInsensitiveContains("\"sos\"") {
-                    return .critical
-                }
+                let prefix4 = Array(payload.prefix(4))
+
                 // Beacons start with "BCN!" magic
-                let magic: [UInt8] = [0x42, 0x43, 0x4E, 0x21]
-                if Array(payload.prefix(4)) == magic {
-                    return .normal
-                }
-                // Sound alerts: SND! magic
-                let sndMagic: [UInt8] = [0x53, 0x4E, 0x44, 0x21]
-                if Array(payload.prefix(4)) == sndMagic {
-                    return .high
-                }
+                let bcnMagic: [UInt8] = [0x42, 0x43, 0x4E, 0x21]
+                if prefix4 == bcnMagic { return .normal }
+
                 // Delivery ACKs: ACK! magic -- lightweight, relay at normal priority
                 let ackMagic: [UInt8] = [0x41, 0x43, 0x4B, 0x21]
-                if Array(payload.prefix(4)) == ackMagic {
-                    return .normal
-                }
+                if prefix4 == ackMagic { return .normal }
+
                 // File transfer prefixes: FIL!, FLC!, FNK!
                 let filMagic: [UInt8] = [0x46, 0x49, 0x4C, 0x21]
                 let flcMagic: [UInt8] = [0x46, 0x4C, 0x43, 0x21]
                 let fnkMagic: [UInt8] = [0x46, 0x4E, 0x4B, 0x21]
-                let prefix4 = Array(payload.prefix(4))
                 if prefix4 == filMagic || prefix4 == flcMagic || prefix4 == fnkMagic {
                     return .normal
                 }
-                // Mesh Cloud: BCK! (backup chunk) — not urgent
-                let bckMagic: [UInt8] = [0x42, 0x43, 0x4B, 0x21]
-                if prefix4 == bckMagic {
-                    return .normal
-                }
-                // Mesh Cloud: BRQ! (backup retrieval request) — user waiting
-                let brqMagic: [UInt8] = [0x42, 0x52, 0x51, 0x21]
-                if prefix4 == brqMagic {
-                    return .high
-                }
-
-                // UWB token exchange -- low TTL, direct peers only
-                let uwbMagic: [UInt8] = [0x55, 0x57, 0x42, 0x21]
-                if prefix4 == uwbMagic { return .normal }
-
-                // LIGHTHOUSE query/response
-                let lhqMagic: [UInt8] = [0x4C, 0x48, 0x51, 0x21]
-                let lhrMagic: [UInt8] = [0x4C, 0x48, 0x52, 0x21]
-                if prefix4 == lhqMagic || prefix4 == lhrMagic { return .normal }
-
-                // Witness request/countersign -- wide propagation
-                let wrqMagic: [UInt8] = [0x57, 0x52, 0x51, 0x21]
-                let wcsMagic: [UInt8] = [0x57, 0x43, 0x53, 0x21]
-                if prefix4 == wrqMagic || prefix4 == wcsMagic { return .high }
-
-                // Dead Drop -- normal, blend with store-and-forward
-                let drpMagic: [UInt8] = [0x44, 0x52, 0x50, 0x21]
-                let dpkMagic: [UInt8] = [0x44, 0x50, 0x4B, 0x21]
-                if prefix4 == drpMagic || prefix4 == dpkMagic { return .normal }
-
-                // Darkroom -- high priority (user waiting)
-                let drkMagic: [UInt8] = [0x44, 0x52, 0x4B, 0x21]
-                let dvkMagic: [UInt8] = [0x44, 0x56, 0x4B, 0x21]
-                if prefix4 == drkMagic || prefix4 == dvkMagic { return .high }
-
-                // BABEL -- high priority (real-time translation)
-                let bblMagic: [UInt8] = [0x42, 0x42, 0x4C, 0x21]
-                if prefix4 == bblMagic { return .high }
-
-                // CHORUS -- high priority (pipeline stalls if delayed)
-                let chrMagic: [UInt8] = [0x43, 0x48, 0x52, 0x21]
-                let choMagic: [UInt8] = [0x43, 0x48, 0x4F, 0x21]
-                let chcMagic: [UInt8] = [0x43, 0x48, 0x43, 0x21]
-                let chxMagic: [UInt8] = [0x43, 0x48, 0x58, 0x21]
-                if prefix4 == chrMagic || prefix4 == choMagic || prefix4 == chcMagic || prefix4 == chxMagic { return .high }
-
-                // SWARM -- normal priority (batch compute is latency-tolerant)
-                let swmMagic: [UInt8] = [0x53, 0x57, 0x4D, 0x21]
-                let swrMagic: [UInt8] = [0x53, 0x57, 0x52, 0x21]
-                let swcMagic: [UInt8] = [0x53, 0x57, 0x43, 0x21]
-                let swaMagic: [UInt8] = [0x53, 0x57, 0x41, 0x21]
-                if prefix4 == swmMagic || prefix4 == swrMagic || prefix4 == swcMagic || prefix4 == swaMagic { return .normal }
             }
             return .high
         }
