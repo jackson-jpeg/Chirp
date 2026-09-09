@@ -15,3 +15,11 @@ Package.resolved
 # PUBLIC repo with the CI keychain password in it. Never track it.
 fastlane/report.xml
 fastlane/README.md
+report.xml
+
+# Signing material and secrets — never track, anywhere in the tree.
+*.p8
+*.p12
+*.mobileprovision
+*.cer
+.env
