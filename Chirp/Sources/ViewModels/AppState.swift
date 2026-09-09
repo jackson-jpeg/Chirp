@@ -11,7 +11,7 @@ final class AppState {
     // MARK: - Services
 
     let audioEngine: AudioEngine
-    let floorController: FloorController
+    let floorSession: FloorSession
     let pttEngine: PTTEngine
     let channelManager: ChannelManager
     let peerTracker: PeerTracker
@@ -164,20 +164,20 @@ final class AppState {
         // Create subsystems.
         let audioEngine = AudioEngine()
         let peerTracker = PeerTracker()
-        let floorController = FloorController(
+        let floorSession = FloorSession(
             localPeerID: peerID,
             localPeerName: resolvedCallsign
         )
         let pttEngine = PTTEngine(
             audioEngine: audioEngine,
-            floorController: floorController,
+            floorSession: floorSession,
             localPeerID: peerID
         )
         let channelManager = ChannelManager()
 
         self.audioEngine = audioEngine
         self.peerTracker = peerTracker
-        self.floorController = floorController
+        self.floorSession = floorSession
         self.pttEngine = pttEngine
         self.channelManager = channelManager
 
@@ -237,11 +237,13 @@ final class AppState {
 
         transport.onPeersChanged = { [weak self] _ in self?.updateUnifiedPeerList() }
 
-        // Wire peer ghost detection — auto-prune peers with no heartbeat for >45s
+        // Wire peer ghost detection — auto-prune peers with no heartbeat for >45s.
+        // Also tell the floor: a ghosted speaker must not hold it forever.
         Task {
             await peerTracker.setGhostCallback { [weak self] peerID in
                 Task { @MainActor in
                     guard let self else { return }
+                    self.floorSession.peerLost(peerID)
                     self.updateUnifiedPeerList()
                     Logger.ptt.info("Peer ghosted and pruned: \(peerID)")
                 }
@@ -355,7 +357,7 @@ final class AppState {
         }
 
         // Wire floor state changes to start/stop transcription
-        floorController.onStateChange = { newState in
+        floorSession.onStateChange = { newState in
             switch newState {
             case .receiving(let speakerName, _):
                 transcription.startTranscribing(speakerName: speakerName)
@@ -369,11 +371,11 @@ final class AppState {
         // Wire mesh router callbacks.
         // This is the SOLE delivery path for all incoming audio and control packets.
         // All delivery is dispatched to @MainActor for safe access to @MainActor-isolated
-        // services (ChannelManager, FloorController, TextMessageService).
+        // services (ChannelManager, FloorSession, TextMessageService).
         // Audio playback remains low-latency because AudioEngine.receiveAudioPacket
         // schedules buffers on the player node internally.
         let audioEng = self.audioEngine
-        let floorCtrl = self.floorController
+        let floorCtrl = self.floorSession
         let mpTransport = self.multipeerTransport
         let chanMgr = self.channelManager
         let peerTrk = self.peerTracker
@@ -453,7 +455,7 @@ final class AppState {
                             default:
                                 // FloorControlMessage uses JSON without a magic prefix
                                 if let message = try? MeshCodable.decoder.decode(FloorControlMessage.self, from: payload) {
-                                    floorCtrl.handleMessage(message)
+                                    floorCtrl.handleMessage(message, from: packet.originID.uuidString)
 
                                     switch message {
                                     case .heartbeat(let peerID, let timestamp):

@@ -14,7 +14,7 @@ final class TextMessageServiceTests: XCTestCase {
     // actor — a state the app never reaches. The async overrides do pick up the
     // class's isolation.
     //
-    // Unlike FloorController.sendToAllPeers, `onSendPacket` is not @Sendable:
+    // Unlike FloorSession.sendToAllPeers, `onSendPacket` is not @Sendable:
     // it is a plain closure on a @MainActor type, so it is only ever invoked on
     // the main actor and main-actor recording state is correct here. No lock
     // is needed; the isolation of setUp was the whole problem.

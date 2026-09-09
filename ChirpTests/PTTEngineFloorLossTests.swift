@@ -4,7 +4,7 @@ import XCTest
 /// Tests that `PTTEngine` stops transmitting when the floor is taken from it.
 ///
 /// `FloorMeshTests` proves the floor *protocol* resolves to one holder. That is
-/// only half of the fix: `FloorController` does not own the microphone.
+/// only half of the fix: the floor session does not own the microphone.
 /// `PTTEngine` does, and before this change the only things that closed it were
 /// the user letting go of the button, an audio interruption, the input device
 /// disappearing, and the 120-second timeout. Losing the floor to a peer was not
@@ -20,7 +20,7 @@ import XCTest
 final class PTTEngineFloorLossTests: XCTestCase {
 
     private var engine: PTTEngine!
-    private var floorController: FloorController!
+    private var floorSession: FloorSession!
 
     private var savedInterruptionBegan: (() -> Void)?
     private var savedInterruptionEnded: (() -> Void)?
@@ -35,10 +35,10 @@ final class PTTEngineFloorLossTests: XCTestCase {
         savedInterruptionEnded = AudioSessionManager.onInterruptionEnded
         savedInputDeviceLost = AudioSessionManager.onInputDeviceLost
 
-        floorController = FloorController(localPeerID: "peer-B", localPeerName: "Bob")
+        floorSession = FloorSession(localPeerID: "peer-B", localPeerName: "Bob")
         engine = PTTEngine(
             audioEngine: AudioEngine(),
-            floorController: floorController,
+            floorSession: floorSession,
             localPeerID: "peer-B"
         )
         engine.setupCallbacks()
@@ -47,7 +47,7 @@ final class PTTEngineFloorLossTests: XCTestCase {
     override func tearDown() async throws {
         engine.stopTransmitting()
         engine = nil
-        floorController = nil
+        floorSession = nil
 
         AudioSessionManager.onInterruptionBegan = savedInterruptionBegan
         AudioSessionManager.onInterruptionEnded = savedInterruptionEnded
@@ -70,7 +70,7 @@ final class PTTEngineFloorLossTests: XCTestCase {
         engine.startTransmitting()
         XCTAssertEqual(engine.state, .transmitting)
 
-        floorController.handleMessage(floorRequestFromAlice(secondsAgo: 10))
+        floorSession.handleMessage(floorRequestFromAlice(secondsAgo: 10))
 
         XCTAssertEqual(
             engine.state,
@@ -79,14 +79,14 @@ final class PTTEngineFloorLossTests: XCTestCase {
         )
     }
 
-    func testLosingTheFloorLeavesTheFloorControllerAndEngineAgreeing() {
+    func testLosingTheFloorLeavesTheFloorSessionAndEngineAgreeing() {
         engine.startTransmitting()
 
-        floorController.handleMessage(floorRequestFromAlice(secondsAgo: 10))
+        floorSession.handleMessage(floorRequestFromAlice(secondsAgo: 10))
 
         XCTAssertEqual(
             engine.state,
-            floorController.state,
+            floorSession.state,
             "A disagreement here is the bug: the floor says one thing and the microphone does another"
         )
     }
@@ -97,10 +97,10 @@ final class PTTEngineFloorLossTests: XCTestCase {
     func testLosingTheFloorDoesNotBroadcastAFalseRelease() {
         // Replaces the transport-sending closure `setupCallbacks()` installed.
         let sent = ControlMessageLog()
-        floorController.sendToAllPeers = { sent.record($0) }
+        floorSession.sendToAllPeers = { sent.record($0) }
 
         engine.startTransmitting()
-        floorController.handleMessage(floorRequestFromAlice(secondsAgo: 10))
+        floorSession.handleMessage(floorRequestFromAlice(secondsAgo: 10))
 
         XCTAssertTrue(
             sent.releases.isEmpty,
@@ -114,7 +114,7 @@ final class PTTEngineFloorLossTests: XCTestCase {
     func testALaterRequestFromAPeerDoesNotStopTransmitting() {
         engine.startTransmitting()
 
-        floorController.handleMessage(
+        floorSession.handleMessage(
             .floorRequest(
                 senderID: "peer-A",
                 senderName: "Alice",
@@ -132,6 +132,6 @@ final class PTTEngineFloorLossTests: XCTestCase {
         engine.stopTransmitting()
 
         XCTAssertEqual(engine.state, .idle)
-        XCTAssertEqual(floorController.state, .idle)
+        XCTAssertEqual(floorSession.state, .idle)
     }
 }

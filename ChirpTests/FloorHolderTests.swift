@@ -6,9 +6,9 @@ import XCTest
 /// `.denied` swallowed the requests that would have told it.
 @MainActor final class FloorHolderTests: XCTestCase {
 
-    private func makeController(id: String = "me", name: String = "Me") -> (FloorController, ControlMessageLog) {
+    private func makeController(id: String = "me", name: String = "Me") -> (FloorSession, ControlMessageLog) {
         let log = ControlMessageLog()
-        let controller = FloorController(localPeerID: id, localPeerName: name)
+        let controller = FloorSession(localPeerID: id, localPeerName: name)
         controller.sendToAllPeers = { [log] message in log.record(message) }
         return (controller, log)
     }
@@ -189,7 +189,7 @@ import XCTest
     func testTransmittingStillGoesThroughTheCollisionPath() {
         let (floor, log) = makeController(id: "zzz", name: "Me")
         var revoked = false
-        floor.onFloorRevoked = { revoked = true }
+        floor.onCloseMicrophone = { revoked = true }
 
         floor.requestFloor()
         XCTAssertEqual(floor.state, .transmitting)

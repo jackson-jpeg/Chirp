@@ -39,7 +39,7 @@ extension FloorControlMessage {
 /// ```
 ///
 /// Deliberately not a framework:
-/// * No transports, no audio, no serialisation — this wires `FloorController`
+/// * No transports, no audio, no serialisation — this wires `FloorSession`
 ///   instances to each other and nothing else. It tests the floor protocol,
 ///   not the radio.
 /// * No timing. Delivery is manual. There are no sleeps in here and tests
@@ -51,10 +51,10 @@ extension FloorControlMessage {
 @MainActor
 final class FloorMeshHarness {
 
-    /// Messages a `FloorController` has emitted but that the harness has not
+    /// Messages a `FloorSession` has emitted but that the harness has not
     /// yet handed to anyone.
     ///
-    /// `FloorController.sendToAllPeers` is declared `@Sendable`, so the send
+    /// `FloorSession.sendToAllPeers` is declared `@Sendable`, so the send
     /// closure may not capture this main-actor harness. The queue lives behind
     /// an `OSAllocatedUnfairLock` instead, and the closures capture the queue.
     private final class SendQueue: Sendable {
@@ -82,7 +82,7 @@ final class FloorMeshHarness {
     struct Node {
         let id: String
         let name: String
-        let controller: FloorController
+        let controller: FloorSession
     }
 
     private(set) var nodes: [Node] = []
@@ -92,11 +92,11 @@ final class FloorMeshHarness {
     /// on the whole conversation rather than on one controller's view of it.
     private(set) var delivered: [InFlightMessage] = []
 
-    /// Creates one `FloorController` per entry and wires each one's broadcast
+    /// Creates one `FloorSession` per entry and wires each one's broadcast
     /// callback into the shared queue.
     init(peers: [(id: String, name: String)]) {
         for peer in peers {
-            let controller = FloorController(localPeerID: peer.id, localPeerName: peer.name)
+            let controller = FloorSession(localPeerID: peer.id, localPeerName: peer.name)
             let senderID = peer.id
             let queue = self.queue
             controller.sendToAllPeers = { message in
@@ -106,7 +106,7 @@ final class FloorMeshHarness {
         }
     }
 
-    subscript(id: String) -> FloorController {
+    subscript(id: String) -> FloorSession {
         guard let node = nodes.first(where: { $0.id == id }) else {
             fatalError("FloorMeshHarness has no node '\(id)'. Nodes: \(nodes.map(\.id))")
         }
@@ -221,7 +221,9 @@ final class FloorMeshHarness {
         for item in batch {
             delivered.append(item)
             for node in nodes where node.id != item.from {
-                node.controller.handleMessage(item.message)
+                // The harness knows the true sender, so deliveries carry it —
+                // the same pairing the mesh dispatch gives the session.
+                node.controller.handleMessage(item.message, from: item.from)
             }
         }
     }

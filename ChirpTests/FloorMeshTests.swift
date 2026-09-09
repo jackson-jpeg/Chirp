@@ -3,7 +3,7 @@ import XCTest
 
 /// Multi-device floor-control tests.
 ///
-/// `FloorControlTests` drives one `FloorController` and feeds it messages by
+/// `FloorControlTests` drives one `FloorSession` and feeds it messages by
 /// hand, which means every "collision" test there is really a test of one
 /// device's reaction to a message the test author wrote. These tests wire real
 /// controllers to each other through `FloorMeshHarness`, so the messages come
@@ -193,13 +193,13 @@ final class FloorMeshTests: XCTestCase {
         // mid-transmission — queued rather than folded into this commit.
     }
 
-    /// Losing the floor has to be announced, because the microphone is owned by
-    /// `PTTEngine` and it has no other way to find out.
-    func testLosingTheFloorFiresTheRevokeCallbackOnTheLoserOnly() throws {
-        var revokedNodes: [String] = []
+    /// Losing the floor has to close the microphone, because the microphone is
+    /// owned by `PTTEngine` and the close effect is its only way to find out.
+    func testLosingTheFloorClosesTheMicrophoneOnTheLoserOnly() throws {
+        var closedNodes: [String] = []
         for node in harness.nodes {
             let id = node.id
-            node.controller.onFloorRevoked = { revokedNodes.append(id) }
+            node.controller.onCloseMicrophone = { closedNodes.append(id) }
         }
 
         harness["peer-A"].requestFloor()
@@ -208,17 +208,21 @@ final class FloorMeshTests: XCTestCase {
         try harness.deliverAll()
 
         XCTAssertEqual(
-            revokedNodes,
+            closedNodes,
             ["peer-B"],
-            "Only the device that lost a floor it was actively holding should be told"
+            "Only the device that lost a floor it was actively holding should close its microphone"
         )
     }
 
-    func testWinningAnUncontestedFloorNeverFiresTheRevokeCallback() throws {
-        var revokedNodes: [String] = []
+    /// The close signal now carries every way the microphone stops, so an
+    /// uncontested speak-and-release closes exactly once — on the speaker, from
+    /// its own let-go. Any other close in this exchange is a device being told
+    /// it lost a floor nobody contested.
+    func testWinningAnUncontestedFloorClosesOnlyTheSpeakersOwnRelease() throws {
+        var closedNodes: [String] = []
         for node in harness.nodes {
             let id = node.id
-            node.controller.onFloorRevoked = { revokedNodes.append(id) }
+            node.controller.onCloseMicrophone = { closedNodes.append(id) }
         }
 
         harness["peer-A"].requestFloor()
@@ -226,14 +230,15 @@ final class FloorMeshTests: XCTestCase {
         harness["peer-A"].releaseFloor()
         try harness.deliverAll()
 
-        XCTAssertTrue(revokedNodes.isEmpty, "Nobody lost a floor here: \(revokedNodes)")
+        XCTAssertEqual(closedNodes, ["peer-A"],
+                       "The only close is the speaker's own release: \(closedNodes)")
     }
 
     /// A device that was never transmitting has no microphone to close, so a
-    /// denied request must not raise the revoke signal.
-    func testADeniedRequestDoesNotFireTheRevokeCallback() throws {
+    /// denied request must not order one closed.
+    func testADeniedRequestDoesNotCloseTheMicrophone() throws {
         var revoked = false
-        harness["peer-B"].onFloorRevoked = { revoked = true }
+        harness["peer-B"].onCloseMicrophone = { revoked = true }
 
         harness["peer-A"].requestFloor()
         try harness.deliverAll()

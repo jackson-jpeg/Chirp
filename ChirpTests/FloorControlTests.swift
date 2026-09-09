@@ -2,9 +2,9 @@ import os
 import XCTest
 @testable import Chirp
 
-/// Records what ``FloorController`` broadcasts.
+/// Records what ``FloorSession`` broadcasts.
 ///
-/// `FloorController.sendToAllPeers` is typed `@Sendable`, so the production
+/// `FloorSession.sendToAllPeers` is typed `@Sendable`, so the production
 /// contract is "may be invoked from any isolation domain". A recorder that
 /// appended to main-actor test state would only be correct under an assumption
 /// that type does not make — which is what the previous version of these tests
@@ -29,7 +29,7 @@ private final class BroadcastRecorder: Sendable {
 @MainActor
 final class FloorControlTests: XCTestCase {
 
-    private var controller: FloorController!
+    private var controller: FloorSession!
     private var recorder: BroadcastRecorder!
 
     private var broadcastedMessages: [FloorControlMessage] { recorder.messages }
@@ -37,13 +37,13 @@ final class FloorControlTests: XCTestCase {
     // `setUp()`/`tearDown()` are declared nonisolated on XCTestCase, so a
     // synchronous override stays nonisolated even inside a @MainActor class —
     // the class annotation does not reach it. These tests were therefore
-    // constructing and configuring a @MainActor FloorController off the main
+    // constructing and configuring a @MainActor floor session off the main
     // actor, which is a state the app never reaches. The async overrides do
     // pick up the class's isolation, so setup now runs where the app runs.
     override func setUp() async throws {
         try await super.setUp()
         recorder = BroadcastRecorder()
-        controller = FloorController(localPeerID: "local-1", localPeerName: "LocalUser")
+        controller = FloorSession(localPeerID: "local-1", localPeerName: "LocalUser")
         // Capture the recorder, not `self`: XCTestCase is not Sendable and the
         // closure is.
         let recorder = self.recorder!
@@ -288,7 +288,7 @@ final class FloorControlTests: XCTestCase {
     func testFloorCollisionEqualTimestampLocalWinsViaPeerID() {
         // Local peer "AAA" has lexicographically smaller ID than remote "ZZZ"
         // so local should win the tiebreaker
-        let ctrl = FloorController(localPeerID: "AAA", localPeerName: "LocalUser")
+        let ctrl = FloorSession(localPeerID: "AAA", localPeerName: "LocalUser")
         nonisolated(unsafe) var broadcasts: [FloorControlMessage] = []
         ctrl.sendToAllPeers = { broadcasts.append($0) }
 
@@ -316,7 +316,7 @@ final class FloorControlTests: XCTestCase {
     func testFloorCollisionEqualTimestampRemoteWinsViaPeerID() {
         // Local peer "ZZZ" has lexicographically larger ID than remote "AAA"
         // so remote should win the tiebreaker
-        let ctrl = FloorController(localPeerID: "ZZZ", localPeerName: "LocalUser")
+        let ctrl = FloorSession(localPeerID: "ZZZ", localPeerName: "LocalUser")
         nonisolated(unsafe) var broadcasts: [FloorControlMessage] = []
         ctrl.sendToAllPeers = { broadcasts.append($0) }
 
