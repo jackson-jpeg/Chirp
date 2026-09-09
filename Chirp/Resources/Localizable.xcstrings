@@ -1669,7 +1669,194 @@
         }
       }
     },
+    "moderation.blockConfirm.action": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Block"
+          }
+        }
+      }
+    },
+    "moderation.blockConfirm.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You won't see their messages or hear their transmissions, and their traffic will no longer be relayed through your device."
+          }
+        }
+      }
+    },
+    "moderation.blockConfirm.title %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Block %@?"
+          }
+        }
+      }
+    },
+    "moderation.blockUser": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Block User"
+          }
+        }
+      }
+    },
+    "moderation.report": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Report Message"
+          }
+        }
+      }
+    },
+    "moderation.reportUser": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Report User"
+          }
+        }
+      }
+    },
+    "moderation.toast.blocked %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blocked %@"
+          }
+        }
+      }
+    },
+    "moderation.toast.reported": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Report recorded — email draft opened"
+          }
+        }
+      }
+    },
     "none": {},
+    "onboarding.rules.acceptToContinue": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accept the rules to continue"
+          }
+        }
+      }
+    },
+    "onboarding.rules.agree": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I agree to the terms and community rules"
+          }
+        }
+      }
+    },
+    "onboarding.rules.blockReport": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Block anyone, anytime. Their messages and voice disappear from your device instantly."
+          }
+        }
+      }
+    },
+    "onboarding.rules.noAbuse": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Report abuse from any message or user. Reports reach a human who acts on them."
+          }
+        }
+      }
+    },
+    "onboarding.rules.relay": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your device relays nearby traffic to extend the mesh. Messages are encrypted between channel members."
+          }
+        }
+      }
+    },
+    "onboarding.rules.respect": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Be respectful. No harassment, hate, or threats — there is zero tolerance for objectionable content."
+          }
+        }
+      }
+    },
+    "onboarding.rules.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ChirpChirp is people talking directly to people, with no server in between. Keep it decent."
+          }
+        }
+      }
+    },
+    "onboarding.rules.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ground rules"
+          }
+        }
+      }
+    },
+    "onboarding.rules.viewTerms": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View Terms of Use"
+          }
+        }
+      }
+    },
     "settings.about.channels.description": {
       "extractionState": "stale",
       "localizations": {
@@ -1952,6 +2139,50 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mesh Network"
+          }
+        }
+      }
+    },
+    "settings.moderation.blockedUsers": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blocked Users"
+          }
+        }
+      }
+    },
+    "settings.moderation.noBlockedUsers": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No blocked users"
+          }
+        }
+      }
+    },
+    "settings.moderation.reportAbuse": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Report Abuse"
+          }
+        }
+      }
+    },
+    "settings.moderation.unblock": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unblock"
           }
         }
       }

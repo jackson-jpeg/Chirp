@@ -10,6 +10,7 @@ struct SettingsView: View {
 
     @State private var debugExpanded = false
     @State private var howItWorksExpanded = false
+    @State private var blockedUsersExpanded = false
     @State private var copiedID = false
     @State private var showResetIdentityConfirm = false
     @State private var showClearDataConfirm = false
@@ -400,6 +401,69 @@ struct SettingsView: View {
                         Spacer()
                     }
                 }
+
+                // Blocked users
+                glassRow {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            blockedUsersExpanded.toggle()
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "hand.raised.fill")
+                                .foregroundStyle(amber)
+                                .frame(width: 24)
+                            Text(String(localized: "settings.moderation.blockedUsers"))
+                                .foregroundStyle(Constants.Colors.textPrimary)
+                            Spacer()
+                            Text("\(appState.blockList.entries.count)")
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(Constants.Colors.textTertiary)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                                .rotationEffect(.degrees(blockedUsersExpanded ? 90 : 0))
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                if blockedUsersExpanded {
+                    if appState.blockList.entries.isEmpty {
+                        glassRow {
+                            Text(String(localized: "settings.moderation.noBlockedUsers"))
+                                .font(.system(.caption))
+                                .foregroundStyle(Constants.Colors.textTertiary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    } else {
+                        ForEach(appState.blockList.entries) { entry in
+                            glassRow {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "person.crop.circle.badge.xmark")
+                                        .foregroundStyle(Constants.Colors.textTertiary)
+                                        .frame(width: 24)
+                                    Text(entry.name)
+                                        .foregroundStyle(Constants.Colors.textPrimary)
+                                        .lineLimit(1)
+                                    Spacer()
+                                    Button {
+                                        withAnimation {
+                                            appState.blockList.unblock(id: entry.id)
+                                        }
+                                    } label: {
+                                        Text(String(localized: "settings.moderation.unblock"))
+                                            .font(.system(.caption, weight: .semibold))
+                                            .foregroundStyle(amber)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
+                    }
+                }
             }
             .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous))
         }
@@ -485,6 +549,33 @@ struct SettingsView: View {
                                 .frame(width: 24)
                             Text("Support")
                                 .foregroundStyle(Constants.Colors.textPrimary)
+                            Spacer()
+                            Image(systemName: "arrow.up.forward")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                // Report abuse — published moderation contact
+                glassRow {
+                    Button {
+                        if let url = URL(string: "mailto:\(ReportService.abuseEmail)?subject=ChirpChirp%20abuse%20report") {
+                            UIApplication.shared.open(url)
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "flag.fill")
+                                .foregroundStyle(amber)
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(String(localized: "settings.moderation.reportAbuse"))
+                                    .foregroundStyle(Constants.Colors.textPrimary)
+                                Text(ReportService.abuseEmail)
+                                    .font(.system(.caption2, design: .monospaced))
+                                    .foregroundStyle(Constants.Colors.textTertiary)
+                            }
                             Spacer()
                             Image(systemName: "arrow.up.forward")
                                 .font(.system(size: 12, weight: .semibold))

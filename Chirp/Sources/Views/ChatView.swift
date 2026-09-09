@@ -18,6 +18,10 @@ struct ChatView: View {
     var onSendImage: ((String) -> Void)?
     var onSendFile: ((URL) -> Void)?
     var onSendReaction: ((String, UUID) -> Void)?
+    /// Called when the user reports a message (Guideline 1.2 — flag content).
+    var onReportMessage: ((MeshTextMessage) -> Void)?
+    /// Called when the user blocks a message's sender.
+    var onBlockSender: ((MeshTextMessage) -> Void)?
     /// Typing peers for the current channel.
     var typingPeers: Set<String> = []
     /// Called when the user starts/continues typing (debounced by caller).
@@ -41,6 +45,8 @@ struct ChatView: View {
     @State private var showDocumentPicker: Bool = false
     @State private var imagePickerSource: ImagePickerSource = .library
     @State private var reactingToMessageID: UUID?
+    /// Message whose sender is pending block confirmation.
+    @State private var blockCandidate: MeshTextMessage?
 
     // Search state
     @State private var searchText: String = ""
@@ -126,6 +132,25 @@ struct ChatView: View {
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showScrollToBottom)
         .animation(.easeInOut(duration: 0.2), value: typingPeers.isEmpty)
         .animation(.easeInOut(duration: 0.2), value: isSearching)
+        .confirmationDialog(
+            String(localized: "moderation.blockConfirm.title \(blockCandidate?.senderName ?? "")"),
+            isPresented: Binding(
+                get: { blockCandidate != nil },
+                set: { if !$0 { blockCandidate = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: blockCandidate
+        ) { message in
+            Button(String(localized: "moderation.blockConfirm.action"), role: .destructive) {
+                onBlockSender?(message)
+                blockCandidate = nil
+            }
+            Button(String(localized: "common.cancel"), role: .cancel) {
+                blockCandidate = nil
+            }
+        } message: { _ in
+            Text(String(localized: "moderation.blockConfirm.message"))
+        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -278,6 +303,22 @@ struct ChatView: View {
                                 }
                             } label: {
                                 Label("React", systemImage: "face.smiling")
+                            }
+
+                            if !isFromSelf {
+                                Divider()
+
+                                Button {
+                                    onReportMessage?(message)
+                                } label: {
+                                    Label(String(localized: "moderation.report"), systemImage: "flag")
+                                }
+
+                                Button(role: .destructive) {
+                                    blockCandidate = message
+                                } label: {
+                                    Label(String(localized: "moderation.blockUser"), systemImage: "hand.raised")
+                                }
                             }
                         }
                     }

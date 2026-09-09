@@ -30,6 +30,7 @@ final class AppState {
     let meshShield: MeshShield
     let fileTransferService: FileTransferService
     let pheromoneRouter: PheromoneRouter
+    let blockList: BlockList
 
     // MARK: - Identity
 
@@ -201,6 +202,10 @@ final class AppState {
         let textMessageService = TextMessageService()
         self.textMessageService = textMessageService
 
+        // Block list store (wired to router + text service below).
+        let blockList = BlockList()
+        self.blockList = blockList
+
         // File transfer service
         let fileTransferService = FileTransferService()
         self.fileTransferService = fileTransferService
@@ -250,6 +255,17 @@ final class AppState {
             } catch {
                 Logger.network.error("Pheromone ACK send failed: \(error.localizedDescription)")
             }
+        }
+
+        // Block list: enforced at the router (drop packets by origin ID)
+        // and in the text service (drop + hide history by sender ID).
+        blockList.onChange = { blockedIDs in
+            Task { await router.setBlockedOrigins(blockedIDs) }
+        }
+        let initialBlockedIDs = blockList.blockedIDs
+        Task { await router.setBlockedOrigins(initialBlockedIDs) }
+        textMessageService.blockedPeerIDsProvider = { [weak blockList] in
+            blockList?.blockedIDs ?? []
         }
 
         // Wire encryption provider for text messages on locked channels

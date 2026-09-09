@@ -396,6 +396,7 @@ struct FriendsView: View {
             } label: {
                 Label(String(localized: "friends.action.startChannel"), systemImage: "waveform")
             }
+            moderationMenuItems(for: friend)
             Button(role: .destructive) {
                 withAnimation {
                     appState.friendsManager.removeFriend(id: friend.id)
@@ -403,6 +404,25 @@ struct FriendsView: View {
             } label: {
                 Label(String(localized: "friends.action.removeFriend"), systemImage: "person.badge.minus")
             }
+        }
+    }
+
+    /// Report and block actions shared by both friend row context menus.
+    @ViewBuilder
+    private func moderationMenuItems(for friend: ChirpFriend) -> some View {
+        Button {
+            ReportService.fileReport(
+                peerID: friend.id,
+                peerName: friend.name,
+                reporterPeerID: appState.localPeerID
+            )
+        } label: {
+            Label(String(localized: "moderation.reportUser"), systemImage: "flag")
+        }
+        Button(role: .destructive) {
+            appState.blockList.block(id: friend.id, name: friend.name)
+        } label: {
+            Label(String(localized: "moderation.blockUser"), systemImage: "hand.raised")
         }
     }
 
@@ -488,6 +508,7 @@ struct FriendsView: View {
             } label: {
                 Label(String(localized: "friends.action.startChannel"), systemImage: "waveform")
             }
+            moderationMenuItems(for: friend)
             Button(role: .destructive) {
                 withAnimation {
                     appState.friendsManager.removeFriend(id: friend.id)

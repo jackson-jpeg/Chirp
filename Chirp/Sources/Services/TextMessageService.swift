@@ -39,6 +39,11 @@ final class TextMessageService {
     /// Wired by AppState to ``ChannelManager/currentEpoch(for:)``.
     var currentEpochProvider: ((String) -> UInt32)?
 
+    /// Blocked peer IDs. Inbound messages and reactions from these senders
+    /// are dropped, and their stored history is hidden from every accessor.
+    /// Wired by AppState to ``BlockList/blockedIDs``.
+    var blockedPeerIDsProvider: (() -> Set<String>)?
+
     /// Per-channel set of peer names currently typing.
     private(set) var typingPeersByChannel: [String: Set<String>] = [:]
 
@@ -231,6 +236,11 @@ final class TextMessageService {
               let senderName = String(data: Data(parts[3]), encoding: .utf8) else {
             logger.warning("Malformed reaction payload")
             return true // Still a reaction packet, just invalid
+        }
+
+        // Drop reactions from blocked senders.
+        if blockedPeerIDsProvider?().contains(senderID) == true {
+            return true
         }
 
         // Deduplicate by (senderID, messageID, emoji)
@@ -448,6 +458,14 @@ final class TextMessageService {
             return // Not a text message — ignore.
         }
 
+        // Drop messages from blocked senders. The router already drops their
+        // packets by origin ID; this catches relayed copies whose origin
+        // differs from the sender (e.g. store-and-forward replays).
+        if blockedPeerIDsProvider?().contains(message.senderID) == true {
+            logger.trace("Dropped message from blocked sender \(message.senderID, privacy: .public)")
+            return
+        }
+
         // Prune stale dedup entries before checking.
         pruneSeenIDs()
 
@@ -521,11 +539,21 @@ final class TextMessageService {
 
     // MARK: - Accessors
 
-    /// All messages for a channel, ordered by timestamp (oldest first).
+    /// All messages for a channel, ordered by timestamp (oldest first),
+    /// with blocked senders' history hidden.
     /// Hydrates from the database on first access per channel.
     func messages(for channelID: String) -> [MeshTextMessage] {
         hydrateIfNeeded(channelID: channelID)
-        return messagesByChannel[channelID] ?? []
+        return hidingBlocked(messagesByChannel[channelID] ?? [])
+    }
+
+    /// Filter out messages from blocked senders. Records stay in the
+    /// database (unblocking restores them); they are just never shown.
+    private func hidingBlocked(_ messages: [MeshTextMessage]) -> [MeshTextMessage] {
+        guard let blocked = blockedPeerIDsProvider?(), !blocked.isEmpty else {
+            return messages
+        }
+        return messages.filter { !blocked.contains($0.senderID) }
     }
 
     /// Number of unread messages on a channel since the last ``markAsRead(channelID:)``.
@@ -544,7 +572,7 @@ final class TextMessageService {
         // Try database first for complete thread history
         if let db = database {
             let records = db.messagesInThread(parentID: parentID.uuidString, channelID: channelID)
-            let converted = records.compactMap { $0.toMeshTextMessage() }
+            let converted = hidingBlocked(records.compactMap { $0.toMeshTextMessage() })
             if !converted.isEmpty { return converted }
         }
         // Fall back to in-memory
@@ -554,14 +582,12 @@ final class TextMessageService {
 
     /// Returns the text of the most recent message on a channel, or `nil` if empty.
     func lastMessageText(for channelID: String) -> String? {
-        hydrateIfNeeded(channelID: channelID)
-        return messagesByChannel[channelID]?.last?.text
+        messages(for: channelID).last?.text
     }
 
     /// Returns the timestamp of the most recent message on a channel, or `nil` if empty.
     func lastMessageDate(for channelID: String) -> Date? {
-        hydrateIfNeeded(channelID: channelID)
-        return messagesByChannel[channelID]?.last?.timestamp
+        messages(for: channelID).last?.timestamp
     }
 
     // MARK: - Private

@@ -485,7 +485,122 @@ private struct IdentityPage: View {
     }
 }
 
-// MARK: - Page 4: Go Live
+// MARK: - Page 4: Community Rules
+
+/// Terms and community rules acceptance (App Review Guideline 1.2).
+/// The Start button on the final page stays gated until this page's
+/// "I Agree" has been tapped.
+private struct RulesPage: View {
+
+    @Binding var hasAccepted: Bool
+
+    private struct Rule: Identifiable {
+        let id = UUID()
+        let icon: String
+        let text: String
+    }
+
+    private var rules: [Rule] {
+        [
+            Rule(icon: "person.2.fill",
+                 text: String(localized: "onboarding.rules.respect")),
+            Rule(icon: "hand.raised.fill",
+                 text: String(localized: "onboarding.rules.blockReport")),
+            Rule(icon: "flag.fill",
+                 text: String(localized: "onboarding.rules.noAbuse")),
+            Rule(icon: "antenna.radiowaves.left.and.right",
+                 text: String(localized: "onboarding.rules.relay"))
+        ]
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 20)
+
+            Text(String(localized: "onboarding.rules.title"))
+                .font(Constants.Typography.heroTitle)
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+                .accessibilityAddTraits(.isHeader)
+
+            Spacer().frame(height: 12)
+
+            Text(String(localized: "onboarding.rules.subtitle"))
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(Constants.Colors.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
+            Spacer().frame(height: 28)
+
+            VStack(alignment: .leading, spacing: 18) {
+                ForEach(rules) { rule in
+                    HStack(alignment: .top, spacing: 14) {
+                        Image(systemName: rule.icon)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(Constants.Colors.amber)
+                            .frame(width: 28)
+                        Text(rule.text)
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.9))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .padding(.horizontal, 36)
+
+            Spacer().frame(height: 24)
+
+            Button {
+                if let url = URL(string: "https://chirpchirps.com/terms") {
+                    UIApplication.shared.open(url)
+                }
+            } label: {
+                Text(String(localized: "onboarding.rules.viewTerms"))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Constants.Colors.textTertiary)
+                    .underline()
+            }
+            .accessibilityLabel(String(localized: "onboarding.rules.viewTerms"))
+
+            Spacer().frame(height: 20)
+
+            // Acceptance toggle
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    hasAccepted.toggle()
+                }
+                HapticsManager.shared.pttUp()
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: hasAccepted ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(hasAccepted ? Constants.Colors.electricGreen : Constants.Colors.textTertiary)
+                    Text(String(localized: "onboarding.rules.agree"))
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(
+                    Capsule()
+                        .stroke(
+                            hasAccepted
+                                ? Constants.Colors.electricGreen.opacity(0.5)
+                                : Color.white.opacity(0.15),
+                            lineWidth: 1.5
+                        )
+                )
+            }
+            .accessibilityLabel(String(localized: "onboarding.rules.agree"))
+            .accessibilityAddTraits(hasAccepted ? [.isSelected] : [])
+
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Page 5: Go Live
 
 private struct GoLivePage: View {
     @Environment(AppState.self) private var appState
@@ -644,7 +759,8 @@ struct OnboardingView: View {
 
     @State private var currentPage = 0
     @State private var callsign: String = ""
-    private let totalPages = 4
+    @State private var hasAcceptedRules = false
+    private let totalPages = 5
 
     var body: some View {
         ZStack {
@@ -661,10 +777,12 @@ struct OnboardingView: View {
                 // Skip button (pages 0-2)
                 HStack {
                     Spacer()
-                    if currentPage < totalPages - 1 {
+                    if currentPage < 3 {
                         Button {
+                            // Skip lands on the rules page, never past it —
+                            // terms acceptance cannot be skipped.
                             withAnimation(.easeInOut(duration: 0.3)) {
-                                currentPage = totalPages - 1
+                                currentPage = 3
                             }
                         } label: {
                             Text(String(localized: "Skip"))
@@ -691,8 +809,11 @@ struct OnboardingView: View {
                     IdentityPage(callsign: $callsign)
                         .tag(2)
 
-                    GoLivePage()
+                    RulesPage(hasAccepted: $hasAcceptedRules)
                         .tag(3)
+
+                    GoLivePage()
+                        .tag(4)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
 
@@ -726,13 +847,32 @@ struct OnboardingView: View {
                         .transition(.opacity)
 
                     case 3:
-                        ShimmerStartButton {
-                            completeOnboarding()
+                        // Rules page: gated until the user accepts.
+                        ContinueButton(disabled: !hasAcceptedRules) {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                currentPage += 1
+                            }
                         }
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .bottom).combined(with: .opacity),
-                            removal: .opacity
-                        ))
+                        .transition(.opacity)
+
+                    case 4:
+                        // Guard against swiping past the rules page: without
+                        // acceptance the start button stays a disabled gate.
+                        if hasAcceptedRules {
+                            ShimmerStartButton {
+                                completeOnboarding()
+                            }
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .bottom).combined(with: .opacity),
+                                removal: .opacity
+                            ))
+                        } else {
+                            ContinueButton(
+                                String(localized: "onboarding.rules.acceptToContinue"),
+                                disabled: true
+                            ) {}
+                            .transition(.opacity)
+                        }
 
                     default:
                         EmptyView()
@@ -760,6 +900,8 @@ struct OnboardingView: View {
         if !trimmed.isEmpty {
             appState.callsign = trimmed
         }
+        // Record when the user accepted the terms and community rules.
+        UserDefaults.standard.set(Date(), forKey: "com.chirpchirp.termsAcceptedAt")
         appState.isOnboardingComplete = true
     }
 }

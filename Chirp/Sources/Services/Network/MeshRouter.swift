@@ -27,11 +27,17 @@ actor MeshRouter {
     private var originSequenceMap: [UUID: (sequence: UInt32, lastSeen: Date)] = [:]
     private let originSequenceExpirySeconds: TimeInterval = 300.0
 
+    /// Origins the user has blocked. Their packets are dropped entirely —
+    /// not delivered locally and not relayed. Kept in sync with the
+    /// user-facing `BlockList` by AppState.
+    private var blockedOrigins: Set<UUID> = []
+
     // MARK: - Stats
 
     private(set) var packetsRelayed: UInt64 = 0
     private(set) var packetsDelivered: UInt64 = 0
     private(set) var packetsDeduplicated: UInt64 = 0
+    private(set) var packetsBlocked: UInt64 = 0
     private(set) var maxHopsObserved: UInt8 = 0
 
     // MARK: - Emergency
@@ -69,6 +75,12 @@ actor MeshRouter {
         emergencyRelayAll = enabled
     }
 
+    /// Replace the set of blocked origins. Non-UUID IDs are ignored.
+    func setBlockedOrigins(_ peerIDs: Set<String>) {
+        blockedOrigins = Set(peerIDs.compactMap(UUID.init(uuidString:)))
+        logger.info("Blocked origins updated: \(self.blockedOrigins.count) peers")
+    }
+
     // MARK: - Packet handling
 
     /// Process an incoming mesh packet received from `fromPeer`.
@@ -81,6 +93,13 @@ actor MeshRouter {
         // 1. Drop our own packets that bounced back through the mesh.
         if packet.originID == localPeerID {
             logger.trace("Dropped own packet \(packet.packetID.uuidString, privacy: .public)")
+            return false
+        }
+
+        // 1b. Drop everything from blocked origins — no delivery, no relay.
+        if blockedOrigins.contains(packet.originID) {
+            packetsBlocked += 1
+            logger.trace("Dropped packet from blocked origin \(packet.originID.uuidString, privacy: .public)")
             return false
         }
 

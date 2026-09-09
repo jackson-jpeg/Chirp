@@ -336,6 +336,22 @@ struct ChannelView: View {
                     senderName: appState.localPeerName
                 )
             },
+            onReportMessage: { message in
+                ReportService.fileReport(
+                    peerID: message.senderID,
+                    peerName: message.senderName,
+                    message: message,
+                    reporterPeerID: appState.localPeerID
+                )
+                toast = ToastItem(message: String(localized: "moderation.toast.reported"), type: .info)
+            },
+            onBlockSender: { message in
+                appState.blockList.block(id: message.senderID, name: message.senderName)
+                toast = ToastItem(
+                    message: String(localized: "moderation.toast.blocked \(message.senderName)"),
+                    type: .info
+                )
+            },
             typingPeers: appState.textMessageService.typingPeersByChannel[channel.id] ?? [],
             onTyping: {
                 appState.textMessageService.sendTypingIndicator(
@@ -854,6 +870,28 @@ struct ChannelView: View {
                             : Constants.Colors.textSecondary
                     )
                     .lineLimit(1)
+            }
+            .contextMenu {
+                Button {
+                    ReportService.fileReport(
+                        peerID: peer.id,
+                        peerName: peer.name,
+                        reporterPeerID: appState.localPeerID
+                    )
+                    toast = ToastItem(message: String(localized: "moderation.toast.reported"), type: .info)
+                } label: {
+                    Label(String(localized: "moderation.reportUser"), systemImage: "flag")
+                }
+
+                Button(role: .destructive) {
+                    appState.blockList.block(id: peer.id, name: peer.name)
+                    toast = ToastItem(
+                        message: String(localized: "moderation.toast.blocked \(peer.name)"),
+                        type: .info
+                    )
+                } label: {
+                    Label(String(localized: "moderation.blockUser"), systemImage: "hand.raised")
+                }
             }
             .offset(
                 x: cos(angle) * peerCircleRadius,
