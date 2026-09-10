@@ -78,15 +78,21 @@ targets:
           UIColorName: LaunchBackground
         UISupportedInterfaceOrientations:
         - UIInterfaceOrientationPortrait
+        # iPhone-only + portrait-only still trips altool's iPad-multitasking
+        # orientation check (90474) unless the app opts out of multitasking.
+        UIRequiresFullScreen: true
         NSMicrophoneUsageDescription: ChirpChirps uses your microphone for real-time
           voice communication with nearby devices.
         NSCameraUsageDescription: ChirpChirps uses your camera to capture and share
           media with nearby devices.
         NSPhotoLibraryAddUsageDescription: ChirpChirps saves received images to your
           photo library.
-        # AES-GCM under a shared channel key -- Apple OS-provided crypto only,
-        # qualifies as exempt, but the key must still be declared true.
-        ITSAppUsesNonExemptEncryption: true
+        # AES-GCM under a shared channel key -- standard algorithms from Apple's
+        # OS (CryptoKit) only, which self-classifies as exempt. The key is
+        # "uses NON-exempt encryption", so exempt usage is declared false;
+        # true requires an ITSEncryptionExportComplianceCode from approved
+        # export documentation and altool rejects the upload without one.
+        ITSAppUsesNonExemptEncryption: false
         NSSpeechRecognitionUsageDescription: ChirpChirps uses on-device speech recognition
           to show live transcripts of incoming voice transmissions.
         NSLocationWhenInUseUsageDescription: ChirpChirps uses your location to share
