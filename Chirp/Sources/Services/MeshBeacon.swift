@@ -353,25 +353,15 @@ final class MeshBeacon {
             return
         }
 
-        // Use adaptive TTL for beacons (normal priority).
-        let ttl = MeshPacket.adaptiveTTL(for: .control, priority: .normal)
-
-        let packet = MeshPacket(
-            type: .control,
-            ttl: ttl,
-            originID: UUID(uuidString: localID) ?? UUID(),
-            packetID: UUID(),
-            sequenceNumber: 0,
-            timestamp: UInt64(Date().timeIntervalSince1970 * 1000),
-            channelID: "",
-            payload: payload
-        )
-
-        // Post for the mesh router to distribute.
+        // Post the payload for AppState to wrap via MeshRouter.createPacket.
+        // The packet must be created by the router — it stamps the monotonic
+        // sequence number and pre-registers the packetID. A beacon built here
+        // with a constant sequence once poisoned the origin's replay
+        // high-water mark and got every later packet from this device dropped.
         NotificationCenter.default.post(
             name: .meshBeaconBroadcast,
             object: nil,
-            userInfo: ["packet": packet.serialize()]
+            userInfo: ["payload": payload]
         )
     }
 }
@@ -379,8 +369,10 @@ final class MeshBeacon {
 // MARK: - Notification Name
 
 extension Notification.Name {
-    /// Posted when a mesh beacon packet is ready for mesh broadcast.
-    /// The `userInfo` dictionary contains key `"packet"` with serialized `Data`.
+    /// Posted when a mesh beacon payload is ready for mesh broadcast.
+    /// The `userInfo` dictionary contains key `"payload"` with the encoded
+    /// BeaconInfo `Data`; the subscriber wraps it in a MeshPacket via
+    /// `MeshRouter.createPacket` (which stamps the sequence number).
     static let meshBeaconBroadcast = Notification.Name("com.chirpchirp.meshBeaconBroadcast")
 
     /// Posted when a beacon carries neighbor topology information.

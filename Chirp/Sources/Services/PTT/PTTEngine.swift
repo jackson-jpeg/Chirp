@@ -21,7 +21,9 @@ final class PTTEngine {
 
     let audioEngine: AudioEngine
     let floorSession: FloorSession
-    var multipeerTransport: MultipeerTransport?
+    /// Named for its production conformer; typed as the protocol so the
+    /// loopback tests can join engines with an in-memory transport.
+    var multipeerTransport: (any PTTTransport)?
 
     /// Provides the current peer list.
     var peerListProvider: (() -> [ChirpPeer])?
@@ -74,7 +76,7 @@ final class PTTEngine {
                 )
                 let serialized = packet.serialize()
                 do {
-                    try self.multipeerTransport?.sendAudio(serialized)
+                    try self.multipeerTransport?.sendAudio(serialized, channelID: nil)
                 } catch {
                     self.logger.error("Audio frame send failed (seq \(seq)): \(error.localizedDescription)")
                 }
@@ -86,7 +88,7 @@ final class PTTEngine {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 do {
-                    try self.multipeerTransport?.sendControl(message)
+                    try self.multipeerTransport?.sendControl(message, channelID: nil)
                 } catch {
                     self.logger.error("Floor control send failed: \(error.localizedDescription)")
                 }
@@ -213,7 +215,7 @@ final class PTTEngine {
                 guard !Task.isCancelled, let self else { break }
                 let heartbeat = FloorControlMessage.heartbeat(peerID: self.localPeerID, timestamp: Date())
                 do {
-                    try self.multipeerTransport?.sendControl(heartbeat)
+                    try self.multipeerTransport?.sendControl(heartbeat, channelID: nil)
                 } catch {
                     self.logger.error("Heartbeat send failed: \(error.localizedDescription)")
                 }

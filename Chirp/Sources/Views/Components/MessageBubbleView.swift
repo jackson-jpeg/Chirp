@@ -186,6 +186,10 @@ struct MessageBubbleView: View {
                     // Delivery indicator for self messages
                     if isFromSelf {
                         deliveryIndicator
+                            // The status is otherwise just checkmark glyphs —
+                            // this is the only way the device harness can
+                            // observe that an ACK actually came back.
+                            .accessibilityIdentifier("deliveryStatus_\(message.deliveryStatus)")
                     }
                 }
             }

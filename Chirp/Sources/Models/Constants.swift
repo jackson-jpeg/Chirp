@@ -13,8 +13,19 @@ enum Constants {
     }
 
     enum JitterBuffer {
-        static let initialDepthMs: Int = 40
-        static let maxDepthMs: Int = 200
+        /// Depth reached before playout starts (and again after an underrun).
+        /// Must exceed one capture chunk: the mic tap delivers ~85–100ms of
+        /// audio at a time (4096 frames @ 48kHz), so Opus frames leave the
+        /// sender in bursts of 4–5, not one per 20ms. A gate smaller than a
+        /// burst (the old 40ms) drained dry between bursts every cycle and
+        /// played a phase-discontinuous concealment frame each time — audible
+        /// as periodic glitching during sustained PTT, and caught by the
+        /// loopback tone-correlation test.
+        static let initialDepthMs: Int = 140
+        /// Ceiling before the oldest frames are trimmed. Must leave room for
+        /// a full burst to land on top of a buffer sitting at the gate depth
+        /// (7 + 5 frames), or the trim itself starts discarding real audio.
+        static let maxDepthMs: Int = 300
     }
 
     enum Heartbeat {

@@ -175,6 +175,13 @@ final class ReplayProtectionTests: XCTestCase {
         XCTAssertFalse(second, "Duplicate packet ID should be rejected")
     }
 
+    // Replay rejection is windowed, not strict: a sequence slightly behind
+    // the high-water mark is legitimate reordering (unreliable delivery,
+    // divergent mesh paths) and exact duplicates are caught by packetID
+    // dedup. Only a sequence far behind the mark is a stale replay. The old
+    // strict `<=` semantics this test used to assert were half of the bug
+    // that dropped every packet after the first from each origin — see
+    // MeshSequenceRegressionTests.
     func testReplayedSequenceRejected() async {
         let originID = UUID()
         let router = MeshRouter(localPeerID: UUID())
@@ -185,13 +192,13 @@ final class ReplayProtectionTests: XCTestCase {
 
         let packet1 = MeshPacket(
             type: .control, ttl: 4, originID: originID,
-            packetID: UUID(), sequenceNumber: 10,
+            packetID: UUID(), sequenceNumber: 500,
             timestamp: UInt64(Date().timeIntervalSince1970 * 1000),
             channelID: "", payload: Data("msg1".utf8)
         )
         let packet2 = MeshPacket(
             type: .control, ttl: 4, originID: originID,
-            packetID: UUID(), sequenceNumber: 5,  // lower sequence = replay
+            packetID: UUID(), sequenceNumber: 5,  // far behind = stale replay
             timestamp: UInt64(Date().timeIntervalSince1970 * 1000),
             channelID: "", payload: Data("replayed".utf8)
         )
@@ -200,7 +207,7 @@ final class ReplayProtectionTests: XCTestCase {
         let second = await router.handleIncoming(packet: packet2, fromPeer: "peer-1")
 
         XCTAssertTrue(first)
-        XCTAssertFalse(second, "Packet with lower sequence from same origin should be rejected as replay")
+        XCTAssertFalse(second, "Packet with sequence far behind the high-water mark should be rejected as replay")
     }
 
     func testHigherSequenceFromSameOriginAccepted() async {

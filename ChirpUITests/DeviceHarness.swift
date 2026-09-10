@@ -60,9 +60,51 @@ enum Harness {
         app.launchArguments += [
             "-ChirpAudioTelemetry", "YES",
             "-ChirpRole", role,
+            // Argument-domain default: start in the state every real run has —
+            // an onboarded app. UserDefaults reads NSArgumentDomain before the
+            // persistent domain, so nothing is written to disk and a manual
+            // launch still onboards normally. Without this, a fresh install
+            // stalls on page 0 of the five-page onboarding flow, whose gated
+            // Continue/callsign/rules walk this harness deliberately does not
+            // script — onboarding UI is not what these tests measure.
+            "-com.chirpchirp.onboardingComplete", "YES",
         ]
         app.launch()
         return app
+    }
+
+    /// Answer any system permission alert (notifications, location, local
+    /// network) affirmatively. These arrive shortly after launch and sit above
+    /// the app; local network in particular blocks peer discovery until
+    /// answered, so the harness sweeps them before the schedule starts.
+    /// Runs for the full duration even when no alert shows — alerts can
+    /// arrive seconds after the services that trigger them start.
+    static func allowSystemAlerts(for duration: TimeInterval) {
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let affirmative = ["Allow While Using App", "Allow Once", "Allow", "OK", "Continue"]
+        let deadline = Date().addingTimeInterval(duration)
+        while Date() < deadline {
+            var tapped = false
+            for label in affirmative where springboard.buttons[label].exists {
+                springboard.buttons[label].tap()
+                tapped = true
+                break
+            }
+            if !tapped {
+                Thread.sleep(forTimeInterval: 0.5)
+            }
+        }
+    }
+
+    /// Look an identifier up across ALL element types. The app's controls do
+    /// not map to `.button` the way the identifiers suggest: the channel card
+    /// carries `.isButton` (so XCUITest files it under buttons, not
+    /// otherElements), while the PTT control carries `.startsMediaSession`
+    /// only (so it is NOT under buttons). Typed queries here failed both ways
+    /// at once — every run died as "never reached a screen with a PTT button"
+    /// while sitting on the home screen.
+    static func element(_ app: XCUIApplication, _ id: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: id).firstMatch
     }
 
     /// Get to a screen with a PTT button, from whatever state the app was left
@@ -71,25 +113,25 @@ enum Harness {
     static func reachChannel(_ app: XCUIApplication, timeout: TimeInterval = 60) -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
-            if app.buttons[AXID.pttButton].exists { return true }
+            if element(app, AXID.pttButton).exists { return true }
 
             // Onboarding, if this device has never run the app.
-            if app.buttons[AXID.getStartedButton].exists {
-                app.buttons[AXID.getStartedButton].tap()
+            if element(app, AXID.getStartedButton).exists {
+                element(app, AXID.getStartedButton).tap()
                 continue
             }
             // Home screen — open the first channel.
-            if app.otherElements[AXID.channelCard].exists {
-                app.otherElements[AXID.channelCard].firstMatch.tap()
+            if element(app, AXID.channelCard).exists {
+                element(app, AXID.channelCard).tap()
                 continue
             }
-            if app.buttons[AXID.createFirstChannel].exists {
-                app.buttons[AXID.createFirstChannel].tap()
+            if element(app, AXID.createFirstChannel).exists {
+                element(app, AXID.createFirstChannel).tap()
                 continue
             }
             Thread.sleep(forTimeInterval: 0.5)
         }
-        return app.buttons[AXID.pttButton].exists
+        return element(app, AXID.pttButton).exists
     }
 
     /// Press and hold the real PTT button for `duration`.
@@ -99,7 +141,7 @@ enum Harness {
     /// part of what can break, and a harness that bypassed them would go green
     /// while the button did nothing.
     static func transmit(_ app: XCUIApplication, for duration: TimeInterval) {
-        app.buttons[AXID.pttButton].press(forDuration: duration)
+        element(app, AXID.pttButton).press(forDuration: duration)
     }
 }
 

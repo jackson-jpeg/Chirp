@@ -60,6 +60,10 @@ final class AudioTelemetry: Sendable {
         let playback: [Sample]
         let markers: [Marker]
         let truncated: Bool
+        let stageCounts: [String: Int]
+        let stageBytes: [String: Int]
+        let stageGauges: [String: Int]
+        let stageGaugeMax: [String: Int]
     }
 
     private struct State {
@@ -68,6 +72,10 @@ final class AudioTelemetry: Sendable {
         var markers: [Marker] = []
         var samplesSinceFlush = 0
         var truncated = false
+        var stageCounts: [String: Int] = [:]
+        var stageBytes: [String: Int] = [:]
+        var stageGauges: [String: Int] = [:]
+        var stageGaugeMax: [String: Int] = [:]
     }
 
     /// A bound on memory, not on the test. At ~50 samples/second per channel
@@ -123,6 +131,45 @@ final class AudioTelemetry: Sendable {
         write(snapshot)
     }
 
+    /// Count one event at a named pipeline stage, optionally accumulating a
+    /// byte total. The stage counters are what turn "no audio at the far
+    /// end" into "the chain went silent at stage X": every hop from mic tap
+    /// to player node increments one, so the first counter that stays at
+    /// zero names the broken link.
+    ///
+    /// Every 50th event per stage is also mirrored to os_log so a live
+    /// `log stream` shows the pipeline moving without drowning it.
+    func countStage(_ stage: String, bytes: Int? = nil) {
+        guard isEnabled else { return }
+        let (snapshot, total): (Report?, Int) = state.withLock { state in
+            let newCount = (state.stageCounts[stage] ?? 0) + 1
+            state.stageCounts[stage] = newCount
+            if let bytes {
+                state.stageBytes[stage] = (state.stageBytes[stage] ?? 0) + bytes
+            }
+            state.samplesSinceFlush += 1
+            if state.samplesSinceFlush >= Self.flushInterval {
+                state.samplesSinceFlush = 0
+                return (self.report(from: state), newCount)
+            }
+            return (nil, newCount)
+        }
+        if total == 1 || total % 50 == 0 {
+            Logger.audio.info("stage=\(stage, privacy: .public) count=\(total)")
+        }
+        write(snapshot)
+    }
+
+    /// Record an instantaneous level for a stage (e.g. jitter buffer depth).
+    /// The last value and the maximum observed are kept.
+    func recordGauge(_ stage: String, value: Int) {
+        guard isEnabled else { return }
+        state.withLock { state in
+            state.stageGauges[stage] = value
+            state.stageGaugeMax[stage] = max(state.stageGaugeMax[stage] ?? 0, value)
+        }
+    }
+
     private func append(_ sample: Sample, to channel: WritableKeyPath<State, [Sample]>) {
         let snapshot: Report? = state.withLock { state in
             guard state[keyPath: channel].count < Self.maxSamplesPerChannel else {
@@ -145,7 +192,11 @@ final class AudioTelemetry: Sendable {
             capture: state.capture,
             playback: state.playback,
             markers: state.markers,
-            truncated: state.truncated
+            truncated: state.truncated,
+            stageCounts: state.stageCounts,
+            stageBytes: state.stageBytes,
+            stageGauges: state.stageGauges,
+            stageGaugeMax: state.stageGaugeMax
         )
     }
 

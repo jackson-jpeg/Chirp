@@ -22,10 +22,30 @@ actor MeshRouter {
     private let maxSeenPackets = 10_000
     private let packetExpirySeconds: TimeInterval = 120.0
 
-    /// Per-origin highest-seen sequence number for replay protection.
-    /// Packets with sequence <= last seen for that origin are rejected.
-    private var originSequenceMap: [UUID: (sequence: UInt32, lastSeen: Date)] = [:]
+    /// Per-(origin, type) highest-seen sequence number for replay protection.
+    /// Audio and control are tracked separately: they are stamped from
+    /// independent counters and travel over channels of different
+    /// reliability, so one stream racing ahead must never invalidate the
+    /// other.
+    private struct OriginStream: Hashable {
+        let origin: UUID
+        let type: MeshPacket.PacketType
+    }
+    private var originSequenceMap: [OriginStream: (sequence: UInt32, lastSeen: Date)] = [:]
     private let originSequenceExpirySeconds: TimeInterval = 300.0
+
+    /// Anti-replay window: a packet this far (or further) behind the
+    /// origin's high-water mark is rejected as stale. Distinct packets
+    /// closer than this are legitimate reordering (unreliable delivery,
+    /// divergent mesh paths); exact duplicates are caught by packetID dedup
+    /// regardless of sequence.
+    private let replayWindow: Int32 = 64
+
+    /// Monotonic outgoing sequence per packet type, stamped in
+    /// `createPacket`. Per-type so each stream's sequence space stays dense —
+    /// interleaved traffic of the other type must not open gaps wider than
+    /// the receiver's replay window.
+    private var outgoingSequences: [MeshPacket.PacketType: UInt32] = [:]
 
     /// Origins the user has blocked. Their packets are dropped entirely —
     /// not delivered locally and not relayed. Kept in sync with the
@@ -82,6 +102,9 @@ actor MeshRouter {
 
         // 1. Drop our own packets that bounced back through the mesh.
         if packet.originID == localPeerID {
+            #if DEBUG
+            AudioTelemetry.shared.countStage("routerDropOwn")
+            #endif
             logger.trace("Dropped own packet \(packet.packetID.uuidString, privacy: .public)")
             return false
         }
@@ -89,6 +112,9 @@ actor MeshRouter {
         // 1b. Drop everything from blocked origins — no delivery, no relay.
         if blockedOrigins.contains(packet.originID) {
             packetsBlocked += 1
+            #if DEBUG
+            AudioTelemetry.shared.countStage("routerDropBlocked")
+            #endif
             logger.trace("Dropped packet from blocked origin \(packet.originID.uuidString, privacy: .public)")
             return false
         }
@@ -99,24 +125,39 @@ actor MeshRouter {
         // 3. Duplicate detection (O(1) via Set).
         if seenPacketSet.contains(packet.packetID) {
             packetsDeduplicated += 1
+            #if DEBUG
+            AudioTelemetry.shared.countStage("routerDropDuplicate")
+            #endif
             logger.trace("Deduplicated packet \(packet.packetID.uuidString, privacy: .public)")
             return false
         }
 
-        // 3b. Per-origin sequence replay protection.
-        //     Reject packets whose sequence <= the highest we've seen from that origin.
+        // 3b. Per-(origin, type) anti-replay window.
+        //     Reject only packets far behind the origin's high-water mark.
         //     Uses signed comparison to handle UInt32 wraparound correctly.
-        if let entry = originSequenceMap[packet.originID] {
+        //     Exact duplicates were already caught by packetID dedup above,
+        //     and distinct packets slightly out of order are legitimate mesh
+        //     reordering. (A strict <= check here, combined with senders
+        //     that never incremented the sequence, once dropped every packet
+        //     after the first from each origin — no audio, no text.)
+        let stream = OriginStream(origin: packet.originID, type: packet.type)
+        if let entry = originSequenceMap[stream] {
             let diff = Int32(bitPattern: packet.sequenceNumber &- entry.sequence)
-            if diff <= 0 {
+            if diff <= -replayWindow {
                 packetsDeduplicated += 1
-                logger.trace("Replay rejected: origin \(packet.originID.uuidString, privacy: .public) seq \(packet.sequenceNumber) <= \(entry.sequence)")
+                #if DEBUG
+                AudioTelemetry.shared.countStage("routerDropReplay")
+                #endif
+                logger.trace("Replay rejected: origin \(packet.originID.uuidString, privacy: .public) seq \(packet.sequenceNumber) far behind \(entry.sequence)")
                 return false
             }
         }
 
         // 4. TTL exhausted.
         if packet.ttl == 0 {
+            #if DEBUG
+            AudioTelemetry.shared.countStage("routerDropTTL")
+            #endif
             logger.trace("Dropped TTL-0 packet \(packet.packetID.uuidString, privacy: .public)")
             return false
         }
@@ -136,11 +177,25 @@ actor MeshRouter {
             logger.debug("Evicted \(evictCount) oldest seen-packet entries")
         }
 
-        // 4a2. Update per-origin sequence high-water mark.
-        originSequenceMap[packet.originID] = (sequence: packet.sequenceNumber, lastSeen: Date())
+        // 4a2. Advance the per-(origin, type) high-water mark. Never move it
+        //      backward — an accepted in-window reordered packet must not
+        //      re-open the window for stale traffic.
+        if let entry = originSequenceMap[stream] {
+            let diff = Int32(bitPattern: packet.sequenceNumber &- entry.sequence)
+            originSequenceMap[stream] = (
+                sequence: diff > 0 ? packet.sequenceNumber : entry.sequence,
+                lastSeen: Date()
+            )
+        } else {
+            originSequenceMap[stream] = (sequence: packet.sequenceNumber, lastSeen: Date())
+        }
 
         // 4b. Deliver to local audio / control pipeline.
         packetsDelivered += 1
+        #if DEBUG
+        AudioTelemetry.shared.countStage(
+            packet.type == .audio ? "routerDeliverAudio" : "routerDeliverControl")
+        #endif
         onLocalDelivery?(packet)
 
         // 4c. Forward to other peers if hops remain.
@@ -167,18 +222,21 @@ actor MeshRouter {
 
     /// Build a fresh mesh packet originating from this device.
     ///
+    /// The sequence number is stamped here, from a monotonic per-type
+    /// counter owned by the actor. Callers must not supply their own:
+    /// senders that all passed a constant once tripped the receiver's
+    /// replay protection on every packet after the first.
+    ///
     /// - Parameters:
     ///   - type: Audio or control.
     ///   - payload: The encoded payload bytes.
     ///   - channelID: Target channel (empty string = broadcast).
-    ///   - sequenceNumber: Monotonic sequence within a PTT session.
     ///   - priority: Message priority used to compute adaptive TTL.
     ///               When `nil`, priority is inferred from the packet content.
     func createPacket(
         type: MeshPacket.PacketType,
         payload: Data,
         channelID: String,
-        sequenceNumber: UInt32,
         priority: MeshPacket.MessagePriority? = nil
     ) -> MeshPacket {
         let resolvedPriority = priority ?? MeshPacket.inferPriority(type: type, payload: payload)
@@ -186,12 +244,14 @@ actor MeshRouter {
             MeshPacket.adaptiveTTL(for: type, priority: resolvedPriority),
             MeshPacket.maxTTL
         )
+        let sequence = (outgoingSequences[type] ?? 0) &+ 1
+        outgoingSequences[type] = sequence
         let packet = MeshPacket(
             type: type,
             ttl: ttl,
             originID: localPeerID,
             packetID: UUID(),
-            sequenceNumber: sequenceNumber,
+            sequenceNumber: sequence,
             timestamp: UInt64(Date().timeIntervalSince1970 * 1000),
             channelID: channelID,
             payload: payload

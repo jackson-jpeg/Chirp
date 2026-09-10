@@ -113,7 +113,7 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
 
     // MARK: - Send
 
-    func sendAudio(_ data: Data, sequenceNumber: UInt32 = 0, channelID: String? = nil) throws {
+    func sendAudio(_ data: Data, channelID: String? = nil) throws {
         // Capture the recipients now. The send happens inside a Task, after an
         // await — re-reading session.connectedPeers there meant the last peer
         // dropping in that window turned the send into a silent no-op.
@@ -125,14 +125,16 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
             let meshPacket = await router.createPacket(
                 type: .audio,
                 payload: data,
-                channelID: channelID ?? "",
-                sequenceNumber: sequenceNumber
+                channelID: channelID ?? ""
             )
             let serialized = meshPacket.serialize()
             var wireData = Data([Self.meshMagic])
             wireData.append(serialized)
             do {
                 try self.session.send(wireData, toPeers: targets, with: .unreliable)
+                #if DEBUG
+                AudioTelemetry.shared.countStage("audioPacketSend", bytes: wireData.count)
+                #endif
             } catch {
                 self.logger.error("MultipeerTransport send failed: \(error.localizedDescription)")
             }
@@ -164,8 +166,7 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
             let meshPacket = await router.createPacket(
                 type: .control,
                 payload: payload,
-                channelID: channelID ?? "",
-                sequenceNumber: 0
+                channelID: channelID ?? ""
             )
             let serialized = meshPacket.serialize()
             var wireData = Data([Self.meshMagic])
@@ -192,8 +193,7 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
             let meshPacket = await router.createPacket(
                 type: .control,
                 payload: data,
-                channelID: channelID ?? "",
-                sequenceNumber: 0
+                channelID: channelID ?? ""
             )
             let serialized = meshPacket.serialize()
             var wireData = Data([Self.meshMagic])
@@ -329,6 +329,20 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
     }
 }
 
+// MARK: - PTTTransport
+
+/// The transport surface PTTEngine drives. `MultipeerTransport` is the
+/// production conformer; the loopback test suite joins nodes with an
+/// in-memory conformer so the full audio/control pipeline can run in-process
+/// without radios. Keep this to what PTTEngine actually calls — a wider
+/// protocol would just be a second copy of MultipeerTransport's API.
+protocol PTTTransport: AnyObject, Sendable {
+    func sendAudio(_ data: Data, channelID: String?) throws
+    func sendControl(_ message: FloorControlMessage, channelID: String?) throws
+}
+
+extension MultipeerTransport: PTTTransport {}
+
 // MARK: - MCSessionDelegate
 
 extension MultipeerTransport: MCSessionDelegate {
@@ -369,9 +383,18 @@ extension MultipeerTransport: MCSessionDelegate {
 
         let meshData = Data(data.dropFirst())
         guard let meshPacket = MeshPacket.deserialize(meshData) else {
+            #if DEBUG
+            AudioTelemetry.shared.countStage("packetDeserializeFail")
+            #endif
             logger.warning("Failed to deserialize mesh packet from '\(peerID.displayName)'")
             return
         }
+        #if DEBUG
+        AudioTelemetry.shared.countStage(
+            meshPacket.type == .audio ? "audioPacketReceive" : "controlPacketReceive",
+            bytes: data.count
+        )
+        #endif
 
         let peerName = peerID.displayName
         let router = meshRouter

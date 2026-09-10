@@ -47,6 +47,13 @@ final class PartAAudioTests: XCTestCase {
             "[\(role)] never reached a screen with a PTT button — the run cannot continue"
         )
 
+        // Sweep system permission alerts before the schedule starts — local
+        // network in particular blocks peer discovery until answered. Bounded
+        // so it can never eat into the transmit slots.
+        Harness.allowSystemAlerts(
+            for: max(2, Slot.setupDeadline - 5 - Harness.elapsed())
+        )
+
         // Peers are given until the setup deadline to find each other. Not
         // asserted: whether they connected is visible in the telemetry and in
         // whether audio crossed, and failing here would mask the more

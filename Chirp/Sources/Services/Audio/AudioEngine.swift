@@ -219,6 +219,10 @@ final class AudioEngine: @unchecked Sendable {
             // Decode Opus → Int16 PCM, push into jitter buffer for reordering
             let pcmBuffer = try codec.decode(opusData)
             jitterBuffer.push(pcmBuffer: pcmBuffer, sequenceNumber: sequenceNumber)
+            #if DEBUG
+            AudioTelemetry.shared.countStage("opusDecode", bytes: opusData.count)
+            AudioTelemetry.shared.recordGauge("jitterDepth", value: jitterBuffer.bufferedCount)
+            #endif
 
             // Start playback timer if not already running
             if playbackTimer == nil {
@@ -229,6 +233,9 @@ final class AudioEngine: @unchecked Sendable {
                 Logger.audio.info("Audio buffered: seq=\(sequenceNumber), buffered=\(jitterBuffer.bufferedCount)")
             }
         } catch {
+            #if DEBUG
+            AudioTelemetry.shared.countStage("opusDecodeFail")
+            #endif
             Logger.audio.error("Decode failed seq=\(sequenceNumber): \(error.localizedDescription)")
         }
     }
@@ -256,7 +263,11 @@ final class AudioEngine: @unchecked Sendable {
     }
 
     private func drainJitterBuffer() {
-        guard let jitterBuffer, let playerNode else { return }
+        // `playerNode` is deliberately not part of this guard: it is nil only
+        // under the loopback test setup, where the decoded audio is observed
+        // through `onDecodedPCM` instead of played. In production the timer
+        // can only start after `setup()`, which always creates the node.
+        guard let jitterBuffer else { return }
 
         // Pull one frame (20ms) from the jitter buffer
         let pcmData: Data
@@ -272,6 +283,13 @@ final class AudioEngine: @unchecked Sendable {
             pcmData = lastFrame
             attenuation = Float(3 - concealmentCount) / 3.0
             concealmentCount += 1
+            #if DEBUG
+            // Every concealment frame is a phase-discontinuous repeat; a
+            // steadily ticking count here means the jitter buffer is running
+            // dry while packets are still flowing (depth vs. burst mismatch),
+            // not that the network lost anything.
+            AudioTelemetry.shared.countStage("plcConcealFrame")
+            #endif
         } else {
             // No data and no concealment possible — silence / skip
             return
@@ -318,12 +336,12 @@ final class AudioEngine: @unchecked Sendable {
         }
         #endif
 
-        // Schedule on player node
-        playerNode.scheduleBuffer(floatBuffer)
-
-        // Start playing if not already
-        if !playerNode.isPlaying {
-            playerNode.play()
+        // Schedule on player node (absent only under the loopback test setup)
+        if let playerNode {
+            playerNode.scheduleBuffer(floatBuffer)
+            if !playerNode.isPlaying {
+                playerNode.play()
+            }
         }
     }
 
@@ -365,6 +383,33 @@ final class AudioEngine: @unchecked Sendable {
             }
         }
     }
+
+    // MARK: - Loopback Test Support
+
+    #if DEBUG
+    /// Test-only: create the codec and jitter buffer without touching the
+    /// audio session or the hardware engine. Together with
+    /// `injectCapturedFramesForTesting`, this lets the loopback suite run the
+    /// real encode → wire → decode → drain pipeline in a plain test process,
+    /// where activating AVAudioSession or starting AVAudioEngine would be
+    /// flaky or impossible. Everything downstream of the microphone tap is
+    /// the production code path.
+    func setupForLoopbackTesting() throws {
+        self.codec = try OpusCodec()
+        self.jitterBuffer = JitterBuffer()
+    }
+
+    /// Test-only: feed captured frames through the exact path the microphone
+    /// tap uses — processingQueue → consume → converter → accumulate → encode
+    /// → `onEncodedAudio`. Sample-rate conversion is exercised for real: hand
+    /// this a 48kHz float buffer and the same lazy converter production builds
+    /// is what resamples it to 16kHz/Int16.
+    func injectCapturedFramesForTesting(_ captured: CapturedFrames) {
+        processingQueue.async { [weak self] in
+            self?.consume(captured)
+        }
+    }
+    #endif
 
     // MARK: - Captured Frames
 
@@ -526,7 +571,13 @@ final class AudioEngine: @unchecked Sendable {
                     outStatus.pointee = .haveData
                     return src
                 }
-                outStatus.pointee = .endOfStream
+                // .noDataNow, never .endOfStream: this converter lives for the
+                // whole capture session and is fed one tap callback per call.
+                // An AVAudioConverter that has been told end-of-stream is
+                // finished permanently — with it, every call after the first
+                // converted zero frames, so each PTT press transmitted only
+                // its first ~100ms and the far end heard a blip, then silence.
+                outStatus.pointee = .noDataNow
                 return nil
             }
 
@@ -578,6 +629,9 @@ final class AudioEngine: @unchecked Sendable {
             do {
                 let encodedData = try codec.encode(encodeBuffer)
                 sequenceNumber += 1
+                #if DEBUG
+                AudioTelemetry.shared.countStage("opusEncode", bytes: encodedData.count)
+                #endif
                 onEncodedAudio?(encodedData)
             } catch {
                 Logger.audio.error("Opus encode failed: \(error.localizedDescription)")

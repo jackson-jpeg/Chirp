@@ -370,108 +370,28 @@ final class AppState {
 
         // Wire mesh router callbacks.
         // This is the SOLE delivery path for all incoming audio and control packets.
-        // All delivery is dispatched to @MainActor for safe access to @MainActor-isolated
-        // services (ChannelManager, FloorSession, TextMessageService).
-        // Audio playback remains low-latency because AudioEngine.receiveAudioPacket
-        // schedules buffers on the player node internally.
-        let audioEng = self.audioEngine
-        let floorCtrl = self.floorSession
+        // The handler body lives in MeshDelivery so the loopback test suite runs
+        // the identical dispatch code — see MeshDelivery.makeLocalDeliveryHandler.
         let mpTransport = self.multipeerTransport
-        let chanMgr = self.channelManager
-        let peerTrk = self.peerTracker
-        let txtService = self.textMessageService
-        let fileService = self.fileTransferService
-        let pheroRouter = self.pheromoneRouter
+        let deliveryHandler = MeshDelivery.makeLocalDeliveryHandler(
+            audioEngine: audioEngine,
+            floorSession: floorSession,
+            channelManager: channelManager,
+            peerTracker: peerTracker,
+            textMessageService: textMessageService,
+            fileTransferService: fileTransferService,
+            pheromoneRouter: pheromoneRouter,
+            notifyMessage: { senderName, text, channelName in
+                NotificationService.shared.showMessageNotification(
+                    from: senderName,
+                    text: text,
+                    channelName: channelName
+                )
+            }
+        )
         Task {
             await router.setCallbacks(
-                onLocalDelivery: { (packet: MeshPacket) in
-                    Task { @MainActor in
-                        // Channel filtering: drop audio for wrong channel.
-                        // Control packets with empty channelID (broadcasts) are always delivered.
-                        let activeID = chanMgr.activeChannel?.id ?? ""
-                        if !packet.channelID.isEmpty && packet.channelID != activeID {
-                            // Wrong channel -- drop audio, but still deliver broadcast controls
-                            if packet.type == .audio { return }
-                        }
-
-                        // Silently discard cover traffic
-                        // inside the payload. These are only recognisable after local decryption.
-                        if MeshShield.isCoverTraffic(packet.payload) {
-                            return
-                        }
-
-                        switch packet.type {
-                        case .audio:
-                            if let audioPacket = AudioPacket.deserialize(packet.payload) {
-                                audioEng.receiveAudioPacket(audioPacket.opusData, sequenceNumber: audioPacket.sequenceNumber)
-                            }
-                        case .control:
-                            // Extract 4-byte magic prefix for O(1) dispatch
-                            let payload = packet.payload
-                            let prefixStr: String
-                            if payload.count >= 4 {
-                                prefixStr = String(data: payload.prefix(4), encoding: .ascii) ?? ""
-                            } else {
-                                prefixStr = ""
-                            }
-
-                            switch prefixStr {
-                            case "ACK!":
-                                pheroRouter.handleACK(payload, fromPeer: packet.originID.uuidString)
-
-                            case "TXT!":
-                                let channelForACK = packet.channelID
-                                let beforeCount = txtService.messagesByChannel[channelForACK]?.count ?? 0
-                                txtService.handlePacket(payload, channelID: channelForACK)
-                                let afterCount = txtService.messagesByChannel[channelForACK]?.count ?? 0
-
-                                if afterCount > beforeCount, !channelForACK.isEmpty {
-                                    pheroRouter.acknowledgeDelivery(
-                                        packetID: packet.packetID,
-                                        senderID: packet.originID.uuidString,
-                                        channelID: packet.channelID
-                                    )
-                                    if let lastMsg = txtService.messagesByChannel[channelForACK]?.last {
-                                        let chName = chanMgr.channels.first(where: { $0.id == channelForACK })?.name ?? "Chirp"
-                                        NotificationService.shared.showMessageNotification(
-                                            from: lastMsg.senderName,
-                                            text: lastMsg.text,
-                                            channelName: chName
-                                        )
-                                    }
-                                }
-
-                            case "RXN!":
-                                txtService.handleReaction(payload, channelID: packet.channelID)
-
-                            case "FIL!", "FLC!", "FNK!":
-                                fileService.handlePacket(payload, channelID: packet.channelID)
-
-                            case "KRO!":
-                                if let rotation = ChannelManager.parseKeyRotationPayload(payload) {
-                                    chanMgr.handleKeyRotation(channelID: rotation.channelID, peerEpoch: rotation.epoch)
-                                }
-
-                            default:
-                                // FloorControlMessage uses JSON without a magic prefix
-                                if let message = try? MeshCodable.decoder.decode(FloorControlMessage.self, from: payload) {
-                                    floorCtrl.handleMessage(message, from: packet.originID.uuidString)
-
-                                    switch message {
-                                    case .heartbeat(let peerID, let timestamp):
-                                        Task { await peerTrk.handleHeartbeat(peerID: peerID, timestamp: timestamp) }
-                                    case .peerJoin(let peerID, let peerName):
-                                        Task { await peerTrk.updatePeer(id: peerID, name: peerName) }
-                                    case .peerLeave(let peerID):
-                                        Task { await peerTrk.removePeer(id: peerID) }
-                                    default:
-                                        break
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
+                onLocalDelivery: deliveryHandler,
                 onForward: { (packet: MeshPacket, excludePeer: String) in
                     mpTransport.forwardPacket(packet.serialize(), excludePeer: excludePeer)
                 }
@@ -576,13 +496,24 @@ final class AppState {
             }
         })
 
-        // Route mesh beacon broadcasts through the mesh transport
+        // Route mesh beacon broadcasts through the mesh transport. The
+        // packet is created by the router so it carries a real monotonic
+        // sequence number — a beacon with a constant sequence poisons the
+        // origin's replay high-water mark on every receiver.
         let mpTransportForBeacon = self.multipeerTransport
+        let meshRouterForBeacon = self.meshRouter
         notificationObservers.append(NotificationCenter.default.addObserver(
             forName: .meshBeaconBroadcast, object: nil, queue: .main
         ) { notification in
-            guard let data = notification.userInfo?["packet"] as? Data else { return }
-            mpTransportForBeacon.forwardPacket(data, excludePeer: "")
+            guard let payload = notification.userInfo?["payload"] as? Data else { return }
+            Task {
+                let packet = await meshRouterForBeacon.createPacket(
+                    type: .control,
+                    payload: payload,
+                    channelID: ""
+                )
+                mpTransportForBeacon.forwardPacket(packet.serialize(), excludePeer: "")
+            }
         })
 
         // Periodically update mesh stats and prune stale intelligence data
