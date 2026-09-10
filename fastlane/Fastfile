@@ -10,3 +10,19 @@ ENV["IOS_ASC_APP_ID"] ||= "6761436901"  # ASC app record "ChirpChirps"
 
 TOOLKIT = File.expand_path("~/ios-toolkit")
 import "#{TOOLKIT}/lanes/Fastfile.base"
+
+# Project-local addition (not an override): pushes the privacy-questionnaire
+# answers in fastlane/app_privacy_details.json. Chirp is fully peer-to-peer
+# with no server, so the declaration is DATA_NOT_COLLECTED.
+platform :ios do
+  desc "Upload app privacy details to App Store Connect"
+  lane :privacy_details do
+    # The action takes no api_key option; it authenticates via the token
+    # app_store_connect_api_key leaves in the Spaceship context.
+    app_store_connect_api_key(**api_key_config)
+    upload_app_privacy_details_to_app_store(
+      app_identifier: ENV["IOS_BUNDLE_ID"],
+      json_path: "./fastlane/app_privacy_details.json"
+    )
+  end
+end
