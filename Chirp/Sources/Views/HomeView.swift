@@ -813,8 +813,9 @@ private struct MeshStatusStrip: View {
 
     private var meshLabel: String {
         guard let stats = meshStats, peerCount > 0 else { return String(localized: "home.mesh.noMesh") }
-        if stats.maxHops >= 3 { return String(localized: "home.mesh.hops \(stats.maxHops)") }
-        if stats.maxHops >= 1 { return String(localized: "home.mesh.hops \(stats.maxHops)") }
+        // Int cast matters: UInt8 interpolates as %llu, which misses the
+        // catalog's "home.mesh.hops %lld" key and leaks the raw key on screen.
+        if stats.maxHops >= 1 { return String(localized: "home.mesh.hops \(Int(stats.maxHops))") }
         return String(localized: "home.mesh.direct")
     }
 

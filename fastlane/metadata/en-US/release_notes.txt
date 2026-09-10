@@ -1,0 +1,1 @@
+Initial release — push-to-talk voice with live transcription, mesh relay, encrypted channels, offline text and voice messages, photo sharing, and a peer map. No servers, no accounts.

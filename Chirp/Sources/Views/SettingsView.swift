@@ -898,8 +898,8 @@ struct SettingsView: View {
         return result.joined(separator: ":")
     }
 
-    // Replace with actual App Store ID after creating the listing
-    private let appID = "6743210000"
+    /// ASC app record "ChirpChirps" — the listing's Apple ID.
+    private let appID = "6761436901"
 
     private var appVersion: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"

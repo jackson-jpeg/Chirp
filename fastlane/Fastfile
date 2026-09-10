@@ -6,7 +6,7 @@ ENV["IOS_APP_NAME"]   ||= "chirp"
 ENV["IOS_SCHEME"]     ||= "Chirp"
 ENV["IOS_BUNDLE_ID"]  ||= "com.jacksonmsanger.chirpchirp"
 ENV["IOS_TEST_SIM"]   ||= "iPhone 16 Pro"
-# ENV["IOS_ASC_APP_ID"] = ""  # fill after ASC app record exists
+ENV["IOS_ASC_APP_ID"] ||= "6761436901"  # ASC app record "ChirpChirps"
 
 TOOLKIT = File.expand_path("~/ios-toolkit")
 import "#{TOOLKIT}/lanes/Fastfile.base"

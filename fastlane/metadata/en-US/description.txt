@@ -1,0 +1,22 @@
+ChirpChirps turns the iPhones around you into a private walkie-talkie mesh — no cell towers, no Wi-Fi network, no internet, no accounts.
+
+Hold to talk and your voice reaches everyone on your channel over Bluetooth and peer-to-peer Wi-Fi. Out of range of someone? Other ChirpChirps devices relay your message hop by hop across the mesh.
+
+TALK
+• Push-to-talk voice with live on-device transcription of incoming audio
+• Channels keep groups separate — join General or create your own
+• AES-256-GCM encryption between channel members
+
+MESSAGES
+• Text chat that works with zero infrastructure
+• Voice messages with store-and-forward delivery — nearby devices carry a message until its recipient is reachable
+• Share photos directly, device to device
+
+MAP
+• See where the peers on your channel are — position is shared only with nearby peers, never uploaded
+• There is no server: everything you say and send stays on the devices involved
+
+WHO IT'S FOR
+Hiking groups past the last bar of signal, festivals and stadiums with overloaded networks, ski trips, campuses, warehouses, disaster drills — anywhere people are near each other and the internet isn't.
+
+ChirpChirps needs at least two devices with the app installed to communicate. Range depends on environment and grows with every device that joins the mesh. ChirpChirps is not a substitute for emergency services.
