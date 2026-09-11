@@ -102,6 +102,7 @@ final class LoopbackNode {
     let channelManager: ChannelManager
     let textMessageService: TextMessageService
     let fileTransferService: FileTransferService
+    let meshBeacon: MeshBeacon
     let pheromoneRouter: PheromoneRouter
     let peerTracker: PeerTracker
     let meshIntelligence: MeshIntelligence
@@ -126,6 +127,7 @@ final class LoopbackNode {
         self.channelManager = ChannelManager()
         self.textMessageService = TextMessageService()
         self.fileTransferService = FileTransferService()
+        self.meshBeacon = MeshBeacon()
         self.pheromoneRouter = PheromoneRouter()
         self.peerTracker = PeerTracker()
         self.meshIntelligence = MeshIntelligence()
@@ -158,6 +160,9 @@ final class LoopbackNode {
         textMessageService.channelCryptoProvider = { channelID in
             channelManager.getChannelCrypto(for: channelID)
         }
+        fileTransferService.channelCryptoProvider = { channelID in
+            channelManager.getChannelCrypto(for: channelID)
+        }
         textMessageService.epochProvider = { channelID in
             channelManager.recordMessageAndGetEpoch(for: channelID)
         }
@@ -176,6 +181,7 @@ final class LoopbackNode {
             peerTracker: node.peerTracker,
             textMessageService: node.textMessageService,
             fileTransferService: node.fileTransferService,
+            meshBeacon: node.meshBeacon,
             pheromoneRouter: node.pheromoneRouter,
             notifyMessage: { _, _, _ in }
         )
@@ -440,5 +446,93 @@ final class LoopbackHarnessTests: XCTestCase {
             nodeC.textMessageService.messagesByChannel[channel.id]?.contains { $0.text == body } ?? false
         }
         XCTAssertTrue(cGotIt, "C never received the locked-channel message")
+    }
+
+    /// A file sent on a LOCKED channel must reach the invited peer. Encrypted
+    /// file traffic (FIL!/FLC!/FNK!) has no plaintext magic, so it rides
+    /// MeshDelivery's encrypted fallback — which for a long time handed such
+    /// payloads only to the text service, silently dropping every locked-
+    /// channel file transfer. This drives send -> encrypt -> mesh -> fallback
+    /// dispatch -> decrypt -> reassemble -> SHA verify end to end.
+    @MainActor
+    func testLockedChannelFileTransferReachesInvitedPeer() async throws {
+        let nodeA = try await LoopbackNode.make(name: "FileA")
+        let nodeB = try await LoopbackNode.make(name: "FileB")
+        InMemoryTransport.connect([nodeA.transport, nodeB.transport])
+
+        let channel = nodeA.channelManager.createChannel(
+            name: "Locked File Loopback",
+            accessMode: .locked,
+            ownerID: nodeA.originID.uuidString
+        )
+        guard let inviteCode = channel.inviteCode else {
+            XCTFail("Locked channel was created without an invite code")
+            return
+        }
+        XCTAssertTrue(
+            nodeB.channelManager.joinWithInviteCode(inviteCode),
+            "B could not join with A's invite code"
+        )
+
+        // Multi-chunk on purpose: metadata (FIL!) and chunks (FLC!) take the
+        // same encrypted fallback path, and completion requires all of them.
+        let fileName = "loopback-\(UUID().uuidString.prefix(8)).bin"
+        let fileData = Data((0..<40_000).map { UInt8(truncatingIfNeeded: $0) })
+        nodeA.fileTransferService.sendFile(
+            fileData,
+            fileName: fileName,
+            mimeType: "application/octet-stream",
+            channelID: channel.id,
+            senderID: nodeA.originID.uuidString,
+            senderName: "FileA"
+        )
+
+        let bCompleted = await waitFor {
+            nodeB.fileTransferService.activeTransfers.values.contains {
+                !$0.isOutbound && $0.fileName == fileName && $0.isComplete
+            }
+        }
+        XCTAssertTrue(
+            bCompleted,
+            "B never completed the locked-channel file transfer — encrypted FIL!/FLC! payloads are not reaching the file service"
+        )
+    }
+
+    /// A presence beacon from one node must land in the other node's
+    /// `knownNodes` — the source of the HomeView mesh-node list and the
+    /// MeshIntelligence topology feed. The broadcaster shipped live while
+    /// nothing dispatched received "BCN!" payloads to handleBeacon, so every
+    /// device announced itself into the void. This pins the dispatch case.
+    @MainActor
+    func testBeaconPopulatesPeerNodeList() async throws {
+        let nodeA = try await LoopbackNode.make(name: "BeaconA")
+        let nodeB = try await LoopbackNode.make(name: "BeaconB")
+        InMemoryTransport.connect([nodeA.transport, nodeB.transport])
+
+        let beacon = MeshBeacon.BeaconInfo(
+            id: nodeA.originID.uuidString,
+            name: "BeaconA",
+            channels: [],
+            hopCount: 0,
+            batteryLevel: 1.0,
+            timestamp: Date(),
+            lastSeen: Date(),
+            neighborIDs: []
+        )
+        guard let payload = nodeA.meshBeacon.encodeBeacon(beacon) else {
+            XCTFail("encodeBeacon returned nil")
+            return
+        }
+        // Broadcast beacons ride control packets with an empty channelID,
+        // exactly as AppState's .meshBeaconBroadcast observer sends them.
+        try nodeA.transport.sendControlData(payload, channelID: "")
+
+        let discovered = await waitFor {
+            nodeB.meshBeacon.knownNodes[nodeA.originID.uuidString] != nil
+        }
+        XCTAssertTrue(
+            discovered,
+            "B never learned of A from its beacon — BCN! payloads are not reaching MeshBeacon.handleBeacon"
+        )
     }
 }

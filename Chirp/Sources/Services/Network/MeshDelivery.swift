@@ -76,6 +76,7 @@ enum MeshDelivery {
         peerTracker peerTrk: PeerTracker,
         textMessageService txtService: TextMessageService,
         fileTransferService fileService: FileTransferService,
+        meshBeacon beaconSvc: MeshBeacon,
         pheromoneRouter pheroRouter: PheromoneRouter,
         notifyMessage: @escaping @MainActor (_ senderName: String, _ text: String, _ channelName: String) -> Void
     ) -> @Sendable (MeshPacket) -> Void {
@@ -170,6 +171,14 @@ enum MeshDelivery {
                     case "FIL!", "FLC!", "FNK!":
                         fileService.handlePacket(payload, channelID: packet.channelID)
 
+                    case "BCN!":
+                        // Presence beacons. The broadcaster, the HomeView node
+                        // list, and the MeshIntelligence topology observers
+                        // were all live while nothing routed received beacons
+                        // to handleBeacon — every device announced itself and
+                        // no device ever heard anyone.
+                        beaconSvc.handleBeacon(payload)
+
                     case "KRO!":
                         if let rotation = ChannelManager.parseKeyRotationPayload(payload) {
                             chanMgr.handleKeyRotation(channelID: rotation.channelID, peerEpoch: rotation.epoch)
@@ -199,6 +208,15 @@ enum MeshDelivery {
                             // doesn't match — before this fallback, locked
                             // channels dropped every message on the floor.
                             deliverToTextService()
+                            // Encrypted file-transfer traffic (FIL!/FLC!/FNK!)
+                            // lands here for the same reason. The file service
+                            // decrypts with its own provider and ignores
+                            // payloads that are not file traffic, exactly as
+                            // the text service ignores file payloads — each
+                            // packet is claimed by at most one of the two.
+                            // Before this call, locked channels dropped every
+                            // file transfer on the floor.
+                            fileService.handlePacket(payload, channelID: packet.channelID)
                         }
                     }
                 }

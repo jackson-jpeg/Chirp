@@ -364,6 +364,7 @@ final class AppState {
             peerTracker: peerTracker,
             textMessageService: textMessageService,
             fileTransferService: fileTransferService,
+            meshBeacon: meshBeacon,
             pheromoneRouter: pheromoneRouter,
             notifyMessage: { senderName, text, channelName in
                 NotificationService.shared.showMessageNotification(
