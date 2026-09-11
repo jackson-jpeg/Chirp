@@ -115,6 +115,24 @@ final class ChannelManager {
         logger.info("Added peer '\(peer.name)' to channel '\(self.channels[index].name)'")
     }
 
+    /// Reconcile a channel's peer roster against the currently connected
+    /// transport peers: connected peers are added or marked connected, known
+    /// members absent from the list are kept but marked disconnected. Keeping
+    /// them is what makes store-and-forward possible — the roster is the only
+    /// memory of who belongs to a channel once they drop off the mesh.
+    func reconcilePeers(channelID: String, connected: [ChirpPeer]) {
+        guard let index = channels.firstIndex(where: { $0.id == channelID }) else { return }
+        let connectedIDs = Set(connected.map(\.id))
+        for i in channels[index].peers.indices {
+            channels[index].peers[i].isConnected = connectedIDs.contains(channels[index].peers[i].id)
+        }
+        for peer in connected where !channels[index].peers.contains(where: { $0.id == peer.id }) {
+            channels[index].peers.append(peer)
+            logger.info("Added peer '\(peer.name)' to channel '\(self.channels[index].name)'")
+        }
+        syncActiveChannel(channelID: channelID, at: index)
+    }
+
     func removePeerFromChannel(channelID: String, peerID: String) {
         guard let index = channels.firstIndex(where: { $0.id == channelID }) else { return }
 

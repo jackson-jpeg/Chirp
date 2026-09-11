@@ -78,7 +78,32 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
 
     @MainActor
     func start() {
-        // Advertise ourselves
+        startDiscovery()
+        logger.info("MultipeerTransport started -- advertising + browsing as '\(self.myPeerID.displayName)'")
+    }
+
+    @MainActor
+    func stop() {
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        stopDiscovery()
+        session.disconnect()
+        peers.removeAll()
+        previousPeerCount = 0
+        reconnectAttempt = 0
+        logger.info("MultipeerTransport stopped")
+    }
+
+    /// Advertiser and browser are single-use: a restarted
+    /// MCNearbyServiceBrowser re-cancels its underlying CFNetServiceBrowser's
+    /// runloop source, and after enough stop/start cycles that source is
+    /// already dead and CFRunLoopSourceInvalidate traps with a mismatched-
+    /// TypeID assert (crash on Sacre Bleu, 2026-09-10 18:20, main thread in
+    /// _BrowserCancel — the reconnect loop had been cycling one instance).
+    /// So every restart gets FRESH instances and the old ones are fully
+    /// detached before they go away.
+    @MainActor
+    private func startDiscovery() {
         advertiser = MCNearbyServiceAdvertiser(
             peer: myPeerID,
             discoveryInfo: nil,
@@ -87,28 +112,22 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
         advertiser?.delegate = self
         advertiser?.startAdvertisingPeer()
 
-        // Browse for others
         browser = MCNearbyServiceBrowser(
             peer: myPeerID,
             serviceType: serviceType
         )
         browser?.delegate = self
         browser?.startBrowsingForPeers()
-
-        logger.info("MultipeerTransport started -- advertising + browsing as '\(self.myPeerID.displayName)'")
     }
 
     @MainActor
-    func stop() {
-        reconnectTask?.cancel()
-        reconnectTask = nil
+    private func stopDiscovery() {
+        advertiser?.delegate = nil
         advertiser?.stopAdvertisingPeer()
+        advertiser = nil
+        browser?.delegate = nil
         browser?.stopBrowsingForPeers()
-        session.disconnect()
-        peers.removeAll()
-        previousPeerCount = 0
-        reconnectAttempt = 0
-        logger.info("MultipeerTransport stopped")
+        browser = nil
     }
 
     // MARK: - Send
@@ -299,11 +318,10 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
 
                 self.logger.info("Reconnecting: restarting advertising + browsing (attempt \(attempt + 1))")
 
-                // Stop and restart discovery
-                self.advertiser?.stopAdvertisingPeer()
-                self.browser?.stopBrowsingForPeers()
-                self.advertiser?.startAdvertisingPeer()
-                self.browser?.startBrowsingForPeers()
+                // Fresh instances, never a restart of the old ones — see
+                // startDiscovery() for the crash this avoids.
+                self.stopDiscovery()
+                self.startDiscovery()
 
                 self.reconnectAttempt += 1
 

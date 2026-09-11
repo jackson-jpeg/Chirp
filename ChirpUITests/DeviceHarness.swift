@@ -69,6 +69,12 @@ enum Harness {
             // script — onboarding UI is not what these tests measure.
             "-com.chirpchirp.onboardingComplete", "YES",
         ]
+        // Simulator role of the phone+sim run: the orchestrator sets this so
+        // the app substitutes a deterministic pulsed sine for the sim's host
+        // microphone (see AudioEngine.sineMicEnabled). Never set for phones.
+        if ProcessInfo.processInfo.environment["CHIRP_SINE_MIC"] == "1" {
+            app.launchArguments += ["-ChirpSineMic", "YES"]
+        }
         app.launch()
         return app
     }
@@ -134,6 +140,144 @@ enum Harness {
         return element(app, AXID.pttButton).exists
     }
 
+    /// Navigate from wherever the app launched to the active channel's chat.
+    ///
+    /// The app opens onto HomeView's Talk tab, which has its own PTT button —
+    /// that surface is where Part A runs, and why `reachChannel` succeeds
+    /// without ever leaving home. Chat, though, lives one level deeper, inside
+    /// ChannelView: bottom-nav "Messages" → the channel card → chat mode.
+    /// Both roles must land in the SAME room. Neither "currently active" nor
+    /// a channel's display name identifies one: active is whatever a previous
+    /// run left behind (the two sims were observed active on different
+    /// channels), and names collide — one sim carried TWO locked channels
+    /// both called "Private Channel", and picking by that name sent role A's
+    /// messages into a room role B had no key for. The only channel with a
+    /// fixed, identical ID on every install is "General" (the migration pins
+    /// it to 00000000-…-0001), so that is the deterministic pick; the active
+    /// card and then any lone card are fallbacks for exotic state.
+    static func enterChannelChat(_ app: XCUIApplication) -> Bool {
+        let messagesTab = app.buttons["Messages"]
+        guard messagesTab.waitForExistence(timeout: 10) else { return false }
+
+        // A plain tap on this tab button has been observed to land without
+        // any effect (hierarchy identical two seconds later), so the switch
+        // is verified — a channel card or the messages-tab-only "New Channel"
+        // FAB must appear — and the tap escalates through different points of
+        // the control until it does. Each attempt is preceded by an alert
+        // sweep: the Part B relaunch restarts the Multipeer session, which
+        // can re-raise the local-network permission alert AFTER the post-
+        // launch sweep ended, and an alert above the app eats every tap
+        // while leaving the hierarchy query results looking normal.
+        var switched = false
+        let fab = app.buttons["New Channel"]
+        for attempt in 0..<4 where !switched {
+            allowSystemAlerts(for: 1)
+            switch attempt {
+            case 0: messagesTab.tap()
+            case 1: messagesTab.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.85)).tap()
+            case 2: app.staticTexts["Messages"].firstMatch.tap()
+            default: messagesTab.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            }
+            switched = element(app, AXID.channelCard).waitForExistence(timeout: 4) || fab.exists
+        }
+        guard switched else {
+            NSLog("[Harness] Messages tab never switched. Hierarchy:\n%@", app.debugDescription)
+            return false
+        }
+
+        let sharedCard = app.descendants(matching: .any).matching(
+            NSPredicate(
+                format: "identifier == %@ AND label BEGINSWITH %@",
+                AXID.channelCard, "General"
+            )
+        ).firstMatch
+        let activeCard = app.descendants(matching: .any).matching(
+            NSPredicate(
+                format: "identifier == %@ AND label CONTAINS %@",
+                AXID.channelCard, "currently active"
+            )
+        ).firstMatch
+        let card: XCUIElement
+        if sharedCard.waitForExistence(timeout: 4) {
+            card = sharedCard
+        } else if activeCard.waitForExistence(timeout: 2) {
+            card = activeCard
+        } else {
+            card = element(app, AXID.channelCard)
+        }
+        guard card.waitForExistence(timeout: 5) else { return false }
+        card.tap()
+
+        // Inside ChannelView, talk mode by default. Either the chat quick
+        // action or the mode picker's Chat segment switches over.
+        let quick = element(app, AXID.quickActionChat)
+        if quick.waitForExistence(timeout: 8) {
+            quick.tap()
+        } else {
+            tapModeSegment(app, "Chat")
+        }
+        return element(app, AXID.chatInputField).waitForExistence(timeout: 10)
+    }
+
+    /// Wait for ONE outgoing message's ACK to land: the delivery indicator at
+    /// "delivered" — or already at "read", which a fast read receipt can
+    /// upgrade it to before this poll ever sees the intermediate state. Both
+    /// prove the ACK round-trip.
+    ///
+    /// Scoped to the message carrying `token`, because history persists
+    /// across runs — an unscoped query returns true instantly off any old
+    /// delivered message, which would let this pass with the mesh unplugged.
+    ///
+    /// The element that carries BOTH the status identifier and the message
+    /// text is the merged row ("You: <text>") — and for delivered/read its
+    /// identifier is DOUBLED: the indicator is two checkmark Images, and
+    /// SwiftUI's merge concatenates their identifiers, producing
+    /// "deliveryStatus_delivered-deliveryStatus_delivered" (AckProbeTests,
+    /// live-observed). Hence BEGINSWITH, never equality: an equality match
+    /// here is structurally impossible and failed rehearsal #7 on both
+    /// roles while the ACKs had actually arrived.
+    static func waitForDeliveryACK(_ app: XCUIApplication, token: String, timeout: TimeInterval) -> Bool {
+        let match = app.descendants(matching: .any).matching(
+            NSPredicate(
+                format: "(identifier BEGINSWITH %@ OR identifier BEGINSWITH %@) AND label CONTAINS %@",
+                "deliveryStatus_delivered", "deliveryStatus_read", token
+            )
+        ).firstMatch
+        return match.waitForExistence(timeout: timeout)
+    }
+
+    /// Type `text` into the chat input and send it. Assumes chat mode is
+    /// already showing (Part B enters it once, at its first slot).
+    static func sendChatMessage(_ app: XCUIApplication, _ text: String) {
+        let field = element(app, AXID.chatInputField)
+        field.tap()
+        field.typeText(text)
+        element(app, AXID.chatSendButton).tap()
+    }
+
+    /// Wait until `el` stops existing. XCUITest has waitForExistence but no
+    /// inverse, so this polls the same way reachChannel does.
+    static func waitGone(_ el: XCUIElement, timeout: TimeInterval) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if !el.exists { return true }
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        return !el.exists
+    }
+
+    /// Tap a segment of the Talk/Chat mode picker by its visible name. The
+    /// segments carry accessibility labels of the form "Talk mode" /
+    /// "Chat mode, selected" rather than identifiers.
+    static func tapModeSegment(_ app: XCUIApplication, _ name: String) {
+        let match = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label BEGINSWITH %@", "\(name) mode")
+        ).firstMatch
+        if match.waitForExistence(timeout: 5) {
+            match.tap()
+        }
+    }
+
     /// Press and hold the real PTT button for `duration`.
     ///
     /// Uses the actual control, not a test-only entry point into PTTEngine:
@@ -158,4 +302,7 @@ enum AXID {
     static let createFirstChannel = "createFirstChannel"
     static let getStartedButton = "getStartedButton"
     static let peerCountPill = "peerCountPill"
+    static let quickActionChat = "quickActionChat"
+    static let chatInputField = "chatInputField"
+    static let chatSendButton = "chatSendButton"
 }

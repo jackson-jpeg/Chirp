@@ -309,37 +309,21 @@ final class AppState {
         }
 
         // Wire text message service sends, with store-and-forward for offline peers
-        textMessageService.onSendPacket = { [weak self] payload, channelID in
-            let channel = self?.channelManager.channel(withID: channelID)
-                ?? self?.channelManager.activeChannel
-            let peers = channel?.peers ?? []
-            let connectedPeers = peers.filter(\.isConnected)
-
-            if !connectedPeers.isEmpty {
-                do {
-                    try transport.sendControlData(payload, channelID: channelID)
-                } catch {
-                    Logger.network.error("Text message send failed: \(error.localizedDescription)")
-                }
+        // Send policy lives in MeshDelivery.makeTextSendHandler so the test
+        // suite runs the production policy — see that function for why the
+        // live send is gated on the transport, never the channel roster.
+        textMessageService.onSendPacket = MeshDelivery.makeTextSendHandler(
+            sendControl: { try transport.sendControlData($0, channelID: $1) },
+            transportPeers: { [weak self] in self?.multipeerTransport.peers ?? [] },
+            channelLookup: { [weak self] channelID in
+                self?.channelManager.channel(withID: channelID)
+                    ?? self?.channelManager.activeChannel
+            },
+            localPeerName: { [weak self] in self?.localPeerName },
+            enqueue: { [weak self] pending in
+                self?.storeAndForwardRelay.store(message: pending)
             }
-
-            // Store-and-forward: queue for any known peers that are currently offline
-            let offlinePeers = peers.filter { !$0.isConnected }
-            if let relay = self?.storeAndForwardRelay,
-               let senderName = self?.localPeerName {
-                for peer in offlinePeers {
-                    let pending = StoreAndForwardRelay.PendingMessage(
-                        id: UUID(),
-                        recipientPeerID: peer.id,
-                        payload: payload,
-                        channelID: channelID,
-                        senderName: senderName,
-                        timestamp: Date()
-                    )
-                    relay.store(message: pending)
-                }
-            }
-        }
+        )
 
         // Wire file transfer service sends
         fileTransferService.onSendPacket = { payload, channelID in
@@ -595,14 +579,12 @@ final class AppState {
             SoundEffects.shared.playPeerLeft()
         }
 
-        // Update active channel peers
+        // Update active channel peers. Known members are kept and marked
+        // disconnected rather than removed: store-and-forward decides who
+        // gets a queued copy from the roster, and remove-then-readd erased
+        // that memory the moment a peer dropped off the mesh.
         if let activeID = channelManager.activeChannel?.id {
-            for existingPeer in channelManager.activeChannel?.peers ?? [] {
-                channelManager.removePeerFromChannel(channelID: activeID, peerID: existingPeer.id)
-            }
-            for peer in allPeers {
-                channelManager.addPeerToChannel(channelID: activeID, peer: peer)
-            }
+            channelManager.reconcilePeers(channelID: activeID, connected: allPeers)
         }
 
         // Update friends online status

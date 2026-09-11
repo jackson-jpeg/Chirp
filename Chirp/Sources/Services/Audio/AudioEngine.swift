@@ -40,6 +40,20 @@ final class AudioEngine: @unchecked Sendable {
         set { capturingFlag.withLock { $0 = newValue } }
     }
     private let processingQueue = DispatchQueue(label: "com.chirpchirp.audio.processing", qos: .userInteractive)
+
+    #if DEBUG
+    /// Test-only: `-ChirpSineMic YES` (argument domain, set by the device
+    /// harness for the simulator role) replaces every captured buffer's
+    /// samples with a deterministic pulsed sine. The tap, its cadence, the
+    /// converter and the encoder all still run for real — only the sample
+    /// values change — so the far end receiving this tone proves the whole
+    /// capture→encode→mesh path without trusting the simulator's host
+    /// microphone, which is the one unreliable link in a phone+sim test.
+    private static let sineMicEnabled = UserDefaults.standard.bool(forKey: "ChirpSineMic")
+    /// Absolute sample position of the generated tone. Owned by
+    /// `processingQueue`, like `captureAccumulator`.
+    private var sineMicPosition: Int64 = 0
+    #endif
     private var playbackTimer: DispatchSourceTimer?
     private let playbackQueue = DispatchQueue(label: "com.chirpchirp.audio.playback", qos: .userInteractive)
     private var lastGoodFrame: Data?
@@ -485,6 +499,32 @@ final class AudioEngine: @unchecked Sendable {
             return buffer
         }
 
+        #if DEBUG
+        /// Test-only: the same timing metadata as `original`, samples replaced
+        /// by a pulsed 440 Hz sine at 0.4 amplitude, 200 ms on / 100 ms off.
+        /// Pulsed rather than steady for two reasons: a gap pattern survives
+        /// any AGC/noise-suppression stage that treats a constant tone as
+        /// noise, and it gives the envelope actual shape. Phase is derived
+        /// from the absolute sample position so the tone is continuous across
+        /// tap callbacks regardless of buffer size.
+        init(pulsedSineReplacing original: CapturedFrames, startingAt position: Int64) {
+            let frequency = 440.0
+            let amplitude: Float = 0.4
+            let rate = original.sampleRate
+            var values = [Float](repeating: 0, count: Int(original.frameCount))
+            for i in values.indices {
+                let n = Double(position + Int64(i))
+                let seconds = n / rate
+                guard seconds.truncatingRemainder(dividingBy: 0.3) < 0.2 else { continue }
+                values[i] = amplitude * Float(sin(2.0 * .pi * frequency * n / rate))
+            }
+            samples = .float32(values)
+            sampleRate = rate
+            frameCount = original.frameCount
+            sampleTime = original.sampleTime
+        }
+        #endif
+
         /// RMS level for the waveform, computed from the copy.
         var rmsLevel: Float {
             let sumOfSquares: Float
@@ -512,6 +552,13 @@ final class AudioEngine: @unchecked Sendable {
     /// setup and the encode. A real-time thread must not allocate, take locks,
     /// or call unbounded client code, and the tap closure did all three.
     private func consume(_ captured: CapturedFrames) {
+        var captured = captured
+        #if DEBUG
+        if Self.sineMicEnabled {
+            captured = CapturedFrames(pulsedSineReplacing: captured, startingAt: sineMicPosition)
+            sineMicPosition += Int64(captured.frameCount)
+        }
+        #endif
         inputLevel = captured.rmsLevel
 
         #if DEBUG

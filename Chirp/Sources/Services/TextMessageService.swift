@@ -163,7 +163,10 @@ final class TextMessageService {
                 payload = try crypto.encrypt(payload, epoch: epoch)
             }
             onSendPacket?(payload, channelID)
-            logger.info("Sent text message \(message.id.uuidString, privacy: .public) on channel \(channelID, privacy: .public)")
+            #if DEBUG
+            AudioTelemetry.shared.countStage("textSend", bytes: payload.count)
+            #endif
+            logger.info("Sent text message \(message.id.uuidString, privacy: .public) on channel \(channelID, privacy: .public) at epoch \(epoch)")
         } catch {
             logger.error("Encryption or encoding failed for message \(message.id.uuidString, privacy: .public) — not sent: \(error.localizedDescription, privacy: .public)")
         }
@@ -426,12 +429,24 @@ final class TextMessageService {
     ///   - data: Raw control payload (may be encrypted).
     ///   - channelID: Channel this packet arrived on (from ``MeshPacket/channelID``).
     func handlePacket(_ data: Data, channelID: String = "") {
+        #if DEBUG
+        AudioTelemetry.shared.countStage("textPacketReceive", bytes: data.count)
+        #endif
         // Decrypt with the channel key (locked channels only).
         let epoch = currentEpochProvider?(channelID) ?? 0
         var decrypted = data
-        if let crypto = channelCryptoProvider?(channelID),
-           let plain = try? crypto.decrypt(data, currentEpoch: epoch) {
-            decrypted = plain
+        if let crypto = channelCryptoProvider?(channelID) {
+            do {
+                decrypted = try crypto.decrypt(data, currentEpoch: epoch)
+            } catch {
+                // Fall through with the raw payload — it may be plaintext from
+                // an unlocked-channel peer — but say so out loud: this failing
+                // silently is indistinguishable from the packet never arriving.
+                logger.error("Text decrypt failed on channel \(channelID, privacy: .public) (\(data.count) bytes, local epoch \(epoch)) — falling back to raw payload")
+                #if DEBUG
+                AudioTelemetry.shared.countStage("textDecryptFail")
+                #endif
+            }
         }
 
         // Check for typing indicators.
@@ -455,6 +470,9 @@ final class TextMessageService {
         }
 
         guard let message = MeshTextMessage.from(payload: decrypted) else {
+            #if DEBUG
+            AudioTelemetry.shared.countStage("textParseFail")
+            #endif
             return // Not a text message — ignore.
         }
 
@@ -485,6 +503,9 @@ final class TextMessageService {
         // Send delivery ACK back to sender.
         sendACK(for: message.id, channelID: channelID)
 
+        #if DEBUG
+        AudioTelemetry.shared.countStage("textStored")
+        #endif
         logger.info("Received text message \(message.id.uuidString, privacy: .public) from \(message.senderName, privacy: .public) on channel \(message.channelID, privacy: .public)")
     }
 
@@ -530,6 +551,9 @@ final class TextMessageService {
                messages[index].deliveryStatus == .sent {
                 messages[index].deliveryStatus = .delivered
                 messagesByChannel[channelID] = messages
+                #if DEBUG
+                AudioTelemetry.shared.countStage("textAckReceive")
+                #endif
                 logger.info("Message \(messageID.uuidString, privacy: .public) delivered")
             }
         }

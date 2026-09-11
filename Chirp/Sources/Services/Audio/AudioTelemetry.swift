@@ -101,6 +101,33 @@ final class AudioTelemetry: Sendable {
         self.role = defaults.string(forKey: "ChirpRole") ?? "unknown"
         self.startedAt = Date().timeIntervalSince1970
         self.fileURL = URL.documentsDirectory.appending(path: "audio-telemetry.json")
+
+        // Seed from whatever a previous launch left on disk. The device
+        // harness runs Part A and Part B as separate app launches inside one
+        // `xcodebuild test` invocation and collects the file only after both
+        // — without this, Part B's first flush would overwrite Part A's audio
+        // envelopes before the orchestrator ever saw them. Samples carry
+        // absolute unix timestamps, so merged launches remain distinguishable
+        // and stale data from an older run falls outside every analysis
+        // window rather than polluting it.
+        // Only within the same orchestrated run, though: a file whose launch
+        // is older than any plausible schedule is a leftover from a previous
+        // session, and carrying it forward would hand --collect-only a first
+        // marker from the wrong day.
+        if isEnabled, let data = try? Data(contentsOf: fileURL),
+           let previous = try? JSONDecoder().decode(Report.self, from: data),
+           startedAt - previous.startedAt < 600 {
+            state.withLock { state in
+                state.capture = previous.capture
+                state.playback = previous.playback
+                state.markers = previous.markers
+                state.truncated = previous.truncated
+                state.stageCounts = previous.stageCounts
+                state.stageBytes = previous.stageBytes
+                state.stageGauges = previous.stageGauges
+                state.stageGaugeMax = previous.stageGaugeMax
+            }
+        }
     }
 
     // MARK: - Recording

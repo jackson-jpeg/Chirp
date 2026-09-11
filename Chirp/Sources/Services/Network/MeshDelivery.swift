@@ -20,6 +20,55 @@ enum MeshDelivery {
     /// directly: UNUserNotificationCenter cannot be touched from a bare test
     /// process, and the notification banner is not part of what delivery is
     /// responsible for proving.
+    /// Builds the text service's send handler — the policy for every outgoing
+    /// text-service payload (message, ACK, reaction, receipt):
+    ///
+    ///   * live broadcast whenever the *transport* has any connected peer —
+    ///     never gated on the per-channel roster, because the roster is only
+    ///     populated for the active channel and receivers filter by channel
+    ///     themselves. Gating on the roster silently dropped every send made
+    ///     from a channel that wasn't the active one, delivery ACKs included.
+    ///   * a store-and-forward copy for each known channel member currently
+    ///     offline, so they receive it on reconnection.
+    ///
+    /// Extracted from AppState for the same reason as
+    /// `makeLocalDeliveryHandler`: so the test suite exercises the production
+    /// send policy instead of a reimplementation.
+    static func makeTextSendHandler(
+        sendControl: @escaping (Data, String) throws -> Void,
+        transportPeers: @escaping () -> [ChirpPeer],
+        channelLookup: @escaping (String) -> ChirpChannel?,
+        localPeerName: @escaping () -> String?,
+        enqueue: @escaping (StoreAndForwardRelay.PendingMessage) -> Void
+    ) -> (Data, String) -> Void {
+        return { payload, channelID in
+            if !transportPeers().isEmpty {
+                do {
+                    try sendControl(payload, channelID)
+                } catch {
+                    Logger.network.error("Text message send failed: \(error.localizedDescription)")
+                }
+            } else {
+                Logger.network.warning("Text send deferred — no connected transport peers (channel \(channelID))")
+            }
+
+            // Store-and-forward: queue for known channel members currently offline.
+            let peers = channelLookup(channelID)?.peers ?? []
+            let offlinePeers = peers.filter { !$0.isConnected }
+            guard !offlinePeers.isEmpty, let senderName = localPeerName() else { return }
+            for peer in offlinePeers {
+                enqueue(StoreAndForwardRelay.PendingMessage(
+                    id: UUID(),
+                    recipientPeerID: peer.id,
+                    payload: payload,
+                    channelID: channelID,
+                    senderName: senderName,
+                    timestamp: Date()
+                ))
+            }
+        }
+    }
+
     static func makeLocalDeliveryHandler(
         audioEngine audioEng: AudioEngine,
         floorSession floorCtrl: FloorSession,
