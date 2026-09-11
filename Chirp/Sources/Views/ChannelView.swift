@@ -11,7 +11,15 @@ struct ChannelView: View {
     @State private var toast: ToastItem?
     @State private var transmitStartTime: Date?
     @State private var meshPhase: CGFloat = 0
+#if DEBUG
+    // Screenshot capture only (see ScreenshotSeed.swift): land directly in
+    // chat mode, because XCUITest hierarchy queries stall against this
+    // view's continuously animating background.
+    @State private var channelMode: ChannelMode =
+        ProcessInfo.processInfo.arguments.contains("--screenshot-chat") ? .chat : .talk
+#else
     @State private var channelMode: ChannelMode = .talk
+#endif
     @State private var hasUsedPTT: Bool = false
     @State private var showHoldHint: Bool = true
     @State private var showCameraPicker: Bool = false

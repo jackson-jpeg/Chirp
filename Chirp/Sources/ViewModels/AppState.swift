@@ -620,4 +620,13 @@ final class AppState {
             Logger.network.info("Peer disconnected (total: \(allPeers.count))")
         }
     }
+
+    #if DEBUG
+    /// Screenshot seeding only (see ScreenshotSeed.swift). The peer-count
+    /// badge reads this private(set) property, which is otherwise fed by
+    /// transport events that can't fire in a simulator without radios.
+    func debugOverrideConnectedPeerCount(_ count: Int) {
+        connectedPeerCount = count
+    }
+    #endif
 }

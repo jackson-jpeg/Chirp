@@ -18,6 +18,9 @@ struct ChirpApp: App {
             .preferredColorScheme(.dark)
             .task {
                 await appState.start()
+                #if DEBUG
+                ScreenshotSeed.applyIfRequested(to: appState)
+                #endif
             }
             .onChange(of: scenePhase) { _, newPhase in
                 switch newPhase {

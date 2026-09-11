@@ -27,3 +27,4 @@ report.xml
 # Review contact phone number — repo is public, keep PII out of git.
 # The file still syncs to the Mac for deliver runs.
 fastlane/metadata/review_information/phone_number.txt
+__pycache__/
