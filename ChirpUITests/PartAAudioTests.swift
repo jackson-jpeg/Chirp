@@ -50,6 +50,18 @@ final class PartAAudioTests: XCTestCase {
         // Sweep system permission alerts before the schedule starts — local
         // network in particular blocks peer discovery until answered. Bounded
         // so it can never eat into the transmit slots.
+        Harness.allowSystemAlerts(for: 2)
+
+        #if !targetEnvironment(simulator)
+        // A real phone cannot be pre-granted microphone access the way the
+        // sims are, and iOS shows the dialog at the FIRST press. That press
+        // must not be the scheduled one — the whole transmit would happen
+        // behind the dialog with the mic dark (live-observed: 0 capture
+        // samples across the entire run). Press briefly now; the sweep below
+        // answers the dialog before anything is asserted.
+        Harness.transmit(app, for: 0.5)
+        #endif
+
         Harness.allowSystemAlerts(
             for: max(2, Slot.setupDeadline - 5 - Harness.elapsed())
         )

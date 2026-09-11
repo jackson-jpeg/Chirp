@@ -91,10 +91,29 @@ enum Harness {
         let deadline = Date().addingTimeInterval(duration)
         while Date() < deadline {
             var tapped = false
-            for label in affirmative where springboard.buttons[label].exists {
-                springboard.buttons[label].tap()
-                tapped = true
-                break
+            // Scoped to alerts: on a real phone springboard also exposes
+            // non-alert buttons (a stashed picture-in-picture player's
+            // controls, live-observed), which an unscoped label match could
+            // hit. And the alert can vanish between resolution and tap —
+            // XCTest's own interruption handling races this sweep for the
+            // same alert; that stale tap aborted an entire phone run. A lost
+            // race must cost one pass of this loop, never the test.
+            let alert = springboard.alerts.firstMatch
+            if alert.exists {
+                for label in affirmative {
+                    let button = alert.buttons[label].firstMatch
+                    guard button.exists, button.isHittable else { continue }
+                    let options = XCTExpectedFailure.Options()
+                    options.isStrict = false
+                    XCTExpectFailure(
+                        "alert dismissed mid-tap by the system's own handler",
+                        options: options
+                    ) {
+                        button.tap()
+                    }
+                    tapped = true
+                    break
+                }
             }
             if !tapped {
                 Thread.sleep(forTimeInterval: 0.5)
