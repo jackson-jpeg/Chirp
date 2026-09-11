@@ -6,14 +6,16 @@ import UIKit
 ///
 /// ChirpChirp has no servers, so a report does two things: it is recorded
 /// locally (so the evidence survives even if the reporter is offline), and
-/// a prefilled email to the abuse address is opened so the report reaches
-/// a human. The abuse address is published on the support site and in
+/// a prefilled email to the report address is opened so the report reaches
+/// a human. The report address is published on the support site and in
 /// Settings.
 @MainActor
 enum ReportService {
 
-    /// Published abuse contact. Also shown in Settings and on the website.
-    static let abuseEmail = "abuse@chirpchirps.com"
+    /// Published contact for abuse reports. Also shown in Settings and on
+    /// the website. This is the support mailbox — it is the one address on
+    /// the domain that verifiably receives mail.
+    static let reportEmail = "support@chirpchirps.com"
 
     struct Report: Codable {
         let reportedPeerID: String
@@ -96,7 +98,7 @@ enum ReportService {
 
         var components = URLComponents()
         components.scheme = "mailto"
-        components.path = abuseEmail
+        components.path = reportEmail
         components.queryItems = [
             URLQueryItem(name: "subject", value: "ChirpChirp abuse report"),
             URLQueryItem(name: "body", value: body)

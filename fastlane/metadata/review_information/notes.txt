@@ -2,7 +2,7 @@ ChirpChirps is fully peer-to-peer: it communicates over Bluetooth and local peer
 
 TESTING: You need TWO devices in physical proximity, both with the app installed. Launch on both, complete onboarding, and both devices appear in each other's mesh within seconds. Hold the large button to send push-to-talk voice; the Messages tab exchanges text/voice messages; the Map tab shows nearby peers' positions (location is exchanged directly between devices, never uploaded). A single device shows "No mesh" — that is expected, not a malfunction. The iOS Simulator does not support Bluetooth, so hardware devices are required.
 
-MODERATION (Guideline 1.2): users must accept the community rules and Terms of Use during onboarding before the app can be used; any peer can be blocked instantly (blocked peers' audio and messages are dropped on-device); any message or user can be reported from the app — reports go to abuse@chirpchirps.com and are reviewed by a human.
+MODERATION (Guideline 1.2): users must accept the community rules and Terms of Use during onboarding before the app can be used; any peer can be blocked instantly (blocked peers' audio and messages are dropped on-device); any message or user can be reported from the app — reports go to support@chirpchirps.com and are reviewed by a human.
 
 ENCRYPTION: channel traffic is encrypted with AES-256-GCM via Apple CryptoKit between channel members. ITSAppUsesNonExemptEncryption is set accordingly in the binary's Info.plist.
 

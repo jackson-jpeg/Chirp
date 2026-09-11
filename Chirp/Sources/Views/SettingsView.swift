@@ -561,7 +561,7 @@ struct SettingsView: View {
                 // Report abuse — published moderation contact
                 glassRow {
                     Button {
-                        if let url = URL(string: "mailto:\(ReportService.abuseEmail)?subject=ChirpChirp%20abuse%20report") {
+                        if let url = URL(string: "mailto:\(ReportService.reportEmail)?subject=ChirpChirp%20abuse%20report") {
                             UIApplication.shared.open(url)
                         }
                     } label: {
@@ -572,7 +572,7 @@ struct SettingsView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(String(localized: "settings.moderation.reportAbuse"))
                                     .foregroundStyle(Constants.Colors.textPrimary)
-                                Text(ReportService.abuseEmail)
+                                Text(ReportService.reportEmail)
                                     .font(.system(.caption2, design: .monospaced))
                                     .foregroundStyle(Constants.Colors.textTertiary)
                             }
