@@ -18,6 +18,13 @@ enum ScreenshotSeed {
         let args = ProcessInfo.processInfo.arguments
         guard args.contains("--screenshot-seed") else { return }
 
+        // Put the capture device on the map the same way a user does — the
+        // real check-in, through the real gate — so the Map shot shows the
+        // live sharing indicator rather than the checked-out empty state.
+        // DEBUG-only and launch-argument gated, like everything else here, so
+        // it cannot change what a shipped binary does.
+        appState.locationSharing.beginCheckIn()
+
         let channel = seedChannel(appState)
         seedPeers(appState, channelID: channel.id)
         seedMessages(appState, channelID: channel.id)

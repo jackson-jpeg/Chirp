@@ -62,7 +62,7 @@ SHOTS = [
     ("02-mesh", "MESH", "Phones nearby form the network."),
     ("03-messages", "TEXT", "Text when you can't talk."),
     ("04-voice", "VOICE", "Leave a message for when they're back."),
-    ("05-map", "MAP", "See who's around."),
+    ("05-map", "MAP", "Check in when you want to be found."),
     ("06-privacy", "SECURE", "Encrypted between channel members. Nothing leaves your phone."),
 ]
 
