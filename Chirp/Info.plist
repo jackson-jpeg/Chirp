@@ -33,16 +33,10 @@
 	<string>ChirpChirps uses your camera to capture and share media with nearby devices.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>ChirpChirps uses your local network to connect directly to nearby devices without internet.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>ChirpChirps uses background location for emergency SOS broadcasting in critical situations.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>ChirpChirps uses your location to share your position with nearby peers.</string>
+	<string>ChirpChirps shares your position on the map only for a check-in you start by hand. Each check-in lasts 15 minutes, is sent directly to nearby devices, and never resumes on its own.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>ChirpChirps uses your microphone for real-time voice communication with nearby devices.</string>
-	<key>NSMotionUsageDescription</key>
-	<string>ChirpChirps uses motion sensors to improve positioning when GPS is unavailable.</string>
-	<key>NSNearbyInteractionUsageDescription</key>
-	<string>ChirpChirps uses Ultra-Wideband to precisely locate nearby mesh peers for indoor positioning.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>ChirpChirps saves received images to your photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
@@ -61,9 +55,8 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 	</array>
+	<key>UIRequiresFullScreen</key>
+	<true/>
 </dict>
 </plist>

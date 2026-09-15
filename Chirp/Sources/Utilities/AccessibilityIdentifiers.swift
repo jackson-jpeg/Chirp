@@ -43,6 +43,15 @@ enum AccessibilityID {
     static let onboardingView = "onboardingView"
     static let getStartedButton = "getStartedButton"
 
+    // MARK: - Location check-in
+    static let mapCheckInButton = "mapCheckInButton"
+    static let mapStopSharingButton = "mapStopSharingButton"
+    static let mapSharingIndicator = "mapSharingIndicator"
+    static let locationContinue = "locationContinue"
+    static let locationNotNow = "locationNotNow"
+    static let locationCheckIn = "locationCheckIn"
+    static let locationStopSharing = "locationStopSharing"
+
     // MARK: - File Transfer
     static let documentPickerButton = "documentPickerButton"
     static let fileTransferBubble = "fileTransferBubble"

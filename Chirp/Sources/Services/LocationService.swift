@@ -11,31 +11,70 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     private(set) var currentHeading: Double?
     private(set) var authorizationStatus: CLAuthorizationStatus = .notDetermined
 
-    /// Fires when the user denies or restricts location access.
+    /// Fires when the user denies or restricts location access — but only in
+    /// response to a request *this* session made. A device that was denied
+    /// long ago must not be greeted with a permission alert on launch.
     var onPermissionDenied: (() -> Void)?
+
+    /// Fires on every authorization change, including the first one the
+    /// delegate reports. ``LocationSharing`` uses it to end a live check-in
+    /// the moment permission goes away.
+    var onAuthorizationChanged: ((CLAuthorizationStatus) -> Void)?
+
+    /// True once ``requestPermission()`` has been called in this session.
+    private(set) var hasRequestedPermission = false
 
     override init() {
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBest
+        // Reading the current status never prompts; it just means the first
+        // render is honest about where we stand.
+        authorizationStatus = manager.authorizationStatus
     }
 
-    func requestPermission() { manager.requestWhenInUseAuthorization() }
+    /// Ask iOS for permission. Called only from the in-app check-in sheet,
+    /// after the user has read what location sharing does and tapped
+    /// Continue — never on launch, and never as a side effect of opening a
+    /// screen.
+    func requestPermission() {
+        hasRequestedPermission = true
+        manager.requestWhenInUseAuthorization()
+    }
+
+    /// Start receiving fixes. Called only by ``LocationSharing/beginCheckIn()``.
     func startUpdating() {
         manager.startUpdatingLocation()
         startHeadingUpdates()
     }
-    func stopUpdating() { manager.stopUpdatingLocation() }
+
+    /// Stop receiving fixes and drop the last one, so a coordinate cannot
+    /// outlive the check-in that justified holding it.
+    func stopUpdating() {
+        manager.stopUpdatingLocation()
+        manager.stopUpdatingHeading()
+        currentLocation = nil
+        currentHeading = nil
+    }
+
     func startHeadingUpdates() { manager.startUpdatingHeading() }
 
     // MARK: - Encoding / Decoding
 
     /// Encode location as compact string: "LOC:lat,lon,accuracy"
     static func encodeLocation(_ location: CLLocation) -> String {
-        String(format: "LOC:%.6f,%.6f,%.1f",
-               location.coordinate.latitude,
-               location.coordinate.longitude,
-               location.horizontalAccuracy)
+        encodeLocation(
+            latitude: location.coordinate.latitude,
+            longitude: location.coordinate.longitude,
+            accuracy: location.horizontalAccuracy
+        )
+    }
+
+    /// Same wire format, from a coordinate that has already cleared
+    /// ``LocationBroadcastGate``. Callers that hold a gated coordinate use
+    /// this rather than reaching back for the raw `CLLocation`.
+    static func encodeLocation(latitude: Double, longitude: Double, accuracy: Double) -> String {
+        String(format: "LOC:%.6f,%.6f,%.1f", latitude, longitude, accuracy)
     }
 
     /// Decode a "LOC:lat,lon,accuracy" string into a coordinate.
@@ -106,12 +145,23 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         authorizationStatus = status
         logger.info("Authorization changed: \(String(describing: status.rawValue))")
 
+        onAuthorizationChanged?(status)
+
         switch status {
         case .authorizedWhenInUse, .authorizedAlways:
-            manager.startUpdatingLocation()
+            // Granting permission does NOT start location updates. Nothing
+            // reaches the mesh until the user taps Check In; that tap is the
+            // only caller of startUpdating().
+            break
         case .denied, .restricted:
             logger.warning("Location access denied or restricted")
-            onPermissionDenied?()
+            stopUpdating()
+            // Only surface the alert if the user just answered our prompt.
+            // Otherwise this fires on every launch of a device that declined
+            // once, which is the dead end the app must not have.
+            if hasRequestedPermission {
+                onPermissionDenied?()
+            }
         case .notDetermined:
             break
         @unknown default:

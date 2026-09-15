@@ -95,10 +95,22 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         NSSpeechRecognitionUsageDescription: ChirpChirps uses on-device speech recognition
           to show live transcripts of incoming voice transmissions.
-        NSLocationWhenInUseUsageDescription: ChirpChirps uses your location to share
-          your position on the map with nearby peers.
+        # Location is foreground-only and per-check-in. There is deliberately
+        # NO NSLocationAlwaysAndWhenInUseUsageDescription: the app has no
+        # background location use, and a purpose string for a capability the
+        # binary does not exercise is a 5.1.2 finding waiting to happen.
+        NSLocationWhenInUseUsageDescription: ChirpChirps shares your position on the map only for a check-in you start by hand. Each check-in lasts 15 minutes, is sent directly to nearby devices, and never resumes on its own.
         NSLocalNetworkUsageDescription: ChirpChirps uses your local network to connect
           directly to nearby devices without internet.
+        NSBluetoothAlwaysUsageDescription: ChirpChirps uses Bluetooth to discover
+          nearby devices for peer-to-peer communication.
+        NSPhotoLibraryUsageDescription: ChirpChirps accesses your photo library to
+          share images with nearby devices.
+        # Push-to-talk keeps receiving and playing audio while backgrounded.
+        # Listed here because this file generates the Info.plist; dropping it
+        # would silently kill background receive.
+        UIBackgroundModes:
+        - audio
         NSBonjourServices:
         - _chirp-ptt._udp
         - _chirp-ptt._tcp

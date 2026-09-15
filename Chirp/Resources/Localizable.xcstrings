@@ -2381,6 +2381,459 @@
           }
         }
       }
+    },
+    "location.sheet.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Location"
+          }
+        }
+      }
+    },
+    "location.headline.offer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Put yourself on the map?"
+          }
+        }
+      }
+    },
+    "location.headline.declined": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Location is off"
+          }
+        }
+      }
+    },
+    "location.headline.sharing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You're on the map"
+          }
+        }
+      }
+    },
+    "location.point.manual.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You check in each time"
+          }
+        }
+      }
+    },
+    "location.point.manual.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your position is shared only after you tap Check In, and only for that session. There is no automatic check-in and no setting that shares continuously."
+          }
+        }
+      }
+    },
+    "location.point.expiry.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It stops after 15 minutes"
+          }
+        }
+      }
+    },
+    "location.point.expiry.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sharing ends on its own when the timer runs out, when you tap Stop, or when you leave the app. It never resumes by itself — not even after you reopen ChirpChirps."
+          }
+        }
+      }
+    },
+    "location.point.peers.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only nearby peers see it"
+          }
+        }
+      }
+    },
+    "location.point.peers.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your position travels directly to devices on the mesh over Bluetooth and Wi-Fi. It is never uploaded — ChirpChirps has no servers."
+          }
+        }
+      }
+    },
+    "location.point.optional.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It's entirely optional"
+          }
+        }
+      }
+    },
+    "location.point.optional.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Push-to-talk, channels, messages and the map all work without it. You can decline now and change your mind later, or never."
+          }
+        }
+      }
+    },
+    "location.declined.works.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Everything still works"
+          }
+        }
+      }
+    },
+    "location.declined.works.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Push-to-talk, channels, voice notes and text messages are unaffected."
+          }
+        }
+      }
+    },
+    "location.declined.map.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The map still works"
+          }
+        }
+      }
+    },
+    "location.declined.map.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can still see peers who have checked in. You just will not appear on theirs."
+          }
+        }
+      }
+    },
+    "location.declined.change.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can change this any time"
+          }
+        }
+      }
+    },
+    "location.declined.change.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn location on for ChirpChirps in iOS Settings, then come back and check in."
+          }
+        }
+      }
+    },
+    "location.sharing.live": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SHARING LOCATION"
+          }
+        }
+      }
+    },
+    "location.sharing.autostop": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sharing stops automatically when the timer reaches zero."
+          }
+        }
+      }
+    },
+    "location.sharing.remainingA11y %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ remaining"
+          }
+        }
+      }
+    },
+    "location.action.continue": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue"
+          }
+        }
+      }
+    },
+    "location.action.notNow": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not Now"
+          }
+        }
+      }
+    },
+    "location.action.keepOff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep It Off"
+          }
+        }
+      }
+    },
+    "location.action.checkIn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check In for 15 Minutes"
+          }
+        }
+      }
+    },
+    "location.action.openSettings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Settings"
+          }
+        }
+      }
+    },
+    "location.action.stop": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop Sharing Now"
+          }
+        }
+      }
+    },
+    "location.footnote": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ChirpChirps has no servers and no accounts. Nothing you share leaves the mesh around you."
+          }
+        }
+      }
+    },
+    "map.notShared.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You're not on the map"
+          }
+        }
+      }
+    },
+    "map.notShared.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nearby peers cannot see your position."
+          }
+        }
+      }
+    },
+    "map.sharing.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sharing your location"
+          }
+        }
+      }
+    },
+    "map.sharing.subtitle %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ left · stops automatically"
+          }
+        }
+      }
+    },
+    "map.action.checkIn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check In"
+          }
+        }
+      }
+    },
+    "map.action.stop": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop"
+          }
+        }
+      }
+    },
+    "map.toast.stopped": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Location sharing stopped"
+          }
+        }
+      }
+    },
+    "map.peerActions.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blocking drops this peer entirely — voice, messages and map position."
+          }
+        }
+      }
+    },
+    "map.banner.locationOff %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Location is off · %lld peer has checked in"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Location is off · %lld peers have checked in"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "map.banner.noneSharing %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld peer nearby, none sharing a position"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld peers nearby, none sharing a position"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "map.banner.partial %lld %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld on the map · %2$lld nearby without a position"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -21,6 +21,8 @@ final class AppState {
     let meshIntelligence: MeshIntelligence
     let textMessageService: TextMessageService
     let locationService: LocationService
+    /// Owns the manual check-in state and gates every location emission.
+    let locationSharing: LocationSharing
     let storeAndForwardRelay: StoreAndForwardRelay
     let meshBeacon: MeshBeacon
     let liveTranscription: LiveTranscription
@@ -66,7 +68,7 @@ final class AppState {
         var title: String {
             switch self {
             case .microphone: return "Microphone Access Required"
-            case .location: return "Location Access Required"
+            case .location: return "Location Is Off"
             case .camera: return "Camera Access Required"
             }
         }
@@ -76,7 +78,11 @@ final class AppState {
             case .microphone:
                 return "Microphone access is required for push-to-talk. Open Settings to enable."
             case .location:
-                return "Location access is required to share your position on the map. Open Settings to enable."
+                return """
+                ChirpChirps works fine without it — talk, channels and messages are unaffected, \
+                and the map still shows peers who have checked in. Turn location on in Settings \
+                only if you want to put yourself on the map.
+                """
             case .camera:
                 return "Camera access is required for photo sharing. Open Settings to enable."
             }
@@ -210,7 +216,9 @@ final class AppState {
         let fileTransferService = FileTransferService()
         self.fileTransferService = fileTransferService
 
-        self.locationService = LocationService()
+        let locationService = LocationService()
+        self.locationService = locationService
+        self.locationSharing = LocationSharing(locationService: locationService)
         self.storeAndForwardRelay = StoreAndForwardRelay()
         self.meshBeacon = MeshBeacon()
         self.liveTranscription = LiveTranscription()
@@ -268,6 +276,18 @@ final class AppState {
         Task { await router.setBlockedOrigins(initialBlockedIDs) }
         textMessageService.blockedPeerIDsProvider = { [weak blockList] in
             blockList?.blockedIDs ?? []
+        }
+        // ...and at the beacon, so a blocked peer's position never becomes a
+        // map pin even if their packet somehow reaches local delivery.
+        self.meshBeacon.blockedIDsProvider = { [weak blockList] in
+            blockList?.blockedIDs ?? []
+        }
+
+        // The single gate: the beacon asks the check-in controller for a
+        // coordinate and has no other way to obtain one.
+        let sharing = self.locationSharing
+        self.meshBeacon.locationProvider = { [weak sharing] in
+            sharing?.coordinateForBroadcast()
         }
 
         // Wire encryption provider for text messages on locked channels
@@ -448,14 +468,17 @@ final class AppState {
             channels: channelIDs
         )
 
-        // Request permissions only after onboarding (onboarding handles mic separately)
+        // Request permissions only after onboarding (onboarding handles mic separately).
+        //
+        // Location is deliberately NOT requested here. Launch is not consent:
+        // the system prompt appears only after the user opens the check-in
+        // sheet, reads what sharing means, and taps Continue. Nothing starts
+        // the location manager until they then tap Check In.
         if isOnboardingComplete {
             NotificationService.shared.requestPermission()
-            locationService.onPermissionDenied = { [weak self] in
-                self?.handleLocationPermissionDenied()
-            }
-            locationService.requestPermission()
-            locationService.startUpdating()
+        }
+        locationService.onPermissionDenied = { [weak self] in
+            self?.handleLocationPermissionDenied()
         }
 
         // Subscribe to mesh topology updates from beacons to feed MeshIntelligence

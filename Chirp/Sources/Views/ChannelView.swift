@@ -23,6 +23,7 @@ struct ChannelView: View {
     @State private var hasUsedPTT: Bool = false
     @State private var showHoldHint: Bool = true
     @State private var showCameraPicker: Bool = false
+    @State private var showLocationCheckIn: Bool = false
 
     enum ChannelMode: CaseIterable {
         case talk
@@ -105,6 +106,9 @@ struct ChannelView: View {
             ImagePickerView(source: .camera) { image in
                 sendCameraImage(image)
             }
+        }
+        .sheet(isPresented: $showLocationCheckIn) {
+            LocationCheckInSheet()
         }
         .chirpToast($toast)
         .onAppear {
@@ -289,19 +293,7 @@ struct ChannelView: View {
                 )
             },
             onShareLocation: {
-                guard let location = appState.locationService.currentLocation else {
-                    toast = ToastItem(message: String(localized: "channel.toast.locationUnavailable"), type: .warning)
-                    return
-                }
-                let locText = LocationService.encodeLocation(location)
-                appState.textMessageService.send(
-                    text: locText,
-                    channelID: channel.id,
-                    senderID: appState.localPeerID,
-                    senderName: appState.callsign,
-                    attachmentType: .location
-                )
-                toast = ToastItem(message: String(localized: "channel.toast.locationShared"), type: .success)
+                shareLocation(in: channel)
             },
             onSendImage: { payload in
                 appState.textMessageService.send(
@@ -1087,23 +1079,38 @@ struct ChannelView: View {
                 color: Constants.Colors.blue500,
                 size: 48
             ) {
-                guard let location = appState.locationService.currentLocation else {
-                    toast = ToastItem(message: String(localized: "channel.toast.locationUnavailable"), type: .warning)
-                    return
-                }
-                let locText = LocationService.encodeLocation(location)
-                appState.textMessageService.send(
-                    text: locText,
-                    channelID: channel.id,
-                    senderID: appState.localPeerID,
-                    senderName: appState.callsign,
-                    attachmentType: .location
-                )
-                toast = ToastItem(message: String(localized: "channel.toast.locationShared"), type: .success)
+                shareLocation(in: channel)
             }
             .accessibilityIdentifier(AccessibilityID.quickActionLocation)
         }
         .padding(.horizontal, Constants.Layout.horizontalPadding)
+    }
+
+    /// Attach the current position to a message.
+    ///
+    /// Goes through exactly the same check-in gate as the map beacon — a
+    /// location attachment is a location packet. If the user is not checked
+    /// in, this opens the check-in sheet instead of sending anything, so the
+    /// action stays reachable without ever becoming a way around the gate.
+    private func shareLocation(in channel: ChirpChannel) {
+        guard let coordinate = appState.locationSharing.coordinateForBroadcast() else {
+            showLocationCheckIn = true
+            return
+        }
+
+        let locText = LocationService.encodeLocation(
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude,
+            accuracy: appState.locationService.currentLocation?.horizontalAccuracy ?? -1
+        )
+        appState.textMessageService.send(
+            text: locText,
+            channelID: channel.id,
+            senderID: appState.localPeerID,
+            senderName: appState.callsign,
+            attachmentType: .location
+        )
+        toast = ToastItem(message: String(localized: "channel.toast.locationShared"), type: .success)
     }
 
     private func quickActionButton(
@@ -1160,7 +1167,9 @@ struct ChannelView: View {
 
 // MARK: - StatusPulsingDot Modifier
 
-private struct StatusPulsingDot: ViewModifier {
+// Internal, not private: the location sharing indicator on the Map tab and
+// in the check-in sheet use the same live-status pulse.
+struct StatusPulsingDot: ViewModifier {
     @State private var isPulsing = false
 
     func body(content: Content) -> some View {

@@ -1017,6 +1017,8 @@ struct HomeView: View {
     @State private var showChannelCreation = false
     @State private var showDiagnostics = false
     @State private var showOfflineMapDownload = false
+    @State private var showLocationCheckIn = false
+    @State private var peerActionTarget: PeerPin?
     @State private var toast: ToastItem?
     @State private var connectedPeerCount = 0
     @State private var isRefreshing = false
@@ -1106,6 +1108,42 @@ struct HomeView: View {
             .sheet(isPresented: $showDiagnostics) {
                 DiagnosticsView()
             }
+            .sheet(isPresented: $showLocationCheckIn) {
+                LocationCheckInSheet()
+            }
+            // Tapping a pin reaches the same block and report actions as a
+            // message bubble or a peer row — the map is not a place where a
+            // peer can act on you without you being able to act back.
+            .confirmationDialog(
+                peerActionTarget?.name ?? "",
+                isPresented: Binding(
+                    get: { peerActionTarget != nil },
+                    set: { if !$0 { peerActionTarget = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                if let pin = peerActionTarget {
+                    Button(String(localized: "moderation.reportUser")) {
+                        ReportService.fileReport(
+                            peerID: pin.id,
+                            peerName: pin.name,
+                            reporterPeerID: appState.localPeerID
+                        )
+                        toast = ToastItem(
+                            message: String(localized: "moderation.toast.reported"), type: .info)
+                    }
+                    Button(String(localized: "moderation.blockUser"), role: .destructive) {
+                        appState.blockList.block(id: pin.id, name: pin.name)
+                        toast = ToastItem(
+                            message: String(localized: "moderation.toast.blocked \(pin.name)"),
+                            type: .info
+                        )
+                    }
+                    Button(String(localized: "common.cancel"), role: .cancel) {}
+                }
+            } message: {
+                Text(String(localized: "map.peerActions.message"))
+            }
             .chirpToast($toast)
             .onChange(of: appState.permissionDeniedAlert) { _, newAlert in
                 if let alert = newAlert {
@@ -1157,9 +1195,21 @@ struct HomeView: View {
         case .map:
             GeoMapView(
                 userLocation: appState.locationService.currentLocation?.coordinate,
-                peers: mapPeerPins
+                peers: mapPeerPins,
+                // The blue dot is itself a location request: MapLibre asks
+                // CoreLocation for authorization the moment it is enabled. It
+                // stays off until the user has already granted permission, so
+                // opening the Map tab never triggers a system prompt.
+                showsUserLocation: appState.locationSharing.isAuthorized,
+                onSelectPeer: { pin in peerActionTarget = pin }
             )
             .ignoresSafeArea(edges: .bottom)
+            .overlay(alignment: .top) {
+                mapStatusBanner
+            }
+            .overlay(alignment: .bottom) {
+                checkInBar
+            }
             .overlay(alignment: .bottomTrailing) {
                 Button {
                     showOfflineMapDownload = true
@@ -1172,7 +1222,7 @@ struct HomeView: View {
                 }
                 .accessibilityLabel(String(localized: "map.downloadOffline"))
                 .padding(.trailing, 16)
-                .padding(.bottom, 24)
+                .padding(.bottom, 108)
             }
             .sheet(isPresented: $showOfflineMapDownload) {
                 OfflineMapDownloadSheet()
@@ -1194,7 +1244,12 @@ struct HomeView: View {
             peers.map { ($0.id, $0.transportType) },
             uniquingKeysWith: { _, last in last }
         )
+        let blocked = appState.blockList.blockedIDs
         return beaconNodes.compactMap { beacon in
+            // A blocked peer never appears on the map. MeshBeacon already
+            // discards their beacons on arrival; this keeps a pin from
+            // lingering if one was known before the block.
+            guard !blocked.contains(beacon.id) else { return nil }
             guard let lat = beacon.latitude, let lon = beacon.longitude else { return nil }
             let isStale = Date().timeIntervalSince(beacon.lastSeen) > 10
             let transport = peerTransport[beacon.id] ?? .multipeer
@@ -1206,6 +1261,156 @@ struct HomeView: View {
                 isStale: isStale
             )
         }
+    }
+
+    // MARK: - Map: sharing controls
+
+    /// Peers that are on the mesh right now but have not checked in, so the
+    /// map has nothing to pin for them. Shown as a count rather than being
+    /// silently dropped — "nobody has shared a position" and "nobody is here"
+    /// are different facts and the map should not conflate them.
+    private var peersWithoutLocation: Int {
+        let blocked = appState.blockList.blockedIDs
+        return appState.meshBeacon.sortedNodes.filter { node in
+            !blocked.contains(node.id) && (node.latitude == nil || node.longitude == nil)
+        }.count
+    }
+
+    /// A single line across the top of the map explaining the current state.
+    /// Every variant is informational — none of them blocks the map.
+    @ViewBuilder
+    private var mapStatusBanner: some View {
+        let sharing = appState.locationSharing
+        let pinned = mapPeerPins.count
+
+        if sharing.isDeclined {
+            mapBanner(
+                icon: "location.slash.fill",
+                tint: Constants.Colors.slate400,
+                text: String(localized: "map.banner.locationOff \(pinned)")
+            )
+        } else if pinned == 0 && peersWithoutLocation > 0 {
+            mapBanner(
+                icon: "mappin.slash",
+                tint: Constants.Colors.slate400,
+                text: String(localized: "map.banner.noneSharing \(peersWithoutLocation)")
+            )
+        } else if peersWithoutLocation > 0 {
+            mapBanner(
+                icon: "person.2.fill",
+                tint: Constants.Colors.slate400,
+                text: String(localized: "map.banner.partial \(pinned) \(peersWithoutLocation)")
+            )
+        }
+    }
+
+    private func mapBanner(icon: String, tint: Color, text: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .semibold))
+            Text(text)
+                .font(.system(size: 12, weight: .semibold))
+                .lineLimit(2)
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
+        .background(
+            Capsule().fill(Constants.Colors.slate900.opacity(0.9))
+                .overlay(Capsule().stroke(Constants.Colors.surfaceBorder, lineWidth: 0.5))
+        )
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+    }
+
+    /// The manual control. Checked out it offers a check-in; checked in it is
+    /// the visible "you are being shown on a map" indicator, with the stop
+    /// button one tap away in the same bar.
+    @ViewBuilder
+    private var checkInBar: some View {
+        let sharing = appState.locationSharing
+
+        HStack(spacing: 12) {
+            if sharing.isSharing {
+                Circle()
+                    .fill(Constants.Colors.electricGreen)
+                    .frame(width: 10, height: 10)
+                    .modifier(StatusPulsingDot())
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(String(localized: "map.sharing.title"))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(Constants.Colors.electricGreen)
+                    Text(String(localized: "map.sharing.subtitle \(sharing.remainingText)"))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Constants.Colors.textSecondary)
+                        .monospacedDigit()
+                }
+
+                Spacer(minLength: 8)
+
+                Button {
+                    sharing.stopSharing(reason: .user)
+                    HapticsManager.shared.pttUp()
+                    toast = ToastItem(
+                        message: String(localized: "map.toast.stopped"), type: .info)
+                } label: {
+                    Text(String(localized: "map.action.stop"))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 10)
+                        .background(Capsule().fill(Constants.Colors.hotRed))
+                }
+                .accessibilityIdentifier(AccessibilityID.mapStopSharingButton)
+            } else {
+                Image(systemName: "mappin.slash")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Constants.Colors.slate400)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(String(localized: "map.notShared.title"))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(Constants.Colors.textPrimary)
+                    Text(String(localized: "map.notShared.subtitle"))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Constants.Colors.textSecondary)
+                }
+
+                Spacer(minLength: 8)
+
+                Button {
+                    showLocationCheckIn = true
+                } label: {
+                    Text(String(localized: "map.action.checkIn"))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 10)
+                        .background(Capsule().fill(Constants.Colors.amber))
+                }
+                .accessibilityIdentifier(AccessibilityID.mapCheckInButton)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: Constants.Layout.cornerRadius)
+                .fill(Constants.Colors.slate900.opacity(0.94))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Constants.Layout.cornerRadius)
+                        .stroke(
+                            sharing.isSharing
+                                ? Constants.Colors.glassGreenBorder
+                                : Constants.Colors.surfaceBorder,
+                            lineWidth: sharing.isSharing ? 1.5 : 0.5
+                        )
+                )
+        )
+        .padding(.horizontal, 16)
+        .padding(.bottom, 28)
+        .accessibilityIdentifier(AccessibilityID.mapSharingIndicator)
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: sharing.isSharing)
     }
 
     private var channelIsEncrypted: Bool {

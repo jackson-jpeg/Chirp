@@ -130,6 +130,21 @@ final class MeshBeacon {
     /// Pheromone router reference for including trail data in beacons.
     var pheromoneRouter: PheromoneRouter?
 
+    /// The only source of coordinates for outgoing beacons.
+    ///
+    /// AppState wires this to ``LocationSharing/coordinateForBroadcast()``,
+    /// which returns a coordinate only while a manual check-in is live. Left
+    /// unset — as it is in every test that does not explicitly opt in — a
+    /// beacon carries no position at all. Do not read a location manager from
+    /// this class; the gate is the whole point.
+    var locationProvider: (() -> LocationBroadcastGate.Coordinate?)?
+
+    /// Blocked peer IDs, wired to ``BlockList``. A blocked peer's beacon is
+    /// discarded on arrival, so their pin never reaches the map. The router
+    /// already drops their packets by origin ID; this is the second lock on
+    /// the same door, and the one that is cheap to test.
+    var blockedIDsProvider: (() -> Set<String>)?
+
     /// Cached pheromone summary from last async fetch, included in next beacon.
     private var cachedPheromoneTrails: [String: Double]?
 
@@ -249,6 +264,13 @@ final class MeshBeacon {
             // Ignore our own beacons.
             if beacon.id == localID { return }
 
+            // Drop blocked peers entirely — presence, topology and position.
+            if blockedIDsProvider?().contains(beacon.id) == true {
+                knownNodes.removeValue(forKey: beacon.id)
+                logger.trace("Dropped beacon from blocked peer \(beacon.id, privacy: .public)")
+                return
+            }
+
             // Update lastSeen to local time.
             beacon.lastSeen = Date()
 
@@ -336,6 +358,11 @@ final class MeshBeacon {
             self.cachedPheromoneTrails = trails?.isEmpty == false ? trails : nil
         }
 
+        // The one place this device's position can enter a packet. `nil`
+        // unless the user is inside a live manual check-in, and nil is the
+        // default: no check-in, no coordinate, nothing to strip later.
+        let shared = locationProvider?()
+
         let beacon = BeaconInfo(
             id: localID,
             name: localName,
@@ -345,6 +372,8 @@ final class MeshBeacon {
             timestamp: Date(),
             lastSeen: Date(),
             neighborIDs: neighborIDs,
+            latitude: shared?.latitude,
+            longitude: shared?.longitude,
             pheromoneTrails: cachedPheromoneTrails
         )
 

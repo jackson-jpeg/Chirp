@@ -128,6 +128,26 @@ struct DiagnosticsView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+        .contentShape(Rectangle())
+        // Same two actions as a message bubble, a peer bubble and a map pin:
+        // wherever a peer is visible, they can be blocked from there.
+        .contextMenu {
+            Button {
+                ReportService.fileReport(
+                    peerID: peer.id,
+                    peerName: peer.name,
+                    reporterPeerID: appState.localPeerID
+                )
+            } label: {
+                Label(String(localized: "moderation.reportUser"), systemImage: "flag")
+            }
+
+            Button(role: .destructive) {
+                appState.blockList.block(id: peer.id, name: peer.name)
+            } label: {
+                Label(String(localized: "moderation.blockUser"), systemImage: "hand.raised")
+            }
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(peer.name), \(peer.isConnected ? "connected" : "disconnected"), signal \(peer.signalStrength) of 3")
     }

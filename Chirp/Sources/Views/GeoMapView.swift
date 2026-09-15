@@ -44,14 +44,27 @@ struct GeoMapView: UIViewRepresentable {
     var hopSegments: [GeoHopSegment] = []
     var hopCount: Int = 0
 
+    /// Whether to draw the blue "you are here" dot.
+    ///
+    /// Defaults to `false` and must stay that way. `MLNMapView` asks
+    /// CoreLocation for authorization as soon as `showsUserLocation` is set,
+    /// so switching this on unconditionally would put a system permission
+    /// prompt behind the act of opening a map — exactly the automatic request
+    /// the app must not make. The Map tab passes `true` only once permission
+    /// has already been granted through the check-in sheet.
+    var showsUserLocation: Bool = false
+
+    /// Called when a peer pin is tapped, so the map can offer block/report.
+    var onSelectPeer: ((PeerPin) -> Void)?
+
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
 
     func makeUIView(context: Context) -> MLNMapView {
         let mapView = MLNMapView(frame: CGRect(x: 0, y: 0, width: 1, height: 1), styleURL: OfflineMapManager.styleURL)
-        mapView.showsUserLocation = true
-        mapView.showsUserHeadingIndicator = true
+        mapView.showsUserLocation = showsUserLocation
+        mapView.showsUserHeadingIndicator = showsUserLocation
         mapView.automaticallyAdjustsContentInset = false
 
         // Dark appearance
@@ -77,6 +90,15 @@ struct GeoMapView: UIViewRepresentable {
     }
 
     func updateUIView(_ mapView: MLNMapView, context: Context) {
+        // The struct is rebuilt on every render; hand the coordinator the
+        // current closure so a tap never calls into a stale one.
+        context.coordinator.onSelectPeer = onSelectPeer
+
+        if mapView.showsUserLocation != showsUserLocation {
+            mapView.showsUserLocation = showsUserLocation
+            mapView.showsUserHeadingIndicator = showsUserLocation
+        }
+
         updateAnnotations(mapView: mapView, coordinator: context.coordinator)
         updateHopPathOverlay(mapView: mapView, coordinator: context.coordinator)
     }
@@ -164,6 +186,18 @@ struct GeoMapView: UIViewRepresentable {
         weak var mapView: MLNMapView?
         var hopPolylines: [MLNPolyline] = []
         var hopBadgeAnnotation: MLNPointAnnotation?
+        var onSelectPeer: ((PeerPin) -> Void)?
+
+        func mapView(_ mapView: MLNMapView, didSelect annotation: any MLNAnnotation) {
+            guard let point = annotation as? MLNPointAnnotation,
+                  point.title != "hop-badge",
+                  let peerID = point.subtitle,
+                  let peer = peerData[peerID] else { return }
+            onSelectPeer?(peer)
+            // Deselect so the same pin can be tapped again without first
+            // tapping elsewhere on the map.
+            mapView.deselectAnnotation(annotation, animated: false)
+        }
 
         func mapView(_ mapView: MLNMapView, viewFor annotation: any MLNAnnotation) -> MLNAnnotationView? {
             // Hop count badge
