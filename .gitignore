@@ -28,3 +28,6 @@ report.xml
 # The file still syncs to the Mac for deliver runs.
 fastlane/metadata/review_information/phone_number.txt
 __pycache__/
+
+# Playwright MCP scratch output
+.playwright-mcp/

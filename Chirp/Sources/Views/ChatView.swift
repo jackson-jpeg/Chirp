@@ -13,6 +13,8 @@ struct ChatView: View {
     let localPeerID: String
     let localPeerName: String
     let messages: [MeshTextMessage]
+    /// Nobody nearby and not in Demo Mode: offer it in the empty state.
+    var showsTryDemo: Bool = false
     var onSend: (String, UUID?) -> Void
     var onShareLocation: () -> Void
     var onSendImage: ((String) -> Void)?
@@ -206,9 +208,20 @@ struct ChatView: View {
             }
             .foregroundStyle(Constants.Colors.textTertiary.opacity(0.7))
 
+            if showsTryDemo {
+                Text(String(localized: "chat.empty.noPeers"))
+                    .font(Constants.Typography.caption)
+                    .foregroundStyle(Constants.Colors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 8)
+                    .padding(.horizontal, 32)
+                TryDemoModeButton(showsCaption: false)
+            }
+
             Spacer()
         }
         .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .contain)
         .accessibilityLabel(String(localized: "chat.empty.accessibility"))
     }
 

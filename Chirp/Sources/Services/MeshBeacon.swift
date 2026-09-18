@@ -316,6 +316,12 @@ final class MeshBeacon {
     // MARK: - Pruning
 
     /// Remove nodes that haven't been seen within the stale threshold.
+    /// Drop these nodes now rather than waiting for them to go stale.
+    /// Used when Demo Mode's simulated peers leave.
+    func forget(ids: Set<String>) {
+        for id in ids { knownNodes.removeValue(forKey: id) }
+    }
+
     func pruneStale() {
         let cutoff = Date().addingTimeInterval(-Self.staleThreshold)
         let staleIDs = knownNodes.filter { $0.value.lastSeen < cutoff }.map(\.key)

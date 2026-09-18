@@ -96,6 +96,7 @@ struct ImageAttachmentView: View {
         .fullScreenCover(isPresented: $showPreview) {
             if let image = uiImage {
                 ImagePreviewSheet(image: image)
+                    .demoBanner()
             }
         }
     }

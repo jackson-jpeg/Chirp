@@ -134,9 +134,11 @@ private struct PendingMessageRow: View {
 
 private struct ReceivedMessageRow: View {
     let message: VoiceMessageQueue.PendingMessage
+    /// Who sent it, as a callsign when one is known.
+    let senderLabel: String
+    let isPlaying: Bool
+    let progress: Double
     let onPlay: () -> Void
-
-    @State private var isPlaying = false
 
     private let amber = Constants.Colors.amber
 
@@ -147,21 +149,21 @@ private struct ReceivedMessageRow: View {
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [colorForName(message.senderID),
-                                     colorForName(message.senderID).opacity(0.6)],
+                            colors: [colorForName(senderLabel),
+                                     colorForName(senderLabel).opacity(0.6)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
                     .frame(width: 44, height: 44)
 
-                Text(String(message.senderID.prefix(1)).uppercased())
+                Text(String(senderLabel.prefix(1)).uppercased())
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("From: \(message.senderID.prefix(8))...")
+                Text(senderLabel)
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .lineLimit(1)
@@ -183,19 +185,32 @@ private struct ReceivedMessageRow: View {
 
             Spacer()
 
-            // Play button.
+            // Play / stop button, with a ring that fills as the clip plays.
             Button(action: onPlay) {
                 ZStack {
                     Circle()
                         .fill(amber.opacity(0.15))
                         .frame(width: 44, height: 44)
 
-                    Image(systemName: "play.fill")
+                    if isPlaying {
+                        Circle()
+                            .trim(from: 0, to: progress)
+                            .stroke(amber, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                            .frame(width: 42, height: 42)
+                    }
+
+                    Image(systemName: isPlaying ? "stop.fill" : "play.fill")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(amber)
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier(AccessibilityID.voiceMessagePlayButton)
+            .accessibilityLabel(isPlaying
+                ? String(localized: "voiceMessages.stop")
+                : String(localized: "voiceMessages.play \(senderLabel)"))
+            .accessibilityValue(isPlaying ? String(localized: "voiceMessages.playing") : "")
         }
         .padding(14)
         .background(
@@ -288,6 +303,13 @@ struct VoiceMessagesView: View {
         .navigationTitle("Voice Messages")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        .onAppear {
+            // Open on whichever list has something in it.
+            if queue.pendingMessages.isEmpty && !queue.receivedMessages.isEmpty {
+                selectedTab = 1
+            }
+        }
+        .onDisappear { player.stop() }
     }
 
     // MARK: - Tab Selector
@@ -386,8 +408,13 @@ struct VoiceMessagesView: View {
                 ScrollView {
                     LazyVStack(spacing: 10) {
                         ForEach(queue.receivedMessages) { message in
-                            ReceivedMessageRow(message: message) {
-                                playMessage(message)
+                            ReceivedMessageRow(
+                                message: message,
+                                senderLabel: senderLabel(for: message),
+                                isPlaying: player.isPlaying(message.id),
+                                progress: player.isPlaying(message.id) ? player.progress : 0
+                            ) {
+                                togglePlayback(message)
                             }
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
@@ -417,13 +444,24 @@ struct VoiceMessagesView: View {
 
     // MARK: - Playback
 
-    private func playMessage(_ message: VoiceMessageQueue.PendingMessage) {
-        // Load frames and feed them through the audio engine for playback.
-        guard let frames = queue.loadOpusFrames(for: message) else { return }
+    private var player: VoiceClipPlayer { appState.voiceClipPlayer }
 
-        // Play each frame through the audio engine's receive path.
-        for (index, frame) in frames.enumerated() {
-            appState.audioEngine.receiveAudioPacket(frame, sequenceNumber: UInt32(index))
+    private func togglePlayback(_ message: VoiceMessageQueue.PendingMessage) {
+        if player.isPlaying(message.id) {
+            player.stop()
+            return
         }
+        guard let frames = queue.loadOpusFrames(for: message) else { return }
+        player.play(id: message.id, frames: frames)
+    }
+
+    /// The sender's callsign: from the message itself, else from anyone
+    /// nearby with that ID, else a short form of the ID.
+    private func senderLabel(for message: VoiceMessageQueue.PendingMessage) -> String {
+        if let name = message.senderName, !name.isEmpty { return name }
+        if let peer = appState.nearbyPeers.first(where: { $0.id == message.senderID }) {
+            return peer.name
+        }
+        return String(message.senderID.prefix(8))
     }
 }

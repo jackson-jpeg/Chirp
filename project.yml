@@ -81,31 +81,23 @@ targets:
         # iPhone-only + portrait-only still trips altool's iPad-multitasking
         # orientation check (90474) unless the app opts out of multitasking.
         UIRequiresFullScreen: true
-        NSMicrophoneUsageDescription: ChirpChirps uses your microphone for real-time
-          voice communication with nearby devices.
-        NSCameraUsageDescription: ChirpChirps uses your camera to capture and share
-          media with nearby devices.
-        NSPhotoLibraryAddUsageDescription: ChirpChirps saves received images to your
-          photo library.
+        NSMicrophoneUsageDescription: ChirpChirps uses the microphone so you can talk to nearby people with push-to-talk and record voice messages for them.
+        NSCameraUsageDescription: ChirpChirps uses the camera when you tap the camera button in a chat, so you can take a photo and send it to people nearby.
+        NSPhotoLibraryAddUsageDescription: ChirpChirps saves a photo someone nearby sent you to your library when you tap Save on it.
         # AES-GCM under a shared channel key -- standard algorithms from Apple's
         # OS (CryptoKit) only, which self-classifies as exempt. The key is
         # "uses NON-exempt encryption", so exempt usage is declared false;
         # true requires an ITSEncryptionExportComplianceCode from approved
         # export documentation and altool rejects the upload without one.
         ITSAppUsesNonExemptEncryption: false
-        NSSpeechRecognitionUsageDescription: ChirpChirps uses on-device speech recognition
-          to show live transcripts of incoming voice transmissions.
+        NSSpeechRecognitionUsageDescription: ChirpChirps uses on-device speech recognition to show live captions of what nearby people say over push-to-talk.
         # Location is foreground-only and per-check-in. There is deliberately
         # NO NSLocationAlwaysAndWhenInUseUsageDescription: the app has no
         # background location use, and a purpose string for a capability the
         # binary does not exercise is a 5.1.2 finding waiting to happen.
         NSLocationWhenInUseUsageDescription: ChirpChirps shares your position on the map only for a check-in you start by hand. Each check-in lasts 15 minutes, is sent directly to nearby devices, and never resumes on its own.
-        NSLocalNetworkUsageDescription: ChirpChirps uses your local network to connect
-          directly to nearby devices without internet.
-        NSBluetoothAlwaysUsageDescription: ChirpChirps uses Bluetooth to discover
-          nearby devices for peer-to-peer communication.
-        NSPhotoLibraryUsageDescription: ChirpChirps accesses your photo library to
-          share images with nearby devices.
+        NSLocalNetworkUsageDescription: ChirpChirps uses your local network to connect directly to nearby phones over Wi-Fi for push-to-talk and messages, without the internet.
+        NSBluetoothAlwaysUsageDescription: ChirpChirps uses Bluetooth to find nearby people running ChirpChirps and connect to them directly for push-to-talk and messages.
         # Push-to-talk keeps receiving and playing audio while backgrounded.
         # Listed here because this file generates the Info.plist; dropping it
         # would silently kill background receive.

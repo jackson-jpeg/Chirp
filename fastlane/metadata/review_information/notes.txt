@@ -1,23 +1,21 @@
-ChirpChirps is fully peer-to-peer: Bluetooth and local peer-to-peer Wi-Fi (Apple's MultipeerConnectivity) between nearby devices. No server, no accounts, no login. Nothing a user shares — location included — is ever uploaded, because there is no server to receive it.
+ChirpChirps has no accounts, no sign-in and no servers. It connects nearby devices directly over Bluetooth and peer-to-peer Wi-Fi (Apple's MultipeerConnectivity), so nothing a user shares ever leaves the devices around them.
 
-This build answers the 5.1.2(i) rejection of submission d471ab6f-08da-42a8-873f-709990e548dd. Each required precaution, and where to see it:
+TESTING EVERY FEATURE ON ONE DEVICE (2.1)
+Open Settings > Demo Mode, or tap "Try Demo Mode" on any empty screen (Talk, Messages, a chat, or the Map). Demo Mode adds simulated nearby users with existing chats, voice messages, map positions and push-to-talk replies:
+1. Four simulated people appear, counted in the peer count, and the header stops reading "No mesh".
+2. Three channels (General, Trailhead, Basecamp) arrive with message history, delivery and read receipts, and received voice messages that play.
+3. Sending a text is acknowledged and answered.
+4. Hold the talk button, let go, and a simulated person answers a few seconds later with audio you can hear.
+5. The Map shows their pins near your position, or near a default position if location is off. Check In works.
+6. Voice Messages and Settings are fully functional.
+A "DEMO" badge sits on every screen with a one tap exit, the setting persists until it is switched off, and it is off by default. Demo traffic is generated on the device and blocked at the transport layer, so nothing is transmitted while Demo Mode is on.
 
-1. AGE RATING 18+. Set via "Override to a Higher Age Rating" on the App Information page (age rating override: 18+). Terms of Use and the privacy policy both state the app is for adults only.
+PERMISSIONS (5.1.1)
+Microphone: requested at the end of onboarding. The last onboarding screen explains push-to-talk and its only button is Continue, which shows the iOS prompt. Whatever the answer, the app opens and works. If access is off, the Talk screen shows a short notice with an Open Settings button.
+Location: requested only when the user taps Check In on the Map. The explanation that appears has one button, Continue, which shows the iOS prompt, and it cannot be swiped away. Sharing lasts 15 minutes, stops on its own, and there is no automatic or background check-in. Declining leaves everything else working, and the Map shows the same short notice with Open Settings.
+No permission is requested at launch, and no screen that precedes a permission request offers any way onward except the request itself.
 
-2. PRIVACY POLICY URL. https://chirpchirps.com/privacy is set on the App Information page (not only in App Privacy) and serves the policy directly. It now has a "Location sharing" section describing exactly the behaviour below.
+TESTING THE MESH WITH TWO DEVICES (optional)
+Install on two devices in proximity and launch both; they find each other within seconds. A single device with Demo Mode off shows "No mesh", which is expected rather than a malfunction. The Simulator has no Bluetooth, so real mesh testing needs hardware. Demo Mode covers every feature on one device.
 
-3. BLOCKING. Blockable from everywhere a peer is visible: long-press a message bubble, a peer bubble on the Talk screen, or a Diagnostics row; TAP A PIN ON THE MAP; or use the Friends list. Blocking is by stable mesh identity and the router drops everything from it — voice, messages, map position — so the pin disappears at once. Settings > Blocked Users lists and unblocks.
-
-4. LOCATION PERMISSION, WITH A REAL DECLINE PATH. The app never requests location at launch or as a side effect of opening the Map tab. Map > "Check In" shows an explanation first: what is shared, with whom, for how long. "Not Now" declines without asking iOS at all; declining the iOS prompt is equally supported. Either way the app stays fully usable — push-to-talk, channels, voice notes, text and the map all work — and the Map tab still shows peers who checked in, plus how many are nearby without a position. No dead end, no nag.
-
-5. MANUAL CHECK-IN EVERY TIME, NO AUTOMATIC CHECK-INS. Your position is broadcast only while a check-in you started by hand is live. Tap "Check In"; a green indicator appears on the Map tab showing "Sharing your location" and a countdown, with a one-tap "Stop" beside it. The check-in lasts 15 minutes and then stops by itself. It also stops on Stop, on leaving the app (there is no background location broadcast), and if location permission is withdrawn. Check-in state is held only in memory and is never written to disk, so relaunching the app always starts checked out — there is no automatic check-in to switch off, and no "always share" setting anywhere in the app.
-
-In code this is one gate: a single function decides whether a coordinate may leave the device, and both paths that could transmit one (the presence beacon behind map pins, and the optional chat location attachment) ask it and nothing else. Unit and loopback tests assert nothing is emitted without a live check-in, that expiry stops emission, that a declined permission never emits, and that a blocked peer's position is dropped.
-
-TESTING WITHOUT A SECOND DEVICE: all of points 3-5 is visible on one device — the explanation screen, declining, the check-in, the live indicator and countdown, Stop, and Settings > Blocked Users. Only seeing another person's pin needs a second device.
-
-TESTING THE MESH: two devices in proximity, both with the app installed. Launch both, complete onboarding, and they find each other within seconds. Hold the large button for push-to-talk; the Messages tab exchanges text and voice; after both check in, each appears on the other's map. A single device shows "No mesh" — expected, not a malfunction. The Simulator has no Bluetooth, so hardware is required.
-
-MODERATION (1.2): users must accept the community rules and Terms of Use during onboarding before the app can be used; any message or user can be reported from the app. Reports go to support@chirpchirps.com and are reviewed by a human.
-
-ENCRYPTION: channel traffic uses AES-256-GCM via Apple CryptoKit; ITSAppUsesNonExemptEncryption is set accordingly. Not a substitute for emergency services, and the app says so in its Terms.
+Age rating is 18+. The privacy policy is at https://chirpchirps.com/privacy. Blocking is available from any message bubble, peer bubble or map pin, and Settings > Blocked Users lists and unblocks.

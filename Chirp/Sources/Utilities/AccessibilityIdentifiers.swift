@@ -37,6 +37,7 @@ enum AccessibilityID {
     static let chatSearchField = "chatSearchField"
     static let chatVoiceNoteButton = "chatVoiceNoteButton"
     static let chatVoiceNoteBubble = "chatVoiceNoteBubble"
+    static let voiceNotePlayButton = "voiceNotePlayButton"
     static let chatTypingIndicator = "chatTypingIndicator"
 
     // MARK: - Onboarding
@@ -48,9 +49,25 @@ enum AccessibilityID {
     static let mapStopSharingButton = "mapStopSharingButton"
     static let mapSharingIndicator = "mapSharingIndicator"
     static let locationContinue = "locationContinue"
-    static let locationNotNow = "locationNotNow"
-    static let locationCheckIn = "locationCheckIn"
-    static let locationStopSharing = "locationStopSharing"
+    static let locationExplainer = "locationExplainer"
+
+    // MARK: - Permissions
+    static let onboardingMicPage = "onboardingMicPage"
+    static let onboardingContinue = "onboardingContinue"
+    static let micDeniedNotice = "micDeniedNotice"
+    static let locationDeniedNotice = "locationDeniedNotice"
+    static let openSettingsButton = "openSettingsButton"
+
+    // MARK: - Demo Mode
+    static let demoModeToggle = "demoModeToggle"
+    static let tryDemoModeButton = "tryDemoModeButton"
+    static let demoBadge = "demoBadge"
+    static let demoExitButton = "demoExitButton"
+    static let meshStatusLabel = "meshStatusLabel"
+    static let peerCountBadge = "peerCountBadge"
+    static let voiceMessagePlayButton = "voiceMessagePlayButton"
+    static let mapPeerPin = "mapPeerPin"
+    static let peerMap = "peerMap"
 
     // MARK: - File Transfer
     static let documentPickerButton = "documentPickerButton"

@@ -88,8 +88,10 @@ struct MessageBubbleView: View {
         }
         .offset(x: swipeOffset)
         .gesture(swipeGesture)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityDescription)
+        .modifier(BubbleAccessibility(
+            isVoiceNote: message.attachmentType == .voiceNote,
+            label: accessibilityDescription
+        ))
     }
 
     // MARK: - Sender Avatar
@@ -163,7 +165,7 @@ struct MessageBubbleView: View {
                 } else if attachment == .voiceNote, let audioData = Data(base64Encoded: message.text) {
                     VoiceNoteBubbleView(
                         audioData: audioData,
-                        duration: 0, // Duration encoded separately or estimated
+                        duration: nil,
                         isFromSelf: isFromSelf,
                         clusterPosition: clusterPosition
                     )
@@ -425,10 +427,39 @@ struct MessageBubbleView: View {
 
     private var accessibilityDescription: String {
         let sender = isFromSelf ? "You" : message.senderName
-        var desc = "\(sender): \(message.text)"
+        // Attachments carry base64 in `text`; describe them instead.
+        let body: String
+        switch message.attachmentType {
+        case .voiceNote: body = String(localized: "chat.preview.voiceNote")
+        case .image: body = String(localized: "chat.preview.photo")
+        case .location: body = String(localized: "chat.preview.location")
+        case .some: body = String(localized: "chat.preview.file")
+        case nil: body = message.text
+        }
+        var desc = "\(sender): \(body)"
         if replyToMessage != nil {
             desc = "Reply. " + desc
         }
+        if isFromSelf {
+            desc += ". " + message.deliveryStatus.rawValue.capitalized
+        }
         return desc
+    }
+}
+
+/// Text bubbles read as one element. A voice note keeps its play button as
+/// its own element so VoiceOver and UI tests can press it.
+private struct BubbleAccessibility: ViewModifier {
+    let isVoiceNote: Bool
+    let label: String
+
+    func body(content: Content) -> some View {
+        if isVoiceNote {
+            content.accessibilityElement(children: .contain)
+        } else {
+            content
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(label)
+        }
     }
 }

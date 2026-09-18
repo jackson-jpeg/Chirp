@@ -37,6 +37,35 @@ final class ChannelManager {
     /// Well-known channel ID shared by all devices for the default "General" channel.
     static let defaultGeneralChannelID = "00000000-0000-0000-0000-000000000001"
 
+    // MARK: - Demo overlay
+
+    /// The real channel list and active channel, set aside while Demo Mode
+    /// shows simulated channels. `nil` when no overlay is up. While it is up
+    /// nothing is written to UserDefaults, so the saved list stays the real one
+    /// even if the app is killed mid-demo.
+    private var stashedReal: (channels: [ChirpChannel], activeID: String?)?
+
+    var isShowingDemoOverlay: Bool { stashedReal != nil }
+
+    /// Replace the visible channels with simulated ones, in memory only.
+    func enterDemoOverlay(channels demoChannels: [ChirpChannel], activeID: String) {
+        if stashedReal == nil {
+            stashedReal = (channels, activeChannel?.id)
+        }
+        channels = demoChannels
+        activeChannel = demoChannels.first { $0.id == activeID } ?? demoChannels.first
+        logger.info("Demo overlay up: \(demoChannels.count) simulated channel(s)")
+    }
+
+    /// Put the real channels back exactly as they were.
+    func exitDemoOverlay() {
+        guard let stashed = stashedReal else { return }
+        stashedReal = nil
+        channels = stashed.channels
+        activeChannel = stashed.activeID.flatMap { id in channels.first { $0.id == id } }
+        logger.info("Demo overlay down: \(self.channels.count) real channel(s) restored")
+    }
+
     // MARK: - Init
 
     init() {
@@ -93,7 +122,9 @@ final class ChannelManager {
         }
 
         activeChannel = self.channels[index]
-        UserDefaults.standard.set(id, forKey: activeChannelKey)
+        if !isShowingDemoOverlay {
+            UserDefaults.standard.set(id, forKey: activeChannelKey)
+        }
         logger.info("Joined channel '\(self.channels[index].name)' (\(id))")
     }
 
@@ -101,7 +132,9 @@ final class ChannelManager {
         guard let channel = activeChannel else { return }
         logger.info("Left channel '\(channel.name)' (\(channel.id))")
         activeChannel = nil
-        UserDefaults.standard.removeObject(forKey: activeChannelKey)
+        if !isShowingDemoOverlay {
+            UserDefaults.standard.removeObject(forKey: activeChannelKey)
+        }
     }
 
     // MARK: - Peer Management
@@ -377,6 +410,8 @@ final class ChannelManager {
     // MARK: - Persistence
 
     private func saveChannels() {
+        // Simulated channels are never persisted; see enterDemoOverlay.
+        guard !isShowingDemoOverlay else { return }
         do {
             let data = try JSONEncoder().encode(channels)
             UserDefaults.standard.set(data, forKey: storageKey)

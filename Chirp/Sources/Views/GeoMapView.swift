@@ -66,6 +66,11 @@ struct GeoMapView: UIViewRepresentable {
         mapView.showsUserLocation = showsUserLocation
         mapView.showsUserHeadingIndicator = showsUserLocation
         mapView.automaticallyAdjustsContentInset = false
+        // MLNMapView is an accessibility container: it publishes its own
+        // elements for the annotations currently on screen and does not
+        // expose the annotation views themselves, so this identifier is the
+        // only handle on the map and its pins from outside.
+        mapView.accessibilityIdentifier = AccessibilityID.peerMap
 
         // Dark appearance
         mapView.tintColor = UIColor(Constants.Colors.amber)
@@ -81,6 +86,7 @@ struct GeoMapView: UIViewRepresentable {
         // Set initial camera to user location if available
         if let coord = userLocation {
             mapView.setCenter(coord, zoomLevel: 13, animated: false)
+            context.coordinator.hasFramed = true
         }
 
         mapView.delegate = context.coordinator
@@ -101,6 +107,33 @@ struct GeoMapView: UIViewRepresentable {
 
         updateAnnotations(mapView: mapView, coordinator: context.coordinator)
         updateHopPathOverlay(mapView: mapView, coordinator: context.coordinator)
+        frameOnce(mapView: mapView, coordinator: context.coordinator)
+    }
+
+    /// Point the camera at something worth seeing, once: this device if it
+    /// has a fix, otherwise the pins. Never again after that, so it never
+    /// fights the user's own panning.
+    private func frameOnce(mapView: MLNMapView, coordinator: Coordinator) {
+        guard !coordinator.hasFramed else { return }
+        if let coord = userLocation {
+            mapView.setCenter(coord, zoomLevel: 13, animated: false)
+            coordinator.hasFramed = true
+        } else if !peers.isEmpty {
+            let lats = peers.map(\.coordinate.latitude)
+            let lons = peers.map(\.coordinate.longitude)
+            let pad = 0.004
+            let bounds = MLNCoordinateBounds(
+                sw: CLLocationCoordinate2D(latitude: lats.min()! - pad, longitude: lons.min()! - pad),
+                ne: CLLocationCoordinate2D(latitude: lats.max()! + pad, longitude: lons.max()! + pad)
+            )
+            mapView.setVisibleCoordinateBounds(
+                bounds,
+                edgePadding: UIEdgeInsets(top: 60, left: 40, bottom: 60, right: 40),
+                animated: false,
+                completionHandler: nil
+            )
+            coordinator.hasFramed = true
+        }
     }
 
     // MARK: - Annotations
@@ -186,6 +219,7 @@ struct GeoMapView: UIViewRepresentable {
         weak var mapView: MLNMapView?
         var hopPolylines: [MLNPolyline] = []
         var hopBadgeAnnotation: MLNPointAnnotation?
+        var hasFramed = false
         var onSelectPeer: ((PeerPin) -> Void)?
 
         func mapView(_ mapView: MLNMapView, didSelect annotation: any MLNAnnotation) {
@@ -281,6 +315,7 @@ struct GeoMapView: UIViewRepresentable {
             }
 
             view?.isAccessibilityElement = true
+            view?.accessibilityIdentifier = AccessibilityID.mapPeerPin
             view?.accessibilityLabel = peer.isStale
                 ? "\(peer.name), stale location"
                 : "\(peer.name), connected via \(peer.transportType)"

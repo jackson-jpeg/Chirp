@@ -173,9 +173,26 @@ final class LocationSharing {
     // MARK: Permission
 
     /// Ask iOS for location permission. Only ever called from the check-in
-    /// sheet, after the user has read what sharing means and tapped Continue.
+    /// explainer's single button, Continue.
     func requestPermission() {
         locationService.requestPermission()
+    }
+
+    /// What tapping Check In should do right now.
+    enum CheckInRoute: Equatable {
+        /// Permission already granted: the tap itself is the check-in.
+        case checkInNow
+        /// Never asked: show the explainer, whose only button fires the prompt.
+        case explainThenAsk
+        /// Asked and declined, restricted, or Location Services off: the
+        /// system prompt can no longer appear, so point at Settings instead.
+        case blocked
+    }
+
+    func routeForCheckIn(locationServicesEnabled: Bool) -> CheckInRoute {
+        if isAuthorized { return .checkInNow }
+        if isDeclined || !locationServicesEnabled { return .blocked }
+        return .explainThenAsk
     }
 
     // MARK: Check in / out

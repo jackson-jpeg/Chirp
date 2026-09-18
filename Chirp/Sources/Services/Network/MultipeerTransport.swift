@@ -1,6 +1,20 @@
 import Foundation
 import MultipeerConnectivity
+import os
 import OSLog
+
+// MARK: - Radio seam
+
+/// The part of `MCSession` the transport sends through: who is connected, and
+/// how to put bytes on the air. `MCSession` is the only production conformer.
+/// It exists so a test can stand in for the radio and count exactly what the
+/// transport would have transmitted. See `DemoTransportIsolationTests`.
+protocol MeshRadio: AnyObject {
+    var connectedPeers: [MCPeerID] { get }
+    func send(_ data: Data, toPeers peerIDs: [MCPeerID], with mode: MCSessionSendDataMode) throws
+}
+
+extension MCSession: MeshRadio {}
 
 /// MultipeerConnectivity-based transport for local Wi-Fi/Bluetooth PTT.
 /// Works TODAY on any two iPhones on the same network -- no entitlements needed.
@@ -28,6 +42,27 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
     private var browser: MCNearbyServiceBrowser?
 
     private(set) var peers: [ChirpPeer] = []
+
+    /// Where outbound bytes go. The session itself unless a test injected a
+    /// spy. Every send in this file goes through ``emit(_:to:mode:)``, which
+    /// is the only caller of `radio.send`.
+    private var radio: MeshRadio!
+
+    // MARK: - Demo sandbox
+
+    /// While sandboxed (Demo Mode), nothing leaves or enters this device:
+    /// discovery is stopped, every outbound packet is dropped in ``emit``, and
+    /// every inbound packet is dropped before the router sees it. Read from
+    /// the audio and session queues as well as the main actor, hence the lock.
+    private let sandboxState = OSAllocatedUnfairLock(initialState: false)
+
+    /// Outbound packets refused by the sandbox or the demo-channel check.
+    /// Diagnostics and tests only.
+    private let droppedCounter = OSAllocatedUnfairLock(initialState: 0)
+
+    var isSandboxed: Bool { sandboxState.withLock { $0 } }
+
+    var droppedOutboundCount: Int { droppedCounter.withLock { $0 } }
 
     // Callback for peer changes
     var onPeersChanged: (([ChirpPeer]) -> Void)?
@@ -58,7 +93,15 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
 
     // MARK: - Init
 
-    init(displayName: String, meshRouter: MeshRouter, localPeerID: String, localPeerName: String) {
+    /// - Parameter radio: test seam only. Production passes nothing and the
+    ///   transport sends through its own `MCSession`.
+    init(
+        displayName: String,
+        meshRouter: MeshRouter,
+        localPeerID: String,
+        localPeerName: String,
+        radio: MeshRadio? = nil
+    ) {
         myPeerID = MCPeerID(displayName: displayName)
         self.meshRouter = meshRouter
         self.localPeerID = localPeerID
@@ -72,12 +115,38 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
             encryptionPreference: .required
         )
         session.delegate = self
+        self.radio = radio ?? session
+    }
+
+    // MARK: - Sandbox
+
+    /// Enter or leave the Demo Mode sandbox. Entering stops discovery and
+    /// drops every connection, so the device is invisible to real peers for
+    /// as long as simulated ones are on screen; leaving restarts discovery.
+    @MainActor
+    func setSandboxed(_ sandboxed: Bool) {
+        let changed = sandboxState.withLock { state -> Bool in
+            defer { state = sandboxed }
+            return state != sandboxed
+        }
+        guard changed else { return }
+        if sandboxed {
+            stop()
+            logger.info("MultipeerTransport sandboxed — radio silent for Demo Mode")
+        } else {
+            start()
+            logger.info("MultipeerTransport left sandbox")
+        }
     }
 
     // MARK: - Start / Stop
 
     @MainActor
     func start() {
+        guard !isSandboxed else {
+            logger.info("MultipeerTransport start ignored — sandboxed for Demo Mode")
+            return
+        }
         startDiscovery()
         logger.info("MultipeerTransport started -- advertising + browsing as '\(self.myPeerID.displayName)'")
     }
@@ -104,6 +173,9 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
     /// detached before they go away.
     @MainActor
     private func startDiscovery() {
+        // The reconnect loop restarts discovery directly, not through start(),
+        // so the sandbox has to hold here too.
+        guard !isSandboxed else { return }
         advertiser = MCNearbyServiceAdvertiser(
             peer: myPeerID,
             discoveryInfo: nil,
@@ -136,7 +208,7 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
         // Capture the recipients now. The send happens inside a Task, after an
         // await — re-reading session.connectedPeers there meant the last peer
         // dropping in that window turned the send into a silent no-op.
-        let targets = session.connectedPeers
+        let targets = radio.connectedPeers
         guard !targets.isEmpty else { return }
 
         let router = meshRouter
@@ -150,7 +222,7 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
             var wireData = Data([Self.meshMagic])
             wireData.append(serialized)
             do {
-                try self.session.send(wireData, toPeers: targets, with: .unreliable)
+                guard try self.emit(wireData, to: targets, mode: .unreliable) else { return }
                 #if DEBUG
                 AudioTelemetry.shared.countStage("audioPacketSend", bytes: wireData.count)
                 #endif
@@ -164,9 +236,10 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
     /// Used when the caller has already created the packet to avoid duplicate packet IDs
     /// when sending on multiple transports.
     func sendRawWireData(_ wireData: Data, reliable: Bool = false) {
-        guard !session.connectedPeers.isEmpty else { return }
+        let targets = radio.connectedPeers
+        guard !targets.isEmpty else { return }
         do {
-            try session.send(wireData, toPeers: session.connectedPeers, with: reliable ? .reliable : .unreliable)
+            try emit(wireData, to: targets, mode: reliable ? .reliable : .unreliable)
         } catch {
             logger.error("MultipeerTransport send failed: \(error.localizedDescription)")
         }
@@ -176,7 +249,7 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
         // See sendAudio: recipients are captured before the async hop so a
         // peer dropping mid-flight surfaces as a logged send error, not a
         // message that silently went nowhere.
-        let targets = session.connectedPeers
+        let targets = radio.connectedPeers
         guard !targets.isEmpty else { return }
         let payload = try MeshCodable.encoder.encode(message)
 
@@ -191,7 +264,7 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
             var wireData = Data([Self.meshMagic])
             wireData.append(serialized)
             do {
-                try self.session.send(wireData, toPeers: targets, with: .reliable)
+                try self.emit(wireData, to: targets, mode: .reliable)
             } catch {
                 self.logger.error("MultipeerTransport send failed: \(error.localizedDescription)")
             }
@@ -204,7 +277,7 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
         // See sendAudio: recipients are captured before the async hop so a
         // peer dropping mid-flight surfaces as a logged send error, not a
         // message that silently went nowhere.
-        let targets = session.connectedPeers
+        let targets = radio.connectedPeers
         guard !targets.isEmpty else { return }
 
         let router = meshRouter
@@ -218,7 +291,7 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
             var wireData = Data([Self.meshMagic])
             wireData.append(serialized)
             do {
-                try self.session.send(wireData, toPeers: targets, with: .reliable)
+                try self.emit(wireData, to: targets, mode: .reliable)
             } catch {
                 self.logger.error("MultipeerTransport send failed: \(error.localizedDescription)")
             }
@@ -229,7 +302,7 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
 
     /// Forward a pre-serialized mesh packet to all connected peers except the one it came from.
     func forwardPacket(_ packet: Data, excludePeer: String) {
-        let targets = session.connectedPeers.filter { $0.displayName != excludePeer }
+        let targets = radio.connectedPeers.filter { $0.displayName != excludePeer }
         guard !targets.isEmpty else { return }
 
         var wireData = Data([Self.meshMagic])
@@ -237,11 +310,43 @@ final class MultipeerTransport: NSObject, @unchecked Sendable {
 
         // Use unreliable for forwarded packets -- they're already best-effort mesh traffic
         do {
-            try session.send(wireData, toPeers: targets, with: .unreliable)
+            guard try emit(wireData, to: targets, mode: .unreliable) else { return }
         } catch {
             logger.error("MultipeerTransport send failed: \(error.localizedDescription)")
         }
         logger.debug("Mesh forwarded packet to \(targets.count) peers (excluded '\(excludePeer)')")
+    }
+
+    // MARK: - The outbound gate
+
+    /// The only place in the app that hands bytes to the radio.
+    ///
+    /// Demo Mode is enforced here, below every service, rather than in the
+    /// views or the demo simulator: whatever produced a packet — push-to-talk
+    /// audio, a floor request, a heartbeat, a presence beacon with a check-in
+    /// coordinate, cover traffic, a text on a simulated channel — it cannot
+    /// reach the air while the sandbox is up. Independently of the sandbox, a
+    /// packet addressed to a simulated channel is never transmitted either,
+    /// so demo traffic that somehow outlived Demo Mode still goes nowhere.
+    ///
+    /// - Returns: `true` if the bytes were handed to the radio.
+    @discardableResult
+    private func emit(_ wireData: Data, to targets: [MCPeerID], mode: MCSessionSendDataMode) throws -> Bool {
+        if isSandboxed || Self.isDemoTraffic(wireData) {
+            droppedCounter.withLock { $0 += 1 }
+            return false
+        }
+        try radio.send(wireData, toPeers: targets, with: mode)
+        return true
+    }
+
+    /// Whether wire bytes carry a packet addressed to a simulated channel.
+    static func isDemoTraffic(_ wireData: Data) -> Bool {
+        guard wireData.count >= 2, wireData.first == meshMagic,
+              let packet = MeshPacket.deserialize(Data(wireData.dropFirst())) else {
+            return false
+        }
+        return DemoMode.isDemoChannel(packet.channelID)
     }
 
     // MARK: - Helpers
@@ -393,6 +498,10 @@ extension MultipeerTransport: MCSessionDelegate {
     }
 
     func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
+        // Demo Mode: real traffic must not mix with simulated peers. Discovery
+        // is already stopped, so this only catches packets in flight.
+        guard !isSandboxed else { return }
+
         // All packets must start with the mesh magic byte
         guard data.count >= 2, data[0] == Self.meshMagic else {
             logger.warning("Dropped non-mesh packet from '\(peerID.displayName)' (\(data.count) bytes)")

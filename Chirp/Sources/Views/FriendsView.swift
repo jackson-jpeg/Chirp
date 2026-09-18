@@ -55,6 +55,7 @@ struct FriendsView: View {
         }
         .sheet(isPresented: $showAddFriend) {
             AddFriendView()
+                .demoBanner()
                 .presentationDetents([.medium, .large])
         }
         .sheet(item: $detailFriend) { friend in
@@ -68,6 +69,7 @@ struct FriendsView: View {
                     }
                 }
             )
+            .demoBanner()
             .presentationDetents([.medium])
             .presentationDragIndicator(.visible)
             .presentationCornerRadius(28)

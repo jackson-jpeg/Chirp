@@ -7,7 +7,8 @@ import AVFoundation
 struct VoiceNoteBubbleView: View {
 
     let audioData: Data
-    let duration: TimeInterval
+    /// Known length, or `nil` to read it from the audio itself.
+    var duration: TimeInterval?
     let isFromSelf: Bool
     var clusterPosition: MessageBubbleView.ClusterPosition = .solo
 
@@ -15,6 +16,9 @@ struct VoiceNoteBubbleView: View {
     @State private var playbackProgress: Double = 0
     @State private var player: AVAudioPlayer?
     @State private var playbackTimer: Timer?
+    @State private var measuredDuration: TimeInterval = 0
+
+    private var length: TimeInterval { duration ?? measuredDuration }
 
     // MARK: - Body
 
@@ -30,22 +34,29 @@ struct VoiceNoteBubbleView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(isPlaying ? "Pause voice note" : "Play voice note")
+            .accessibilityValue(isPlaying ? "Playing" : "")
+            .accessibilityIdentifier(AccessibilityID.voiceNotePlayButton)
 
             // Waveform bars
             waveformBars
                 .frame(height: 28)
 
             // Duration
-            Text(formatDuration(isPlaying ? duration * playbackProgress : duration))
+            Text(formatDuration(isPlaying ? length * playbackProgress : length))
                 .font(Constants.Typography.monoSmall)
                 .foregroundStyle(Constants.Colors.textSecondary)
                 .frame(width: 36, alignment: .trailing)
         }
         .padding(.horizontal, 4)
         .padding(.vertical, 2)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Voice note, \(formatDuration(duration))")
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Voice note, \(formatDuration(length))")
         .accessibilityIdentifier(AccessibilityID.chatVoiceNoteBubble)
+        .task(id: audioData.count) {
+            guard duration == nil else { return }
+            measuredDuration = (try? AVAudioPlayer(data: audioData))?.duration ?? 0
+        }
+        .onDisappear { stopPlayback() }
     }
 
     // MARK: - Waveform Bars
@@ -95,6 +106,9 @@ struct VoiceNoteBubbleView: View {
 
     private func startPlayback() {
         do {
+            // The PTT engine owns the category (playAndRecord, speaker);
+            // only make sure the session is live.
+            try? AVAudioSession.sharedInstance().setActive(true)
             player = try AVAudioPlayer(data: audioData)
             player?.prepareToPlay()
             player?.play()

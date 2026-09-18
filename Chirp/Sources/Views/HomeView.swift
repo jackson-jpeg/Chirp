@@ -25,6 +25,7 @@ private struct CompactHeader: View {
                     )
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(peerCount > 0 ? Constants.Colors.electricGreen : Constants.Colors.slate400)
+                    .accessibilityIdentifier(AccessibilityID.meshStatusLabel)
                 }
             }
 
@@ -427,6 +428,12 @@ private struct ChannelEmptyState: View {
                 ) {
                     buttonGlow = true
                 }
+            }
+
+            if !meshReady {
+                TryDemoModeButton()
+                    .padding(.top, 20)
+                    .padding(.horizontal, 40)
             }
 
             Spacer()
@@ -1022,8 +1029,10 @@ struct HomeView: View {
     @State private var toast: ToastItem?
     @State private var connectedPeerCount = 0
     @State private var isRefreshing = false
-    @State private var showPermissionAlert = false
-    @State private var permissionAlert: AppState.PermissionDeniedAlert?
+    /// Set when Check In could not ask (declined earlier, or Location
+    /// Services off) so the Map shows the Settings notice even if the
+    /// authorization status alone would not.
+    @State private var showLocationBlockedNotice = false
     @State private var selectedTab: HomeTab = .talk
     @State private var pttState: PTTState = .idle
     @State private var inputLevel: Float = 0.0
@@ -1104,12 +1113,18 @@ struct HomeView: View {
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showChannelCreation) {
                 ChannelCreationView()
+                    .demoBanner()
             }
             .sheet(isPresented: $showDiagnostics) {
                 DiagnosticsView()
+                    .demoBanner()
             }
             .sheet(isPresented: $showLocationCheckIn) {
-                LocationCheckInSheet()
+                LocationCheckInSheet { checkedIn in
+                    if checkedIn {
+                        toast = ToastItem(message: String(localized: "map.toast.checkedIn"), type: .success)
+                    }
+                }
             }
             // Tapping a pin reaches the same block and report actions as a
             // message bubble or a peer row — the map is not a place where a
@@ -1145,21 +1160,6 @@ struct HomeView: View {
                 Text(String(localized: "map.peerActions.message"))
             }
             .chirpToast($toast)
-            .onChange(of: appState.permissionDeniedAlert) { _, newAlert in
-                if let alert = newAlert {
-                    permissionAlert = alert
-                    showPermissionAlert = true
-                    appState.permissionDeniedAlert = nil
-                }
-            }
-            .alert(permissionAlert?.title ?? "", isPresented: $showPermissionAlert) {
-                Button("Open Settings") {
-                    appState.openAppSettings()
-                }
-                Button(String(localized: "common.cancel"), role: .cancel) {}
-            } message: {
-                Text(permissionAlert?.message ?? "")
-            }
             .onChange(of: appState.proximityAlert.recentAlerts.count) { _, _ in
                 if let latest = appState.proximityAlert.recentAlerts.last {
                     toast = ToastItem(message: "\(latest.friendName) is \(latest.distance)!", type: .info)
@@ -1226,6 +1226,7 @@ struct HomeView: View {
             }
             .sheet(isPresented: $showOfflineMapDownload) {
                 OfflineMapDownloadSheet()
+                    .demoBanner()
             }
         }
     }
@@ -1283,13 +1284,35 @@ struct HomeView: View {
         let sharing = appState.locationSharing
         let pinned = mapPeerPins.count
 
-        if sharing.isDeclined {
-            mapBanner(
-                icon: "location.slash.fill",
-                tint: Constants.Colors.slate400,
-                text: String(localized: "map.banner.locationOff \(pinned)")
-            )
-        } else if pinned == 0 && peersWithoutLocation > 0 {
+        VStack(spacing: 8) {
+            if sharing.isDeclined || (showLocationBlockedNotice && !sharing.isAuthorized) {
+                PermissionNotice(kind: .location)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+            }
+            mapPeersBanner(pinned: pinned)
+            if pinned == 0 && appState.connectedPeerCount == 0 && !appState.demoMode.isActive {
+                VStack(spacing: 6) {
+                    Text(String(localized: "map.empty.noPeers"))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Constants.Colors.textSecondary)
+                        .multilineTextAlignment(.center)
+                    TryDemoModeButton(showsCaption: false)
+                }
+                .padding(14)
+                .background(
+                    RoundedRectangle(cornerRadius: Constants.Layout.cornerRadius)
+                        .fill(Constants.Colors.slate900.opacity(0.9))
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func mapPeersBanner(pinned: Int) -> some View {
+        if pinned == 0 && peersWithoutLocation > 0 {
             mapBanner(
                 icon: "mappin.slash",
                 tint: Constants.Colors.slate400,
@@ -1341,6 +1364,7 @@ struct HomeView: View {
                     Text(String(localized: "map.sharing.title"))
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(Constants.Colors.electricGreen)
+                        .accessibilityIdentifier(AccessibilityID.mapSharingIndicator)
                     Text(String(localized: "map.sharing.subtitle \(sharing.remainingText)"))
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(Constants.Colors.textSecondary)
@@ -1380,7 +1404,7 @@ struct HomeView: View {
                 Spacer(minLength: 8)
 
                 Button {
-                    showLocationCheckIn = true
+                    Task { await checkIn() }
                 } label: {
                     Text(String(localized: "map.action.checkIn"))
                         .font(.system(size: 14, weight: .bold, design: .rounded))
@@ -1409,8 +1433,26 @@ struct HomeView: View {
         )
         .padding(.horizontal, 16)
         .padding(.bottom, 28)
-        .accessibilityIdentifier(AccessibilityID.mapSharingIndicator)
+        // No identifier on this container: SwiftUI hands a container's
+        // identifier down to every element inside it, which renamed the
+        // Check In and Stop buttons and made them unfindable.
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: sharing.isSharing)
+    }
+
+    /// Check In: the tap is the user's decision. Already allowed, it checks in
+    /// at once; never asked, it shows the explainer whose one button fires the
+    /// system prompt; declined, it points at Settings.
+    private func checkIn() async {
+        switch await CheckInAction.perform(appState.locationSharing) {
+        case .checkedIn:
+            HapticsManager.shared.pttDown()
+            toast = ToastItem(message: String(localized: "map.toast.checkedIn"), type: .success)
+        case .showExplainer:
+            showLocationCheckIn = true
+        case .showSettingsNotice:
+            HapticsManager.shared.denied()
+            withAnimation { showLocationBlockedNotice = true }
+        }
     }
 
     private var channelIsEncrypted: Bool {
@@ -1438,6 +1480,18 @@ struct HomeView: View {
                 )
                 .padding(.top, 12)
 
+                if appState.micPermission == .denied {
+                    PermissionNotice(kind: .microphone)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 10)
+                }
+
+                if appState.connectedPeerCount == 0 && !appState.demoMode.isActive {
+                    TryDemoModeButton()
+                        .padding(.horizontal, 40)
+                        .padding(.top, 14)
+                }
+
                 Spacer()
 
                 // 3. PTT zone: signal ring + peer bubbles + button
@@ -1461,7 +1515,14 @@ struct HomeView: View {
                         pttState: $pttState,
                         onPressDown: {
                             guard appState.micPermissionGranted else {
-                                Task { await appState.requestMicPermission() }
+                                // Never answered (e.g. onboarding finished on
+                                // an older build): the system prompt itself.
+                                // Declined: the notice above says what to do.
+                                if appState.micPermission == .undetermined {
+                                    Task { await appState.requestMicPermission() }
+                                } else {
+                                    HapticsManager.shared.denied()
+                                }
                                 return
                             }
                             HapticsManager.shared.pttDown()
@@ -1491,6 +1552,7 @@ struct HomeView: View {
                             .offset(x: 85, y: -70)
                             .transition(.scale.combined(with: .opacity))
                             .accessibilityLabel("\(appState.connectedPeerCount) connected peers")
+                            .accessibilityIdentifier(AccessibilityID.peerCountBadge)
                     }
                 }
 
@@ -1597,6 +1659,24 @@ struct HomeView: View {
                     .transition(.opacity)
                 }
 
+                if appState.connectedPeerCount == 0 && !appState.demoMode.isActive {
+                    VStack(spacing: 10) {
+                        Text(String(localized: "messages.empty.noPeers"))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Constants.Colors.textSecondary)
+                            .multilineTextAlignment(.center)
+                        TryDemoModeButton()
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        RoundedRectangle(cornerRadius: Constants.Layout.cornerRadius)
+                            .fill(Constants.Colors.slate800.opacity(0.5))
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                }
+
                 LazyVStack(spacing: 8) {
                     ForEach(appState.channelManager.channels) { channel in
                         let isActive = appState.channelManager.activeChannel?.id == channel.id
@@ -1641,9 +1721,12 @@ struct HomeView: View {
     private func refreshPeerDiscovery() async {
         isRefreshing = true
 
-        // Restart multipeer advertising + browsing to force fresh discovery
-        appState.multipeerTransport.stop()
-        appState.multipeerTransport.start()
+        // Restart multipeer advertising + browsing to force fresh discovery.
+        // Not in Demo Mode: the radio stays off while simulated peers are up.
+        if !appState.demoMode.isActive {
+            appState.multipeerTransport.stop()
+            appState.multipeerTransport.start()
+        }
 
         // Brief pause so peers have time to reconnect
         try? await Task.sleep(for: .seconds(1))

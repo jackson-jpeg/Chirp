@@ -23,6 +23,9 @@ final class VoiceMessageQueue {
         let fileName: String
         var delivered: Bool = false
         var deliveredAt: Date?
+        /// Display name of whoever recorded it. Optional so indexes written
+        /// before it existed still decode; rows fall back to the sender ID.
+        var senderName: String? = nil
 
         /// Human-readable duration string (e.g. "0:12").
         var durationDisplay: String {
@@ -35,8 +38,28 @@ final class VoiceMessageQueue {
 
     // MARK: - Public State
 
-    private(set) var pendingMessages: [PendingMessage] = []
-    private(set) var receivedMessages: [PendingMessage] = []
+    /// What the Voice Messages screen shows: the real queue, or Demo Mode's
+    /// simulated inbox while that is up.
+    var pendingMessages: [PendingMessage] { demoOverlay == nil ? storedPending : [] }
+    var receivedMessages: [PendingMessage] { demoOverlay?.received ?? storedReceived }
+
+    private var storedPending: [PendingMessage] = []
+    private var storedReceived: [PendingMessage] = []
+
+    /// Demo Mode's inbox: messages plus the bundled clip each one plays.
+    /// Never written to disk; the real index files are untouched while it is up.
+    private var demoOverlay: (received: [PendingMessage], clips: [UUID: URL])?
+
+    func enterDemoOverlay(received: [(PendingMessage, URL)]) {
+        demoOverlay = (
+            received.map(\.0).sorted { $0.timestamp > $1.timestamp },
+            Dictionary(uniqueKeysWithValues: received.map { ($0.0.id, $0.1) })
+        )
+    }
+
+    func exitDemoOverlay() {
+        demoOverlay = nil
+    }
 
     /// Number of undelivered messages waiting in the queue.
     var undeliveredCount: Int {
@@ -122,7 +145,7 @@ final class VoiceMessageQueue {
             fileName: fileName
         )
 
-        pendingMessages.append(message)
+        storedPending.append(message)
         save()
 
         logger.info("Queued voice message for \(recipientName, privacy: .public) frames=\(opusFrames.count) duration=\(durationMs)ms")
@@ -143,8 +166,8 @@ final class VoiceMessageQueue {
     ) {
         var didDeliver = false
 
-        for index in pendingMessages.indices {
-            let message = pendingMessages[index]
+        for index in storedPending.indices {
+            let message = storedPending[index]
             guard !message.delivered else { continue }
             guard onlinePeerIDs.contains(message.recipientID) else { continue }
 
@@ -178,8 +201,8 @@ final class VoiceMessageQueue {
 
             sendFunction(message.recipientID, deliveryPayload)
 
-            pendingMessages[index].delivered = true
-            pendingMessages[index].deliveredAt = Date()
+            storedPending[index].delivered = true
+            storedPending[index].deliveredAt = Date()
             didDeliver = true
 
             logger.info(
@@ -222,10 +245,11 @@ final class VoiceMessageQueue {
             durationMs: message.durationMs,
             fileName: fileName,
             delivered: true,
-            deliveredAt: Date()
+            deliveredAt: Date(),
+            senderName: message.senderName
         )
 
-        receivedMessages.insert(receivedMsg, at: 0)
+        storedReceived.insert(receivedMsg, at: 0)
         saveReceived()
 
         logger.info("Received voice message from \(message.senderID, privacy: .public) duration=\(message.durationMs)ms")
@@ -261,6 +285,10 @@ final class VoiceMessageQueue {
     /// Load the Opus frames for a received message from disk.
     /// Returns an array of individual Opus frames.
     func loadOpusFrames(for message: PendingMessage) -> [Data]? {
+        if let clip = demoOverlay?.clips[message.id] {
+            guard let data = try? Data(contentsOf: clip) else { return nil }
+            return decodeFrames(from: data)
+        }
         let filePath = voiceDirectory.appendingPathComponent(message.fileName)
         let rawData: Data
         do {
@@ -310,20 +338,25 @@ final class VoiceMessageQueue {
 
     /// Delete a pending message and its audio file.
     func deletePendingMessage(id: UUID) {
-        guard let index = pendingMessages.firstIndex(where: { $0.id == id }) else { return }
-        let message = pendingMessages[index]
+        guard let index = storedPending.firstIndex(where: { $0.id == id }) else { return }
+        let message = storedPending[index]
         deleteAudioFile(message.fileName)
-        pendingMessages.remove(at: index)
+        storedPending.remove(at: index)
         save()
         logger.info("Deleted pending message \(id.uuidString)")
     }
 
     /// Delete a received message and its audio file.
     func deleteReceivedMessage(id: UUID) {
-        guard let index = receivedMessages.firstIndex(where: { $0.id == id }) else { return }
-        let message = receivedMessages[index]
+        if var overlay = demoOverlay {
+            overlay.received.removeAll { $0.id == id }
+            demoOverlay = overlay
+            return
+        }
+        guard let index = storedReceived.firstIndex(where: { $0.id == id }) else { return }
+        let message = storedReceived[index]
         deleteAudioFile(message.fileName)
-        receivedMessages.remove(at: index)
+        storedReceived.remove(at: index)
         saveReceived()
         logger.info("Deleted received message \(id.uuidString)")
     }
@@ -331,13 +364,13 @@ final class VoiceMessageQueue {
     /// Remove all delivered messages older than the given interval.
     func pruneDelivered(olderThan interval: TimeInterval = 86400) {
         let cutoff = Date().addingTimeInterval(-interval)
-        let toRemove = pendingMessages.filter { $0.delivered && ($0.deliveredAt ?? $0.timestamp) < cutoff }
+        let toRemove = storedPending.filter { $0.delivered && ($0.deliveredAt ?? $0.timestamp) < cutoff }
 
         for message in toRemove {
             deleteAudioFile(message.fileName)
         }
 
-        pendingMessages.removeAll { msg in
+        storedPending.removeAll { msg in
             toRemove.contains { $0.id == msg.id }
         }
 
@@ -352,7 +385,7 @@ final class VoiceMessageQueue {
     private func save() {
         let indexURL = voiceDirectory.appendingPathComponent(Self.indexFileName)
         do {
-            let data = try JSONEncoder().encode(pendingMessages)
+            let data = try JSONEncoder().encode(storedPending)
             try data.write(to: indexURL, options: .atomic)
         } catch {
             logger.error("Failed to save pending message index: \(error.localizedDescription)")
@@ -362,7 +395,7 @@ final class VoiceMessageQueue {
     private func saveReceived() {
         let indexURL = voiceDirectory.appendingPathComponent(Self.receivedIndexFileName)
         do {
-            let data = try JSONEncoder().encode(receivedMessages)
+            let data = try JSONEncoder().encode(storedReceived)
             try data.write(to: indexURL, options: .atomic)
         } catch {
             logger.error("Failed to save received message index: \(error.localizedDescription)")
@@ -370,8 +403,8 @@ final class VoiceMessageQueue {
     }
 
     private func load() {
-        pendingMessages = loadIndex(named: Self.indexFileName, label: "pending")
-        receivedMessages = loadIndex(named: Self.receivedIndexFileName, label: "received")
+        storedPending = loadIndex(named: Self.indexFileName, label: "pending")
+        storedReceived = loadIndex(named: Self.receivedIndexFileName, label: "received")
     }
 
     /// A missing index is normal (first launch, nothing queued yet); an index

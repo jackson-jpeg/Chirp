@@ -23,26 +23,24 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>ChirpChirps uses Bluetooth to discover nearby devices for peer-to-peer communication.</string>
+	<string>ChirpChirps uses Bluetooth to find nearby people running ChirpChirps and connect to them directly for push-to-talk and messages.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_chirp-ptt._udp</string>
 		<string>_chirp-ptt._tcp</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>ChirpChirps uses your camera to capture and share media with nearby devices.</string>
+	<string>ChirpChirps uses the camera when you tap the camera button in a chat, so you can take a photo and send it to people nearby.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>ChirpChirps uses your local network to connect directly to nearby devices without internet.</string>
+	<string>ChirpChirps uses your local network to connect directly to nearby phones over Wi-Fi for push-to-talk and messages, without the internet.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>ChirpChirps shares your position on the map only for a check-in you start by hand. Each check-in lasts 15 minutes, is sent directly to nearby devices, and never resumes on its own.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>ChirpChirps uses your microphone for real-time voice communication with nearby devices.</string>
+	<string>ChirpChirps uses the microphone so you can talk to nearby people with push-to-talk and record voice messages for them.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>ChirpChirps saves received images to your photo library.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>ChirpChirps accesses your photo library to share images with nearby devices.</string>
+	<string>ChirpChirps saves a photo someone nearby sent you to your library when you tap Save on it.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>ChirpChirps uses speech recognition for real-time translation of voice communication.</string>
+	<string>ChirpChirps uses on-device speech recognition to show live captions of what nearby people say over push-to-talk.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

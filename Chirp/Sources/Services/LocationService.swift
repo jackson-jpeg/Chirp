@@ -11,11 +11,6 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     private(set) var currentHeading: Double?
     private(set) var authorizationStatus: CLAuthorizationStatus = .notDetermined
 
-    /// Fires when the user denies or restricts location access — but only in
-    /// response to a request *this* session made. A device that was denied
-    /// long ago must not be greeted with a permission alert on launch.
-    var onPermissionDenied: (() -> Void)?
-
     /// Fires on every authorization change, including the first one the
     /// delegate reports. ``LocationSharing`` uses it to end a live check-in
     /// the moment permission goes away.
@@ -33,10 +28,9 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         authorizationStatus = manager.authorizationStatus
     }
 
-    /// Ask iOS for permission. Called only from the in-app check-in sheet,
-    /// after the user has read what location sharing does and tapped
-    /// Continue — never on launch, and never as a side effect of opening a
-    /// screen.
+    /// Ask iOS for permission. Called only from the check-in explainer's one
+    /// button, Continue, after the user tapped Check In — never on launch,
+    /// and never as a side effect of opening a screen.
     func requestPermission() {
         hasRequestedPermission = true
         manager.requestWhenInUseAuthorization()
@@ -156,12 +150,8 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         case .denied, .restricted:
             logger.warning("Location access denied or restricted")
             stopUpdating()
-            // Only surface the alert if the user just answered our prompt.
-            // Otherwise this fires on every launch of a device that declined
-            // once, which is the dead end the app must not have.
-            if hasRequestedPermission {
-                onPermissionDenied?()
-            }
+            // No alert. The Map tab shows an inline notice with an Open
+            // Settings button, and nothing else in the app needs location.
         case .notDetermined:
             break
         @unknown default:

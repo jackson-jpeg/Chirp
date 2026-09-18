@@ -33,6 +33,10 @@ final class AppState {
     let fileTransferService: FileTransferService
     let pheromoneRouter: PheromoneRouter
     let blockList: BlockList
+    /// Single-device tour with simulated peers. See DemoMode.swift.
+    let demoMode: DemoMode
+    /// Paced playback of stored voice clips (Voice Messages).
+    let voiceClipPlayer: VoiceClipPlayer
 
     // MARK: - Identity
 
@@ -55,62 +59,42 @@ final class AppState {
 
     // MARK: - Permissions
 
-    private(set) var micPermissionGranted: Bool = false
+    /// Microphone permission as last read from the system.
+    ///
+    /// Denial is shown where it matters, as an inline notice with an Open
+    /// Settings button on the screens that need the microphone. There is
+    /// deliberately no alert: the app keeps working without the microphone,
+    /// and an alert on every launch or foreground would be a nag.
+    enum MicPermission: Equatable {
+        case undetermined, granted, denied
+    }
 
-    /// Alert shown when a permission is denied. Views observe this to show feedback.
-    var permissionDeniedAlert: PermissionDeniedAlert?
+    private(set) var micPermission: MicPermission = .undetermined
 
-    enum PermissionDeniedAlert: Equatable {
-        case microphone
-        case location
-        case camera
+    var micPermissionGranted: Bool { micPermission == .granted }
 
-        var title: String {
-            switch self {
-            case .microphone: return "Microphone Access Required"
-            case .location: return "Location Is Off"
-            case .camera: return "Camera Access Required"
-            }
-        }
-
-        var message: String {
-            switch self {
-            case .microphone:
-                return "Microphone access is required for push-to-talk. Open Settings to enable."
-            case .location:
-                return """
-                ChirpChirps works fine without it — talk, channels and messages are unaffected, \
-                and the map still shows peers who have checked in. Turn location on in Settings \
-                only if you want to put yourself on the map.
-                """
-            case .camera:
-                return "Camera access is required for photo sharing. Open Settings to enable."
-            }
+    /// Read the current state without asking. Safe on every foreground.
+    func refreshMicPermission() {
+        switch AVAudioApplication.shared.recordPermission {
+        case .granted: micPermission = .granted
+        case .denied: micPermission = .denied
+        case .undetermined: micPermission = .undetermined
+        @unknown default: micPermission = .denied
         }
     }
 
-    func requestMicPermission() async {
-        let status = AVAudioApplication.shared.recordPermission
-        switch status {
-        case .granted:
-            micPermissionGranted = true
-        case .undetermined:
+    /// Show the system microphone prompt if it has never been answered.
+    /// Callers: the final onboarding "Continue", and the talk button when the
+    /// prompt was never shown. Returns whichever way the user answered; the
+    /// app carries on either way.
+    @discardableResult
+    func requestMicPermission() async -> Bool {
+        refreshMicPermission()
+        if micPermission == .undetermined {
             let granted = await AVAudioApplication.requestRecordPermission()
-            micPermissionGranted = granted
-            if !granted {
-                permissionDeniedAlert = .microphone
-            }
-        case .denied:
-            micPermissionGranted = false
-            permissionDeniedAlert = .microphone
-        @unknown default:
-            micPermissionGranted = false
+            micPermission = granted ? .granted : .denied
         }
-    }
-
-    /// Called when location authorization changes to a denied state.
-    func handleLocationPermissionDenied() {
-        permissionDeniedAlert = .location
+        return micPermissionGranted
     }
 
     /// Opens the app's Settings page so the user can re-enable permissions.
@@ -126,7 +110,14 @@ final class AppState {
     /// Current Opus encoder bitrate in bits per second.
     var currentBitrate: Int { audioEngine.currentBitrate }
     private(set) var connectedPeerCount: Int = 0
+    /// Everyone this device can talk to right now: transport peers, or the
+    /// simulated ones while Demo Mode is on.
+    private(set) var nearbyPeers: [ChirpPeer] = []
     private(set) var meshStats: MeshStats?
+
+    /// The router's local-delivery handler. Kept so Demo Mode can hand its
+    /// simulated peers' packets to exactly the code real packets go through.
+    private var localDelivery: (@Sendable (MeshPacket) -> Void)?
 
     // MARK: - Private
 
@@ -143,7 +134,10 @@ final class AppState {
 
     // MARK: - Init
 
-    init() {
+    /// - Parameters:
+    ///   - radio: test seam — stands in for the MCSession the transport sends through.
+    ///   - demoDefaults: where the Demo Mode flag is persisted; tests pass a scratch suite.
+    init(radio: MeshRadio? = nil, demoDefaults: UserDefaults = .standard) {
         // Resolve or create a stable local peer ID.
         let storedID = UserDefaults.standard.string(forKey: Keys.peerID)
         let peerID: String
@@ -240,8 +234,18 @@ final class AppState {
         self.meshBeacon.pheromoneRouter = pheromoneRouter
 
         // Create MultipeerConnectivity transport
-        let transport = MultipeerTransport(displayName: resolvedCallsign, meshRouter: router, localPeerID: peerID, localPeerName: resolvedCallsign)
+        let transport = MultipeerTransport(
+            displayName: resolvedCallsign,
+            meshRouter: router,
+            localPeerID: peerID,
+            localPeerName: resolvedCallsign,
+            radio: radio
+        )
         self.multipeerTransport = transport
+
+        let demoMode = DemoMode(defaults: demoDefaults)
+        self.demoMode = demoMode
+        self.voiceClipPlayer = VoiceClipPlayer(audioEngine: audioEngine)
 
         transport.onPeersChanged = { [weak self] _ in self?.updateUnifiedPeerList() }
 
@@ -332,7 +336,7 @@ final class AppState {
         // Send policy lives in MeshDelivery.makeTextSendHandler so the test
         // suite runs the production policy — see that function for why the
         // live send is gated on the transport, never the channel roster.
-        textMessageService.onSendPacket = MeshDelivery.makeTextSendHandler(
+        let meshTextSend = MeshDelivery.makeTextSendHandler(
             sendControl: { try transport.sendControlData($0, channelID: $1) },
             transportPeers: { [weak self] in self?.multipeerTransport.peers ?? [] },
             channelLookup: { [weak self] channelID in
@@ -344,6 +348,16 @@ final class AppState {
                 self?.storeAndForwardRelay.store(message: pending)
             }
         )
+        // Simulated channels are answered by Demo Mode, never the mesh. The
+        // transport would refuse these packets anyway (see MultipeerTransport
+        // .emit); routing them here is what lets the simulated peer reply.
+        textMessageService.onSendPacket = { [weak demoMode] payload, channelID in
+            if DemoMode.isDemoChannel(channelID) {
+                demoMode?.handleOutboundText(payload, channelID: channelID)
+            } else {
+                meshTextSend(payload, channelID)
+            }
+        }
 
         // Wire file transfer service sends
         fileTransferService.onSendPacket = { payload, channelID in
@@ -361,7 +375,8 @@ final class AppState {
         }
 
         // Wire floor state changes to start/stop transcription
-        floorSession.onStateChange = { newState in
+        floorSession.onStateChange = { [weak demoMode] newState in
+            demoMode?.floorStateChanged(newState)
             switch newState {
             case .receiving(let speakerName, _):
                 transcription.startTranscribing(speakerName: speakerName)
@@ -394,6 +409,7 @@ final class AppState {
                 )
             }
         )
+        self.localDelivery = deliveryHandler
         Task {
             await router.setCallbacks(
                 onLocalDelivery: deliveryHandler,
@@ -403,7 +419,15 @@ final class AppState {
             )
         }
 
+        demoMode.host = self
+
         logger.info("AppState initialized — peerID=\(peerID), name=\(resolvedCallsign)")
+    }
+
+    /// Hand a packet to the local-delivery handler as if the router had just
+    /// accepted it off the air. Demo Mode only.
+    func deliverLocally(_ packet: MeshPacket) {
+        localDelivery?(packet)
     }
 
     // MARK: - Lifecycle
@@ -416,10 +440,9 @@ final class AppState {
         // Load peer fingerprint
         self.peerFingerprint = await PeerIdentity.shared.fingerprint
 
-        // Request mic permission early (but not during onboarding — handled there)
-        if isOnboardingComplete {
-            await requestMicPermission()
-        }
+        // Read, never request: the microphone prompt belongs to the final
+        // onboarding step (or the talk button if it was never answered).
+        refreshMicPermission()
 
         // Register for audio session interruption and route change notifications
         AudioSessionManager.registerForNotifications()
@@ -437,6 +460,12 @@ final class AppState {
             logger.error("PTT engine failed to start: \(error.localizedDescription)")
         }
         await peerTracker.startHealthCheck()
+
+        // A relaunch in Demo Mode must not open the radio, not even for the
+        // moment before the simulated world is rebuilt below.
+        if demoMode.isEnabled {
+            multipeerTransport.setSandboxed(true)
+        }
 
         // Start the transport — all incoming packets delivered via meshRouter.onLocalDelivery.
         multipeerTransport.start()
@@ -460,6 +489,9 @@ final class AppState {
         // Save active state for crash recovery
         saveActiveState()
 
+        // Demo Mode persists across launches so a relaunch does not wipe it.
+        demoMode.restoreIfEnabled()
+
         // Start mesh beacon broadcasting for presence detection
         let channelIDs = channelManager.channels.map(\.id)
         meshBeacon.startBroadcasting(
@@ -476,9 +508,6 @@ final class AppState {
         // the location manager until they then tap Check In.
         if isOnboardingComplete {
             NotificationService.shared.requestPermission()
-        }
-        locationService.onPermissionDenied = { [weak self] in
-            self?.handleLocationPermissionDenied()
         }
 
         // Subscribe to mesh topology updates from beacons to feed MeshIntelligence
@@ -584,12 +613,18 @@ final class AppState {
 
     // MARK: - Peer List
 
+    /// Recompute the peer list, e.g. after Demo Mode switches on or off.
+    func refreshPeers() {
+        updateUnifiedPeerList()
+    }
+
     /// Refresh the peer list from the transport and propagate changes.
     private func updateUnifiedPeerList() {
-        var allPeers = multipeerTransport.peers
+        var allPeers = demoMode.isActive ? demoMode.peers : multipeerTransport.peers
         for index in allPeers.indices {
             allPeers[index].transportType = .multipeer
         }
+        nearbyPeers = allPeers
 
         let oldCount = connectedPeerCount
         connectedPeerCount = allPeers.count

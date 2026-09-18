@@ -107,6 +107,9 @@ final class LiveTranscription {
             logger.warning("Speech recognition not available")
             return
         }
+        // Captions are an extra, never a reason to show a permission prompt:
+        // they run only if speech recognition was already authorized.
+        guard SFSpeechRecognizer.authorizationStatus() == .authorized else { return }
 
         // Tear down any in-flight session
         cancelCurrentTask()

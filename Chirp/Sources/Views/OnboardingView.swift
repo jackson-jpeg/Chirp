@@ -192,12 +192,13 @@ private struct ContinueButton: View {
 // MARK: - Shimmer Start Button
 
 private struct ShimmerStartButton: View {
+    let disabled: Bool
     let action: () -> Void
     @State private var shimmerOffset: CGFloat = -1.0
 
     var body: some View {
         Button(action: action) {
-            Text(String(localized: "Start Chirping"))
+            Text(String(localized: "Continue"))
                 .font(.system(size: 18, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
@@ -233,6 +234,7 @@ private struct ShimmerStartButton: View {
                 .clipShape(RoundedRectangle(cornerRadius: 18))
                 .shadow(color: Constants.Colors.amber.opacity(0.4), radius: 20, y: 8)
         }
+        .disabled(disabled)
         .padding(.horizontal, 32)
         .onAppear {
             withAnimation(
@@ -243,7 +245,7 @@ private struct ShimmerStartButton: View {
                 shimmerOffset = 2.0
             }
         }
-        .accessibilityLabel(String(localized: "Start Chirping"))
+        .accessibilityLabel(String(localized: "Continue"))
         .accessibilityIdentifier(AccessibilityID.getStartedButton)
     }
 }
@@ -607,8 +609,6 @@ private struct GoLivePage: View {
 
     @State private var discoveredPeers: [String] = []
     @State private var searchSeconds: Int = 0
-    @State private var micRequested = false
-    @State private var micGranted = false
     @State private var titleOpacity: Double = 0
     @State private var statusOpacity: Double = 0
     @State private var pollTask: Task<Void, Never>?
@@ -637,10 +637,13 @@ private struct GoLivePage: View {
             Group {
                 if discoveredPeers.isEmpty {
                     if searchSeconds >= 5 {
-                        Text(String(localized: "No peers nearby yet \u{2014} you're the first node.\nThe mesh grows when others join."))
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(Constants.Colors.textSecondary)
-                            .multilineTextAlignment(.center)
+                        VStack(spacing: 14) {
+                            Text(String(localized: "onboarding.golive.noPeers"))
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(Constants.Colors.textSecondary)
+                                .multilineTextAlignment(.center)
+                            TryDemoModeButton()
+                        }
                     } else {
                         HStack(spacing: 8) {
                             ProgressView()
@@ -665,54 +668,6 @@ private struct GoLivePage: View {
 
             Spacer().frame(height: 24)
 
-            // Microphone permission
-            if !micGranted {
-                VStack(spacing: 10) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "mic.fill")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(Constants.Colors.amber)
-                        Text(String(localized: "Microphone needed for push-to-talk"))
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(Constants.Colors.textSecondary)
-                    }
-
-                    if !micRequested {
-                        Button {
-                            Task {
-                                await appState.requestMicPermission()
-                                micGranted = appState.micPermissionGranted
-                                micRequested = true
-                            }
-                        } label: {
-                            Text(String(localized: "Enable Microphone"))
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(Constants.Colors.amber)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 10)
-                                .background(
-                                    Capsule()
-                                        .stroke(Constants.Colors.amber.opacity(0.5), lineWidth: 1.5)
-                                )
-                        }
-                        .accessibilityLabel(String(localized: "Enable Microphone"))
-                    } else {
-                        Text(String(localized: "You can enable it later in Settings"))
-                            .font(.system(size: 13, weight: .regular))
-                            .foregroundStyle(Constants.Colors.textTertiary)
-                    }
-                }
-                .padding(.horizontal, 32)
-            } else {
-                HStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(Constants.Colors.electricGreen)
-                    Text(String(localized: "Microphone enabled"))
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Constants.Colors.electricGreen)
-                }
-            }
-
             Spacer()
         }
         .onAppear {
@@ -722,8 +677,6 @@ private struct GoLivePage: View {
             withAnimation(.easeOut(duration: 0.5).delay(0.3)) {
                 statusOpacity = 1.0
             }
-            // Check current mic status
-            micGranted = appState.micPermissionGranted
             // Start peer discovery polling
             startPeerPolling()
         }
@@ -740,8 +693,8 @@ private struct GoLivePage: View {
                 try? await Task.sleep(for: .seconds(1))
                 guard !Task.isCancelled else { break }
                 searchSeconds += 1
-                let peers = appState.multipeerTransport.peers
-                let names = peers.map(\.name)
+                // Real peers, or Demo Mode's simulated ones once it is on.
+                let names = appState.nearbyPeers.map(\.name)
                 if names != discoveredPeers {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                         discoveredPeers = names
@@ -749,6 +702,57 @@ private struct GoLivePage: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Page 6: Microphone
+
+/// The last step. Its only button is Continue, and Continue always shows the
+/// system microphone prompt (App Review Guideline 5.1.1(iv)). There is no
+/// skip: whichever way the prompt is answered, onboarding finishes and the app
+/// works; a declined microphone shows an inline notice on the talk screens.
+private struct MicrophonePage: View {
+    @State private var contentOpacity: Double = 0
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer()
+
+            ZStack {
+                Circle()
+                    .fill(Constants.Colors.glassAmber)
+                    .frame(width: 112, height: 112)
+                    .overlay(Circle().stroke(Constants.Colors.glassAmberBorder, lineWidth: 1))
+                Image(systemName: "mic.fill")
+                    .font(.system(size: 44, weight: .semibold))
+                    .foregroundStyle(Constants.Colors.amber)
+            }
+            .padding(.bottom, 32)
+
+            Text(String(localized: "onboarding.mic.title"))
+                .font(Constants.Typography.heroTitle)
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+                .accessibilityAddTraits(.isHeader)
+
+            Spacer().frame(height: 14)
+
+            Text(String(localized: "onboarding.mic.body"))
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(Constants.Colors.textSecondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 40)
+
+            Spacer()
+            Spacer()
+        }
+        .opacity(contentOpacity)
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.5)) { contentOpacity = 1 }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(AccessibilityID.onboardingMicPage)
     }
 }
 
@@ -760,7 +764,9 @@ struct OnboardingView: View {
     @State private var currentPage = 0
     @State private var callsign: String = ""
     @State private var hasAcceptedRules = false
-    private let totalPages = 5
+    @State private var isRequestingMic = false
+    private let totalPages = 6
+    private let micPage = 5
 
     var body: some View {
         ZStack {
@@ -774,63 +780,33 @@ struct OnboardingView: View {
             }
 
             VStack(spacing: 0) {
-                // Skip button (pages 0-2)
-                HStack {
-                    Spacer()
-                    if currentPage < 3 {
-                        Button {
-                            // Skip lands on the rules page, never past it —
-                            // terms acceptance cannot be skipped.
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                currentPage = 3
-                            }
-                        } label: {
-                            Text(String(localized: "Skip"))
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundStyle(Constants.Colors.textTertiary)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                        }
-                        .transition(.opacity)
-                        .accessibilityLabel(String(localized: "Skip onboarding"))
+                Spacer().frame(height: 44)
+
+                // Page content. Pages advance only through their Continue
+                // button — no swiping — so the rules gate cannot be skipped
+                // and the last page is only ever reached the one way.
+                ZStack {
+                    switch currentPage {
+                    case 0: TheMeshPage()
+                    case 1: HowItWorksPage()
+                    case 2: IdentityPage(callsign: $callsign)
+                    case 3: RulesPage(hasAccepted: $hasAcceptedRules)
+                    case 4: GoLivePage()
+                    default: MicrophonePage()
                     }
                 }
-                .frame(height: 44)
-                .padding(.horizontal, 8)
-
-                // Page content
-                TabView(selection: $currentPage) {
-                    TheMeshPage()
-                        .tag(0)
-
-                    HowItWorksPage()
-                        .tag(1)
-
-                    IdentityPage(callsign: $callsign)
-                        .tag(2)
-
-                    RulesPage(hasAccepted: $hasAcceptedRules)
-                        .tag(3)
-
-                    GoLivePage()
-                        .tag(4)
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
+                .id(currentPage)
+                .transition(.asymmetric(
+                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                    removal: .move(edge: .leading).combined(with: .opacity)
+                ))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 // Bottom controls
                 VStack(spacing: 20) {
                     PageDots(count: totalPages, current: currentPage)
 
-                    // Action button per page
                     switch currentPage {
-                    case 0, 1:
-                        ContinueButton {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                currentPage += 1
-                            }
-                        }
-                        .transition(.opacity)
-
                     case 2:
                         ContinueButton(
                             disabled: callsign.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -840,46 +816,26 @@ struct OnboardingView: View {
                             if !trimmed.isEmpty {
                                 appState.callsign = trimmed
                             }
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                currentPage += 1
-                            }
+                            advance()
                         }
-                        .transition(.opacity)
+                        .accessibilityIdentifier(AccessibilityID.onboardingContinue)
 
                     case 3:
                         // Rules page: gated until the user accepts.
-                        ContinueButton(disabled: !hasAcceptedRules) {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                currentPage += 1
-                            }
-                        }
-                        .transition(.opacity)
+                        ContinueButton(disabled: !hasAcceptedRules) { advance() }
+                            .accessibilityIdentifier(AccessibilityID.onboardingContinue)
 
-                    case 4:
-                        // Guard against swiping past the rules page: without
-                        // acceptance the start button stays a disabled gate.
-                        if hasAcceptedRules {
-                            ShimmerStartButton {
-                                completeOnboarding()
-                            }
-                            .transition(.asymmetric(
-                                insertion: .move(edge: .bottom).combined(with: .opacity),
-                                removal: .opacity
-                            ))
-                        } else {
-                            ContinueButton(
-                                String(localized: "onboarding.rules.acceptToContinue"),
-                                disabled: true
-                            ) {}
-                            .transition(.opacity)
+                    case micPage:
+                        ShimmerStartButton(disabled: isRequestingMic) {
+                            finishWithMicrophone()
                         }
 
                     default:
-                        EmptyView()
+                        ContinueButton { advance() }
+                            .accessibilityIdentifier(AccessibilityID.onboardingContinue)
                     }
                 }
                 .padding(.bottom, 40)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8), value: currentPage)
             }
         }
         .onAppear {
@@ -892,6 +848,24 @@ struct OnboardingView: View {
             }
         }
         .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(AccessibilityID.onboardingView)
+    }
+
+    private func advance() {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            currentPage = min(currentPage + 1, micPage)
+        }
+    }
+
+    /// Continue on the last page: the system microphone prompt, then into the
+    /// app whatever the answer was.
+    private func finishWithMicrophone() {
+        guard !isRequestingMic else { return }
+        isRequestingMic = true
+        Task {
+            await appState.requestMicPermission()
+            completeOnboarding()
+        }
     }
 
     private func completeOnboarding() {

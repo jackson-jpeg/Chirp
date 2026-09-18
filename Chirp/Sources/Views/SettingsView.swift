@@ -27,6 +27,7 @@ struct SettingsView: View {
         ScrollView {
             VStack(spacing: 24) {
                 profileHeroCard
+                demoModeSection
                 meshNetworkSection
                 audioHapticsSection
                 privacySecuritySection
@@ -59,6 +60,10 @@ struct SettingsView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Constants.Colors.backgroundPrimary)
+        // children: .contain keeps the controls inside this screen
+        // addressable: a bare identifier on a container is handed down
+        // to every element in it, overwriting theirs.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(AccessibilityID.settingsView)
         .navigationTitle(String(localized: "settings.title"))
         .navigationBarTitleDisplayMode(.inline)
@@ -302,11 +307,45 @@ struct SettingsView: View {
             .contentTransition(.numericText())
     }
 
+    // MARK: - Demo Mode
+
+    /// Simulated nearby people, for trying every feature on one device.
+    /// The switch persists across launches until turned off here or from the
+    /// DEMO banner.
+    private var demoModeSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sectionHeader(icon: "person.3.sequence.fill", title: String(localized: "settings.demo.title"))
+
+            glassRow {
+                Toggle(isOn: Binding(
+                    get: { appState.demoMode.isEnabled },
+                    set: { appState.demoMode.setEnabled($0) }
+                )) {
+                    settingsRow(icon: "sparkles", title: String(localized: "settings.demo.toggle"))
+                }
+                .tint(amber)
+                .accessibilityIdentifier(AccessibilityID.demoModeToggle)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous))
+
+            Text(String(localized: "settings.demo.description"))
+                .font(.system(.caption2))
+                .foregroundStyle(Constants.Colors.textTertiary)
+                .padding(.horizontal, 4)
+                .padding(.top, 8)
+        }
+    }
+
     // MARK: - Audio & Haptics
 
     private var audioHapticsSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             sectionHeader(icon: "waveform.circle", title: String(localized: "settings.audioHaptics.title"))
+
+            if appState.micPermission == .denied {
+                PermissionNotice(kind: .microphone)
+                    .padding(.bottom, 8)
+            }
 
             VStack(spacing: 1) {
                 glassRow {

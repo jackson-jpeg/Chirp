@@ -91,6 +91,28 @@ final class TextMessageService {
         messagesByChannel[message.channelID] = messages
     }
 
+    /// Demo Mode: replace a simulated channel's history. Memory only — demo
+    /// channels never touch the message database (see ``storeMessage(_:)``).
+    func loadDemoHistory(_ messages: [MeshTextMessage], channelID: String) {
+        precondition(DemoMode.isDemoChannel(channelID), "demo history on a real channel")
+        messagesByChannel[channelID] = messages.sorted { $0.timestamp < $1.timestamp }
+        hydratedChannels.insert(channelID)
+        fullyLoadedChannels.insert(channelID)
+        unreadCounts[channelID] = 0
+        for message in messages { seenIDs[message.id] = message.timestamp }
+    }
+
+    /// Demo Mode off: forget every trace of the simulated channels.
+    func discardChannels(_ channelIDs: [String]) {
+        for id in channelIDs {
+            messagesByChannel.removeValue(forKey: id)
+            typingPeersByChannel.removeValue(forKey: id)
+            unreadCounts.removeValue(forKey: id)
+            hydratedChannels.remove(id)
+            fullyLoadedChannels.remove(id)
+        }
+    }
+
     /// Encrypted message database. `nil` until ``setupDatabase()`` is called.
     private var database: MessageDatabase?
 
@@ -129,7 +151,10 @@ final class TextMessageService {
         replyToID: UUID? = nil,
         attachmentType: MeshTextMessage.AttachmentType? = nil
     ) {
-        let maxLength = attachmentType == .image
+        // Voice notes are base64 audio just like images are base64 JPEG: cut
+        // to the 1000-character text limit, every recorded note was a
+        // fraction of a second of corrupt AAC that AVAudioPlayer refused.
+        let maxLength = (attachmentType == .image || attachmentType == .voiceNote)
             ? MeshTextMessage.maxImagePayloadLength
             : MeshTextMessage.maxTextLength
         let clampedText = String(text.prefix(maxLength))
@@ -606,7 +631,16 @@ final class TextMessageService {
 
     /// Returns the text of the most recent message on a channel, or `nil` if empty.
     func lastMessageText(for channelID: String) -> String? {
-        messages(for: channelID).last?.text
+        guard let last = messages(for: channelID).last else { return nil }
+        // Attachments carry base64 or an encoded coordinate in `text`, which
+        // is not something to show in a channel list.
+        switch last.attachmentType {
+        case .voiceNote: return String(localized: "chat.preview.voiceNote")
+        case .image: return String(localized: "chat.preview.photo")
+        case .location: return String(localized: "chat.preview.location")
+        case .file: return String(localized: "chat.preview.file")
+        case .contact, nil: return last.text
+        }
     }
 
     /// Returns the timestamp of the most recent message on a channel, or `nil` if empty.
@@ -621,6 +655,7 @@ final class TextMessageService {
     private func hydrateIfNeeded(channelID: String) {
         guard !hydratedChannels.contains(channelID) else { return }
         hydratedChannels.insert(channelID)
+        guard !DemoMode.isDemoChannel(channelID) else { return }
 
         guard let db = database else { return }
 
@@ -689,9 +724,12 @@ final class TextMessageService {
     /// Append a message to its channel history, enforcing the per-channel cap.
     /// Persists to the database and updates the in-memory cache.
     private func storeMessage(_ message: MeshTextMessage) {
-        // Persist to database
-        database?.insert(MessageRecord(from: message))
-        database?.deleteOldest(forChannel: message.channelID, keepCount: maxMessagesPerChannel)
+        // Persist to database. Simulated (Demo Mode) channels are memory-only,
+        // so turning the demo off leaves the real history exactly as it was.
+        if !DemoMode.isDemoChannel(message.channelID) {
+            database?.insert(MessageRecord(from: message))
+            database?.deleteOldest(forChannel: message.channelID, keepCount: maxMessagesPerChannel)
+        }
 
         // Update in-memory cache
         var history = messagesByChannel[message.channelID] ?? []

@@ -14,6 +14,7 @@ struct ChirpApp: App {
                     OnboardingView()
                 }
             }
+            .demoBanner()
             .environment(appState)
             .preferredColorScheme(.dark)
             .task {
@@ -25,9 +26,9 @@ struct ChirpApp: App {
             .onChange(of: scenePhase) { _, newPhase in
                 switch newPhase {
                 case .active:
-                    if appState.isOnboardingComplete {
-                        Task { await appState.requestMicPermission() }
-                    }
+                    // Read, never ask: the user may have changed it in
+                    // Settings (from an Open Settings notice) and come back.
+                    appState.refreshMicPermission()
                 case .background, .inactive:
                     break
                 @unknown default:

@@ -24,6 +24,9 @@ struct ChannelView: View {
     @State private var showHoldHint: Bool = true
     @State private var showCameraPicker: Bool = false
     @State private var showLocationCheckIn: Bool = false
+    /// Location attachment tapped while location is declined: show the
+    /// Settings notice in the chat instead of sending.
+    @State private var showLocationNotice: Bool = false
 
     enum ChannelMode: CaseIterable {
         case talk
@@ -108,12 +111,23 @@ struct ChannelView: View {
             }
         }
         .sheet(isPresented: $showLocationCheckIn) {
-            LocationCheckInSheet()
+            LocationCheckInSheet { checkedIn in
+                if checkedIn {
+                    toast = ToastItem(message: String(localized: "channel.toast.checkedIn"), type: .success)
+                }
+            }
         }
         .chirpToast($toast)
         .onAppear {
             if appState.channelManager.activeChannel?.id != channel.id {
                 appState.channelManager.joinChannel(id: channel.id)
+            }
+        }
+        .onChange(of: appState.demoMode.isActive) { _, _ in
+            // Demo Mode swaps the whole channel list. A channel from the
+            // other world has nothing left to show, so go back to the list.
+            if !appState.channelManager.channels.contains(where: { $0.id == channel.id }) {
+                dismiss()
             }
         }
         .onChange(of: appState.pttState) { _, newValue in
@@ -210,6 +224,18 @@ struct ChannelView: View {
 
     private var talkModeContent: some View {
         VStack(spacing: 0) {
+            if appState.micPermission == .denied {
+                PermissionNotice(kind: .microphone)
+                    .padding(.horizontal, Constants.Layout.horizontalPadding)
+                    .padding(.top, 4)
+            }
+
+            if appState.connectedPeerCount == 0 && !appState.demoMode.isActive {
+                TryDemoModeButton()
+                    .padding(.horizontal, 40)
+                    .padding(.top, 10)
+            }
+
             Spacer()
 
             // Status pill — floats higher
@@ -258,6 +284,13 @@ struct ChannelView: View {
 
     private var chatModeContent: some View {
         VStack(spacing: 0) {
+            if showLocationNotice && !appState.locationSharing.isAuthorized {
+                PermissionNotice(kind: .location)
+                    .padding(.horizontal, Constants.Layout.horizontalPadding)
+                    .padding(.vertical, 6)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+
             // Encryption notice at top of chat
             if channel.accessMode == .locked {
                 HStack(spacing: 6) {
@@ -283,6 +316,7 @@ struct ChannelView: View {
             localPeerID: appState.localPeerID,
             localPeerName: appState.localPeerName,
             messages: appState.textMessageService.messages(for: channel.id),
+            showsTryDemo: appState.connectedPeerCount == 0 && !appState.demoMode.isActive,
             onSend: { text, replyToID in
                 appState.textMessageService.send(
                     text: text,
@@ -790,11 +824,16 @@ struct ChannelView: View {
                 pttState: $pttState,
                 onPressDown: {
                     guard appState.micPermissionGranted else {
-                        HapticsManager.shared.denied()
-                        toast = ToastItem(
-                            message: String(localized: "channel.toast.microphoneRequired"),
-                            type: .error
-                        )
+                        if appState.micPermission == .undetermined {
+                            // Never answered: the system prompt itself.
+                            Task { await appState.requestMicPermission() }
+                        } else {
+                            HapticsManager.shared.denied()
+                            toast = ToastItem(
+                                message: String(localized: "channel.toast.microphoneRequired"),
+                                type: .error
+                            )
+                        }
                         return
                     }
                     HapticsManager.shared.pttDown()
@@ -1094,7 +1133,22 @@ struct ChannelView: View {
     /// action stays reachable without ever becoming a way around the gate.
     private func shareLocation(in channel: ChirpChannel) {
         guard let coordinate = appState.locationSharing.coordinateForBroadcast() else {
-            showLocationCheckIn = true
+            if appState.locationSharing.isSharing {
+                // Checked in, first fix still on its way.
+                toast = ToastItem(message: String(localized: "channel.toast.locating"), type: .info)
+                return
+            }
+            Task {
+                switch await CheckInAction.perform(appState.locationSharing) {
+                case .checkedIn:
+                    toast = ToastItem(message: String(localized: "channel.toast.checkedIn"), type: .success)
+                case .showExplainer:
+                    showLocationCheckIn = true
+                case .showSettingsNotice:
+                    HapticsManager.shared.denied()
+                    withAnimation { showLocationNotice = true }
+                }
+            }
             return
         }
 
