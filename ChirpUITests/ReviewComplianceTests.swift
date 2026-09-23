@@ -1203,11 +1203,20 @@ final class ReviewComplianceTests: XCTestCase {
         XCTAssertTrue(diagnosticsClosed, "the Diagnostics sheet would not close")
         XCTAssertTrue(waitUntil(timeout: 15, { self.waitForHome(timeout: 1) }), "never got back from Diagnostics")
 
-        // 3. A received voice message.
+        // 3. A received voice message. Reached from the Map tab, which is the
+        //    route testDemoModeGivesASingleDeviceEverything takes: the inbox
+        //    link is a toolbar item, and coming at it straight off the Talk
+        //    tab after two pushed screens did not find it.
+        XCTAssertTrue(
+            switchToTab("Map", until: { self.el(AXID.peerMap).exists }, timeout: 20),
+            "the Map tab never came up on the way to the voice inbox"
+        )
+        let inboxLink = app.buttons["Voice Messages"].firstMatch
+        if !inboxLink.waitForExistence(timeout: 20) { attachHierarchy("no-voice-inbox-link") }
+        XCTAssertTrue(inboxLink.exists, "there is no way into Voice Messages")
         var inboxOpen = false
         for _ in 0..<3 where !inboxOpen {
-            let entry = app.buttons["Voice Messages"].firstMatch
-            if entry.waitForExistence(timeout: 10) { entry.tap() }
+            if inboxLink.exists, inboxLink.isHittable { inboxLink.tap() }
             inboxOpen = el(AXID.voiceMessagePlayButton).waitForExistence(timeout: 15)
         }
         if !inboxOpen { attachHierarchy("voice-inbox-never-opened-for-block") }

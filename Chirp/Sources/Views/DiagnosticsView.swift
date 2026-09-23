@@ -7,6 +7,7 @@ struct DiagnosticsView: View {
 
     @State private var peers: [ChirpPeer] = []
     @State private var meshStats: MeshStats?
+    @Environment(\.dismiss) private var dismiss
     /// Resolved Block/Report target for the peer whose sheet is open.
     @State private var peerActionTarget: PeerActionTarget?
 
@@ -26,6 +27,15 @@ struct DiagnosticsView: View {
             .navigationTitle(String(localized: "diagnostics.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
+            // This sheet had no way out but a flick. Everything else in the
+            // app that presents a sheet offers a button, and App Review is
+            // told to come here to block someone, so it needs one too.
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(String(localized: "common.done")) { dismiss() }
+                        .foregroundStyle(Constants.Colors.amber)
+                }
+            }
             .task {
                 while !Task.isCancelled {
                     // Demo Mode's peers never reach the peer tracker, which is

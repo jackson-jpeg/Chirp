@@ -167,6 +167,10 @@ private struct ReceivedMessageRow: View {
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .lineLimit(1)
+                    // On the name, never on the row: SwiftUI propagates a
+                    // container's identifier to every descendant, and on the
+                    // row it replaced the play button's own.
+                    .accessibilityIdentifier(AccessibilityID.voiceMessageRow)
 
                 HStack(spacing: 6) {
                     Image(systemName: "waveform")
@@ -441,7 +445,6 @@ struct VoiceMessagesView: View {
                                     Label("Delete", systemImage: "trash")
                                 }
                             }
-                            .accessibilityIdentifier(AccessibilityID.voiceMessageRow)
                             .contextMenu {
                                 // Guideline 1.2 wants the sender of a voice
                                 // message blockable from where it appears.
