@@ -28,7 +28,14 @@ struct DiagnosticsView: View {
             .toolbarColorScheme(.dark, for: .navigationBar)
             .task {
                 while !Task.isCancelled {
-                    peers = await appState.peerTracker.allPeers
+                    // Demo Mode's peers never reach the peer tracker, which is
+                    // fed by the radio, so Diagnostics came up empty with four
+                    // simulated people visible on every other screen. The
+                    // review notes send the reviewer here to block someone, so
+                    // it shows what the rest of the app shows.
+                    peers = appState.demoMode.isActive
+                        ? appState.demoMode.peers
+                        : await appState.peerTracker.allPeers
                     meshStats = appState.meshStats
                     try? await Task.sleep(for: .seconds(2))
                 }

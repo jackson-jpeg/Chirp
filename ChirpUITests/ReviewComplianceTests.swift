@@ -1155,7 +1155,8 @@ final class ReviewComplianceTests: XCTestCase {
         )
         tap(AXID.friendsRow)
         assertOpensPeerSheet(from: peerRow(AXID.friendCard), surface: "friends")
-        XCTAssertTrue(goBack(until: { self.waitForHome(timeout: 1) }), "never got back from Friends")
+        XCTAssertTrue(goBack(until: { self.el(AXID.meshStatusStrip).exists || self.waitForHome(timeout: 1) }),
+                      "never got back from Friends")
 
         // 2. Diagnostics, opened by pressing and holding the mesh strip. The
         //    strip belongs to the Talk tab, and Friends was reached from
@@ -1187,8 +1188,19 @@ final class ReviewComplianceTests: XCTestCase {
         if !node.waitForExistence(timeout: 25) { attachHierarchy("diagnostics-has-no-nodes") }
         XCTAssertTrue(node.exists, "Diagnostics lists no simulated node to block")
         assertOpensPeerSheet(from: node, surface: "diagnostics")
-        let done = app.buttons["Done"].firstMatch
-        if done.exists, done.isHittable { done.tap() } else { app.swipeDown() }
+        // Diagnostics is a sheet with no Done button, so it is flicked away —
+        // and waited on. `waitForHome` alone is not enough: the home screen's
+        // elements still `exist` underneath a sheet that is covering them, so
+        // it reports success while the sheet is still eating every tap.
+        let diagnosticsTitle = app.staticTexts["Network Diagnostics"].firstMatch
+        var diagnosticsClosed = false
+        for _ in 0..<4 where !diagnosticsClosed {
+            let done = app.buttons["Done"].firstMatch
+            if done.exists, done.isHittable { done.tap() } else { app.swipeDown() }
+            diagnosticsClosed = Harness.waitGone(diagnosticsTitle, timeout: 8)
+        }
+        if !diagnosticsClosed { attachHierarchy("diagnostics-would-not-close") }
+        XCTAssertTrue(diagnosticsClosed, "the Diagnostics sheet would not close")
         XCTAssertTrue(waitUntil(timeout: 15, { self.waitForHome(timeout: 1) }), "never got back from Diagnostics")
 
         // 3. A received voice message.

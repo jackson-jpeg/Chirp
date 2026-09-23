@@ -277,3 +277,30 @@ final class DemoFriendsOverlayTests: XCTestCase {
         }
     }
 }
+
+/// Diagnostics is the sixth path the review notes give for blocking someone,
+/// and its node list comes from the peer tracker, which the radio feeds and
+/// Demo Mode deliberately never touches. So the view has to fall back to the
+/// simulated peers, or that path dead-ends on an empty list.
+@MainActor
+final class DemoDiagnosticsPeersTests: XCTestCase {
+
+    func testTheSimulatedPeersAreAvailableToDiagnostics() {
+        let app = AppState()
+        XCTAssertTrue(app.demoMode.peers.isEmpty, "Demo Mode offers peers while inactive")
+
+        app.demoMode.setEnabled(true)
+        defer { app.demoMode.setEnabled(false) }
+
+        XCTAssertTrue(app.demoMode.isActive)
+        XCTAssertEqual(
+            Set(app.demoMode.peers.map(\.name)),
+            Set(DemoContent.peers.map(\.name)),
+            "Diagnostics would show an empty node list in Demo Mode"
+        )
+        XCTAssertTrue(
+            app.demoMode.peers.allSatisfy { UUID(uuidString: $0.id) != nil },
+            "a node in Diagnostics carries no routing UUID to block"
+        )
+    }
+}
