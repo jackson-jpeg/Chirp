@@ -4,6 +4,14 @@
 # RUN ON THE MAC (asc-api.rb needs the .p8 in ~/.sanger-build):
 #   ruby scripts/asc/resubmit-for-review.rb            # dry run
 #   ruby scripts/asc/resubmit-for-review.rb --apply
+#   ruby scripts/asc/resubmit-for-review.rb --cancel-only --apply
+#
+# `--cancel-only` stops after releasing the version, because the review notes
+# cannot be written while a rejected submission still holds it: PATCH of the
+# version's appStoreReviewDetail answers 409 even after the version itself has
+# gone back to PREPARE_FOR_SUBMISSION (observed 2026-09-23). So a resubmission
+# that changes the notes runs this first, writes the notes, then runs it again
+# without the flag.
 #
 # fastlane cannot do this. `deliver`'s submit_for_review dies with "Cannot
 # submit for review - A review submission is already in progress", because a
@@ -63,6 +71,7 @@ def editable_version
 end
 
 apply = ARGV.include?('--apply')
+cancel_only = ARGV.include?('--cancel-only')
 
 version = editable_version or abort 'no editable App Store version'
 version_id = version['id']
@@ -73,8 +82,10 @@ build_state  = build&.dig('data', 'attributes', 'processingState')
 puts "version #{version.dig('attributes', 'versionString')} (#{version_id})"
 puts "  state: #{version.dig('attributes', 'appStoreState')}"
 puts "  build: #{build_number || 'NONE'} (#{build_state})"
-abort 'version has no build attached — run attach-build.rb first' unless build_number
-abort "build #{build_number} is #{build_state}, not VALID" unless build_state == 'VALID'
+unless cancel_only
+  abort 'version has no build attached — run attach-build.rb first' unless build_number
+  abort "build #{build_number} is #{build_state}, not VALID" unless build_state == 'VALID'
+end
 
 open = submissions.reject { |s| TERMINAL.include?(s.dig('attributes', 'state')) }
 open.each { |s| puts "open submission #{s['id']} state=#{s.dig('attributes', 'state')}" }
@@ -85,7 +96,7 @@ if (live = open.find { |s| IN_FLIGHT.include?(s.dig('attributes', 'state')) })
 end
 
 unless apply
-  puts "\ndry run — pass --apply to resubmit"
+  puts "\ndry run — pass --apply to #{cancel_only ? 'cancel' : 'resubmit'}"
   exit 0
 end
 
@@ -105,6 +116,11 @@ open.each do |s|
     break puts("  settled as #{state}") if TERMINAL.include?(state)
     sleep 10
   end
+end
+
+if cancel_only
+  puts "\nversion released; write the metadata now, then run this again without --cancel-only"
+  exit 0
 end
 
 # 2. A fresh submission, or the empty one a previous run left behind.

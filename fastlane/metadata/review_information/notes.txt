@@ -1,49 +1,37 @@
-ChirpChirps has no accounts, no sign-in and no servers. It connects nearby devices directly over Bluetooth and peer-to-peer Wi-Fi (Apple's MultipeerConnectivity), so nothing a user shares ever leaves the devices around them.
+ChirpChirps has no accounts, no sign-in and no servers: nearby devices connect directly over Bluetooth and peer-to-peer Wi-Fi, so nothing a user shares leaves the devices around them.
 
-This build addresses Guideline 5.1.2(i). The three requirements are answered below with the exact paths to test each one. Everything can be tested on a single device in Demo Mode.
+This build addresses Guideline 5.1.2(i). Everything below is testable on one device in Demo Mode.
 
-TURNING ON DEMO MODE
-Settings > Demo Mode, or tap "Try Demo Mode" on any empty screen (Talk, Messages, a chat, or the Map). Four simulated people appear with chat history, voice messages, map pins, push-to-talk replies, and entries in Friends and in Diagnostics, so every path listed below is reachable. A "DEMO" badge sits on every screen with a one tap exit. Demo traffic is generated on the device and blocked at the transport layer, so nothing is transmitted, and nothing simulated is written to storage: turning Demo Mode off restores the real (empty) friends list and channels.
+DEMO MODE (the Simulator has no Bluetooth, so a real mesh needs hardware)
+Settings > Demo Mode, or "Try Demo Mode" on any empty screen. Four simulated people appear with chat history, voice messages, map pins, push-to-talk replies, and entries in Friends and Diagnostics, so every path below is reachable. A "DEMO" badge with a one tap exit sits on every screen. Demo traffic is generated on device and blocked at the transport layer: nothing is transmitted or saved.
 
 1. USERS CAN BLOCK OTHER USERS
-Block is reachable from every place another person appears. Everywhere except
-the map it is a press and hold, which is this app's convention for acting on a
-row:
+Block is reachable everywhere a person appears. Except on the map it is a press and hold:
   Map > tap a pin
   Messages > open a channel > press and hold a message
   Messages > open a channel > Talk > press and hold a peer in the participant strip
-  Messages > Friends "See All" (above the channel list) > press and hold a person
-  Voice Messages > press and hold a received message
-  Talk > press and hold the mesh status strip at the bottom (Diagnostics) > press and hold a node
-Each of those opens the same peer sheet, headed with the person's callsign and
-identity fingerprint, offering Block and Report. Block asks one confirmation.
-Settings > Blocked Users lists everyone blocked, with Unblock.
+  Messages > Friends "See All" > press and hold a person
+  Talk > press and hold the mesh strip at the bottom (opens Diagnostics) > press and hold a node
+  Voice Messages (waveform icon, top left) > press and hold a received message
+Each opens the same sheet, headed with the person's callsign and fingerprint, offering Block and Report. Block asks one confirmation. Settings > Blocked Users lists everyone blocked, with Unblock.
 
-A block is keyed to the peer's cryptographic identity, not to the name they display, so renaming does not evade it. Blocking drops everything from that peer on arrival: push-to-talk audio, voice messages, text and position. Their history is hidden and their map pin disappears. They also stop receiving the blocker's position: positions are encrypted separately for each recipient, so a blocked peer cannot read one even when their device relays it. Unblock restores the peer.
+A block is keyed to the peer's cryptographic identity, not their display name, so renaming does not evade it. Blocking drops everything from that peer on arrival: push-to-talk audio, voice messages, text and position. Their history is hidden and their pin disappears. They also stop receiving the blocker's position, which is encrypted per recipient, so a blocked peer cannot read one even when relaying it.
 
-Demo Mode peers are blockable exactly like real ones, so all of the above can be tested on one device.
+2. PERMISSION BEFORE LOCATION IS SHOWN, AND IT CAN BE DECLINED
+Map > Check In. On a fresh install this shows the iOS location prompt directly, with no screen of ours in front of it. Declining leaves the app fully usable; the Map shows a notice with an Open Settings button.
 
-2. PERMISSION IS ASKED BEFORE LOCATION IS SHOWN, AND CAN BE DECLINED
-Map > Check In. On a fresh install this shows the iOS location prompt directly, with no screen of ours in front of it. Declining leaves the app fully usable and the Map shows a short notice with an Open Settings button.
-
-After iOS grants permission, ChirpChirps asks separately whether to share: a sheet headed "Show your location to nearby peers?" with two equally prominent buttons, "Share for 15 Minutes" and "Don't Share". Don't Share leaves the user off the map. Swiping the sheet away is also a decline. "About location sharing", linked from that sheet and from Settings, explains the four things worth knowing and grants nothing.
+After iOS grants permission, the app asks separately whether to share: a sheet headed "Show your location to nearby peers?" with two equally prominent buttons, "Share for 15 Minutes" and "Don't Share". Don't Share leaves the user off the map; swiping the sheet away is also a decline. "About location sharing", linked from that sheet and from Settings, grants nothing.
 
 3. CHECK IN IS MANUAL, EVERY TIME
-The consent sheet appears on every single Check In, including the second one in the same session. Nothing is remembered: there is no "don't ask again", no automatic or always-on option, no background sharing, and no setting anywhere that shares continuously. Relaunching the app always begins checked out, never resuming a previous session. A session lasts 15 minutes and stops on its own, when Stop is tapped, or when the app leaves the foreground.
+The consent sheet appears on every Check In, including the second in one session. Nothing is remembered: no "don't ask again", no automatic or always-on option, no background sharing, no setting that shares continuously. Relaunching always begins checked out. A session lasts 15 minutes and ends on its own, on Stop, or when the app leaves the foreground.
 
 REPORTING AND FILTERING (Guideline 1.2)
-Report sits next to Block on the same peer sheet, from all of the paths listed in section 1. Reporting blocks the peer and opens a prefilled email to support@chirpchirps.com containing the reported device's identity fingerprint, a reason picker and, where the report came from a message, the message text. There are no servers, so email is the reporting channel. Terms of Use at https://chirpchirps.com/terms state zero tolerance for objectionable content and abusive users and commit to acting on reports within 24 hours.
+Report sits beside Block on the same sheet, from every path in section 1. It blocks the peer and opens a prefilled email to support@chirpchirps.com with the reported device's fingerprint, a reason picker and, where the report came from a message, its text. With no servers, email is the reporting channel. Terms of Use at https://chirpchirps.com/terms state zero tolerance for objectionable content and abusive users and commit to acting within 24 hours; agreement is required at onboarding.
 
-Incoming messages are screened on the device for objectionable language and collapsed behind "Hidden message, tap to show". This is on by default. The toggle is at Settings > Message Filter.
-
-Agreement to the Terms of Use is required during onboarding before the app can be used.
+Incoming messages are screened on device and collapsed behind "Hidden message, tap to show", on by default; toggle at Settings > Message Filter.
 
 PERMISSIONS (5.1.1)
-Microphone: requested at the end of onboarding. The last onboarding screen explains push-to-talk and its only button is Continue, which shows the iOS prompt. Whatever the answer, the app opens and works. If access is off, the Talk screen shows a short notice with an Open Settings button.
-Location: as described in section 2. No screen precedes the iOS location prompt.
-No permission is requested at launch.
+Microphone: requested at the end of onboarding, on a screen whose only button is Continue, which shows the iOS prompt. Whatever the answer the app works; if access is off, Talk shows a notice with an Open Settings button.
+Location: as in section 2. No screen precedes either prompt; nothing is requested at launch.
 
-TESTING THE MESH WITH TWO DEVICES (optional)
-Install on two devices in proximity and launch both; they find each other within seconds. A single device with Demo Mode off shows "No mesh", which is expected rather than a malfunction. The Simulator has no Bluetooth, so real mesh testing needs hardware. Demo Mode covers every feature on one device.
-
-Age rating is 18+. The privacy policy is at https://chirpchirps.com/privacy.
+Age rating is 18+. Privacy policy: https://chirpchirps.com/privacy

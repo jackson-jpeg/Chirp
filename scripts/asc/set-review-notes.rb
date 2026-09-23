@@ -38,6 +38,13 @@ abort 'notes.txt is empty' if notes.empty?
 # Plain text only: an em dash has a habit of reaching the reviewer's console as
 # mojibake, and these notes are the one thing they are certain to read.
 abort 'notes.txt contains an em dash; use plain punctuation' if notes.include?("—")
+# App Store Connect caps this at 4000 and answers a 409 that says only
+# "conflict" unless you read the error detail. Checked here so the failure
+# names itself before a round trip.
+MAX_NOTES = 4000
+if notes.length > MAX_NOTES
+  abort "notes.txt is #{notes.length} characters; App Store Connect allows #{MAX_NOTES}"
+end
 puts "notes.txt: #{notes.length} characters, #{notes.lines.count} lines"
 
 code, versions = api('GET', "/v1/apps/#{APP_ID}/appStoreVersions?filter%5BversionString%5D=#{VERSION}")
@@ -76,8 +83,16 @@ body = JSON.generate(
     attributes: { notes: notes, demoAccountRequired: false }
   }
 )
-code, = api('PATCH', "/v1/appStoreReviewDetails/#{existing['id']}", body)
-abort "PATCH failed (HTTP #{code})" unless [200, 201].include?(code)
+code, response = api('PATCH', "/v1/appStoreReviewDetails/#{existing['id']}", body)
+unless [200, 201].include?(code)
+  # A bare status here is useless: 409 covers both "something still holds this
+  # version" and "this field cannot be written at all", and they need
+  # different answers.
+  (response&.dig('errors') || []).each do |e|
+    puts "  #{e['code']}: #{e['title']} — #{e['detail']}"
+  end
+  abort "PATCH failed (HTTP #{code})"
+end
 
 code, saved = api('GET', "/v1/appStoreVersions/#{version['id']}/appStoreReviewDetail")
 abort "read-back failed (HTTP #{code})" unless code == 200
