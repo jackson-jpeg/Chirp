@@ -1024,8 +1024,8 @@ struct HomeView: View {
     @State private var showChannelCreation = false
     @State private var showDiagnostics = false
     @State private var showOfflineMapDownload = false
-    @State private var showLocationCheckIn = false
-    @State private var peerActionTarget: PeerPin?
+    @State private var showLocationConsent = false
+    @State private var selectedPin: PeerPin?
     @State private var toast: ToastItem?
     @State private var connectedPeerCount = 0
     @State private var isRefreshing = false
@@ -1119,45 +1119,38 @@ struct HomeView: View {
                 DiagnosticsView()
                     .demoBanner()
             }
-            .sheet(isPresented: $showLocationCheckIn) {
-                LocationCheckInSheet { checkedIn in
-                    if checkedIn {
-                        toast = ToastItem(message: String(localized: "map.toast.checkedIn"), type: .success)
-                    }
+            .sheet(isPresented: $showLocationConsent) {
+                LocationConsentSheet { share in
+                    consentAnswered(share)
                 }
             }
             // Tapping a pin reaches the same block and report actions as a
             // message bubble or a peer row — the map is not a place where a
             // peer can act on you without you being able to act back.
-            .confirmationDialog(
-                peerActionTarget?.name ?? "",
-                isPresented: Binding(
-                    get: { peerActionTarget != nil },
-                    set: { if !$0 { peerActionTarget = nil } }
-                ),
-                titleVisibility: .visible
-            ) {
-                if let pin = peerActionTarget {
-                    Button(String(localized: "moderation.reportUser")) {
-                        ReportService.fileReport(
-                            peerID: pin.id,
-                            peerName: pin.name,
-                            reporterPeerID: appState.localPeerID
+            // The same sheet as every other surface, so a map pin offers the
+            // identical Block and Report, the reason picker, and the identity
+            // fingerprint. A pin's id is already the routing UUID.
+            .sheet(item: $selectedPin) { pin in
+                PeerActionSheet(
+                    target: appState.peerActionTarget(routingID: pin.id, name: pin.name),
+                    onBlock: { blocked in
+                        appState.applyBlock(blocked)
+                        toast = ToastItem(
+                            message: String(localized: "moderation.toast.blocked \(blocked.name)"),
+                            type: .info
+                        )
+                    },
+                    onReport: { reported, reason, includeText in
+                        appState.applyReport(
+                            reported,
+                            reason: reason,
+                            message: nil,
+                            includeMessageText: includeText
                         )
                         toast = ToastItem(
                             message: String(localized: "moderation.toast.reported"), type: .info)
                     }
-                    Button(String(localized: "moderation.blockUser"), role: .destructive) {
-                        appState.blockList.block(id: pin.id, name: pin.name)
-                        toast = ToastItem(
-                            message: String(localized: "moderation.toast.blocked \(pin.name)"),
-                            type: .info
-                        )
-                    }
-                    Button(String(localized: "common.cancel"), role: .cancel) {}
-                }
-            } message: {
-                Text(String(localized: "map.peerActions.message"))
+                )
             }
             .chirpToast($toast)
             .onChange(of: appState.proximityAlert.recentAlerts.count) { _, _ in
@@ -1201,7 +1194,16 @@ struct HomeView: View {
                 // stays off until the user has already granted permission, so
                 // opening the Map tab never triggers a system prompt.
                 showsUserLocation: appState.locationSharing.isAuthorized,
-                onSelectPeer: { pin in peerActionTarget = pin }
+                // The tap arrives from UIKit, inside MapLibre's own gesture
+                // handling, and `@preconcurrency import MapLibre` silences the
+                // isolation check that would otherwise object. Assigning the
+                // state straight from there was dropped: the pin opened
+                // nothing at all, on both iPhone and iPad, which left Block
+                // and Report unreachable from the map. Hop onto the main actor
+                // explicitly and the sheet presents.
+                onSelectPeer: { pin in
+                    Task { @MainActor in selectedPin = pin }
+                }
             )
             .ignoresSafeArea(edges: .bottom)
             .overlay(alignment: .top) {
@@ -1439,20 +1441,44 @@ struct HomeView: View {
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: sharing.isSharing)
     }
 
-    /// Check In: the tap is the user's decision. Already allowed, it checks in
-    /// at once; never asked, it shows the explainer whose one button fires the
-    /// system prompt; declined, it points at Settings.
+    /// Check In: two questions, asked in order and never merged into one
+    /// screen. Guideline 5.1.2(i).
+    ///
+    /// iOS owns the permission, so the first Check In fires the system prompt
+    /// directly, with nothing of ours drawn in front of it; the purpose string
+    /// does the explaining. The app owns the sharing, so once permission
+    /// exists the consent sheet asks whether to actually go on the map, and it
+    /// asks again on every single Check In. A refusal at either step leaves
+    /// the user off the map and the rest of the app untouched.
+    ///
+    /// Declined permission never reopens a prompt that iOS will not show
+    /// again: it shows the inline notice with Open Settings instead.
     private func checkIn() async {
         switch await CheckInAction.perform(appState.locationSharing) {
-        case .checkedIn:
-            HapticsManager.shared.pttDown()
-            toast = ToastItem(message: String(localized: "map.toast.checkedIn"), type: .success)
-        case .showExplainer:
-            showLocationCheckIn = true
+        case .askSystemPermission:
+            _ = await appState.locationSharing.requestPermissionAndWait()
+            if appState.locationSharing.isAuthorized {
+                showLocationConsent = true
+            } else {
+                HapticsManager.shared.denied()
+                withAnimation { showLocationBlockedNotice = true }
+            }
+        case .askConsent:
+            showLocationConsent = true
         case .showSettingsNotice:
             HapticsManager.shared.denied()
             withAnimation { showLocationBlockedNotice = true }
         }
+    }
+
+    /// The consent sheet's answer. Sharing begins here and nowhere else, so
+    /// every 15-minute session is traceable to one Share tap. Declining, and
+    /// swiping the sheet away, both land here as `false` and do nothing.
+    private func consentAnswered(_ share: Bool) {
+        guard share else { return }
+        guard appState.locationSharing.beginCheckIn() else { return }
+        HapticsManager.shared.pttDown()
+        toast = ToastItem(message: String(localized: "map.toast.checkedIn"), type: .success)
     }
 
     private var channelIsEncrypted: Bool {

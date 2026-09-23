@@ -23,10 +23,17 @@ struct ChannelView: View {
     @State private var hasUsedPTT: Bool = false
     @State private var showHoldHint: Bool = true
     @State private var showCameraPicker: Bool = false
-    @State private var showLocationCheckIn: Bool = false
+    @State private var showLocationConsent: Bool = false
     /// Location attachment tapped while location is declined: show the
     /// Settings notice in the chat instead of sending.
     @State private var showLocationNotice: Bool = false
+    /// The peer whose Block/Report sheet is open, resolved to an
+    /// enforceable routing UUID before it is ever set.
+    @State private var peerActionTarget: PeerActionTarget?
+    /// The message a block-or-report was opened from, so a report can offer
+    /// to include what was actually said. Nil when the sheet was opened from
+    /// the participant strip, where there is no one message.
+    @State private var reportedMessage: MeshTextMessage?
 
     enum ChannelMode: CaseIterable {
         case talk
@@ -110,12 +117,33 @@ struct ChannelView: View {
                 sendCameraImage(image)
             }
         }
-        .sheet(isPresented: $showLocationCheckIn) {
-            LocationCheckInSheet { checkedIn in
-                if checkedIn {
-                    toast = ToastItem(message: String(localized: "channel.toast.checkedIn"), type: .success)
-                }
+        .sheet(isPresented: $showLocationConsent) {
+            LocationConsentSheet { share in
+                guard share, appState.locationSharing.beginCheckIn() else { return }
+                toast = ToastItem(message: String(localized: "channel.toast.checkedIn"), type: .success)
             }
+        }
+        .sheet(item: $peerActionTarget, onDismiss: { reportedMessage = nil }) { target in
+            PeerActionSheet(
+                target: target,
+                message: reportedMessage,
+                onBlock: { blocked in
+                    appState.applyBlock(blocked)
+                    toast = ToastItem(
+                        message: String(localized: "moderation.toast.blocked \(blocked.name)"),
+                        type: .info
+                    )
+                },
+                onReport: { reported, reason, includeText in
+                    appState.applyReport(
+                        reported,
+                        reason: reason,
+                        message: reportedMessage,
+                        includeMessageText: includeText
+                    )
+                    toast = ToastItem(message: String(localized: "moderation.toast.reported"), type: .info)
+                }
+            )
         }
         .chirpToast($toast)
         .onAppear {
@@ -370,21 +398,21 @@ struct ChannelView: View {
                     senderName: appState.localPeerName
                 )
             },
-            onReportMessage: { message in
-                ReportService.fileReport(
-                    peerID: message.senderID,
-                    peerName: message.senderName,
-                    message: message,
-                    reporterPeerID: appState.localPeerID
+            onPeerAction: { message in
+                // Resolved through AppState so the block or report carries
+                // the sender's verified fingerprint when one is known, which
+                // is what keeps a block attached to them through a rename and
+                // what makes a report actionable. The sheet is the same one a
+                // map pin, a peer list and a voice message open.
+                peerActionTarget = appState.peerActionTarget(
+                    routingID: message.senderID,
+                    name: message.senderName
                 )
-                toast = ToastItem(message: String(localized: "moderation.toast.reported"), type: .info)
+                reportedMessage = message
             },
-            onBlockSender: { message in
-                appState.blockList.block(id: message.senderID, name: message.senderName)
-                toast = ToastItem(
-                    message: String(localized: "moderation.toast.blocked \(message.senderName)"),
-                    type: .info
-                )
+            isFilteredMessage: { message in
+                appState.textFilter.isEnabled
+                    && appState.textFilter.isObjectionable(message.text)
             },
             typingPeers: appState.textMessageService.typingPeersByChannel[channel.id] ?? [],
             onTyping: {
@@ -911,25 +939,23 @@ struct ChannelView: View {
                     .lineLimit(1)
             }
             .contextMenu {
+                // `peer.id` here is the MultipeerConnectivity display name,
+                // not the routing UUID the router enforces on, so blocking
+                // with it recorded an entry that was silently discarded.
+                // Resolve through the beacon first; with no resolution there
+                // is nothing enforceable to block, and saying so is better
+                // than recording a block that does not hold.
                 Button {
-                    ReportService.fileReport(
-                        peerID: peer.id,
-                        peerName: peer.name,
-                        reporterPeerID: appState.localPeerID
-                    )
-                    toast = ToastItem(message: String(localized: "moderation.toast.reported"), type: .info)
+                    reportedMessage = nil
+                    peerActionTarget = appState.peerActionTarget(peerNamed: peer.name)
+                    if peerActionTarget == nil {
+                        toast = ToastItem(
+                            message: String(localized: "moderation.toast.notResolved"),
+                            type: .info
+                        )
+                    }
                 } label: {
-                    Label(String(localized: "moderation.reportUser"), systemImage: "flag")
-                }
-
-                Button(role: .destructive) {
-                    appState.blockList.block(id: peer.id, name: peer.name)
-                    toast = ToastItem(
-                        message: String(localized: "moderation.toast.blocked \(peer.name)"),
-                        type: .info
-                    )
-                } label: {
-                    Label(String(localized: "moderation.blockUser"), systemImage: "hand.raised")
+                    Label(String(localized: "moderation.blockOrReport"), systemImage: "hand.raised")
                 }
             }
             .offset(
@@ -1139,11 +1165,21 @@ struct ChannelView: View {
                 return
             }
             Task {
+                // The same two-step gate as the Map tab: iOS asks for the
+                // permission, then the app asks for consent to share, every
+                // time. Attaching a location to a message is a location
+                // packet, so it cannot be a way around either question.
                 switch await CheckInAction.perform(appState.locationSharing) {
-                case .checkedIn:
-                    toast = ToastItem(message: String(localized: "channel.toast.checkedIn"), type: .success)
-                case .showExplainer:
-                    showLocationCheckIn = true
+                case .askSystemPermission:
+                    _ = await appState.locationSharing.requestPermissionAndWait()
+                    if appState.locationSharing.isAuthorized {
+                        showLocationConsent = true
+                    } else {
+                        HapticsManager.shared.denied()
+                        withAnimation { showLocationNotice = true }
+                    }
+                case .askConsent:
+                    showLocationConsent = true
                 case .showSettingsNotice:
                     HapticsManager.shared.denied()
                     withAnimation { showLocationNotice = true }

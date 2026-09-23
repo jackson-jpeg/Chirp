@@ -897,6 +897,17 @@
         }
       }
     },
+    "chat.hiddenMessage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hidden message, tap to show"
+          }
+        }
+      }
+    },
     "chat.preview.file": {
       "extractionState": "manual",
       "localizations": {
@@ -1784,13 +1795,68 @@
         }
       }
     },
-    "location.action.continue": {
+    "location.about.link": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Continue"
+            "value": "About location sharing"
+          }
+        }
+      }
+    },
+    "location.about.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About location sharing"
+          }
+        }
+      }
+    },
+    "location.consent.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "People on the mesh near you will see your position for 15 minutes. It stops automatically, when you tap Stop, or when you leave the app."
+          }
+        }
+      }
+    },
+    "location.consent.decline": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Don't Share"
+          }
+        }
+      }
+    },
+    "location.consent.share": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share for 15 Minutes"
+          }
+        }
+      }
+    },
+    "location.consent.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show your location to nearby peers?"
           }
         }
       }
@@ -1806,24 +1872,13 @@
         }
       }
     },
-    "location.headline.offer": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Put yourself on the map?"
-          }
-        }
-      }
-    },
     "location.point.expiry.body": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sharing ends on its own when the timer runs out, when you tap Stop, or when you leave the app. It never resumes by itself — not even after you reopen ChirpChirps."
+            "value": "Sharing ends on its own when the timer runs out, when you tap Stop, or when you leave the app. It never resumes by itself, not even after you reopen ChirpChirps."
           }
         }
       }
@@ -1889,7 +1944,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your position travels directly to devices on the mesh over Bluetooth and Wi-Fi. It is never uploaded — ChirpChirps has no servers."
+            "value": "Your position travels directly to devices on the mesh over Bluetooth and Wi-Fi. It is never uploaded. ChirpChirps has no servers."
           }
         }
       }
@@ -2103,6 +2158,17 @@
         }
       }
     },
+    "moderation.blockOrReport": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Block or Report"
+          }
+        }
+      }
+    },
     "moderation.blockUser": {
       "extractionState": "manual",
       "localizations": {
@@ -2110,6 +2176,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Block User"
+          }
+        }
+      }
+    },
+    "moderation.blockUser.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stops their voice, messages and position reaching you, and stops yours reaching them."
+          }
+        }
+      }
+    },
+    "moderation.notResolved.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing to block yet"
           }
         }
       }
@@ -2136,6 +2224,17 @@
         }
       }
     },
+    "moderation.reportUser.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blocks them and opens an email to support so a person can act on it."
+          }
+        }
+      }
+    },
     "moderation.toast.blocked %@": {
       "extractionState": "manual",
       "localizations": {
@@ -2143,6 +2242,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Blocked %@"
+          }
+        }
+      }
+    },
+    "moderation.toast.notResolved": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This peer has not been heard from directly yet, so there is nothing to block."
           }
         }
       }
@@ -2346,6 +2456,116 @@
         }
       }
     },
+    "report.explanation": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ChirpChirps has no servers, so reports travel by email. Your report includes the reported device's identity fingerprint so it can be acted on. Reports are reviewed within 24 hours."
+          }
+        }
+      }
+    },
+    "report.includeMessage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Include the message text"
+          }
+        }
+      }
+    },
+    "report.reason.harassment": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Harassment or bullying"
+          }
+        }
+      }
+    },
+    "report.reason.impersonation": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impersonation"
+          }
+        }
+      }
+    },
+    "report.reason.other": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Something else"
+          }
+        }
+      }
+    },
+    "report.reason.sexualContent": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sexual or explicit content"
+          }
+        }
+      }
+    },
+    "report.reason.spam": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spam"
+          }
+        }
+      }
+    },
+    "report.reason.threat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Threat of violence"
+          }
+        }
+      }
+    },
+    "report.reason.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What happened?"
+          }
+        }
+      }
+    },
+    "report.send": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send Report"
+          }
+        }
+      }
+    },
     "settings.about.channels.description": {
       "extractionState": "stale",
       "localizations": {
@@ -2452,6 +2672,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rate ChirpChirps"
+          }
+        }
+      }
+    },
+    "settings.about.terms": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terms of Use"
           }
         }
       }
@@ -2672,6 +2903,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Blocked Users"
+          }
+        }
+      }
+    },
+    "settings.moderation.messageFilter": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Message Filter"
           }
         }
       }

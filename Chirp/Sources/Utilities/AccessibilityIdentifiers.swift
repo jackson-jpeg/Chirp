@@ -48,8 +48,16 @@ enum AccessibilityID {
     static let mapCheckInButton = "mapCheckInButton"
     static let mapStopSharingButton = "mapStopSharingButton"
     static let mapSharingIndicator = "mapSharingIndicator"
-    static let locationContinue = "locationContinue"
-    static let locationExplainer = "locationExplainer"
+    // The app's own sharing consent, asked after iOS has granted permission
+    // and asked again on every check-in. There is deliberately no identifier
+    // for a screen before the system prompt, because there is no such screen:
+    // Check In fires `requestWhenInUseAuthorization()` directly.
+    static let locationConsentSheet = "locationConsentSheet"
+    static let locationShareButton = "locationShareButton"
+    static let locationDontShareButton = "locationDontShareButton"
+    static let locationAboutLink = "locationAboutLink"
+    static let locationAboutView = "locationAboutView"
+    static let locationAboutSettingsRow = "locationAboutSettingsRow"
 
     // MARK: - Permissions
     static let onboardingMicPage = "onboardingMicPage"
@@ -68,6 +76,22 @@ enum AccessibilityID {
     static let voiceMessagePlayButton = "voiceMessagePlayButton"
     static let mapPeerPin = "mapPeerPin"
     static let peerMap = "peerMap"
+
+    // MARK: - Moderation
+    // The one sheet every Block and Report goes through, from every surface a
+    // peer appears on. See `PeerActionSheet`.
+    static let peerActionSheet = "peerActionSheet"
+    static let peerSheetBlockButton = "peerSheetBlockButton"
+    static let peerSheetReportButton = "peerSheetReportButton"
+    static let peerSheetBlockConfirm = "peerSheetBlockConfirm"
+    static let reportReasonPicker = "reportReasonPicker"
+    static let reportSendButton = "reportSendButton"
+    static let blockedUsersRow = "blockedUsersRow"
+    static let messageFilterToggle = "messageFilterToggle"
+    static let hiddenMessageDisclosure = "hiddenMessageDisclosure"
+    /// The one item in a message's context menu that opens the peer sheet.
+    static let messageBlockOrReport = "messageBlockOrReport"
+    static let termsOfUseRow = "termsOfUseRow"
 
     // MARK: - File Transfer
     static let documentPickerButton = "documentPickerButton"

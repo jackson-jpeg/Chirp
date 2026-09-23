@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var debugExpanded = false
     @State private var howItWorksExpanded = false
     @State private var blockedUsersExpanded = false
+    @State private var showLocationAbout = false
     @State private var copiedID = false
     @State private var showResetIdentityConfirm = false
     @State private var showClearDataConfirm = false
@@ -67,6 +68,9 @@ struct SettingsView: View {
         .accessibilityIdentifier(AccessibilityID.settingsView)
         .navigationTitle(String(localized: "settings.title"))
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showLocationAbout) {
+            AboutLocationSharingView()
+        }
     }
 
     // MARK: - Profile Hero Card
@@ -141,6 +145,12 @@ struct SettingsView: View {
                         )
                         .contentTransition(.symbolEffect(.replace))
                     }
+                    // Every row here is a Button whose label is an HStack with a
+                    // Spacer between the title and the chevron. A Spacer draws
+                    // nothing, so it takes no hits: tapping the middle of a row —
+                    // which is most of it, and where a finger naturally lands — did
+                    // nothing at all. Only the words themselves were tappable.
+                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
             }
@@ -217,6 +227,7 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
             }
@@ -441,6 +452,47 @@ struct SettingsView: View {
                     }
                 }
 
+                // Incoming-text filter (Guideline 1.2). On by default; a
+                // flagged message is collapsed behind a tap rather than
+                // deleted, so switching this off reveals what was hidden
+                // instead of recovering something that was thrown away.
+                glassRow {
+                    Toggle(isOn: Binding(
+                        get: { appState.textFilter.isEnabled },
+                        set: { appState.textFilter.setEnabled($0) }
+                    )) {
+                        settingsRow(
+                            icon: "eye.slash.fill",
+                            title: String(localized: "settings.moderation.messageFilter")
+                        )
+                    }
+                    .tint(amber)
+                    .accessibilityIdentifier(AccessibilityID.messageFilterToggle)
+                }
+
+                // About location sharing. The four points that used to sit in
+                // front of the system permission prompt live here instead:
+                // reference material, reachable on purpose, and on the path to
+                // nothing. Opening it grants nothing and starts no sharing.
+                glassRow {
+                    Button {
+                        showLocationAbout = true
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "mappin.and.ellipse")
+                                .foregroundStyle(amber)
+                                .frame(width: 24)
+                            Text(String(localized: "location.about.title"))
+                                .foregroundStyle(Constants.Colors.textPrimary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Constants.Colors.textTertiary)
+                        }
+                    }
+                    .accessibilityIdentifier(AccessibilityID.locationAboutSettingsRow)
+                }
+
                 // Blocked users
                 glassRow {
                     Button {
@@ -464,7 +516,9 @@ struct SettingsView: View {
                                 .rotationEffect(.degrees(blockedUsersExpanded ? 90 : 0))
                         }
                     }
+                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier(AccessibilityID.blockedUsersRow)
                 }
 
                 if blockedUsersExpanded {
@@ -496,6 +550,7 @@ struct SettingsView: View {
                                             .font(.system(.caption, weight: .semibold))
                                             .foregroundStyle(amber)
                                     }
+                                    .contentShape(Rectangle())
                                     .buttonStyle(.plain)
                                 }
                             }
@@ -535,6 +590,7 @@ struct SettingsView: View {
                                 .rotationEffect(.degrees(howItWorksExpanded ? 90 : 0))
                         }
                     }
+                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
 
@@ -572,6 +628,7 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
 
@@ -594,6 +651,7 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
 
@@ -621,6 +679,7 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
 
@@ -643,7 +702,35 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
+                }
+
+                // Terms of Use. Agreed to during onboarding, and reachable
+                // afterwards: the zero-tolerance policy a report is judged
+                // against is only meaningful if a user can go back and read
+                // it, and a reviewer looks for it here.
+                glassRow {
+                    Button {
+                        if let url = URL(string: "https://chirpchirps.com/terms") {
+                            UIApplication.shared.open(url)
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "doc.text.fill")
+                                .foregroundStyle(amber)
+                                .frame(width: 24)
+                            Text(String(localized: "settings.about.terms"))
+                                .foregroundStyle(Constants.Colors.textPrimary)
+                            Spacer()
+                            Image(systemName: "arrow.up.forward")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier(AccessibilityID.termsOfUseRow)
                 }
 
                 // Open Source
@@ -665,6 +752,7 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
             }
@@ -701,6 +789,7 @@ struct SettingsView: View {
                                 .foregroundStyle(red.opacity(0.5))
                         }
                     }
+                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
                 .confirmationDialog(
@@ -738,6 +827,7 @@ struct SettingsView: View {
                                 .foregroundStyle(red.opacity(0.5))
                         }
                     }
+                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
                 .confirmationDialog(
@@ -788,6 +878,7 @@ struct SettingsView: View {
                                 .rotationEffect(.degrees(debugExpanded ? 90 : 0))
                         }
                     }
+                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
 

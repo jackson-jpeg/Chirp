@@ -7,6 +7,11 @@ struct FriendsView: View {
     @State private var detailFriend: ChirpFriend?
     @State private var breathePhase: CGFloat = 0
     @State private var isRefreshing = false
+    /// The peer whose Block/Report sheet is open, already resolved to a
+    /// routing UUID the enforcement layer will honour.
+    @State private var peerActionTarget: PeerActionTarget?
+    /// Set when a block was asked for but no routing identity is known.
+    @State private var unresolvedPeerName: String?
 
     private let amber = Constants.Colors.amber
     private let green = Constants.Colors.electricGreen
@@ -57,6 +62,31 @@ struct FriendsView: View {
             AddFriendView()
                 .demoBanner()
                 .presentationDetents([.medium, .large])
+        }
+        .sheet(item: $peerActionTarget) { target in
+            PeerActionSheet(
+                target: target,
+                onBlock: { appState.applyBlock($0) },
+                onReport: { reported, reason, includeText in
+                    appState.applyReport(
+                        reported,
+                        reason: reason,
+                        message: nil,
+                        includeMessageText: includeText
+                    )
+                }
+            )
+        }
+        .alert(
+            String(localized: "moderation.notResolved.title"),
+            isPresented: Binding(
+                get: { unresolvedPeerName != nil },
+                set: { if !$0 { unresolvedPeerName = nil } }
+            )
+        ) {
+            Button(String(localized: "common.done"), role: .cancel) { unresolvedPeerName = nil }
+        } message: {
+            Text(String(localized: "moderation.toast.notResolved"))
         }
         .sheet(item: $detailFriend) { friend in
             FriendDetailSheet(
@@ -410,23 +440,24 @@ struct FriendsView: View {
     }
 
     /// Report and block actions shared by both friend row context menus.
+    ///
+    /// `ChirpFriend.id` is whatever the friend was added by: a callsign for a
+    /// nearby quick-add, a pasted fingerprint for a manual friend code.
+    /// Neither is the routing UUID `MeshRouter` enforces on, so blocking with
+    /// it recorded an entry that was silently discarded and the friend kept
+    /// talking. Everything now goes through the beacon's resolver first.
     @ViewBuilder
     private func moderationMenuItems(for friend: ChirpFriend) -> some View {
         Button {
-            ReportService.fileReport(
-                peerID: friend.id,
-                peerName: friend.name,
-                reporterPeerID: appState.localPeerID
-            )
+            peerActionTarget = appState.peerActionTarget(peerNamed: friend.name)
+            if peerActionTarget == nil {
+                unresolvedPeerName = friend.name
+            }
         } label: {
-            Label(String(localized: "moderation.reportUser"), systemImage: "flag")
-        }
-        Button(role: .destructive) {
-            appState.blockList.block(id: friend.id, name: friend.name)
-        } label: {
-            Label(String(localized: "moderation.blockUser"), systemImage: "hand.raised")
+            Label(String(localized: "moderation.blockOrReport"), systemImage: "hand.raised")
         }
     }
+
 
     // MARK: - Signal Bars
 

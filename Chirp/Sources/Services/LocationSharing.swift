@@ -85,7 +85,10 @@ enum LocationBroadcastGate {
 /// - no `UserDefaults` key, so nothing survives a relaunch,
 /// - no "always share" / "share automatically" toggle,
 /// - no timer that begins a check-in; the one timer here only ends one,
-/// - no background emission — leaving the foreground stops sharing.
+/// - no background emission, so leaving the foreground stops sharing,
+/// - no remembered consent: the app's own consent sheet is shown on every
+///   single Check In, and answering it grants exactly one 15-minute session.
+///   Nothing here records that the user once said yes.
 @Observable
 @MainActor
 final class LocationSharing {
@@ -119,6 +122,9 @@ final class LocationSharing {
     private let locationService: LocationService
     private var expiryTask: Task<Void, Never>?
     private var lifecycleObservers: [Any] = []
+    /// Check In taps parked on the system prompt's answer. See
+    /// ``requestPermissionAndWait(timeout:)``.
+    private var permissionWaiters: [CheckedContinuation<CLAuthorizationStatus, Never>] = []
     private let logger = Logger(subsystem: Constants.subsystem, category: "LocationSharing")
 
     // MARK: Derived
@@ -165,6 +171,10 @@ final class LocationSharing {
             default:
                 break
             }
+            // A Check In that fired the system prompt is parked on
+            // `requestPermissionAndWait()`. Any answer releases it; only
+            // `.notDetermined` means the prompt has not been answered yet.
+            if status != .notDetermined { self.releasePermissionWaiters(status) }
         }
 
         observeLifecycle()
@@ -172,17 +182,58 @@ final class LocationSharing {
 
     // MARK: Permission
 
-    /// Ask iOS for location permission. Only ever called from the check-in
-    /// explainer's single button, Continue.
+    /// Ask iOS for location permission. Called straight from the Check In tap
+    /// when iOS has never been asked, with no screen of ours in front of it.
     func requestPermission() {
         locationService.requestPermission()
     }
 
+    /// Fire the system prompt and wait for the answer.
+    ///
+    /// Check In needs the answer before it can decide what to do next: a
+    /// grant leads to the app's own consent sheet, a refusal to the inline
+    /// Open Settings notice. Returns immediately if iOS has already been
+    /// asked, since the prompt will not appear a second time.
+    ///
+    /// The `withCheckedContinuation` is released from
+    /// `onAuthorizationChanged` above. The timeout exists because iOS shows
+    /// no prompt at all in some states (Location Services switched off
+    /// system-wide, or an MDM restriction), and a Check In that hangs on a
+    /// prompt that never appears would leave the button dead.
+    func requestPermissionAndWait(timeout: Duration = .seconds(30)) async -> CLAuthorizationStatus {
+        guard authorizationStatus == .notDetermined else { return authorizationStatus }
+
+        locationService.requestPermission()
+
+        let timeoutTask = Task { [weak self] in
+            try? await Task.sleep(for: timeout)
+            guard !Task.isCancelled, let self else { return }
+            self.releasePermissionWaiters(self.authorizationStatus)
+        }
+        defer { timeoutTask.cancel() }
+
+        return await withCheckedContinuation { continuation in
+            permissionWaiters.append(continuation)
+        }
+    }
+
+    /// Resume everyone parked on `requestPermissionAndWait()`. Safe to call
+    /// more than once: the list is emptied before anything is resumed, so a
+    /// continuation can never be resumed twice.
+    private func releasePermissionWaiters(_ status: CLAuthorizationStatus) {
+        let waiting = permissionWaiters
+        permissionWaiters.removeAll()
+        for continuation in waiting { continuation.resume(returning: status) }
+    }
+
     /// What tapping Check In should do right now.
     enum CheckInRoute: Equatable {
-        /// Permission already granted: the tap itself is the check-in.
+        /// Permission already granted: go straight to the consent sheet.
         case checkInNow
-        /// Never asked: show the explainer, whose only button fires the prompt.
+        /// Never asked: fire the system prompt directly. Guideline 5.1.1(iv)
+        /// allows a screen before a prompt only if its sole action is the
+        /// prompt, and 5.1.2(i) wants the sharing consent to be refusable, so
+        /// the two are separated: iOS asks first, the app asks afterwards.
         case explainThenAsk
         /// Asked and declined, restricted, or Location Services off: the
         /// system prompt can no longer appear, so point at Settings instead.

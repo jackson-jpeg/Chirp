@@ -1,10 +1,14 @@
 import CoreLocation
 @preconcurrency import MapLibre
 import SwiftUI
+import UIKit
 
 // MARK: - Peer Pin Data
 
-struct PeerPin: Equatable {
+/// `Identifiable` so a tapped pin can drive `.sheet(item:)` for the peer's
+/// Block and Report actions. `id` is the peer's routing UUID, which is also
+/// what the block list and the router key on.
+struct PeerPin: Equatable, Identifiable {
     let id: String
     let name: String
     let coordinate: CLLocationCoordinate2D
@@ -17,6 +21,37 @@ struct PeerPin: Equatable {
             && lhs.coordinate.longitude == rhs.coordinate.longitude
             && lhs.transportType == rhs.transportType
             && lhs.isStale == rhs.isStale
+    }
+}
+
+/// The map pin the user taps.
+///
+/// It owns its own tap gesture instead of relying on `MLNMapView`'s
+/// annotation selection. Selection never reached
+/// `mapView(_:didSelect:)` for these views, so tapping a pin did nothing at
+/// all and Block/Report was unreachable from the map — the entry point App
+/// Review checks first. Owning the gesture also makes the whole pin the
+/// target rather than the 20pt dot, and `accessibilityActivate()` gives
+/// VoiceOver and UI tests the same action without a synthesized touch.
+final class PeerPinAnnotationView: MLNAnnotationView {
+    var onTap: (() -> Void)?
+
+    /// Idempotent: `viewFor` is called again on every map update, and adding
+    /// a second recognizer each time would fire the handler twice.
+    func installTapHandler() {
+        isUserInteractionEnabled = true
+        guard gestureRecognizers?.isEmpty ?? true else { return }
+        addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleTap)))
+    }
+
+    @objc private func handleTap() {
+        onTap?()
+    }
+
+    override func accessibilityActivate() -> Bool {
+        guard let onTap else { return false }
+        onTap()
+        return true
     }
 }
 
@@ -115,6 +150,11 @@ struct GeoMapView: UIViewRepresentable {
     /// fights the user's own panning.
     private func frameOnce(mapView: MLNMapView, coordinator: Coordinator) {
         guard !coordinator.hasFramed else { return }
+        // The view starts life 1 pt square and SwiftUI lays it out later.
+        // Fitting a few hundred metres of bounds into one point asks for a
+        // zoom of about zero, which is the whole world, and hasFramed would
+        // then make that permanent. Wait for a real size.
+        guard mapView.bounds.width > 32, mapView.bounds.height > 32 else { return }
         if let coord = userLocation {
             mapView.setCenter(coord, zoomLevel: 13, animated: false)
             coordinator.hasFramed = true
@@ -139,6 +179,15 @@ struct GeoMapView: UIViewRepresentable {
     // MARK: - Annotations
 
     private func updateAnnotations(mapView: MLNMapView, coordinator: Coordinator) {
+        // Peer data first, before a single annotation is added: addAnnotation
+        // can ask the delegate for the view straight away, and viewFor needs
+        // this to build a pin. Populated afterwards it saw nothing, returned
+        // nil, and the map drew MapLibre's default red marker instead of the
+        // named dot, permanently, because it never asks a second time.
+        for peer in peers {
+            coordinator.peerData[peer.id] = peer
+        }
+
         // Remove stale annotations
         let existingIDs = Set(coordinator.annotationMap.keys)
         let currentIDs = Set(peers.map(\.id))
@@ -168,9 +217,11 @@ struct GeoMapView: UIViewRepresentable {
                 coordinator.annotationMap[peer.id] = annotation
             }
 
-            // Store peer data for coloring
-            coordinator.peerData[peer.id] = peer
         }
+
+        let gone = Set(coordinator.peerData.keys).subtracting(currentIDs)
+        for id in gone { coordinator.peerData.removeValue(forKey: id) }
+
     }
 
     // MARK: - Hop Path Overlay
@@ -271,10 +322,11 @@ struct GeoMapView: UIViewRepresentable {
 
             let reuseID = "peer-\(peer.id)"
             var view = mapView.dequeueReusableAnnotationView(withIdentifier: reuseID)
+                as? PeerPinAnnotationView
 
             if view == nil {
                 // Taller frame to accommodate the name label below the dot
-                view = MLNAnnotationView(annotation: annotation, reuseIdentifier: reuseID)
+                view = PeerPinAnnotationView(annotation: annotation, reuseIdentifier: reuseID)
                 view?.frame = CGRect(x: 0, y: 0, width: 80, height: 44)
                 view?.centerOffset = CGVector(dx: 0, dy: -8)
 
@@ -315,11 +367,19 @@ struct GeoMapView: UIViewRepresentable {
             }
 
             view?.isAccessibilityElement = true
+            view?.accessibilityTraits = .button
             view?.accessibilityIdentifier = AccessibilityID.mapPeerPin
             view?.accessibilityLabel = peer.isStale
                 ? "\(peer.name), stale location"
                 : "\(peer.name), connected via \(peer.transportType)"
 
+            // Re-assigned every update so the closure never holds a stale
+            // peer, and weak on the coordinator so the view does not keep it
+            // alive.
+            view?.installTapHandler()
+            view?.onTap = { [weak self] in
+                self?.onSelectPeer?(peer)
+            }
             return view
         }
 

@@ -235,17 +235,24 @@ final class ReviewComplianceTests: XCTestCase {
             attachHierarchy("messages-tab-never-opened")
             return false
         }
-        let general = app.descendants(matching: .any).matching(
-            NSPredicate(format: "identifier == %@ AND label BEGINSWITH %@", AXID.channelCard, "General")
-        ).firstMatch
-        let card = general.waitForExistence(timeout: 5) ? general : el(AXID.channelCard)
-        guard card.waitForExistence(timeout: 10) else {
+        // Re-queried on every attempt rather than held: the channel list
+        // rebuilds as peers appear, and a reference taken before that goes
+        // stale, which surfaces as "Failed to tap channelCard" rather than as
+        // anything to do with the test.
+        func channelCard() -> XCUIElement {
+            let general = app.descendants(matching: .any).matching(
+                NSPredicate(format: "identifier == %@ AND label BEGINSWITH %@", AXID.channelCard, "General")
+            ).firstMatch
+            return general.exists ? general : el(AXID.channelCard)
+        }
+        guard channelCard().waitForExistence(timeout: 15) else {
             attachHierarchy("no-channel-card")
             return false
         }
         for attempt in 0..<3 {
             if el(AXID.chatInputField).exists { return true }
-            if attempt > 0 || !el(AXID.quickActionChat).exists { card.tap() }
+            let card = channelCard()
+            if card.exists, (attempt > 0 || !el(AXID.quickActionChat).exists) { card.tap() }
             if el(AXID.quickActionChat).waitForExistence(timeout: 10) {
                 el(AXID.quickActionChat).tap()
             } else {
@@ -310,6 +317,45 @@ final class ReviewComplianceTests: XCTestCase {
         }
         attachHierarchy("settings-never-opened")
         return false
+    }
+
+    /// Scroll `element` into view and tap it.
+    ///
+    /// XCUITest does not scroll for you: tapping an element that exists in the
+    /// hierarchy but is off the bottom of a long screen sends the tap to a
+    /// coordinate nobody is looking at, and the failure reads as if the
+    /// feature were broken. Settings is long enough that Blocked Users is
+    /// below the fold on both devices.
+    @discardableResult
+    private func scrollToAndTap(_ element: XCUIElement, tries: Int = 6) -> Bool {
+        guard element.waitForExistence(timeout: 15) else { return false }
+        if element.isHittable {
+            element.tap()
+            return true
+        }
+        // Which way it lies is not known, so try down and then back up. A
+        // one-directional search walked past the row to the end of Settings
+        // and then tapped a coordinate that was no longer on screen.
+        for _ in 0..<tries {
+            app.swipeUp()
+            if element.isHittable { element.tap(); return true }
+        }
+        for _ in 0..<(tries * 2) {
+            app.swipeDown()
+            if element.isHittable { element.tap(); return true }
+        }
+        return false
+    }
+
+    /// The button carrying `id`.
+    ///
+    /// `el(_:)` returns the first element of any type with that identifier,
+    /// and SwiftUI propagates an identifier to the wrappers around a control,
+    /// so the first match is usually a container that reports
+    /// `isHittable == false`. Anything that has to be tapped after scrolling
+    /// needs the control itself.
+    private func button(_ id: String) -> XCUIElement {
+        app.buttons.matching(identifier: id).firstMatch
     }
 
     private func attachHierarchy(_ name: String) {
@@ -442,45 +488,516 @@ final class ReviewComplianceTests: XCTestCase {
         shot("microphone-granted-home")
     }
 
-    // MARK: - 5.1.1(iv) Location
+    // MARK: - 5.1.2(i) Location
 
-    /// The check-in explainer: one button, no swipe out, and the prompt.
-    func testLocationExplainerOnlyLeadsToThePrompt() {
+    // These five tests replace `testLocationExplainerOnlyLeadsToThePrompt`,
+    // which asserted that a custom screen stood in front of the system
+    // location prompt with a single Continue button. That screen satisfied
+    // 5.1.1(iv) in round 2 and was the thing Apple rejected in round 3: a
+    // pre-prompt screen may only lead to the prompt, so it cannot also carry
+    // the app's own sharing consent, and that consent has to be refusable.
+    //
+    // The two questions are now separate, and so are the assertions. Nothing
+    // here is a relaxed version of the old test: the old one required the
+    // explainer to exist, and `testCheckInAsksTheSystemDirectly` requires it
+    // not to.
+
+    /// Tapping Check In on a fresh install produces the iOS prompt and
+    /// nothing else first.
+    func testCheckInAsksTheSystemDirectly() {
         _ = launch(onboarded: true)
         XCTAssertTrue(waitForHome(timeout: 30))
-
         XCTAssertTrue(
             switchToTab("Map", until: { self.el(AXID.mapCheckInButton).exists }),
             "the Map tab never came up: \(self.visibleButtonLabels())"
         )
-        tap(AXID.mapCheckInButton)
 
-        let explainer = el(AXID.locationExplainer)
-        XCTAssertTrue(explainer.waitForExistence(timeout: 15), "the check-in explainer never appeared")
-        assertNoExits("location check-in explainer")
-        let labels = visibleButtonLabels()
-        XCTAssertTrue(labels.contains("Continue"), "the explainer has no Continue: \(labels)")
-        shot("location-explainer")
+        let consent = el(AXID.locationConsentSheet)
+        XCTAssertFalse(consent.exists, "the consent sheet was up before Check In was tapped")
 
-        // Swipe-to-dismiss must not work (interactiveDismissDisabled).
-        app.swipeDown()
-        app.swipeDown()
-        XCTAssertTrue(explainer.exists, "the explainer was dismissed by a swipe, with no prompt shown")
-        XCTAssertNil(anySystemAlert, "a system alert appeared before Continue was tapped")
+        // Watch for our own sheet and the system alert at the same time. The
+        // alert winning is the pass; our sheet appearing first is the exact
+        // violation, so it is checked on every poll rather than once at the
+        // end, when it would already have been dismissed.
+        var sawOwnScreenFirst = false
+        var alert: XCUIElement?
+        for attempt in 0..<3 where alert == nil {
+            let button = el(AXID.mapCheckInButton)
+            if button.exists, button.isEnabled { button.tap() }
+            let deadline = Date().addingTimeInterval(attempt == 0 ? 40 : 20)
+            while Date() < deadline {
+                if let found = anySystemAlert { alert = found; break }
+                if consent.exists { sawOwnScreenFirst = true; break }
+                Thread.sleep(forTimeInterval: 0.3)
+            }
+            if sawOwnScreenFirst { break }
+        }
 
-        // The swipe attempts above may have scrolled the sheet's content.
-        app.swipeUp()
-        guard let alert = tapForSystemPrompt(AXID.locationContinue, label: "location") else {
-            return XCTFail("Continue did not produce the system location prompt")
+        if sawOwnScreenFirst { attachHierarchy("consent-sheet-before-system-prompt") }
+        XCTAssertFalse(
+            sawOwnScreenFirst,
+            "a ChirpChirps screen appeared before the system location prompt; 5.1.2(i) allows none"
+        )
+        guard let alert else {
+            attachHierarchy("no-location-prompt")
+            return XCTFail("Check In did not produce the system location prompt")
         }
         shot("system-location-prompt")
+
+        // Allowing the OS permission must NOT by itself put the user on the
+        // map: the app still has to ask.
+        answerSystemAlert(alert, allow: true)
+        // A tap that is swallowed while the system alert is dismissing looks
+        // exactly like a missing sheet, so Check In is offered again before
+        // this is called a failure. What is being asserted is that granting
+        // the OS permission is not by itself enough to share — a second tap
+        // still has to be answered.
+        var asked = consent.waitForExistence(timeout: 40)
+        for _ in 0..<2 where !asked {
+            let button = el(AXID.mapCheckInButton)
+            if button.exists, button.isEnabled { button.tap() }
+            asked = consent.waitForExistence(timeout: 20)
+        }
+        if !asked { attachHierarchy("no-consent-after-granting") }
+        XCTAssertTrue(asked, "granting location did not bring up the app's sharing consent")
+        XCTAssertFalse(
+            el(AXID.mapSharingIndicator).exists,
+            "granting the OS permission put the user on the map without them agreeing"
+        )
+        assertConsentSheetIsRefusable()
+        shot("location-consent-sheet")
+    }
+
+    /// Declining the system prompt leads to an inline notice, never to a
+    /// custom screen that offers to ask again.
+    func testCheckInDeclinedShowsSettingsNoticeNotAScreen() {
+        _ = launch(onboarded: true)
+        XCTAssertTrue(waitForHome(timeout: 30))
+        XCTAssertTrue(switchToTab("Map", until: { self.el(AXID.mapCheckInButton).exists }))
+
+        guard let alert = tapForSystemPrompt(AXID.mapCheckInButton, label: "location") else {
+            return XCTFail("Check In did not produce the system location prompt")
+        }
         answerSystemAlert(alert, allow: false)
 
-        XCTAssertTrue(Harness.waitGone(explainer, timeout: 20), "the explainer stayed up after the prompt was answered")
         XCTAssertTrue(permissionNoticeIsUp("Location is off"),
                       "no inline location notice with Open Settings")
-        XCTAssertTrue(el(AXID.mapCheckInButton).exists || waitForHome(timeout: 5), "the Map screen broke after declining")
+        XCTAssertFalse(el(AXID.locationConsentSheet).exists,
+                       "the consent sheet came up although location was refused")
         shot("location-denied-notice")
+
+        // A second tap must not conjure a screen either: iOS will not show
+        // the prompt again, so a screen leading to one would lead nowhere.
+        tap(AXID.mapCheckInButton)
+        Thread.sleep(forTimeInterval: 2)
+        XCTAssertFalse(el(AXID.locationConsentSheet).exists,
+                       "a second Check In raised the consent sheet without permission")
+        XCTAssertTrue(permissionNoticeIsUp("Location is off"),
+                      "the inline notice went away on a second Check In")
+    }
+
+    /// Don't Share leaves the user off the map, and so does swiping the sheet
+    /// away. Both are refusals; neither is a deferral.
+    func testConsentRefusalLeavesUserOffTheMap() {
+        _ = launch(onboarded: true)
+        XCTAssertTrue(waitForHome(timeout: 30))
+        XCTAssertTrue(switchToTab("Map", until: { self.el(AXID.mapCheckInButton).exists }))
+        guard reachConsentSheet() else { return }
+
+        assertConsentSheetIsRefusable()
+        el(AXID.locationDontShareButton).tap()
+        XCTAssertTrue(Harness.waitGone(el(AXID.locationConsentSheet), timeout: 15),
+                      "the consent sheet stayed up after Don't Share")
+        assertNotSharing(after: "Don't Share")
+        shot("location-not-shared")
+
+        // Now the same question answered by dismissing it rather than
+        // answering it.
+        guard reachConsentSheet() else { return }
+        XCTAssertTrue(dismissConsentByGesture(),
+                      "the consent sheet could not be dismissed by gesture; dismissal must count as a refusal")
+        assertNotSharing(after: "dismissing the sheet")
+    }
+
+    /// The consent is asked again on the next Check In in the same launch,
+    /// and again after a relaunch, which never resumes a session.
+    func testConsentIsAskedEveryTimeAndNeverResumes() {
+        _ = launch(onboarded: true)
+        XCTAssertTrue(waitForHome(timeout: 30))
+        XCTAssertTrue(switchToTab("Map", until: { self.el(AXID.mapCheckInButton).exists }))
+
+        guard reachConsentSheet() else { return }
+        el(AXID.locationShareButton).tap()
+        XCTAssertTrue(el(AXID.mapSharingIndicator).waitForExistence(timeout: 20),
+                      "Share did not start a session")
+        shot("location-sharing")
+
+        // Stop, then check in again: the question must be put a second time.
+        tap(AXID.mapStopSharingButton)
+        XCTAssertTrue(Harness.waitGone(el(AXID.mapSharingIndicator), timeout: 15),
+                      "Stop did not end the session")
+        XCTAssertTrue(reachConsentSheet(),
+                      "the second Check In in one launch did not ask for consent again")
+        el(AXID.locationDontShareButton).tap()
+
+        // Share, then relaunch mid-session. The app must come back checked out.
+        guard reachConsentSheet() else { return }
+        el(AXID.locationShareButton).tap()
+        XCTAssertTrue(el(AXID.mapSharingIndicator).waitForExistence(timeout: 20))
+
+        app.terminate()
+        _ = launch(onboarded: true)
+        XCTAssertTrue(waitForHome(timeout: 30))
+        XCTAssertTrue(switchToTab("Map", until: { self.el(AXID.mapCheckInButton).exists }))
+        assertNotSharing(after: "relaunch")
+        XCTAssertTrue(reachConsentSheet(),
+                      "after a relaunch, Check In did not ask for consent again")
+        shot("location-consent-after-relaunch")
+    }
+
+    /// Nothing anywhere offers to share automatically, always, or to remember
+    /// the answer. Asserted by reading Settings rather than by trusting it.
+    func testNoSettingOffersAutomaticSharing() {
+        _ = launch(onboarded: true)
+        XCTAssertTrue(waitForHome(timeout: 30))
+        XCTAssertTrue(openSettings(), "Settings never came up")
+
+        // Scroll the whole screen and collect every label on the way.
+        var seen = Set<String>()
+        for _ in 0..<8 {
+            for element in app.descendants(matching: .any).allElementsBoundByIndex where element.exists {
+                let label = element.label
+                if !label.isEmpty { seen.insert(label) }
+            }
+            app.swipeUp()
+        }
+
+        // "Automatic", "Always" and "Remember" next to anything about sharing
+        // or location is the shape of the setting Apple forbids here.
+        let forbidden = ["automatic", "automatically", "always share", "always on",
+                         "remember", "don't ask again", "dont ask again", "keep sharing",
+                         "share continuously", "background location"]
+        let offenders = seen.filter { label in
+            let lower = label.lowercased()
+            return forbidden.contains { lower.contains($0) }
+        }
+        if !offenders.isEmpty { attachHierarchy("automatic-sharing-setting") }
+        XCTAssertTrue(
+            offenders.isEmpty,
+            "Settings offers what looks like automatic or remembered sharing: \(offenders.sorted())"
+        )
+        shot("settings-no-automatic-sharing")
+    }
+
+    // MARK: - Location helpers
+
+    /// Get to the consent sheet from the Map tab, answering the system prompt
+    /// on the way if this install has not been asked yet. Returns false and
+    /// fails the test if the sheet never arrives.
+    @discardableResult
+    private func reachConsentSheet(file: StaticString = #filePath, line: UInt = #line) -> Bool {
+        let consent = el(AXID.locationConsentSheet)
+        for _ in 0..<3 {
+            let button = el(AXID.mapCheckInButton)
+            if button.exists, button.isEnabled { button.tap() }
+            if consent.waitForExistence(timeout: 12) { return true }
+            // Never asked on this install: answer iOS and let the app ask next.
+            if let alert = anySystemAlert {
+                answerSystemAlert(alert, allow: true)
+                if consent.waitForExistence(timeout: 20) { return true }
+            }
+        }
+        attachHierarchy("no-consent-sheet")
+        XCTFail("the sharing consent sheet never appeared", file: file, line: line)
+        return false
+    }
+
+    /// The consent sheet must offer a plainly visible refusal. This is the
+    /// mirror image of `assertNoExits`: a pre-prompt screen may not offer a
+    /// way out, and this screen must.
+    private func assertConsentSheetIsRefusable(file: StaticString = #filePath, line: UInt = #line) {
+        let decline = el(AXID.locationDontShareButton)
+        let share = el(AXID.locationShareButton)
+        XCTAssertTrue(decline.exists, "the consent sheet has no Don't Share", file: file, line: line)
+        XCTAssertTrue(share.exists, "the consent sheet has no Share", file: file, line: line)
+        XCTAssertTrue(decline.isHittable, "Don't Share is not tappable", file: file, line: line)
+        // Equal prominence, as far as a UI test can see it: comparable width,
+        // so a refusal cannot be shrunk into a footnote.
+        if decline.frame.width > 0, share.frame.width > 0 {
+            let ratio = decline.frame.width / share.frame.width
+            XCTAssertTrue(
+                ratio > 0.8 && ratio < 1.25,
+                "Don't Share is not as prominent as Share (width ratio \(ratio))",
+                file: file, line: line
+            )
+        }
+    }
+
+    /// Get rid of the consent sheet without answering it, the way a user
+    /// flicks a sheet away. `app.swipeDown()` alone is not enough: it drives
+    /// the whole app element, and on iPad the sheet is a card floating over a
+    /// dimmed app, so the swipe lands behind it. Each of these is a real
+    /// dismissal a user can perform, and every one of them has to leave them
+    /// off the map — which the caller asserts next.
+    private func dismissConsentByGesture() -> Bool {
+        let sheet = el(AXID.locationConsentSheet)
+        for attempt in 0..<4 {
+            if !sheet.exists { return true }
+            switch attempt {
+            case 0, 1:
+                // Drag the sheet itself down and off the screen.
+                let start = sheet.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.04))
+                let end = sheet.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 3.0))
+                start.press(forDuration: 0.1, thenDragTo: end)
+            case 2:
+                app.swipeDown()
+            default:
+                // Tapping the dimmed area outside the card, which is how iPad
+                // dismisses one.
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.03)).tap()
+            }
+            if Harness.waitGone(sheet, timeout: 8) { return true }
+        }
+        attachHierarchy("consent-sheet-would-not-dismiss")
+        return !sheet.exists
+    }
+
+    private func assertNotSharing(after step: String, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertFalse(
+            el(AXID.mapSharingIndicator).exists,
+            "the user is on the map after \(step)",
+            file: file, line: line
+        )
+        XCTAssertTrue(
+            el(AXID.mapCheckInButton).exists,
+            "the Map lost its Check In button after \(step)",
+            file: file, line: line
+        )
+    }
+
+    /// Tap a map pin.
+    ///
+    /// `MLNMapView` is an accessibility container that synthesises an element
+    /// per annotation, and the frames it publishes are in the map's own
+    /// coordinate space, not the screen's. On an iPhone 16 Pro Max with the
+    /// map inset 180pt from the top, Wolf-3's element reported a frame
+    /// centred at y=417 while the pin was drawn at y=585 — exactly the map's
+    /// origin apart, confirmed against a screenshot. So the element reports
+    /// `isHittable == false` and tapping it, or any point derived from it in
+    /// screen space, lands on empty map.
+    ///
+    /// Reading the frame as map-local, which is what it is, gives the point a
+    /// finger would hit. See the known-issues note in the report: the wrong
+    /// frames are MapLibre's, and they also mean VoiceOver aims at the wrong
+    /// place.
+    private func tapPin(_ pin: XCUIElement, in map: XCUIElement) {
+        guard map.frame.width > 0, map.frame.height > 0 else {
+            pin.tap()
+            return
+        }
+        map.coordinate(withNormalizedOffset: CGVector(
+            dx: pin.frame.midX / map.frame.width,
+            dy: pin.frame.midY / map.frame.height
+        )).tap()
+    }
+
+    // MARK: - 5.1.2(i) Blocking
+
+    /// Apple's first requirement, driven the way a reviewer would drive it:
+    /// in Demo Mode, on one device, from a map pin.
+    ///
+    /// Demo Mode is the case that mattered and the case that was broken.
+    /// `DemoMode.deliver()` hands simulated packets straight to
+    /// `AppState.deliverLocally`, which skips `MeshRouter` and therefore skips
+    /// the router's blocked-origin filter. Text and pins were still filtered
+    /// because those services check the block list themselves; push-to-talk
+    /// audio was not, so a blocked peer kept talking.
+    func testBlockingADemoPeerRemovesThemAndUnblockRestores() {
+        _ = launch(onboarded: true, demo: true)
+        XCTAssertTrue(waitForHome(timeout: 30))
+
+        XCTAssertTrue(
+            switchToTab("Map", until: { self.el(AXID.mapCheckInButton).exists }),
+            "the Map tab never came up"
+        )
+
+        let map = el(AXID.peerMap)
+        XCTAssertTrue(map.waitForExistence(timeout: 30), "the demo map never appeared")
+
+        // MapLibre is its own accessibility container, so a pin is found by
+        // the peer's name inside the map subtree. Narrowed to the pin
+        // identifier rather than every descendant: enumerating the whole
+        // subtree by index while the map is changing throws "No matches found
+        // for Element at index 5" as elements come and go underneath it, and
+        // the map is changing precisely when a pin is being removed, which is
+        // what this test is about.
+        let names = Self.demoPeerNames
+        func pinnedNames() -> Set<String> {
+            let pins = map.descendants(matching: .any).matching(identifier: AXID.mapPeerPin)
+            var found: Set<String> = []
+            for element in pins.allElementsBoundByIndex {
+                let label = element.label
+                if let name = names.first(where: { label.hasPrefix($0) }) { found.insert(name) }
+            }
+            return found
+        }
+        // One query rather than an enumeration, for use while pins are
+        // disappearing.
+        func isPinned(_ name: String) -> Bool {
+            map.descendants(matching: .any).matching(
+                NSPredicate(format: "identifier == %@ AND label BEGINSWITH %@", AXID.mapPeerPin, name)
+            ).firstMatch.exists
+        }
+
+        guard waitUntil(timeout: 30, { !pinnedNames().isEmpty }) else {
+            attachHierarchy("no-demo-pins-to-block")
+            return XCTFail("no demo pins on the map to block")
+        }
+        let before = pinnedNames()
+        guard let victim = before.sorted().first else { return XCTFail("no pin name") }
+        shot("block-map-before")
+
+        let pin = map.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", victim)).firstMatch
+        XCTAssertTrue(pin.waitForExistence(timeout: 10))
+
+        // MapLibre annotations are drawn, not laid out, so a tap can land
+        // beside the pin rather than on it. Retry before calling the sheet
+        // missing; the assertion is still that a pin opens it.
+        let sheet = el(AXID.peerActionSheet)
+        var sheetOpen = false
+        for _ in 0..<3 where !sheetOpen {
+            tapPin(pin, in: map)
+            sheetOpen = sheet.waitForExistence(timeout: 12)
+        }
+        if !sheetOpen { attachHierarchy("pin-did-not-open-peer-sheet") }
+        XCTAssertTrue(sheetOpen, "tapping a pin did not open the peer sheet")
+        XCTAssertTrue(el(AXID.peerSheetReportButton).exists, "the peer sheet has no Report")
+        shot("block-peer-sheet")
+
+        tap(AXID.peerSheetBlockButton)
+        // One confirmation, as the guideline asks.
+        let confirm = app.buttons["Block"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 10), "blocking asked for no confirmation")
+        confirm.tap()
+
+        XCTAssertTrue(
+            waitUntil(timeout: 25, { !isPinned(victim) }),
+            "\(victim) is still pinned on the map after being blocked"
+        )
+        shot("block-map-after")
+
+        // Settings lists them, and unblocking gives them back.
+        XCTAssertTrue(goBack(until: { self.waitForHome(timeout: 1) }) || waitForHome(timeout: 5))
+        XCTAssertTrue(openSettings(), "Settings never opened")
+        let blockedRow = button(AXID.blockedUsersRow)
+        XCTAssertTrue(blockedRow.waitForExistence(timeout: 15), "Settings has no Blocked Users row")
+
+        // SwiftUI merges a row's texts into its Button, so the blocked peer
+        // appears as part of a label rather than as a static text of its own:
+        // matched by containment, not by an exact `staticTexts[name]`.
+        func isListed() -> Bool {
+            app.descendants(matching: .any)
+                .matching(NSPredicate(format: "label CONTAINS %@", victim))
+                .firstMatch.exists
+        }
+
+        // Blocked Users is a disclosure. Tapping the merged Button did not
+        // toggle it, so the row's own text is tapped, which is unambiguously
+        // the control.
+        var listed = false
+        for attempt in 0..<4 where !listed {
+            switch attempt {
+            case 0: scrollToAndTap(blockedRow)
+            case 1: scrollToAndTap(app.staticTexts["Blocked Users"].firstMatch)
+            default: scrollToAndTap(blockedRow)
+            }
+            for _ in 0..<4 where !listed {
+                listed = waitUntil(timeout: 3, { isListed() })
+                if !listed { app.swipeUp() }
+            }
+        }
+        if !listed { attachHierarchy("blocked-user-not-listed") }
+        XCTAssertTrue(listed, "\(victim) is not listed under Blocked Users")
+        shot("blocked-users-list")
+
+        let unblock = app.buttons["Unblock"].firstMatch
+        XCTAssertTrue(unblock.waitForExistence(timeout: 10), "no Unblock button")
+        XCTAssertTrue(scrollToAndTap(unblock), "could not reach Unblock")
+        // Unblocking removes the row, so wait on the name going rather than
+        // on the button.
+        XCTAssertTrue(
+            waitUntil(timeout: 15, { !isListed() }),
+            "\(victim) stayed in the blocked list after Unblock"
+        )
+        shot("blocked-users-after-unblock")
+    }
+
+    /// The second entry point Apple's requirement names: the sender of a text
+    /// message. It has to reach the *same* sheet the map pin reaches, because
+    /// that is where Report lives, and reporting from a message used to skip
+    /// it entirely — which meant reporting without a reason and without the
+    /// sender's identity fingerprint.
+    ///
+    /// The effect asserted is the one a user would check: their history goes.
+    func testBlockingFromAMessageHidesTheirHistory() {
+        _ = launch(onboarded: true, demo: true)
+        XCTAssertTrue(waitForHome(timeout: 30))
+        XCTAssertTrue(enterChannelChat(), "could not reach the demo channel's chat")
+
+        // Wait for seeded history, then pick whoever is actually on screen.
+        guard waitUntil(timeout: 30, { self.peerMessageCount() > 0 }) else {
+            attachHierarchy("no-demo-history-to-block")
+            return XCTFail("the demo channel has no peer messages to block")
+        }
+        let clauses = Self.demoPeerNames.map { _ in "label BEGINSWITH %@" }.joined(separator: " OR ")
+        let predicate = NSPredicate(format: clauses, argumentArray: Self.demoPeerNames)
+        let senderLabel = app.descendants(matching: .staticText).matching(predicate).firstMatch
+        XCTAssertTrue(senderLabel.waitForExistence(timeout: 15))
+        guard let victim = Self.demoPeerNames.first(where: { senderLabel.label.hasPrefix($0) }) else {
+            attachHierarchy("sender-label-unrecognised")
+            return XCTFail("could not read a sender name off the chat")
+        }
+        func messagesFrom(_ name: String) -> Int {
+            app.descendants(matching: .staticText)
+                .matching(NSPredicate(format: "label BEGINSWITH %@", name)).count
+        }
+        XCTAssertGreaterThan(messagesFrom(victim), 0, "precondition: \(victim) has history on screen")
+        shot("block-from-message-before")
+
+        // Long press opens the message's context menu.
+        var menuOpen = false
+        for _ in 0..<3 where !menuOpen {
+            senderLabel.press(forDuration: 1.2)
+            menuOpen = el(AXID.messageBlockOrReport).waitForExistence(timeout: 8)
+                || app.buttons["Block or Report"].firstMatch.waitForExistence(timeout: 2)
+        }
+        if !menuOpen { attachHierarchy("message-context-menu-never-opened") }
+        XCTAssertTrue(menuOpen, "long pressing a message did not offer Block or Report")
+        shot("message-context-menu")
+
+        let entry = el(AXID.messageBlockOrReport).exists
+            ? el(AXID.messageBlockOrReport)
+            : app.buttons["Block or Report"].firstMatch
+        entry.tap()
+
+        let sheet = el(AXID.peerActionSheet)
+        XCTAssertTrue(sheet.waitForExistence(timeout: 15),
+                      "blocking from a message did not open the peer sheet")
+        XCTAssertTrue(el(AXID.peerSheetReportButton).exists,
+                      "the sheet reached from a message has no Report")
+        shot("block-from-message-sheet")
+
+        tap(AXID.peerSheetBlockButton)
+        let confirm = app.buttons["Block"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 10), "blocking asked for no confirmation")
+        confirm.tap()
+
+        XCTAssertTrue(
+            waitUntil(timeout: 25, { messagesFrom(victim) == 0 }),
+            "\(victim)'s messages are still on screen after being blocked"
+        )
+        shot("block-from-message-after")
     }
 
     // MARK: - 2.1(a) Demo Mode
@@ -572,17 +1089,25 @@ final class ReviewComplianceTests: XCTestCase {
         }
         if !inTalkMode { attachHierarchy("talk-mode-never-opened") }
         XCTAssertTrue(inTalkMode, "the channel's Talk mode never came up")
-        Harness.transmit(app, for: 2.0)
-        // If this device has never been asked, the press asks instead of
-        // transmitting. Answer and press again.
-        if let alert = anySystemAlert {
-            answerSystemAlert(alert, allow: true)
-            Harness.transmit(app, for: 2.0)
-        }
         let receiving = app.descendants(matching: .any).matching(
             NSPredicate(format: "identifier == %@ AND label CONTAINS %@", AXID.statusPill, "Receiving from")
         ).firstMatch
-        XCTAssertTrue(receiving.waitForExistence(timeout: 30), "nobody answered the push-to-talk")
+        // A press that does not register looks exactly like a peer that never
+        // answers, so the press is repeated. The answer itself is still what
+        // is asserted: a status pill naming who is speaking.
+        var answered = false
+        for _ in 0..<3 where !answered {
+            Harness.transmit(app, for: 2.0)
+            // If this device has never been asked, the press asks instead of
+            // transmitting. Answer and press again.
+            if let alert = anySystemAlert {
+                answerSystemAlert(alert, allow: true)
+                Harness.transmit(app, for: 2.0)
+            }
+            answered = receiving.waitForExistence(timeout: 15)
+        }
+        if !answered { attachHierarchy("no-ptt-answer") }
+        XCTAssertTrue(answered, "nobody answered the push-to-talk")
         shot("demo-ptt-reply")
 
         // Back home for the map and the inbox.
@@ -598,21 +1123,34 @@ final class ReviewComplianceTests: XCTestCase {
         // annotation's title, and hides the annotation views underneath. So a
         // pin is found by the peer's name, inside the map, and finding one
         // means that peer is pinned and on screen.
-        let pin = map.descendants(matching: .any).matching(
-            NSPredicate(format: "label BEGINSWITH 'Ridge-7' OR label BEGINSWITH 'Nova-12' "
-                        + "OR label BEGINSWITH 'Ghost-21' OR label BEGINSWITH 'Wolf-3'")
-        ).firstMatch
-        if !pin.waitForExistence(timeout: 30) {
+        func pinnedNames() -> Set<String> {
+            let names = ["Ridge-7", "Nova-12", "Ghost-21", "Wolf-3"]
+            let found = map.descendants(matching: .any).allElementsBoundByIndex.compactMap { element -> String? in
+                names.first { element.label.hasPrefix($0) }
+            }
+            return Set(found)
+        }
+        // Two distinct peers, so a single marker standing in for the whole
+        // group would not pass.
+        if !waitUntil(timeout: 30, { pinnedNames().count >= 2 }) {
             attachHierarchy("no-map-pins")
             add({ let a = XCTAttachment(string: map.debugDescription)
                   a.name = "map-subtree"; a.lifetime = .keepAlways; return a }())
         }
-        XCTAssertTrue(pin.exists, "no pins on the demo map")
+        XCTAssertGreaterThanOrEqual(pinnedNames().count, 2, "no pins on the demo map")
         shot("demo-map-pins")
 
-        app.buttons["Voice Messages"].firstMatch.tap()
+        // Same lost-tap pattern as the tabs and Settings: the button is tapped
+        // until the inbox it opens is actually on screen.
         let play = el(AXID.voiceMessagePlayButton)
-        XCTAssertTrue(play.waitForExistence(timeout: 20), "the demo voice-message inbox is empty")
+        var inboxOpen = false
+        for _ in 0..<3 where !inboxOpen {
+            let entry = app.buttons["Voice Messages"].firstMatch
+            if entry.waitForExistence(timeout: 10) { entry.tap() }
+            inboxOpen = play.waitForExistence(timeout: 15)
+        }
+        if !inboxOpen { attachHierarchy("voice-inbox-never-opened") }
+        XCTAssertTrue(inboxOpen, "the demo voice-message inbox is empty")
         play.tap()
         XCTAssertTrue(
             waitUntil(timeout: 10) { el(AXID.voiceMessagePlayButton).label.localizedCaseInsensitiveContains("stop") },

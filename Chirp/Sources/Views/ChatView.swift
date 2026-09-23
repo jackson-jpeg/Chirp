@@ -20,10 +20,16 @@ struct ChatView: View {
     var onSendImage: ((String) -> Void)?
     var onSendFile: ((URL) -> Void)?
     var onSendReaction: ((String, UUID) -> Void)?
-    /// Called when the user reports a message (Guideline 1.2 — flag content).
-    var onReportMessage: ((MeshTextMessage) -> Void)?
-    /// Called when the user blocks a message's sender.
-    var onBlockSender: ((MeshTextMessage) -> Void)?
+    /// Called when the user asks to block or report a message's sender. The
+    /// host resolves the sender to a peer identity and presents the shared
+    /// peer sheet; this view neither blocks nor reports on its own, so there
+    /// is one Block and one Report in the app rather than one per screen.
+    var onPeerAction: ((MeshTextMessage) -> Void)?
+    /// Whether this message's text should be collapsed behind a tap by the
+    /// on-device filter (Guideline 1.2). Supplied by the host rather than
+    /// decided here: this view deliberately holds no `AppState`, so every
+    /// policy question arrives as a closure. Defaults to filtering nothing.
+    var isFilteredMessage: (MeshTextMessage) -> Bool = { _ in false }
     /// Typing peers for the current channel.
     var typingPeers: Set<String> = []
     /// Called when the user starts/continues typing (debounced by caller).
@@ -47,8 +53,6 @@ struct ChatView: View {
     @State private var showDocumentPicker: Bool = false
     @State private var imagePickerSource: ImagePickerSource = .library
     @State private var reactingToMessageID: UUID?
-    /// Message whose sender is pending block confirmation.
-    @State private var blockCandidate: MeshTextMessage?
 
     // Search state
     @State private var searchText: String = ""
@@ -134,25 +138,6 @@ struct ChatView: View {
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showScrollToBottom)
         .animation(.easeInOut(duration: 0.2), value: typingPeers.isEmpty)
         .animation(.easeInOut(duration: 0.2), value: isSearching)
-        .confirmationDialog(
-            String(localized: "moderation.blockConfirm.title \(blockCandidate?.senderName ?? "")"),
-            isPresented: Binding(
-                get: { blockCandidate != nil },
-                set: { if !$0 { blockCandidate = nil } }
-            ),
-            titleVisibility: .visible,
-            presenting: blockCandidate
-        ) { message in
-            Button(String(localized: "moderation.blockConfirm.action"), role: .destructive) {
-                onBlockSender?(message)
-                blockCandidate = nil
-            }
-            Button(String(localized: "common.cancel"), role: .cancel) {
-                blockCandidate = nil
-            }
-        } message: { _ in
-            Text(String(localized: "moderation.blockConfirm.message"))
-        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -280,7 +265,15 @@ struct ChatView: View {
                             onSwipeReply: {
                                 replyingTo = message
                             },
-                            searchHighlight: searchText
+                            searchHighlight: searchText,
+                            // Only other people's text is screened. Filtering
+                            // what the user typed themselves would be telling
+                            // them what they may say, which is not what this
+                            // is for, and an attachment's "text" is encoded
+                            // payload rather than prose.
+                            isFiltered: !isFromSelf
+                                && message.attachmentType == nil
+                                && isFilteredMessage(message)
                         )
                         .id(message.id)
                         .padding(.horizontal, 8)
@@ -321,17 +314,23 @@ struct ChatView: View {
                             if !isFromSelf {
                                 Divider()
 
+                                // One entry, not two: Block and Report live
+                                // together on the peer sheet, which is the
+                                // same sheet a map pin, a peer list and a
+                                // voice message open. Reporting from here
+                                // used to skip that sheet, and so skipped the
+                                // reason picker and the sender's identity
+                                // fingerprint — the one field that makes a
+                                // report actionable after a rename.
                                 Button {
-                                    onReportMessage?(message)
+                                    onPeerAction?(message)
                                 } label: {
-                                    Label(String(localized: "moderation.report"), systemImage: "flag")
+                                    Label(
+                                        String(localized: "moderation.blockOrReport"),
+                                        systemImage: "hand.raised"
+                                    )
                                 }
-
-                                Button(role: .destructive) {
-                                    blockCandidate = message
-                                } label: {
-                                    Label(String(localized: "moderation.blockUser"), systemImage: "hand.raised")
-                                }
+                                .accessibilityIdentifier(AccessibilityID.messageBlockOrReport)
                             }
                         }
                     }

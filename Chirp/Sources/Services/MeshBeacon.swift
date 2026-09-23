@@ -14,6 +14,32 @@ final class MeshBeacon {
 
     // MARK: - Types
 
+    /// One node's presence announcement.
+    ///
+    /// ## Wire format (breaking change, shipped in one release)
+    ///
+    /// `"BCN!"` followed by JSON. Two things changed at once, and there is no
+    /// transitional format for either: Apple's rejection requires both that a
+    /// blocked peer cannot read our position and that a block survives a
+    /// rename, and a half-migrated mesh satisfies neither.
+    ///
+    /// 1. **The position is no longer in the JSON.** `latitude`/`longitude`
+    ///    are not encoded at all. In their place ``sealedPositions`` maps a
+    ///    recipient's routing UUID to an AES-GCM box that only that recipient
+    ///    can open. Excluding a blocked peer from the *send* path would not
+    ///    have been enough: the mesh relays packets through intermediate
+    ///    nodes, so the blocked peer sees the bytes either way. The payload
+    ///    itself has to be unreadable to them.
+    /// 2. **The sender attests to its identity.** ``signingPublicKey``,
+    ///    ``fingerprint``, ``agreementPublicKey`` and ``identitySignature``
+    ///    let a receiver bind a routing UUID to a stable cryptographic
+    ///    identity, so a block can follow the identity across a rename and a
+    ///    new UUID.
+    ///
+    /// Old builds decode this and simply find no coordinate; new builds
+    /// decode an old beacon and find no identity and no sealed position. In
+    /// neither direction does anything throw — see ``init(from:)`` — which is
+    /// the only compatibility guarantee made.
     struct BeaconInfo: Codable, Sendable, Identifiable {
         let id: String
         let name: String
@@ -24,18 +50,53 @@ final class MeshBeacon {
         var lastSeen: Date
         /// IDs of this node's direct peers -- used to build topology in MeshIntelligence.
         var neighborIDs: [String]
-        /// GPS coordinates shared via location-share messages (nil if not shared).
+
+        /// The position, in the clear, **in memory only**.
+        ///
+        /// Deliberately absent from ``CodingKeys``, so it can never be
+        /// encoded: on the way out it is the coordinate to seal, on the way
+        /// in it is what we managed to open from the entry addressed to us.
+        /// A peer with no entry for us — blocked, or simply checked out — has
+        /// `nil` here, and every existing reader (the map, the node list)
+        /// already treats `nil` as "no pin".
         var latitude: Double?
         var longitude: Double?
+
         /// Pheromone trail summary: top destination->score pairs for cross-node trail sharing.
         var pheromoneTrails: [String: Double]?
+
+        // MARK: Identity (plaintext, and verified on arrival)
+
+        /// Sender's Ed25519 public key, 32 raw bytes.
+        var signingPublicKey: Data?
+
+        /// Sender's identity fingerprint. Never believed as sent: the
+        /// receiver recomputes it from ``signingPublicKey`` and drops the
+        /// beacon on a mismatch.
+        var fingerprint: String?
+
+        /// Sender's X25519 public key, 32 raw bytes. Public by definition;
+        /// this is how a recipient seals a position back to the sender.
+        var agreementPublicKey: Data?
+
+        /// Ed25519 signature over (routing UUID, fingerprint, agreement key).
+        /// Without it a relay could swap the agreement key for its own and
+        /// read every position addressed through it.
+        var identitySignature: Data?
+
+        /// Recipient routing UUID -> AES-GCM sealed coordinate, one entry per
+        /// non-blocked peer this node knows a key for. A blocked peer gets no
+        /// entry, and cannot open anyone else's.
+        var sealedPositions: [String: Data]?
 
         /// True if this node was heard directly (1 hop away).
         var isDirect: Bool { hopCount <= 1 }
 
         enum CodingKeys: String, CodingKey {
             case id, name, channels, hopCount, batteryLevel, timestamp, lastSeen, neighborIDs
-            case latitude, longitude, pheromoneTrails
+            case pheromoneTrails
+            case signingPublicKey, fingerprint, agreementPublicKey, identitySignature
+            case sealedPositions
         }
 
         init(
@@ -49,7 +110,12 @@ final class MeshBeacon {
             neighborIDs: [String] = [],
             latitude: Double? = nil,
             longitude: Double? = nil,
-            pheromoneTrails: [String: Double]? = nil
+            pheromoneTrails: [String: Double]? = nil,
+            signingPublicKey: Data? = nil,
+            fingerprint: String? = nil,
+            agreementPublicKey: Data? = nil,
+            identitySignature: Data? = nil,
+            sealedPositions: [String: Data]? = nil
         ) {
             self.id = id
             self.name = name
@@ -62,8 +128,17 @@ final class MeshBeacon {
             self.latitude = latitude
             self.longitude = longitude
             self.pheromoneTrails = pheromoneTrails
+            self.signingPublicKey = signingPublicKey
+            self.fingerprint = fingerprint
+            self.agreementPublicKey = agreementPublicKey
+            self.identitySignature = identitySignature
+            self.sealedPositions = sealedPositions
         }
 
+        /// Every field added since 1.0 decodes with `decodeIfPresent`, so a
+        /// beacon from a peer on any shipped format decodes rather than
+        /// throwing. A corrupt or truncated payload still throws, and
+        /// ``MeshBeacon/handleBeacon(_:)`` swallows that into "no node".
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             id = try container.decode(String.self, forKey: .id)
@@ -75,11 +150,38 @@ final class MeshBeacon {
             lastSeen = try container.decode(Date.self, forKey: .lastSeen)
             // Backwards compatible: older beacons may omit neighborIDs
             neighborIDs = try container.decodeIfPresent([String].self, forKey: .neighborIDs) ?? []
-            // Backwards compatible: older beacons may omit coordinates
-            latitude = try container.decodeIfPresent(Double.self, forKey: .latitude)
-            longitude = try container.decodeIfPresent(Double.self, forKey: .longitude)
+            // Never on the wire in either direction; see the property doc.
+            latitude = nil
+            longitude = nil
             // Backwards compatible: older beacons may omit pheromone trails
             pheromoneTrails = try container.decodeIfPresent([String: Double].self, forKey: .pheromoneTrails)
+            // Absent on every pre-encryption beacon.
+            signingPublicKey = try container.decodeIfPresent(Data.self, forKey: .signingPublicKey)
+            fingerprint = try container.decodeIfPresent(String.self, forKey: .fingerprint)
+            agreementPublicKey = try container.decodeIfPresent(Data.self, forKey: .agreementPublicKey)
+            identitySignature = try container.decodeIfPresent(Data.self, forKey: .identitySignature)
+            sealedPositions = try container.decodeIfPresent([String: Data].self, forKey: .sealedPositions)
+        }
+
+        /// Written out by hand rather than synthesised, because the one thing
+        /// this method must never do — encode `latitude`/`longitude` — would
+        /// otherwise be one accidental `CodingKeys` case away.
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(id, forKey: .id)
+            try container.encode(name, forKey: .name)
+            try container.encode(channels, forKey: .channels)
+            try container.encode(hopCount, forKey: .hopCount)
+            try container.encode(batteryLevel, forKey: .batteryLevel)
+            try container.encode(timestamp, forKey: .timestamp)
+            try container.encode(lastSeen, forKey: .lastSeen)
+            try container.encode(neighborIDs, forKey: .neighborIDs)
+            try container.encodeIfPresent(pheromoneTrails, forKey: .pheromoneTrails)
+            try container.encodeIfPresent(signingPublicKey, forKey: .signingPublicKey)
+            try container.encodeIfPresent(fingerprint, forKey: .fingerprint)
+            try container.encodeIfPresent(agreementPublicKey, forKey: .agreementPublicKey)
+            try container.encodeIfPresent(identitySignature, forKey: .identitySignature)
+            try container.encodeIfPresent(sealedPositions, forKey: .sealedPositions)
         }
     }
 
@@ -143,13 +245,83 @@ final class MeshBeacon {
     /// discarded on arrival, so their pin never reaches the map. The router
     /// already drops their packets by origin ID; this is the second lock on
     /// the same door, and the one that is cheap to test.
+    ///
+    /// These are routing UUID strings. A routing UUID is per-install and can
+    /// be abandoned, which is why ``blockedFingerprintsProvider`` exists
+    /// alongside it.
     var blockedIDsProvider: (() -> Set<String>)?
+
+    /// Blocked *identities*, as verified Ed25519 fingerprints.
+    ///
+    /// Apple's first requirement for this resubmission is that the block
+    /// identity is the peer's stable cryptographic identity rather than a
+    /// display name, so a blocked peer cannot evade the block by renaming.
+    /// A fingerprint is the first 8 bytes of SHA-256 over their signing
+    /// public key: to change it they must abandon the keypair.
+    var blockedFingerprintsProvider: (() -> Set<String>)?
+
+    /// Fired when a blocked identity turns up under a routing UUID that is
+    /// not yet blocked — the rename-and-reinstall evasion.
+    ///
+    /// The beacon does not own the block list, so it reports rather than
+    /// writes: `AppState` persists the new routing UUID into ``BlockList``,
+    /// which re-arms the router and the text service. Arguments are the new
+    /// routing UUID, the verified fingerprint, and the name being used now.
+    var onBlockedIdentityRekeyed: ((String, String, String) -> Void)?
+
+    /// This device's wire identity: the Ed25519 key that attests to who we
+    /// are and the X25519 key peers seal positions to. Wired by `AppState`
+    /// from ``PeerIdentity``; until then beacons carry no attestation.
+    var identity: BeaconIdentity?
+
+    /// Keys used for beacons this device manufactures on someone else's
+    /// behalf — Demo Mode's simulated peers and the screenshot seeder, which
+    /// obviously hold no private key of their own, and the encode/decode
+    /// round trips in tests.
+    ///
+    /// Such a beacon seals a position (so the simulated pins still appear on
+    /// this device's own map) but never claims an identity: signing someone
+    /// else's routing UUID with this device's key would manufacture a
+    /// fingerprint that a user could then block, banning themselves.
+    /// Created on first use rather than on every `MeshBeacon`: generating two
+    /// keypairs is not free, and most instances never seed a beacon.
+    /// `@Observable` rules out `lazy`, hence the explicit backing store.
+    @ObservationIgnored private var _seedIdentity: BeaconIdentity?
+
+    private var seedIdentity: BeaconIdentity {
+        if let existing = _seedIdentity { return existing }
+        let created = BeaconIdentity()
+        _seedIdentity = created
+        return created
+    }
+
+    /// The address peers seal to.
+    ///
+    /// Normally the routing UUID passed to ``startBroadcasting(localID:localName:channels:)``.
+    /// Before that runs there is still a need for a stable self-address, so a
+    /// beacon this device encodes and hands straight back to itself (Demo
+    /// Mode, screenshot seeding, tests) can round-trip a position.
+    var localRoutingID: String { localID ?? fallbackRoutingID }
+
+    private let fallbackRoutingID = UUID().uuidString
+
+    /// Cap on sealed entries per beacon.
+    ///
+    /// Each entry is a routing UUID plus a 44-byte box, roughly 110 bytes of
+    /// JSON. Beacons go out every 2 seconds over a link shared with live
+    /// audio, so the position is offered to the nearest peers first rather
+    /// than to an unbounded mesh. `neighborIDs` is capped for the same reason.
+    private static let maxSealedRecipients = 24
 
     /// Cached pheromone summary from last async fetch, included in next beacon.
     private var cachedPheromoneTrails: [String: Double]?
 
     /// Magic bytes prepended to beacon payloads.
-    static let beaconMagic: [UInt8] = [0x42, 0x43, 0x4E, 0x21] // "BCN!"
+    /// `nonisolated` because it is an immutable constant and the wire format
+    /// is read from outside the main actor: the transport decides whether a
+    /// payload is a beacon before handing it anywhere, and the tests frame
+    /// and unframe payloads directly.
+    nonisolated static let beaconMagic: [UInt8] = [0x42, 0x43, 0x4E, 0x21] // "BCN!"
 
     /// Stale threshold: nodes not seen for this duration are pruned.
     private static let staleThreshold: TimeInterval = 10.0
@@ -264,11 +436,76 @@ final class MeshBeacon {
             // Ignore our own beacons.
             if beacon.id == localID { return }
 
+            // Identity, if claimed, must hold up before anything else reads
+            // it. A fingerprint nobody checks is worth nothing: it would let
+            // a peer wear someone else's identity, or a relay swap the
+            // agreement key and read every position routed through it.
+            if let signingPublicKey = beacon.signingPublicKey {
+                guard let claimed = beacon.fingerprint,
+                      let signature = beacon.identitySignature,
+                      let agreementPublicKey = beacon.agreementPublicKey,
+                      let verified = BeaconIdentity.verifyAttestation(
+                          routingID: beacon.id,
+                          claimedFingerprint: claimed,
+                          signingPublicKey: signingPublicKey,
+                          agreementPublicKey: agreementPublicKey,
+                          signature: signature
+                      )
+                else {
+                    logger.error("Dropped beacon with unverifiable identity from \(beacon.id, privacy: .public)")
+                    return
+                }
+                beacon.fingerprint = verified
+            } else if beacon.fingerprint != nil {
+                // A fingerprint with no signing key behind it is a claim, not
+                // an identity. Drop it rather than store something a block
+                // could later be keyed to.
+                logger.error("Dropped beacon claiming a fingerprint with no signing key: \(beacon.id, privacy: .public)")
+                return
+            }
+
             // Drop blocked peers entirely — presence, topology and position.
             if blockedIDsProvider?().contains(beacon.id) == true {
                 knownNodes.removeValue(forKey: beacon.id)
                 logger.trace("Dropped beacon from blocked peer \(beacon.id, privacy: .public)")
                 return
+            }
+
+            // Same person, new install, new callsign. The routing UUID is
+            // fresh so the checks above let it through; the identity is the
+            // one the user blocked, so it stays blocked and the new UUID is
+            // reported for persistence.
+            if let fingerprint = beacon.fingerprint,
+               blockedFingerprintsProvider?().contains(fingerprint) == true {
+                knownNodes.removeValue(forKey: beacon.id)
+                logger.info("Blocked identity reappeared under a new routing ID: \(beacon.id, privacy: .public)")
+                onBlockedIdentityRekeyed?(beacon.id, fingerprint, beacon.name)
+                return
+            }
+
+            // The position, if there is one addressed to us. Everything else
+            // in the beacon is public; this is the only part that was sealed.
+            beacon.latitude = nil
+            beacon.longitude = nil
+            if let sealed = beacon.sealedPositions?[localRoutingID],
+               let senderKey = beacon.agreementPublicKey {
+                let context = Self.positionContext(
+                    senderID: beacon.id,
+                    recipientID: localRoutingID
+                )
+                // Both keys are tried because a beacon this device seeded for
+                // a simulated peer may predate `identity` being wired in.
+                for opener in [identity, seedIdentity].compactMap({ $0 }) {
+                    if let coordinate = opener.openCoordinate(
+                        sealed,
+                        fromPeerAgreementKey: senderKey,
+                        context: context
+                    ) {
+                        beacon.latitude = coordinate.latitude
+                        beacon.longitude = coordinate.longitude
+                        break
+                    }
+                }
             }
 
             // Update lastSeen to local time.
@@ -336,11 +573,148 @@ final class MeshBeacon {
     // MARK: - Encoding
 
     /// Encode a beacon into a payload suitable for mesh broadcast.
+    ///
+    /// This is where the position stops being a coordinate and becomes a set
+    /// of sealed boxes. `beacon.latitude`/`longitude` are consumed here and
+    /// never encoded; what goes out is one AES-GCM box per known, non-blocked
+    /// peer whose agreement key we have learned from their own beacon.
     func encodeBeacon(_ beacon: BeaconInfo) -> Data? {
-        guard let json = try? JSONEncoder().encode(beacon) else { return nil }
+        var wire = beacon
+        let isOurs = beacon.id == localRoutingID
+
+        // Only our own beacon may claim our identity.
+        if isOurs, let identity {
+            wire.signingPublicKey = identity.signingPublicKey
+            wire.fingerprint = identity.fingerprint
+            wire.agreementPublicKey = identity.agreementPublicKey
+            wire.identitySignature = identity.attest(routingID: beacon.id)
+        }
+
+        if let latitude = beacon.latitude, let longitude = beacon.longitude,
+           beacon.sealedPositions == nil {
+            let sealer = isOurs ? (identity ?? seedIdentity) : seedIdentity
+            wire.agreementPublicKey = sealer.agreementPublicKey
+            let sealed = sealPosition(
+                latitude: latitude,
+                longitude: longitude,
+                senderID: beacon.id,
+                using: sealer
+            )
+            wire.sealedPositions = sealed.isEmpty ? nil : sealed
+        }
+
+        wire.latitude = nil
+        wire.longitude = nil
+
+        guard let json = try? JSONEncoder().encode(wire) else { return nil }
         var payload = Data(Self.beaconMagic)
         payload.append(json)
         return payload
+    }
+
+    /// The recipients of a position and the box each one gets.
+    ///
+    /// A blocked peer is excluded twice over: they get no entry, and the
+    /// entries they can see are sealed to keys they do not hold. The second
+    /// exclusion is the one that matters, because a relayed packet passes
+    /// through nodes that were never on the send list.
+    private func sealPosition(
+        latitude: Double,
+        longitude: Double,
+        senderID: String,
+        using sealer: BeaconIdentity
+    ) -> [String: Data] {
+        let blockedIDs = blockedIDsProvider?() ?? []
+        let blockedFingerprints = blockedFingerprintsProvider?() ?? []
+
+        // A blocked peer that advertises someone else's agreement key would
+        // otherwise be handed a box sealed to a key it holds. Any key a
+        // blocked node claims is disqualified outright, for everyone.
+        var poisonedKeys: Set<Data> = []
+        for node in knownNodes.values {
+            guard let key = node.agreementPublicKey else { continue }
+            let isBlocked = blockedIDs.contains(node.id)
+                || (node.fingerprint.map { blockedFingerprints.contains($0) } ?? false)
+            if isBlocked { poisonedKeys.insert(key) }
+        }
+
+        var recipients: [(id: String, key: Data)] = []
+
+        // Ourselves, but only for a beacon attributed to someone else: that
+        // is the Demo Mode / seeding / test round trip, where this device
+        // both writes and reads the packet. Our own broadcast has no reason
+        // to carry an entry addressed to us.
+        if senderID != localRoutingID {
+            recipients.append((localRoutingID, (identity ?? seedIdentity).agreementPublicKey))
+        }
+
+        let candidates = knownNodes.values
+            .filter { node in
+                node.id != senderID
+                    && node.id != localRoutingID
+                    && !blockedIDs.contains(node.id)
+                    && !(node.fingerprint.map { blockedFingerprints.contains($0) } ?? false)
+            }
+            .sorted { a, b in
+                if a.hopCount != b.hopCount { return a.hopCount < b.hopCount }
+                return a.id < b.id
+            }
+            .prefix(Self.maxSealedRecipients)
+
+        for node in candidates {
+            guard let key = node.agreementPublicKey, !poisonedKeys.contains(key) else { continue }
+            recipients.append((node.id, key))
+        }
+
+        var sealed: [String: Data] = [:]
+        for recipient in recipients {
+            guard let box = sealer.sealCoordinate(
+                latitude: latitude,
+                longitude: longitude,
+                forPeerAgreementKey: recipient.key,
+                context: Self.positionContext(senderID: senderID, recipientID: recipient.id)
+            ) else { continue }
+            sealed[recipient.id] = box
+        }
+        return sealed
+    }
+
+    /// Additional authenticated data for a sealed position: who sealed it and
+    /// who it is for. Binding both means an entry cannot be lifted out of one
+    /// beacon and replayed as another node's position.
+    static func positionContext(senderID: String, recipientID: String) -> Data {
+        Data("chirp.beacon.position.v1|\(senderID)|\(recipientID)".utf8)
+    }
+
+    // MARK: - Identity resolution
+
+    /// Canonical identity of a peer known by display name.
+    ///
+    /// The UI knows peers by callsign; blocking must key on the routing UUID
+    /// (what the router enforces) and on the fingerprint (what survives a
+    /// rename). `fingerprint` is nil when that peer's beacons carried no
+    /// attestation, which is every peer still on the pre-encryption build.
+    ///
+    /// On a duplicate name the most recently heard node wins: two people can
+    /// pick the same callsign, and refusing to resolve would mean the block
+    /// button silently does nothing.
+    func identity(forPeerNamed name: String) -> (routingID: String, fingerprint: String?)? {
+        let matches = knownNodes.values.filter { $0.name == name }
+        guard let node = matches.max(by: { $0.lastSeen < $1.lastSeen }) else { return nil }
+        return (node.id, node.fingerprint)
+    }
+
+    /// Canonical identity of a peer known by routing UUID.
+    func identity(forRoutingID id: String) -> (routingID: String, fingerprint: String?)? {
+        guard let node = knownNodes[id] else { return nil }
+        return (node.id, node.fingerprint)
+    }
+
+    /// Verified fingerprints currently on the mesh, keyed by routing UUID.
+    /// Only verified identities are ever stored, so every value here has had
+    /// its signature checked.
+    var knownFingerprints: [String: String] {
+        knownNodes.compactMapValues { $0.fingerprint }
     }
 
     // MARK: - Private
@@ -367,6 +741,8 @@ final class MeshBeacon {
         // The one place this device's position can enter a packet. `nil`
         // unless the user is inside a live manual check-in, and nil is the
         // default: no check-in, no coordinate, nothing to strip later.
+        // It leaves this object only through `encodeBeacon`, which seals it
+        // per recipient — it is never encoded as a coordinate.
         let shared = locationProvider?()
 
         let beacon = BeaconInfo(

@@ -22,6 +22,14 @@ struct MessageBubbleView: View {
     /// Search text to highlight within the message body.
     var searchHighlight: String = ""
 
+    /// The on-device filter flagged this message's text (Guideline 1.2).
+    /// The message is collapsed behind a tap, never deleted or rewritten:
+    /// the recipient decides whether to look, and switching the filter off
+    /// in Settings reveals what was hidden rather than recovering something
+    /// that was thrown away. Defaults to false so a caller that does not
+    /// filter (search results, the reply preview) is unaffected.
+    var isFiltered: Bool = false
+
     enum ClusterPosition {
         case solo       // Only message in cluster
         case first      // First message in cluster
@@ -30,6 +38,10 @@ struct MessageBubbleView: View {
     }
 
     @State private var swipeOffset: CGFloat = 0
+    /// Per-message reveal of a filtered message. Deliberately view state
+    /// and nothing more: revealing one message must not remember that
+    /// choice, reveal the rest, or outlive the screen.
+    @State private var isRevealed = false
 
     // MARK: - Body
 
@@ -236,7 +248,22 @@ struct MessageBubbleView: View {
 
     private var messageText: some View {
         Group {
-            if !searchHighlight.isEmpty {
+            if isFiltered && !isRevealed {
+                Button {
+                    withAnimation(.easeInOut(duration: Constants.Animations.quickFade)) {
+                        isRevealed = true
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "eye.slash.fill")
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(String(localized: "chat.hiddenMessage"))
+                            .font(.system(size: 15, weight: .medium))
+                    }
+                    .foregroundStyle(Constants.Colors.textTertiary)
+                }
+                .accessibilityIdentifier(AccessibilityID.hiddenMessageDisclosure)
+            } else if !searchHighlight.isEmpty {
                 highlightedText(message.text, highlight: searchHighlight)
             } else {
                 Text(message.text)

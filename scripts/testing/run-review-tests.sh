@@ -9,7 +9,7 @@
 #
 # Runs on the MAC (over macbook-tunnel). The VPS cannot run these tools.
 #
-# Usage: bash run-review-tests.sh [--build-only] [--iphone-only] [--test NAME]
+# Usage: bash run-review-tests.sh [--build-only] [--iphone-only|--ipad-only] [--test NAME]
 set -uo pipefail
 
 # Non-interactive ssh gets a bare PATH; the toolchain lives in Homebrew.
@@ -26,18 +26,30 @@ DD="$HOME/Library/Developer/Xcode/DerivedData/chirp-review-tests"
 TESTS=(
   "ReviewComplianceTests/testOnboardingMicrophonePromptThenDenyKeepsAppUsable"
   "ReviewComplianceTests/testOnboardingMicrophonePromptThenAllow"
-  "ReviewComplianceTests/testLocationExplainerOnlyLeadsToThePrompt"
+  # 5.1.2(i) location. These five replace testLocationExplainerOnlyLeadsToThePrompt,
+  # which asserted the pre-prompt explainer existed; round 3 required deleting it.
+  "ReviewComplianceTests/testCheckInAsksTheSystemDirectly"
+  "ReviewComplianceTests/testCheckInDeclinedShowsSettingsNoticeNotAScreen"
+  "ReviewComplianceTests/testConsentRefusalLeavesUserOffTheMap"
+  "ReviewComplianceTests/testConsentIsAskedEveryTimeAndNeverResumes"
+  "ReviewComplianceTests/testNoSettingOffersAutomaticSharing"
+  # 5.1.2(i) blocking, from two of the entry points a reviewer can reach on a
+  # single device: a map pin and the sender of a text message.
+  "ReviewComplianceTests/testBlockingADemoPeerRemovesThemAndUnblockRestores"
+  "ReviewComplianceTests/testBlockingFromAMessageHidesTheirHistory"
   "ReviewComplianceTests/testDemoModeGivesASingleDeviceEverything"
   "ReviewComplianceTests/testEmptyStateOffersDemoMode"
 )
 
 BUILD_ONLY=false
 IPHONE_ONLY=false
+IPAD_ONLY=false
 ONE_TEST=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --build-only) BUILD_ONLY=true; shift ;;
     --iphone-only) IPHONE_ONLY=true; shift ;;
+    --ipad-only)   IPAD_ONLY=true; shift ;;
     --test) ONE_TEST="$2"; shift 2 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
@@ -102,8 +114,9 @@ IPHONE_UDID="$(device_udid "iPhone 16 Pro Max")"
 [ -z "$IPHONE_UDID" ] && { echo "FATAL: no iPhone simulator"; exit 1; }
 echo "iPhone: $IPHONE_UDID"
 
-DEVICES=("iphone:$IPHONE_UDID")
-$IPHONE_ONLY || DEVICES=("ipad:$IPAD_UDID" "iphone:$IPHONE_UDID")
+DEVICES=("ipad:$IPAD_UDID" "iphone:$IPHONE_UDID")
+$IPHONE_ONLY && DEVICES=("iphone:$IPHONE_UDID")
+$IPAD_ONLY && DEVICES=("ipad:$IPAD_UDID")
 
 for entry in "${DEVICES[@]}"; do
   "$SIMCTL" boot "${entry#*:}" 2>/dev/null

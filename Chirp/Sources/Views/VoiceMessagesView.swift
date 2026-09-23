@@ -275,6 +275,8 @@ struct VoiceMessagesView: View {
     @Environment(AppState.self) private var appState
 
     @State private var selectedTab = 0
+    /// Resolved Block/Report target for a voice message's sender.
+    @State private var peerActionTarget: PeerActionTarget?
 
     private let amber = Constants.Colors.amber
     private let red = Constants.Colors.hotRed
@@ -310,6 +312,20 @@ struct VoiceMessagesView: View {
             }
         }
         .onDisappear { player.stop() }
+        .sheet(item: $peerActionTarget) { target in
+            PeerActionSheet(
+                target: target,
+                onBlock: { appState.applyBlock($0) },
+                onReport: { reported, reason, includeText in
+                    appState.applyReport(
+                        reported,
+                        reason: reason,
+                        message: nil,
+                        includeMessageText: includeText
+                    )
+                }
+            )
+        }
     }
 
     // MARK: - Tab Selector
@@ -426,6 +442,21 @@ struct VoiceMessagesView: View {
                                 }
                             }
                             .contextMenu {
+                                // Guideline 1.2 wants the sender of a voice
+                                // message blockable from where it appears.
+                                // `senderID` is the routing UUID the router
+                                // enforces on, so this one needs no lookup.
+                                Button {
+                                    peerActionTarget = appState.peerActionTarget(
+                                        routingID: message.senderID,
+                                        name: senderLabel(for: message)
+                                    )
+                                } label: {
+                                    Label(
+                                        String(localized: "moderation.blockOrReport"),
+                                        systemImage: "hand.raised"
+                                    )
+                                }
                                 Button(role: .destructive) {
                                     queue.deleteReceivedMessage(id: message.id)
                                 } label: {

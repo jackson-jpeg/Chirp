@@ -7,6 +7,8 @@ struct DiagnosticsView: View {
 
     @State private var peers: [ChirpPeer] = []
     @State private var meshStats: MeshStats?
+    /// Resolved Block/Report target for the peer whose sheet is open.
+    @State private var peerActionTarget: PeerActionTarget?
 
     var body: some View {
         NavigationStack {
@@ -30,6 +32,20 @@ struct DiagnosticsView: View {
                     meshStats = appState.meshStats
                     try? await Task.sleep(for: .seconds(2))
                 }
+            }
+            .sheet(item: $peerActionTarget) { target in
+                PeerActionSheet(
+                    target: target,
+                    onBlock: { appState.applyBlock($0) },
+                    onReport: { reported, reason, includeText in
+                        appState.applyReport(
+                            reported,
+                            reason: reason,
+                            message: nil,
+                            includeMessageText: includeText
+                        )
+                    }
+                )
             }
         }
     }
@@ -132,20 +148,12 @@ struct DiagnosticsView: View {
         // Same two actions as a message bubble, a peer bubble and a map pin:
         // wherever a peer is visible, they can be blocked from there.
         .contextMenu {
+            // `peer.id` is the transport display name, which the router does
+            // not enforce on. Resolve to the routing UUID first.
             Button {
-                ReportService.fileReport(
-                    peerID: peer.id,
-                    peerName: peer.name,
-                    reporterPeerID: appState.localPeerID
-                )
+                peerActionTarget = appState.peerActionTarget(peerNamed: peer.name)
             } label: {
-                Label(String(localized: "moderation.reportUser"), systemImage: "flag")
-            }
-
-            Button(role: .destructive) {
-                appState.blockList.block(id: peer.id, name: peer.name)
-            } label: {
-                Label(String(localized: "moderation.blockUser"), systemImage: "hand.raised")
+                Label(String(localized: "moderation.blockOrReport"), systemImage: "hand.raised")
             }
         }
         .accessibilityElement(children: .combine)

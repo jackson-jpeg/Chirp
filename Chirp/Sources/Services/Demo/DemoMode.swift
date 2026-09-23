@@ -56,6 +56,18 @@ final class DemoMode {
     /// Set by AppState at the end of its init.
     weak var host: AppState?
 
+    /// The blocked set, read on every simulated packet.
+    ///
+    /// Demo traffic does not go through ``MeshRouter``: ``deliver(_:payload:from:channelID:)``
+    /// hands packets straight to `AppState.deliverLocally`, which is the whole
+    /// point (it exercises the real receive path) but also skips the router's
+    /// `blockedOrigins` filter. Without this, blocking a simulated peer hid
+    /// their messages and their map pin, because those services check the
+    /// block list themselves, while their push-to-talk audio kept playing and
+    /// they kept taking the floor. App Review tests blocking in Demo Mode, so
+    /// that gap was the whole feature failing in front of the reviewer.
+    var blockedIDsProvider: (() -> Set<String>)?
+
     private let defaults: UserDefaults
     private let logger = Logger(subsystem: Constants.subsystem, category: "DemoMode")
     private var beaconTask: Task<Void, Never>?
@@ -303,12 +315,27 @@ final class DemoMode {
         guard isActive, !pttReplyInFlight else { return }
         guard lastFloorState == .transmitting, state == .idle else { return }
 
+        // Pick someone who is not blocked. Falling through to a blocked peer
+        // and letting `deliver` drop their packets would still have them take
+        // the floor silently, so the status pill would name a peer the user
+        // blocked and no audio would follow. Block everyone and nobody
+        // answers, which is the honest result.
+        let replies = DemoContent.pttReplies
+        guard let reply = (0..<replies.count).lazy
+            .map({ replies[(self.pttReplyIndex + $0) % replies.count] })
+            .first(where: { !self.isBlocked($0.peer.id) })
+        else { return }
         pttReplyInFlight = true
-        let reply = DemoContent.pttReplies[pttReplyIndex % DemoContent.pttReplies.count]
         pttReplyIndex += 1
         schedule(after: .milliseconds(1500)) { [weak self] in
             await self?.transmit(clip: reply.clip, as: reply.peer)
         }
+    }
+
+    /// Whether a simulated peer is blocked. Demo peers carry real UUID-format
+    /// IDs (``DemoContent``), so they key into the same block list as anyone.
+    private func isBlocked(_ peerID: String) -> Bool {
+        blockedIDsProvider?().contains(peerID) ?? false
     }
 
     private func transmit(clip: String, as peer: DemoContent.Peer) async {
@@ -350,6 +377,11 @@ final class DemoMode {
     /// same entry point the mesh router uses for packets off the air.
     private func deliver(_ type: MeshPacket.PacketType, payload: Data, from peer: DemoContent.Peer, channelID: String) {
         guard isActive, let host, let origin = UUID(uuidString: peer.id) else { return }
+        // Stands in for the router's blocked-origin filter, which demo packets
+        // never reach. One guard here covers every medium, because everything
+        // simulated (audio frames, floor claims, text, reactions, beacons)
+        // leaves through this method.
+        guard !isBlocked(peer.id) else { return }
         let packet = MeshPacket(
             type: type,
             ttl: 1,

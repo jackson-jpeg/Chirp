@@ -33,6 +33,9 @@ final class AppState {
     let fileTransferService: FileTransferService
     let pheromoneRouter: PheromoneRouter
     let blockList: BlockList
+    /// On-device screening of incoming message text (Guideline 1.2).
+    /// Classifies only; hiding a flagged message is the chat view's job.
+    let textFilter: TextFilter
     /// Single-device tour with simulated peers. See DemoMode.swift.
     let demoMode: DemoMode
     /// Paced playback of stored voice clips (Voice Messages).
@@ -206,6 +209,9 @@ final class AppState {
         let blockList = BlockList()
         self.blockList = blockList
 
+        // Incoming-text filter. On by default; the toggle is in Settings.
+        self.textFilter = TextFilter()
+
         // File transfer service
         let fileTransferService = FileTransferService()
         self.fileTransferService = fileTransferService
@@ -284,6 +290,37 @@ final class AppState {
         // ...and at the beacon, so a blocked peer's position never becomes a
         // map pin even if their packet somehow reaches local delivery.
         self.meshBeacon.blockedIDsProvider = { [weak blockList] in
+            blockList?.blockedIDs ?? []
+        }
+
+        // The beacon's cryptographic identity: the Ed25519 key that attests
+        // to who this device is, and the X25519 key peers seal our position
+        // to. Loaded off the main actor because it touches the Keychain;
+        // until it lands, beacons carry no attestation and no position.
+        let beaconForIdentity = self.meshBeacon
+        Task { @MainActor in
+            beaconForIdentity.identity = await PeerIdentity.shared.beaconIdentity()
+        }
+
+        // Apple's requirement 1: the block is keyed to the peer's identity,
+        // not their display name. The beacon watches for a blocked
+        // fingerprint arriving under a routing UUID we have not blocked (the
+        // rename-and-reinstall evasion) and reports it; the block list adopts
+        // the new UUID, whose `onChange` re-arms the router and the text
+        // service. Without this the block survives only until they reinstall.
+        self.meshBeacon.blockedFingerprintsProvider = { [weak blockList] in
+            blockList?.blockedFingerprints ?? []
+        }
+        self.meshBeacon.onBlockedIdentityRekeyed = { [weak blockList] routingID, fingerprint, name in
+            blockList?.rekeyBlock(newRoutingID: routingID, fingerprint: fingerprint, name: name)
+        }
+
+        // Demo Mode hands its simulated packets straight to `deliverLocally`,
+        // bypassing the router and therefore the router's blocked-origin
+        // filter. Without this, blocking a demo peer hid their messages and
+        // their pin while their push-to-talk audio kept playing. App Review
+        // tests blocking in Demo Mode.
+        demoMode.blockedIDsProvider = { [weak blockList] in
             blockList?.blockedIDs ?? []
         }
 

@@ -288,15 +288,54 @@ final class BeaconLocationEmissionTests: XCTestCase {
 
     /// And the positive case, so the test above is proving a gate rather than
     /// a feature that never worked.
+    ///
+    /// The coordinate no longer travels in the clear: Apple requires that a
+    /// blocked peer cannot read this device's position, and on a relaying
+    /// mesh their node sees the packet whatever the send list says, so the
+    /// payload itself is sealed per recipient. What a live check-in produces
+    /// is therefore an entry only the addressed peer can open, which is what
+    /// this asserts. See `ChirpTests/PositionPrivacyTests.swift`.
     func testBeaconCarriesLocationWhileCheckedIn() async throws {
         let beacon = MeshBeacon()
+        beacon.identity = BeaconIdentity()
         beacon.locationProvider = {
             LocationBroadcastGate.Coordinate(latitude: 37.3349, longitude: -122.0090)
         }
 
+        // Somebody has to be listening: a position is sealed to the peers
+        // this device has learned an agreement key for, and to nobody else.
+        let nearby = BeaconIdentity()
+        let nearbyID = UUID().uuidString
+        let nearbyInfo = MeshBeacon.BeaconInfo(
+            id: nearbyID,
+            name: "Nearby",
+            channels: ["general"],
+            hopCount: 1,
+            batteryLevel: 0.5,
+            timestamp: Date(),
+            lastSeen: Date(),
+            signingPublicKey: nearby.signingPublicKey,
+            fingerprint: nearby.fingerprint,
+            agreementPublicKey: nearby.agreementPublicKey,
+            identitySignature: nearby.attest(routingID: nearbyID)
+        )
+        beacon.handleBeacon(try XCTUnwrap(beacon.encodeBeacon(nearbyInfo)))
+
         let info = try await firstBroadcast(from: beacon)
-        XCTAssertEqual(try XCTUnwrap(info.latitude), 37.3349, accuracy: 0.000_001)
-        XCTAssertEqual(try XCTUnwrap(info.longitude), -122.0090, accuracy: 0.000_001)
+        XCTAssertNil(info.latitude, "The coordinate must never be encoded in the clear")
+        XCTAssertNil(info.longitude)
+
+        let sealed = try XCTUnwrap(
+            info.sealedPositions?[nearbyID],
+            "A checked-in device must seal its position for the peer it knows"
+        )
+        let opened = try XCTUnwrap(nearby.openCoordinate(
+            sealed,
+            fromPeerAgreementKey: try XCTUnwrap(info.agreementPublicKey),
+            context: MeshBeacon.positionContext(senderID: peerID, recipientID: nearbyID)
+        ))
+        XCTAssertEqual(opened.latitude, 37.3349, accuracy: 0.000_001)
+        XCTAssertEqual(opened.longitude, -122.0090, accuracy: 0.000_001)
     }
 
     /// End to end through the real gate: an expired check-in stops emission

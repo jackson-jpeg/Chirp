@@ -125,26 +125,35 @@ final class BlockListTests: XCTestCase {
         return defaults
     }
 
+    // Routing UUIDs, not "peer-1". These fixtures used to be arbitrary
+    // strings, which quietly made the suite green while the app was broken:
+    // `MeshRouter.setBlockedOrigins` keeps only values that parse as a UUID,
+    // so a block recorded under a callsign was discarded and the peer kept
+    // talking. `BlockList` now refuses such an ID outright, and
+    // `testBlockRefusesAnIdentifierEnforcementWouldDiscard` covers that.
+    private static let peerOne = "11111111-1111-4111-8111-111111111111"
+    private static let peerTwo = "22222222-2222-4222-8222-222222222222"
+
     func testBlockUnblockAndPersistence() {
         let defaults = makeFreshDefaults()
         let list = BlockList(defaults: defaults)
         XCTAssertTrue(list.entries.isEmpty)
 
-        list.block(id: "peer-1", name: "Falcon")
-        XCTAssertTrue(list.isBlocked("peer-1"))
-        XCTAssertEqual(list.blockedIDs, ["peer-1"])
+        list.block(id: Self.peerOne, name: "Falcon")
+        XCTAssertTrue(list.isBlocked(Self.peerOne))
+        XCTAssertEqual(list.blockedIDs, [Self.peerOne])
 
         // Blocking the same peer twice must not duplicate.
-        list.block(id: "peer-1", name: "Falcon")
+        list.block(id: Self.peerOne, name: "Falcon")
         XCTAssertEqual(list.entries.count, 1)
 
         // A fresh instance models an app relaunch.
         let reloaded = BlockList(defaults: defaults)
-        XCTAssertTrue(reloaded.isBlocked("peer-1"))
+        XCTAssertTrue(reloaded.isBlocked(Self.peerOne))
         XCTAssertEqual(reloaded.entries.first?.name, "Falcon")
 
-        reloaded.unblock(id: "peer-1")
-        XCTAssertFalse(reloaded.isBlocked("peer-1"))
+        reloaded.unblock(id: Self.peerOne)
+        XCTAssertFalse(reloaded.isBlocked(Self.peerOne))
 
         let reloadedAgain = BlockList(defaults: defaults)
         XCTAssertTrue(reloadedAgain.entries.isEmpty, "Unblock must persist")
@@ -156,11 +165,68 @@ final class BlockListTests: XCTestCase {
         var observed: [Set<String>] = []
         list.onChange = { observed.append($0) }
 
-        list.block(id: "peer-1", name: "Falcon")
-        list.block(id: "peer-2", name: "Raven")
-        list.unblock(id: "peer-1")
+        list.block(id: Self.peerOne, name: "Falcon")
+        list.block(id: Self.peerTwo, name: "Raven")
+        list.unblock(id: Self.peerOne)
 
-        XCTAssertEqual(observed, [["peer-1"], ["peer-1", "peer-2"], ["peer-2"]])
+        XCTAssertEqual(observed, [[Self.peerOne], [Self.peerOne, Self.peerTwo], [Self.peerTwo]])
+    }
+
+    /// The bug this whole identity change exists to kill: a block recorded
+    /// against something the enforcement layer will throw away.
+    func testBlockRefusesAnIdentifierEnforcementWouldDiscard() {
+        let list = BlockList(defaults: makeFreshDefaults())
+
+        // A callsign, which is what `ChirpPeer.id` used to hand to block().
+        list.block(id: "Ridge-7", name: "Ridge-7")
+        // An identity fingerprint, which is stable but is not what the
+        // router filters on.
+        list.block(id: "a1b2c3d4e5f60718", name: "Ridge-7")
+
+        XCTAssertTrue(
+            list.entries.isEmpty,
+            "a block was recorded under an ID MeshRouter.setBlockedOrigins discards, "
+                + "which shows the user Blocked while the traffic keeps arriving"
+        )
+    }
+
+    /// Apple's requirement 1: renaming must not shake off a block.
+    func testBlockFollowsTheIdentityAcrossANewRoutingID() {
+        let defaults = makeFreshDefaults()
+        let list = BlockList(defaults: defaults)
+        let fingerprint = "a1b2c3d4e5f60718"
+
+        list.block(id: Self.peerOne, name: "Ridge-7", fingerprint: fingerprint)
+        XCTAssertTrue(list.isBlocked(fingerprint: fingerprint))
+        XCTAssertEqual(list.blockedFingerprints, [fingerprint])
+
+        // Same person, new install: new routing UUID, new display name, same
+        // identity keypair and therefore the same fingerprint.
+        list.rekeyBlock(newRoutingID: Self.peerTwo, fingerprint: fingerprint, name: "Nova-12")
+        XCTAssertTrue(list.isBlocked(Self.peerTwo), "the rename evaded the block")
+        XCTAssertTrue(list.isBlocked(Self.peerOne), "the original block was lost")
+
+        // The block survives a relaunch under both routing IDs.
+        let reloaded = BlockList(defaults: defaults)
+        XCTAssertTrue(reloaded.isBlocked(Self.peerTwo))
+
+        // Unblocking lifts the whole identity, not one of its addresses.
+        reloaded.unblock(id: Self.peerTwo)
+        XCTAssertFalse(reloaded.isBlocked(Self.peerOne),
+                       "unblocking left another routing ID of the same person blocked")
+        XCTAssertTrue(reloaded.entries.isEmpty)
+    }
+
+    /// A peer blocked before we ever verified their fingerprint gets it
+    /// attached once we do, so the block can follow them afterwards.
+    func testFingerprintIsBackfilledOnARepeatBlock() {
+        let list = BlockList(defaults: makeFreshDefaults())
+        list.block(id: Self.peerOne, name: "Ridge-7")
+        XCTAssertNil(list.entries.first?.fingerprint)
+
+        list.block(id: Self.peerOne, name: "Ridge-7", fingerprint: "a1b2c3d4e5f60718")
+        XCTAssertEqual(list.entries.count, 1, "backfilling must not duplicate the entry")
+        XCTAssertEqual(list.entries.first?.fingerprint, "a1b2c3d4e5f60718")
     }
 }
 
