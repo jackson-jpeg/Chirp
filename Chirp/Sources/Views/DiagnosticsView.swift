@@ -158,6 +158,7 @@ struct DiagnosticsView: View {
             .accessibilityIdentifier(AccessibilityID.blockOrReportMenuItem)
         }
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(AccessibilityID.diagnosticsNode)
         .accessibilityLabel("\(peer.name), \(peer.isConnected ? "connected" : "disconnected"), signal \(peer.signalStrength) of 3")
     }
 

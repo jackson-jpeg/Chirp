@@ -1635,6 +1635,7 @@ struct HomeView: View {
                         .foregroundStyle(Constants.Colors.blue500)
                 }
                 .accessibilityLabel("See all friends")
+                .accessibilityIdentifier(AccessibilityID.friendsRow)
             }
             .padding(.horizontal, 20)
             .padding(.top, 14)

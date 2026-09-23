@@ -12,7 +12,7 @@ row:
   Map > tap a pin
   Messages > open a channel > press and hold a message
   Messages > open a channel > Talk > press and hold a peer in the participant strip
-  Friends > press and hold a person
+  Messages > Friends "See All" (above the channel list) > press and hold a person
   Voice Messages > press and hold a received message
   Talk > press and hold the mesh status strip at the bottom (Diagnostics) > press and hold a node
 Each of those opens the same peer sheet, headed with the person's callsign and

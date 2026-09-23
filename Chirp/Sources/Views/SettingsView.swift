@@ -144,13 +144,17 @@ struct SettingsView: View {
                                 .fill((copiedID ? green : amber).opacity(0.12))
                         )
                         .contentTransition(.symbolEffect(.replace))
+                        // Every row here is a Button whose label is an HStack
+                        // with a Spacer between the title and the chevron. A
+                        // Spacer draws nothing, so it takes no hits: tapping
+                        // the middle of a row — which is most of it, and where
+                        // a finger naturally lands — did nothing at all. Only
+                        // the words themselves were tappable. The shape has to
+                        // go on the label's content: on the Button itself it
+                        // changes the wrapper's frame and leaves the label's
+                        // hit area exactly as it was.
+                        .contentShape(Rectangle())
                     }
-                    // Every row here is a Button whose label is an HStack with a
-                    // Spacer between the title and the chevron. A Spacer draws
-                    // nothing, so it takes no hits: tapping the middle of a row —
-                    // which is most of it, and where a finger naturally lands — did
-                    // nothing at all. Only the words themselves were tappable.
-                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
             }
@@ -226,8 +230,8 @@ struct SettingsView: View {
                                 .font(.system(size: 12))
                                 .foregroundStyle(.secondary)
                         }
+                        .contentShape(Rectangle())
                     }
-                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
             }
@@ -515,8 +519,8 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                                 .rotationEffect(.degrees(blockedUsersExpanded ? 90 : 0))
                         }
+                        .contentShape(Rectangle())
                     }
-                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                     .accessibilityIdentifier(AccessibilityID.blockedUsersRow)
                 }
@@ -540,6 +544,14 @@ struct SettingsView: View {
                                     Text(entry.name)
                                         .foregroundStyle(Constants.Colors.textPrimary)
                                         .lineLimit(1)
+                                        // On the name itself, not on a
+                                        // container: a container declared
+                                        // with `children: .contain` carries
+                                        // no label of its own, so nothing can
+                                        // match the person by name, and the
+                                        // Unblock button beside it has to
+                                        // stay separately addressable.
+                                        .accessibilityIdentifier(AccessibilityID.blockedUserEntry)
                                     Spacer()
                                     Button {
                                         withAnimation {
@@ -549,8 +561,8 @@ struct SettingsView: View {
                                         Text(String(localized: "settings.moderation.unblock"))
                                             .font(.system(.caption, weight: .semibold))
                                             .foregroundStyle(amber)
+                                            .contentShape(Rectangle())
                                     }
-                                    .contentShape(Rectangle())
                                     .buttonStyle(.plain)
                                 }
                             }
@@ -589,8 +601,8 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                                 .rotationEffect(.degrees(howItWorksExpanded ? 90 : 0))
                         }
+                        .contentShape(Rectangle())
                     }
-                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
 
@@ -627,8 +639,8 @@ struct SettingsView: View {
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(.secondary)
                         }
+                        .contentShape(Rectangle())
                     }
-                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
 
@@ -650,8 +662,8 @@ struct SettingsView: View {
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(.secondary)
                         }
+                        .contentShape(Rectangle())
                     }
-                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
 
@@ -678,8 +690,8 @@ struct SettingsView: View {
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(.secondary)
                         }
+                        .contentShape(Rectangle())
                     }
-                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
 
@@ -701,8 +713,8 @@ struct SettingsView: View {
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(.secondary)
                         }
+                        .contentShape(Rectangle())
                     }
-                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
 
@@ -727,8 +739,8 @@ struct SettingsView: View {
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(.secondary)
                         }
+                        .contentShape(Rectangle())
                     }
-                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                     .accessibilityIdentifier(AccessibilityID.termsOfUseRow)
                 }
@@ -751,8 +763,8 @@ struct SettingsView: View {
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(.secondary)
                         }
+                        .contentShape(Rectangle())
                     }
-                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
             }
@@ -788,8 +800,8 @@ struct SettingsView: View {
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(red.opacity(0.5))
                         }
+                        .contentShape(Rectangle())
                     }
-                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
                 .confirmationDialog(
@@ -826,8 +838,8 @@ struct SettingsView: View {
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(red.opacity(0.5))
                         }
+                        .contentShape(Rectangle())
                     }
-                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
                 .confirmationDialog(
@@ -877,8 +889,8 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                                 .rotationEffect(.degrees(debugExpanded ? 90 : 0))
                         }
+                        .contentShape(Rectangle())
                     }
-                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
 

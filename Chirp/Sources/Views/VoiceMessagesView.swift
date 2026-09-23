@@ -441,6 +441,7 @@ struct VoiceMessagesView: View {
                                     Label("Delete", systemImage: "trash")
                                 }
                             }
+                            .accessibilityIdentifier(AccessibilityID.voiceMessageRow)
                             .contextMenu {
                                 // Guideline 1.2 wants the sender of a voice
                                 // message blockable from where it appears.

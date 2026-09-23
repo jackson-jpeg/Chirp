@@ -90,12 +90,24 @@ enum AccessibilityID {
     static let reportReasonPicker = "reportReasonPicker"
     static let reportSendButton = "reportSendButton"
     static let blockedUsersRow = "blockedUsersRow"
+    /// One entry in the expanded Blocked Users list. Distinct from the
+    /// disclosure row above it, so a test can tell "this person is listed as
+    /// blocked" from "this person's name appears somewhere in the app".
+    static let blockedUserEntry = "blockedUserEntry"
     static let messageFilterToggle = "messageFilterToggle"
     static let hiddenMessageDisclosure = "hiddenMessageDisclosure"
     /// The one context-menu item that opens the peer sheet, carried by every
     /// surface a peer appears on: a message, a friend, a participant, a voice
     /// message and a Diagnostics node.
     static let blockOrReportMenuItem = "blockOrReportMenuItem"
+
+    /// Rows a peer appears on, one identifier each, so a test can press and
+    /// hold the row itself rather than whatever inner label happens to carry
+    /// the name.
+    static let friendCard = "friendCard"
+    static let diagnosticsNode = "diagnosticsNode"
+    static let voiceMessageRow = "voiceMessageRow"
+    static let participantBubble = "participantBubble"
     static let termsOfUseRow = "termsOfUseRow"
 
     // MARK: - File Transfer

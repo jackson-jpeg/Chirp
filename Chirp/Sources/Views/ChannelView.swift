@@ -938,6 +938,12 @@ struct ChannelView: View {
                     )
                     .lineLimit(1)
             }
+            // Combined so the bubble itself carries the peer's name: the
+            // label inside it is truncated to the first word, which is not
+            // something a test or VoiceOver can match a person by.
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(peer.name)
+            .accessibilityIdentifier(AccessibilityID.participantBubble)
             .contextMenu {
                 // `peer.id` here is the MultipeerConnectivity display name,
                 // not the routing UUID the router enforces on, so blocking

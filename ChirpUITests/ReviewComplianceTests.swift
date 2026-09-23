@@ -329,20 +329,36 @@ final class ReviewComplianceTests: XCTestCase {
     @discardableResult
     private func scrollToAndTap(_ element: XCUIElement, tries: Int = 6) -> Bool {
         guard element.waitForExistence(timeout: 15) else { return false }
-        if element.isHittable {
+
+        /// Tap, but only once the row is clear of the navigation bar.
+        ///
+        /// A row scrolled up under the bar still reports `isHittable`, and the
+        /// tap then lands on the bar instead. That is what "Blocked Users does
+        /// not expand" was: the row was found, reported hittable at y=100 on a
+        /// screen whose status bar, DEMO banner and navigation bar together
+        /// come to about that, and the tap never reached it.
+        func tapWhenClear() -> Bool {
+            guard element.isHittable else { return false }
+            let ceiling = app.frame.minY + app.frame.height * 0.12
+            for _ in 0..<3 where element.frame.midY < ceiling {
+                app.swipeDown()
+            }
+            guard element.isHittable, element.frame.midY >= ceiling else { return false }
             element.tap()
             return true
         }
+
+        if tapWhenClear() { return true }
         // Which way it lies is not known, so try down and then back up. A
         // one-directional search walked past the row to the end of Settings
         // and then tapped a coordinate that was no longer on screen.
         for _ in 0..<tries {
             app.swipeUp()
-            if element.isHittable { element.tap(); return true }
+            if tapWhenClear() { return true }
         }
         for _ in 0..<(tries * 2) {
             app.swipeDown()
-            if element.isHittable { element.tap(); return true }
+            if tapWhenClear() { return true }
         }
         return false
     }
@@ -939,29 +955,30 @@ final class ReviewComplianceTests: XCTestCase {
         let blockedRow = button(AXID.blockedUsersRow)
         XCTAssertTrue(blockedRow.waitForExistence(timeout: 15), "Settings has no Blocked Users row")
 
-        // SwiftUI merges a row's texts into its Button, so the blocked peer
-        // appears as part of a label rather than as a static text of its own:
-        // matched by containment, not by an exact `staticTexts[name]`.
+        // Scoped to a row of the blocked list, not to the name appearing
+        // anywhere in the app. An unscoped `label CONTAINS victim` over every
+        // descendant passed while the disclosure was still shut — MapLibre
+        // keeps an accessibility element for the annotation behind the pushed
+        // Settings screen, and it carries the peer's name. That is a false
+        // pass: it says "this name exists somewhere", not "this person is
+        // listed as blocked".
         func isListed() -> Bool {
-            app.descendants(matching: .any)
-                .matching(NSPredicate(format: "label CONTAINS %@", victim))
-                .firstMatch.exists
+            app.staticTexts.matching(
+                NSPredicate(format: "identifier == %@ AND label == %@",
+                            AXID.blockedUserEntry, victim)
+            ).firstMatch.exists
         }
 
-        // Blocked Users is a disclosure. Tapping the merged Button did not
-        // toggle it, so the row's own text is tapped, which is unambiguously
-        // the control.
-        var listed = false
-        for attempt in 0..<4 where !listed {
-            switch attempt {
-            case 0: scrollToAndTap(blockedRow)
-            case 1: scrollToAndTap(app.staticTexts["Blocked Users"].firstMatch)
-            default: scrollToAndTap(blockedRow)
-            }
-            for _ in 0..<4 where !listed {
-                listed = waitUntil(timeout: 3, { isListed() })
-                if !listed { app.swipeUp() }
-            }
+        // Blocked Users is a disclosure, and it is opened exactly once: a
+        // second tap closes it again, which is how a retry loop here turned a
+        // working screen into a failing one.
+        XCTAssertTrue(scrollToAndTap(blockedRow), "could not reach the Blocked Users row")
+        var listed = waitUntil(timeout: 10, { isListed() })
+        // The names open directly beneath the row, so they can be below the
+        // fold on a long screen. Scroll to them; do not tap again.
+        for _ in 0..<6 where !listed {
+            app.swipeUp()
+            listed = waitUntil(timeout: 3, { isListed() })
         }
         if !listed { attachHierarchy("blocked-user-not-listed") }
         XCTAssertTrue(listed, "\(victim) is not listed under Blocked Users")
@@ -1022,14 +1039,26 @@ final class ReviewComplianceTests: XCTestCase {
         XCTAssertTrue(menuOpen, "long pressing a message did not offer Block or Report")
         shot("message-context-menu")
 
-        let entry = el(AXID.blockOrReportMenuItem).exists
-            ? el(AXID.blockOrReportMenuItem)
-            : app.buttons["Block or Report"].firstMatch
-        entry.tap()
-
+        // A context-menu item is a button inside a presented menu; `el(_:)`
+        // finds the wrapper around it first, and a tap at the wrapper's centre
+        // can miss. Same lost tap as everywhere else in this file, so the same
+        // treatment: the button itself, retried, before the claim is made.
         let sheet = el(AXID.peerActionSheet)
-        XCTAssertTrue(sheet.waitForExistence(timeout: 15),
-                      "blocking from a message did not open the peer sheet")
+        var sheetOpen = false
+        for _ in 0..<3 where !sheetOpen {
+            let entry = button(AXID.blockOrReportMenuItem).exists
+                ? button(AXID.blockOrReportMenuItem)
+                : app.buttons["Block or Report"].firstMatch
+            if entry.exists { entry.tap() }
+            sheetOpen = sheet.waitForExistence(timeout: 12)
+            // The menu closes on a tap that landed anywhere, so reopen it
+            // before trying again.
+            if !sheetOpen, !button(AXID.blockOrReportMenuItem).exists {
+                senderLabel.press(forDuration: 1.2)
+            }
+        }
+        if !sheetOpen { attachHierarchy("message-peer-sheet-never-opened") }
+        XCTAssertTrue(sheetOpen, "blocking from a message did not open the peer sheet")
         XCTAssertTrue(el(AXID.peerSheetReportButton).exists,
                       "the sheet reached from a message has no Report")
         shot("block-from-message-sheet")
@@ -1072,10 +1101,17 @@ final class ReviewComplianceTests: XCTestCase {
             XCTAssertTrue(menuOpen, "\(surface): press and hold offers no Block or Report")
             shot("entry-\(surface)-menu")
 
-            item.tap()
             let sheet = el(AXID.peerActionSheet)
-            XCTAssertTrue(sheet.waitForExistence(timeout: 15),
-                          "\(surface): Block or Report did not open the peer sheet")
+            var sheetOpen = false
+            for _ in 0..<3 where !sheetOpen {
+                let entry = button(AXID.blockOrReportMenuItem).exists
+                    ? button(AXID.blockOrReportMenuItem) : item
+                if entry.exists { entry.tap() }
+                sheetOpen = sheet.waitForExistence(timeout: 12)
+                if !sheetOpen, !item.exists { row.press(forDuration: 1.2) }
+            }
+            if !sheetOpen { attachHierarchy("\(surface)-peer-sheet-never-opened") }
+            XCTAssertTrue(sheetOpen, "\(surface): Block or Report did not open the peer sheet")
             XCTAssertTrue(button(AXID.peerSheetBlockButton).exists,
                           "\(surface): the peer sheet has no Block")
             XCTAssertTrue(button(AXID.peerSheetReportButton).exists,
@@ -1087,35 +1123,70 @@ final class ReviewComplianceTests: XCTestCase {
             XCTAssertTrue(Harness.waitGone(sheet, timeout: 15), "\(surface): the peer sheet would not close")
         }
 
-        let names = Self.demoPeerNames
-        let clauses = names.map { _ in "label BEGINSWITH %@" }.joined(separator: " OR ")
-        let anyPeer = NSPredicate(format: clauses, argumentArray: names)
+        /// A row of the given kind showing one of the simulated peers.
+        ///
+        /// Addressed by the row's own identifier rather than by "anything
+        /// whose label starts with a peer's name": the name appears on
+        /// several screens at once, and a generic match found a label on the
+        /// screen underneath and pressed and held that instead. Built fresh
+        /// each call because a predicate is not `Sendable`.
+        func peerRow(_ identifier: String) -> XCUIElement {
+            let names = Self.demoPeerNames
+            // CONTAINS rather than BEGINSWITH: a row's combined label leads
+            // with whatever SwiftUI put first, which on a friend card is the
+            // avatar, not the callsign. The identifier is what makes this
+            // precise; the name only picks which row.
+            let clauses = names.map { _ in "label CONTAINS %@" }.joined(separator: " OR ")
+            return app.descendants(matching: .any).matching(
+                NSPredicate(
+                    format: "identifier == %@ AND (\(clauses))",
+                    argumentArray: [identifier] + names
+                )
+            ).firstMatch
+        }
 
-        // 1. Friends. Demo Mode puts the simulated peers in the list for
-        //    exactly this path; with a real empty list it would dead-end on
-        //    the empty state.
-        let seeAll = app.buttons["See all friends"].firstMatch
-        XCTAssertTrue(seeAll.waitForExistence(timeout: 20), "the home screen has no way into Friends")
-        seeAll.tap()
-        let friendRow = app.descendants(matching: .any).matching(anyPeer).firstMatch
-        assertOpensPeerSheet(from: friendRow, surface: "friends")
+        // 1. Friends. It is reached from the Messages tab, above the channel
+        //    list, and it is only there when the list is not empty — which is
+        //    why Demo Mode puts the simulated peers in it. With a real empty
+        //    list this path dead-ends on the empty state.
+        XCTAssertTrue(
+            switchToTab("Messages", until: { self.button(AXID.friendsRow).exists }, timeout: 20),
+            "the Messages tab has no way into Friends"
+        )
+        tap(AXID.friendsRow)
+        assertOpensPeerSheet(from: peerRow(AXID.friendCard), surface: "friends")
         XCTAssertTrue(goBack(until: { self.waitForHome(timeout: 1) }), "never got back from Friends")
 
-        // 2. Diagnostics, opened by pressing and holding the mesh strip.
+        // 2. Diagnostics, opened by pressing and holding the mesh strip. The
+        //    strip belongs to the Talk tab, and Friends was reached from
+        //    Messages, so come back first.
+        XCTAssertTrue(
+            switchToTab("Talk", until: { self.el(AXID.meshStatusStrip).exists }, timeout: 20),
+            "the Talk tab has no mesh status strip"
+        )
         let strip = el(AXID.meshStatusStrip)
-        XCTAssertTrue(strip.waitForExistence(timeout: 20), "the home screen has no mesh status strip")
+        // Opening the sheet and finding a node in it are asserted separately,
+        // so a failure says which of the two went wrong.
         var diagnosticsOpen = false
-        for _ in 0..<3 where !diagnosticsOpen {
-            strip.press(forDuration: 1.2)
-            diagnosticsOpen = app.descendants(matching: .any).matching(anyPeer).firstMatch
+        for attempt in 0..<4 where !diagnosticsOpen {
+            // The strip is a plain view with a long-press gesture, not a
+            // control, so a press addressed to the element can land on a child
+            // that swallows it. Fall back to pressing the point.
+            if attempt % 2 == 0 {
+                strip.press(forDuration: 1.2)
+            } else {
+                strip.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                    .press(forDuration: 1.2)
+            }
+            diagnosticsOpen = app.staticTexts["Network Diagnostics"].firstMatch
                 .waitForExistence(timeout: 8)
         }
         if !diagnosticsOpen { attachHierarchy("diagnostics-never-opened") }
         XCTAssertTrue(diagnosticsOpen, "pressing and holding the mesh strip did not open Diagnostics")
-        assertOpensPeerSheet(
-            from: app.descendants(matching: .any).matching(anyPeer).firstMatch,
-            surface: "diagnostics"
-        )
+        let node = peerRow(AXID.diagnosticsNode)
+        if !node.waitForExistence(timeout: 25) { attachHierarchy("diagnostics-has-no-nodes") }
+        XCTAssertTrue(node.exists, "Diagnostics lists no simulated node to block")
+        assertOpensPeerSheet(from: node, surface: "diagnostics")
         let done = app.buttons["Done"].firstMatch
         if done.exists, done.isHittable { done.tap() } else { app.swipeDown() }
         XCTAssertTrue(waitUntil(timeout: 15, { self.waitForHome(timeout: 1) }), "never got back from Diagnostics")
@@ -1129,10 +1200,7 @@ final class ReviewComplianceTests: XCTestCase {
         }
         if !inboxOpen { attachHierarchy("voice-inbox-never-opened-for-block") }
         XCTAssertTrue(inboxOpen, "the demo voice-message inbox is empty")
-        assertOpensPeerSheet(
-            from: app.descendants(matching: .any).matching(anyPeer).firstMatch,
-            surface: "voice-message"
-        )
+        assertOpensPeerSheet(from: peerRow(AXID.voiceMessageRow), surface: "voice-message")
         XCTAssertTrue(goBack(until: { self.waitForHome(timeout: 1) }), "never got back from Voice Messages")
 
         // 4. A peer in a channel's participant strip, in Talk mode.
@@ -1144,10 +1212,7 @@ final class ReviewComplianceTests: XCTestCase {
         }
         if !inTalkMode { attachHierarchy("talk-mode-never-opened-for-block") }
         XCTAssertTrue(inTalkMode, "the channel's Talk mode never came up")
-        assertOpensPeerSheet(
-            from: app.descendants(matching: .any).matching(anyPeer).firstMatch,
-            surface: "participant-strip"
-        )
+        assertOpensPeerSheet(from: peerRow(AXID.participantBubble), surface: "participant-strip")
     }
 
     // MARK: - 2.1(a) Demo Mode

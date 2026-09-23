@@ -422,6 +422,7 @@ struct FriendsView: View {
             )
         }
         .buttonStyle(CardPressStyle())
+        .accessibilityIdentifier(AccessibilityID.friendCard)
         .contextMenu {
             Button {
                 startDirectChannel(with: friend)
