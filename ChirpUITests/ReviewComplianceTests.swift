@@ -358,6 +358,41 @@ final class ReviewComplianceTests: XCTestCase {
         app.buttons.matching(identifier: id).firstMatch
     }
 
+    /// Tap Block on the peer sheet and answer its one confirmation.
+    ///
+    /// `tap(_:)` goes through `el(_:)`, which returns the first element of any
+    /// type carrying the identifier — usually a non-hittable wrapper SwiftUI
+    /// propagated the identifier onto, so the tap lands at that wrapper's
+    /// centre rather than on the control. On the map-pin path that put the tap
+    /// beside the button often enough to look like "blocking asked for no
+    /// confirmation". The button itself is addressed here, and the sheet's own
+    /// Block and the dialog's are told apart by identifier rather than by the
+    /// label "Block", which both carry.
+    @discardableResult
+    private func blockFromPeerSheet(file: StaticString = #filePath, line: UInt = #line) -> Bool {
+        let blockButton = button(AXID.peerSheetBlockButton)
+        guard blockButton.waitForExistence(timeout: 15) else {
+            attachHierarchy("peer-sheet-has-no-block-button")
+            XCTFail("the peer sheet has no Block button", file: file, line: line)
+            return false
+        }
+        let confirm = button(AXID.peerSheetBlockConfirm)
+        var asked = false
+        for _ in 0..<3 where !asked {
+            if blockButton.isHittable {
+                blockButton.tap()
+            } else {
+                blockButton.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            }
+            asked = confirm.waitForExistence(timeout: 8)
+        }
+        if !asked { attachHierarchy("block-asked-for-no-confirmation") }
+        XCTAssertTrue(asked, "blocking asked for no confirmation", file: file, line: line)
+        guard asked else { return false }
+        confirm.tap()
+        return true
+    }
+
     private func attachHierarchy(_ name: String) {
         let attachment = XCTAttachment(string: app.debugDescription)
         attachment.name = name
@@ -373,10 +408,24 @@ final class ReviewComplianceTests: XCTestCase {
         add(attachment)
     }
 
+    /// Tap the control carrying `id`.
+    ///
+    /// SwiftUI propagates an identifier onto the wrappers around a control, so
+    /// `el(_:)`'s first match is often a container that is not hittable and
+    /// whose centre is not on the control — the tap then lands beside it and
+    /// the failure reads as if the control did nothing. The button carrying
+    /// the identifier is preferred where there is one, and a non-hittable
+    /// element is tapped by coordinate rather than left to fail silently.
     private func tap(_ id: String, timeout: TimeInterval = 15, file: StaticString = #filePath, line: UInt = #line) {
-        let element = el(id)
-        XCTAssertTrue(element.waitForExistence(timeout: timeout), "\(id) never appeared", file: file, line: line)
-        element.tap()
+        let generic = el(id)
+        XCTAssertTrue(generic.waitForExistence(timeout: timeout), "\(id) never appeared", file: file, line: line)
+        let candidate = button(id)
+        let element = candidate.exists ? candidate : generic
+        if element.isHittable {
+            element.tap()
+        } else {
+            element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
     }
 
     /// Tap the final onboarding Continue until the microphone prompt shows.
@@ -875,11 +924,8 @@ final class ReviewComplianceTests: XCTestCase {
         XCTAssertTrue(el(AXID.peerSheetReportButton).exists, "the peer sheet has no Report")
         shot("block-peer-sheet")
 
-        tap(AXID.peerSheetBlockButton)
         // One confirmation, as the guideline asks.
-        let confirm = app.buttons["Block"].firstMatch
-        XCTAssertTrue(confirm.waitForExistence(timeout: 10), "blocking asked for no confirmation")
-        confirm.tap()
+        blockFromPeerSheet()
 
         XCTAssertTrue(
             waitUntil(timeout: 25, { !isPinned(victim) }),
@@ -969,15 +1015,15 @@ final class ReviewComplianceTests: XCTestCase {
         var menuOpen = false
         for _ in 0..<3 where !menuOpen {
             senderLabel.press(forDuration: 1.2)
-            menuOpen = el(AXID.messageBlockOrReport).waitForExistence(timeout: 8)
+            menuOpen = el(AXID.blockOrReportMenuItem).waitForExistence(timeout: 8)
                 || app.buttons["Block or Report"].firstMatch.waitForExistence(timeout: 2)
         }
         if !menuOpen { attachHierarchy("message-context-menu-never-opened") }
         XCTAssertTrue(menuOpen, "long pressing a message did not offer Block or Report")
         shot("message-context-menu")
 
-        let entry = el(AXID.messageBlockOrReport).exists
-            ? el(AXID.messageBlockOrReport)
+        let entry = el(AXID.blockOrReportMenuItem).exists
+            ? el(AXID.blockOrReportMenuItem)
             : app.buttons["Block or Report"].firstMatch
         entry.tap()
 
@@ -988,16 +1034,120 @@ final class ReviewComplianceTests: XCTestCase {
                       "the sheet reached from a message has no Report")
         shot("block-from-message-sheet")
 
-        tap(AXID.peerSheetBlockButton)
-        let confirm = app.buttons["Block"].firstMatch
-        XCTAssertTrue(confirm.waitForExistence(timeout: 10), "blocking asked for no confirmation")
-        confirm.tap()
+        blockFromPeerSheet()
 
         XCTAssertTrue(
             waitUntil(timeout: 25, { messagesFrom(victim) == 0 }),
             "\(victim)'s messages are still on screen after being blocked"
         )
         shot("block-from-message-after")
+    }
+
+    /// Apple's requirement is that a user can be blocked, and the review
+    /// notes tell the reviewer six places to do it from. Two of them — a map
+    /// pin and a text message — are driven end to end by the tests above.
+    /// This one walks the other four and asserts each reaches the *same*
+    /// sheet, with both Block and Report on it. It stops at the sheet rather
+    /// than blocking: what the block does is already proven, and blocking
+    /// here would remove the peer the next surface needs.
+    func testBlockAndReportAreReachableFromEveryPeerSurface() {
+        _ = launch(onboarded: true, demo: true)
+        XCTAssertTrue(waitForHome(timeout: 30))
+
+        /// Long press `row`, take the Block or Report item, and assert the
+        /// shared sheet came up with both actions on it. Leaves the sheet
+        /// dismissed and the screen as it was found.
+        func assertOpensPeerSheet(from row: XCUIElement, surface: String) {
+            XCTAssertTrue(row.waitForExistence(timeout: 20), "\(surface): nothing to press and hold")
+            let item = el(AXID.blockOrReportMenuItem)
+            // A long press that does not register looks exactly like a menu
+            // that has no Block or Report on it, which is the thing under
+            // test, so the press is repeated before the claim is made.
+            var menuOpen = false
+            for _ in 0..<3 where !menuOpen {
+                row.press(forDuration: 1.2)
+                menuOpen = item.waitForExistence(timeout: 8)
+            }
+            if !menuOpen { attachHierarchy("\(surface)-no-block-or-report") }
+            XCTAssertTrue(menuOpen, "\(surface): press and hold offers no Block or Report")
+            shot("entry-\(surface)-menu")
+
+            item.tap()
+            let sheet = el(AXID.peerActionSheet)
+            XCTAssertTrue(sheet.waitForExistence(timeout: 15),
+                          "\(surface): Block or Report did not open the peer sheet")
+            XCTAssertTrue(button(AXID.peerSheetBlockButton).exists,
+                          "\(surface): the peer sheet has no Block")
+            XCTAssertTrue(button(AXID.peerSheetReportButton).exists,
+                          "\(surface): the peer sheet has no Report")
+            shot("entry-\(surface)-sheet")
+
+            let cancel = app.buttons["Cancel"].firstMatch
+            if cancel.exists, cancel.isHittable { cancel.tap() } else { app.swipeDown() }
+            XCTAssertTrue(Harness.waitGone(sheet, timeout: 15), "\(surface): the peer sheet would not close")
+        }
+
+        let names = Self.demoPeerNames
+        let clauses = names.map { _ in "label BEGINSWITH %@" }.joined(separator: " OR ")
+        let anyPeer = NSPredicate(format: clauses, argumentArray: names)
+
+        // 1. Friends. Demo Mode puts the simulated peers in the list for
+        //    exactly this path; with a real empty list it would dead-end on
+        //    the empty state.
+        let seeAll = app.buttons["See all friends"].firstMatch
+        XCTAssertTrue(seeAll.waitForExistence(timeout: 20), "the home screen has no way into Friends")
+        seeAll.tap()
+        let friendRow = app.descendants(matching: .any).matching(anyPeer).firstMatch
+        assertOpensPeerSheet(from: friendRow, surface: "friends")
+        XCTAssertTrue(goBack(until: { self.waitForHome(timeout: 1) }), "never got back from Friends")
+
+        // 2. Diagnostics, opened by pressing and holding the mesh strip.
+        let strip = el(AXID.meshStatusStrip)
+        XCTAssertTrue(strip.waitForExistence(timeout: 20), "the home screen has no mesh status strip")
+        var diagnosticsOpen = false
+        for _ in 0..<3 where !diagnosticsOpen {
+            strip.press(forDuration: 1.2)
+            diagnosticsOpen = app.descendants(matching: .any).matching(anyPeer).firstMatch
+                .waitForExistence(timeout: 8)
+        }
+        if !diagnosticsOpen { attachHierarchy("diagnostics-never-opened") }
+        XCTAssertTrue(diagnosticsOpen, "pressing and holding the mesh strip did not open Diagnostics")
+        assertOpensPeerSheet(
+            from: app.descendants(matching: .any).matching(anyPeer).firstMatch,
+            surface: "diagnostics"
+        )
+        let done = app.buttons["Done"].firstMatch
+        if done.exists, done.isHittable { done.tap() } else { app.swipeDown() }
+        XCTAssertTrue(waitUntil(timeout: 15, { self.waitForHome(timeout: 1) }), "never got back from Diagnostics")
+
+        // 3. A received voice message.
+        var inboxOpen = false
+        for _ in 0..<3 where !inboxOpen {
+            let entry = app.buttons["Voice Messages"].firstMatch
+            if entry.waitForExistence(timeout: 10) { entry.tap() }
+            inboxOpen = el(AXID.voiceMessagePlayButton).waitForExistence(timeout: 15)
+        }
+        if !inboxOpen { attachHierarchy("voice-inbox-never-opened-for-block") }
+        XCTAssertTrue(inboxOpen, "the demo voice-message inbox is empty")
+        assertOpensPeerSheet(
+            from: app.descendants(matching: .any).matching(anyPeer).firstMatch,
+            surface: "voice-message"
+        )
+        XCTAssertTrue(goBack(until: { self.waitForHome(timeout: 1) }), "never got back from Voice Messages")
+
+        // 4. A peer in a channel's participant strip, in Talk mode.
+        XCTAssertTrue(enterChannelChat(), "could not reach the demo channel")
+        var inTalkMode = false
+        for _ in 0..<3 where !inTalkMode {
+            Harness.tapModeSegment(app, "Talk")
+            inTalkMode = el(AXID.pttButton).waitForExistence(timeout: 10)
+        }
+        if !inTalkMode { attachHierarchy("talk-mode-never-opened-for-block") }
+        XCTAssertTrue(inTalkMode, "the channel's Talk mode never came up")
+        assertOpensPeerSheet(
+            from: app.descendants(matching: .any).matching(anyPeer).firstMatch,
+            surface: "participant-strip"
+        )
     }
 
     // MARK: - 2.1(a) Demo Mode
@@ -1167,9 +1317,17 @@ final class ReviewComplianceTests: XCTestCase {
         XCTAssertTrue(el(AXID.demoBadge).waitForExistence(timeout: 30), "Demo Mode did not survive a relaunch")
         shot("demo-after-relaunch")
 
-        // Off again, from the badge, back to the real empty state.
-        tap(AXID.demoExitButton)
-        XCTAssertTrue(Harness.waitGone(el(AXID.demoBadge), timeout: 20), "the DEMO badge stayed after exiting")
+        // Off again, from the badge, back to the real empty state. Exit sits
+        // in a `safeAreaInset` strip at the very top of the screen, where a
+        // tap has been seen to land with no effect on iPad, so the action is
+        // retried; the assertion that the badge goes is not relaxed.
+        var exited = false
+        for _ in 0..<3 where !exited {
+            tap(AXID.demoExitButton)
+            exited = Harness.waitGone(el(AXID.demoBadge), timeout: 20)
+        }
+        if !exited { attachHierarchy("demo-badge-stayed-after-exit") }
+        XCTAssertTrue(exited, "the DEMO badge stayed after exiting")
         let status = el(AXID.meshStatusLabel)
         XCTAssertTrue(
             waitUntil(timeout: 20) { status.exists && status.label == "No mesh" },

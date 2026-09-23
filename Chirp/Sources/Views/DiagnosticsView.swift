@@ -155,6 +155,7 @@ struct DiagnosticsView: View {
             } label: {
                 Label(String(localized: "moderation.blockOrReport"), systemImage: "hand.raised")
             }
+            .accessibilityIdentifier(AccessibilityID.blockOrReportMenuItem)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(peer.name), \(peer.isConnected ? "connected" : "disconnected"), signal \(peer.signalStrength) of 3")

@@ -330,7 +330,7 @@ struct ChatView: View {
                                         systemImage: "hand.raised"
                                     )
                                 }
-                                .accessibilityIdentifier(AccessibilityID.messageBlockOrReport)
+                                .accessibilityIdentifier(AccessibilityID.blockOrReportMenuItem)
                             }
                         }
                     }

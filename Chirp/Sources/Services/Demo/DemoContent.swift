@@ -43,6 +43,21 @@ enum DemoContent {
         peers.map { ChirpPeer(id: $0.id, name: $0.name, isConnected: true, signalStrength: $0.bars) }
     }
 
+    /// The same simulated peers as saved friends, so Friends is not an empty
+    /// screen in Demo Mode. `ChirpFriend.id` is the routing UUID here, which
+    /// is what blocking enforces on.
+    static func chirpFriends(addedAt now: Date = Date()) -> [ChirpFriend] {
+        peers.enumerated().map { index, peer in
+            ChirpFriend(
+                id: peer.id,
+                name: peer.name,
+                addedAt: now.addingTimeInterval(-Double(index + 1) * 86_400),
+                isOnline: true,
+                lastSeen: now
+            )
+        }
+    }
+
     // MARK: - Map
 
     /// Used when the device has no position to share: Apple Park's visitor

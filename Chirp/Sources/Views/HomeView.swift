@@ -1590,9 +1590,11 @@ struct HomeView: View {
                     meshStats: appState.meshStats,
                     isEncrypted: channelIsEncrypted
                 )
+                .contentShape(Rectangle())
                 .onLongPressGesture {
                     showDiagnostics = true
                 }
+                .accessibilityIdentifier(AccessibilityID.meshStatusStrip)
             }
         }
         .onChange(of: appState.pttState) { _, newValue in

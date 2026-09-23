@@ -37,6 +37,7 @@ TESTS=(
   # single device: a map pin and the sender of a text message.
   "ReviewComplianceTests/testBlockingADemoPeerRemovesThemAndUnblockRestores"
   "ReviewComplianceTests/testBlockingFromAMessageHidesTheirHistory"
+  "ReviewComplianceTests/testBlockAndReportAreReachableFromEveryPeerSurface"
   "ReviewComplianceTests/testDemoModeGivesASingleDeviceEverything"
   "ReviewComplianceTests/testEmptyStateOffersDemoMode"
 )

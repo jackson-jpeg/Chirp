@@ -3,7 +3,7 @@ ChirpChirps has no accounts, no sign-in and no servers. It connects nearby devic
 This build addresses Guideline 5.1.2(i). The three requirements are answered below with the exact paths to test each one. Everything can be tested on a single device in Demo Mode.
 
 TURNING ON DEMO MODE
-Settings > Demo Mode, or tap "Try Demo Mode" on any empty screen (Talk, Messages, a chat, or the Map). Four simulated people appear with chat history, voice messages, map pins and push-to-talk replies. A "DEMO" badge sits on every screen with a one tap exit. Demo traffic is generated on the device and blocked at the transport layer, so nothing is transmitted.
+Settings > Demo Mode, or tap "Try Demo Mode" on any empty screen (Talk, Messages, a chat, or the Map). Four simulated people appear with chat history, voice messages, map pins, push-to-talk replies, and entries in Friends and in Diagnostics, so every path listed below is reachable. A "DEMO" badge sits on every screen with a one tap exit. Demo traffic is generated on the device and blocked at the transport layer, so nothing is transmitted, and nothing simulated is written to storage: turning Demo Mode off restores the real (empty) friends list and channels.
 
 1. USERS CAN BLOCK OTHER USERS
 Block is reachable from every place another person appears. Everywhere except

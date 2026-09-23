@@ -456,6 +456,7 @@ struct FriendsView: View {
         } label: {
             Label(String(localized: "moderation.blockOrReport"), systemImage: "hand.raised")
         }
+        .accessibilityIdentifier(AccessibilityID.blockOrReportMenuItem)
     }
 
 

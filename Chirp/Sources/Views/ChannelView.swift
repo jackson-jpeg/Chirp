@@ -957,6 +957,7 @@ struct ChannelView: View {
                 } label: {
                     Label(String(localized: "moderation.blockOrReport"), systemImage: "hand.raised")
                 }
+                .accessibilityIdentifier(AccessibilityID.blockOrReportMenuItem)
             }
             .offset(
                 x: cos(angle) * peerCircleRadius,

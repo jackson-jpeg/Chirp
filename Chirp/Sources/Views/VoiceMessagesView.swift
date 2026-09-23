@@ -457,6 +457,7 @@ struct VoiceMessagesView: View {
                                         systemImage: "hand.raised"
                                     )
                                 }
+                                .accessibilityIdentifier(AccessibilityID.blockOrReportMenuItem)
                                 Button(role: .destructive) {
                                     queue.deleteReceivedMessage(id: message.id)
                                 } label: {

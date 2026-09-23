@@ -223,3 +223,57 @@ final class DemoTransportIsolationTests: XCTestCase {
         }
     }
 }
+
+/// The Friends screen is one of the paths App Review is told to take to
+/// block someone, and Demo Mode is how they test it on one device. So the
+/// simulated peers have to be in the friends list while Demo Mode is on —
+/// and out of it, with nothing written to storage, the moment it is off.
+@MainActor
+final class DemoFriendsOverlayTests: XCTestCase {
+
+    func testDemoFriendsAppearAndTheRealListComesBackUntouched() {
+        let manager = FriendsManager()
+        let realIDs = manager.friends.map(\.id)
+
+        manager.enterDemoOverlay(DemoContent.chirpFriends())
+
+        XCTAssertEqual(
+            Set(manager.friends.map(\.name)),
+            Set(DemoContent.peers.map(\.name)),
+            "Demo Mode left the Friends screen without the simulated peers on it"
+        )
+
+        manager.exitDemoOverlay()
+        XCTAssertEqual(manager.friends.map(\.id), realIDs,
+                       "the real friends list did not come back as it was")
+    }
+
+    func testTheOverlayIsNeverWrittenToStorage() {
+        let key = "com.chirpchirp.friends"
+        let before = UserDefaults.standard.data(forKey: key)
+
+        let manager = FriendsManager()
+        manager.enterDemoOverlay(DemoContent.chirpFriends())
+        let during = UserDefaults.standard.data(forKey: key)
+        manager.exitDemoOverlay()
+
+        XCTAssertEqual(during, before, "Demo Mode saved simulated friends over the real ones")
+
+        // A fresh manager reads storage, so this is the check that survives a
+        // relaunch: nobody inherits a simulated friend.
+        let reloaded = FriendsManager()
+        XCTAssertTrue(
+            reloaded.friends.allSatisfy { !DemoContent.peerIDs.contains($0.id) },
+            "a simulated friend survived into a fresh launch"
+        )
+    }
+
+    /// The whole point of putting them there: a demo friend carries the
+    /// routing UUID blocking enforces on, not a callsign.
+    func testADemoFriendCarriesTheRoutingIdentity() {
+        for friend in DemoContent.chirpFriends() {
+            XCTAssertNotNil(UUID(uuidString: friend.id),
+                            "demo friend \(friend.name) has no routing UUID to block")
+        }
+    }
+}

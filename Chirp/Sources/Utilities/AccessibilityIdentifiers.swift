@@ -72,6 +72,9 @@ enum AccessibilityID {
     static let demoBadge = "demoBadge"
     static let demoExitButton = "demoExitButton"
     static let meshStatusLabel = "meshStatusLabel"
+    /// The strip along the bottom of the home screen. A long press on it
+    /// opens Diagnostics, which is the sixth place a peer can be blocked from.
+    static let meshStatusStrip = "meshStatusStrip"
     static let peerCountBadge = "peerCountBadge"
     static let voiceMessagePlayButton = "voiceMessagePlayButton"
     static let mapPeerPin = "mapPeerPin"
@@ -89,8 +92,10 @@ enum AccessibilityID {
     static let blockedUsersRow = "blockedUsersRow"
     static let messageFilterToggle = "messageFilterToggle"
     static let hiddenMessageDisclosure = "hiddenMessageDisclosure"
-    /// The one item in a message's context menu that opens the peer sheet.
-    static let messageBlockOrReport = "messageBlockOrReport"
+    /// The one context-menu item that opens the peer sheet, carried by every
+    /// surface a peer appears on: a message, a friend, a participant, a voice
+    /// message and a Diagnostics node.
+    static let blockOrReportMenuItem = "blockOrReportMenuItem"
     static let termsOfUseRow = "termsOfUseRow"
 
     // MARK: - File Transfer

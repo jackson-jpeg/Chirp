@@ -68,6 +68,34 @@ final class FriendsManager {
         friends.contains { $0.id == peerID }
     }
 
+    // MARK: - Demo overlay
+
+    /// The real friends list, held aside while Demo Mode is on. `nil` means
+    /// no overlay is in place, which is not the same as an overlay over an
+    /// empty list.
+    private var realFriends: [ChirpFriend]?
+
+    /// Show `demo` instead of the real list, without touching storage.
+    ///
+    /// Demo Mode exists so the whole app can be tested on one device, and
+    /// blocking someone from Friends is one of the paths App Review is told
+    /// to take. With nothing in the list that path dead-ends on the empty
+    /// state, so the simulated peers stand in as friends for as long as Demo
+    /// Mode is on. Nothing is saved: `saveFriends()` is never called here,
+    /// and the real list comes back untouched.
+    func enterDemoOverlay(_ demo: [ChirpFriend]) {
+        if realFriends == nil { realFriends = friends }
+        friends = demo
+        logger.info("Demo overlay on — \(demo.count) simulated friends")
+    }
+
+    func exitDemoOverlay() {
+        guard let realFriends else { return }
+        friends = realFriends
+        self.realFriends = nil
+        logger.info("Demo overlay off — \(self.friends.count) real friends restored")
+    }
+
     func friend(withID id: String) -> ChirpFriend? {
         friends.first { $0.id == id }
     }

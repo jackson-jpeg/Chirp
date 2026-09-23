@@ -112,6 +112,7 @@ final class DemoMode {
         )
         seedHistory(into: host)
         seedInbox()
+        host.friendsManager.enterDemoOverlay(DemoContent.chirpFriends())
 
         isActive = true
         host.refreshPeers()
@@ -148,6 +149,7 @@ final class DemoMode {
             [DemoContent.generalID, DemoContent.trailheadID, DemoContent.basecampID]
         )
         host.channelManager.exitDemoOverlay()
+        host.friendsManager.exitDemoOverlay()
         VoiceMessageQueue.shared.exitDemoOverlay()
 
         isActive = false
