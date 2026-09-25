@@ -19,6 +19,12 @@ enum ToastType {
         }
     }
 
+    /// The icon's color. Warning uses `amberInk` so the triangle holds up on
+    /// the light material by day; everything else matches `color`.
+    var iconColor: Color {
+        self == .warning ? Constants.Colors.amberInk : color
+    }
+
     var icon: String {
         switch self {
         case .info:
@@ -103,13 +109,13 @@ struct ChirpToastView: View {
                 // Icon with color
                 Image(systemName: type.icon)
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(type.color)
+                    .foregroundStyle(type.iconColor)
                     .shadow(color: type.color.opacity(0.4), radius: 4)
 
                 // Message
                 Text(message)
                     .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Constants.Colors.textPrimary)
                     .lineLimit(2)
 
                 Spacer(minLength: 4)
@@ -120,9 +126,9 @@ struct ChirpToastView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(Constants.Colors.textTertiary)
                         .frame(width: 22, height: 22)
-                        .background(Circle().fill(Color.white.opacity(0.1)))
+                        .background(Circle().fill(Constants.Colors.ink.opacity(0.1)))
                 }
                 .accessibilityLabel("Dismiss notification")
             }
@@ -150,7 +156,7 @@ struct ChirpToastView: View {
                             LinearGradient(
                                 colors: [
                                     type.color.opacity(0.3),
-                                    Color.white.opacity(0.08)
+                                    Constants.Colors.ink.opacity(0.08)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing

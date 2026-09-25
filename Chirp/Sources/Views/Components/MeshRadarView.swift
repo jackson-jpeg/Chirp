@@ -14,6 +14,7 @@ struct MeshRadarView: View {
     @State private var peerAppeared: Set<Int> = []
 
     private let amber = Constants.Colors.amber
+    private let amberInk = Constants.Colors.amberInk
 
     var body: some View {
         GeometryReader { geo in
@@ -32,7 +33,7 @@ struct MeshRadarView: View {
                 // Static guide rings
                 ForEach(1...3, id: \.self) { i in
                     Circle()
-                        .stroke(amber.opacity(0.08), lineWidth: 0.5)
+                        .stroke(amberInk.opacity(0.08), lineWidth: 0.5)
                         .frame(
                             width: radius * 2 * CGFloat(i) / 3,
                             height: radius * 2 * CGFloat(i) / 3
@@ -51,7 +52,7 @@ struct MeshRadarView: View {
                 }
                 .stroke(
                     LinearGradient(
-                        colors: [amber.opacity(0.4), amber.opacity(0.0)],
+                        colors: [amberInk.opacity(0.4), amberInk.opacity(0.0)],
                         startPoint: .init(x: 0.5, y: 0.5),
                         endPoint: .init(x: 1, y: 0.5)
                     ),
@@ -81,7 +82,7 @@ struct MeshRadarView: View {
 
                 // Center dot (you)
                 Circle()
-                    .fill(amber)
+                    .fill(amberInk)
                     .frame(width: 10, height: 10)
                     .shadow(color: amber.opacity(0.6), radius: 8)
                     .position(center)
@@ -94,13 +95,13 @@ struct MeshRadarView: View {
                     Group {
                         // Ping ring animation
                         Circle()
-                            .stroke(amber.opacity(appeared ? 0.0 : 0.4), lineWidth: 1.5)
+                            .stroke(amberInk.opacity(appeared ? 0.0 : 0.4), lineWidth: 1.5)
                             .frame(width: appeared ? 40 : 8, height: appeared ? 40 : 8)
                             .position(peerPos)
 
                         // Peer dot
                         Circle()
-                            .fill(amber)
+                            .fill(amberInk)
                             .frame(width: 8, height: 8)
                             .shadow(color: amber.opacity(0.5), radius: 6)
                             .scaleEffect(appeared ? 1.0 : 0.0)
@@ -109,7 +110,7 @@ struct MeshRadarView: View {
                         // Peer label
                         Text(peerName)
                             .font(Constants.Typography.monoSmall)
-                            .foregroundStyle(amber.opacity(0.8))
+                            .foregroundStyle(amberInk.opacity(0.8))
                             .offset(x: peerPos.x - center.x, y: peerPos.y - center.y + 14)
                             .opacity(appeared ? 1.0 : 0.0)
                             .position(center)
@@ -131,7 +132,7 @@ struct MeshRadarView: View {
 
     private func radarRing(scale: CGFloat, opacity: Double, radius: CGFloat) -> some View {
         Circle()
-            .stroke(amber.opacity(opacity), lineWidth: 1.0)
+            .stroke(amberInk.opacity(opacity), lineWidth: 1.0)
             .frame(width: radius * 2 * scale, height: radius * 2 * scale)
     }
 

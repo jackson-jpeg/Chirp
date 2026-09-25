@@ -29,6 +29,7 @@ private struct PendingMessageRow: View {
     let message: VoiceMessageQueue.PendingMessage
 
     private let amber = Constants.Colors.amber
+    private let amberInk = Constants.Colors.amberInk
     private let green = Constants.Colors.electricGreen
 
     var body: some View {
@@ -55,7 +56,7 @@ private struct PendingMessageRow: View {
                 HStack(spacing: 8) {
                     Text(message.recipientName)
                         .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Constants.Colors.textPrimary)
 
                     if message.delivered {
                         Image(systemName: "checkmark.circle.fill")
@@ -67,15 +68,15 @@ private struct PendingMessageRow: View {
                 HStack(spacing: 6) {
                     Image(systemName: "waveform")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(amber.opacity(0.7))
+                        .foregroundStyle(amberInk.opacity(0.7))
 
                     Text(message.durationDisplay)
                         .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(Constants.Colors.textTertiary)
 
                     Text(message.timestamp, style: .relative)
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.35))
+                        .foregroundStyle(Constants.Colors.textTertiary)
                 }
 
                 if message.delivered {
@@ -91,16 +92,16 @@ private struct PendingMessageRow: View {
                         if let deliveredAt = message.deliveredAt {
                             Text(deliveredAt, style: .relative)
                                 .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.3))
+                                .foregroundStyle(Constants.Colors.textTertiary)
                         }
                     }
                 } else {
                     HStack(spacing: 6) {
-                        PulsingDot(color: amber)
+                        PulsingDot(color: amberInk)
 
                         Text("Waiting for \(message.recipientName) to come in range...")
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(amber.opacity(0.7))
+                            .foregroundStyle(amberInk.opacity(0.7))
                     }
                 }
             }
@@ -110,13 +111,13 @@ private struct PendingMessageRow: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(Color.white.opacity(0.04))
+                .fill(Constants.Colors.ink.opacity(0.04))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
                         .stroke(
                             message.delivered
                                 ? green.opacity(0.15)
-                                : amber.opacity(0.1),
+                                : amberInk.opacity(0.1),
                             lineWidth: 0.5
                         )
                 )
@@ -141,6 +142,7 @@ private struct ReceivedMessageRow: View {
     let onPlay: () -> Void
 
     private let amber = Constants.Colors.amber
+    private let amberInk = Constants.Colors.amberInk
 
     var body: some View {
         HStack(spacing: 14) {
@@ -165,7 +167,7 @@ private struct ReceivedMessageRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(senderLabel)
                     .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Constants.Colors.textPrimary)
                     .lineLimit(1)
                     // On the name, never on the row: SwiftUI propagates a
                     // container's identifier to every descendant, and on the
@@ -175,15 +177,15 @@ private struct ReceivedMessageRow: View {
                 HStack(spacing: 6) {
                     Image(systemName: "waveform")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(amber.opacity(0.7))
+                        .foregroundStyle(amberInk.opacity(0.7))
 
                     Text(message.durationDisplay)
                         .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(Constants.Colors.textTertiary)
 
                     Text(message.timestamp, style: .relative)
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.35))
+                        .foregroundStyle(Constants.Colors.textTertiary)
                 }
             }
 
@@ -199,14 +201,14 @@ private struct ReceivedMessageRow: View {
                     if isPlaying {
                         Circle()
                             .trim(from: 0, to: progress)
-                            .stroke(amber, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                            .stroke(amberInk, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
                             .rotationEffect(.degrees(-90))
                             .frame(width: 42, height: 42)
                     }
 
                     Image(systemName: isPlaying ? "stop.fill" : "play.fill")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(amber)
+                        .foregroundStyle(amberInk)
                 }
             }
             .buttonStyle(.plain)
@@ -219,10 +221,10 @@ private struct ReceivedMessageRow: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(Color.white.opacity(0.04))
+                .fill(Constants.Colors.ink.opacity(0.04))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
-                        .stroke(amber.opacity(0.1), lineWidth: 0.5)
+                        .stroke(amberInk.opacity(0.1), lineWidth: 0.5)
                 )
         )
     }
@@ -240,6 +242,7 @@ private struct VoiceMessageEmptyState: View {
     let isPending: Bool
 
     private let amber = Constants.Colors.amber
+    private let amberInk = Constants.Colors.amberInk
 
     var body: some View {
         VStack(spacing: 20) {
@@ -252,19 +255,19 @@ private struct VoiceMessageEmptyState: View {
 
                 Image(systemName: isPending ? "paperplane" : "tray")
                     .font(.system(size: 36, weight: .light))
-                    .foregroundStyle(amber.opacity(0.5))
+                    .foregroundStyle(amberInk.opacity(0.5))
                     .symbolRenderingMode(.hierarchical)
             }
 
             Text(isPending ? "No pending messages" : "No received messages")
                 .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.6))
+                .foregroundStyle(Constants.Colors.textSecondary)
 
             Text(isPending
                  ? "Record a voice message for a friend\nwho is out of range"
                  : "Voice messages from others will\nappear here")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.white.opacity(0.3))
+                .foregroundStyle(Constants.Colors.textTertiary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(3)
 
@@ -283,13 +286,14 @@ struct VoiceMessagesView: View {
     @State private var peerActionTarget: PeerActionTarget?
 
     private let amber = Constants.Colors.amber
+    private let amberInk = Constants.Colors.amberInk
     private let red = Constants.Colors.hotRed
 
     private var queue: VoiceMessageQueue { VoiceMessageQueue.shared }
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            SkyBackdrop()
 
             VStack(spacing: 0) {
                 // Custom segmented control.
@@ -308,7 +312,6 @@ struct VoiceMessagesView: View {
         }
         .navigationTitle("Voice Messages")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .onAppear {
             // Open on whichever list has something in it.
             if queue.pendingMessages.isEmpty && !queue.receivedMessages.isEmpty {
@@ -342,7 +345,7 @@ struct VoiceMessagesView: View {
         .padding(4)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white.opacity(0.06))
+                .fill(Constants.Colors.ink.opacity(0.06))
         )
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
@@ -361,7 +364,7 @@ struct VoiceMessagesView: View {
                 if count > 0 {
                     Text("\(count)")
                         .font(.system(size: 11, weight: .black, design: .rounded))
-                        .foregroundStyle(selectedTab == index ? .black : amber)
+                        .foregroundStyle(selectedTab == index ? Constants.Colors.onAmber : amberInk)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(
@@ -370,7 +373,7 @@ struct VoiceMessagesView: View {
                         )
                 }
             }
-            .foregroundStyle(selectedTab == index ? .black : .white.opacity(0.5))
+            .foregroundStyle(selectedTab == index ? Constants.Colors.onAmber : Constants.Colors.textTertiary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
             .background(

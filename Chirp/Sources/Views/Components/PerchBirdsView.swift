@@ -1,12 +1,15 @@
 import SwiftUI
 
 // MARK: - PerchBirdsView
-// Two round amber birds perched on a wire — one chirping, one listening.
-// The brand mascot for ChirpChirp, drawn entirely with SwiftUI shapes.
+// Two round sunny birds perched on a wire — one chirping, one listening — with
+// the chirp travelling down the wire between them. The brand mascot, drawn
+// from the app icon's geometry (icon.svg) so the two always match.
 
 struct PerchBirdsView: View {
     var size: CGFloat = 200
     var isAnimating: Bool = true
+
+    @Environment(\.colorScheme) private var colorScheme
 
     // Animation state
     @State private var breathOffset: CGFloat = 0
@@ -16,87 +19,55 @@ struct PerchBirdsView: View {
     @State private var chirpBurst: Bool = false
     @State private var chirpHeadTilt: Double = 0
 
-    // Colors
-    private let amber = Constants.Colors.amber
-    private let darkAmber = Color(hex: 0xE6A600) // Custom darker amber for bird body shading
-    private let beakOrange = Color(hex: 0xFF6B35) // Custom beak accent
-    private let eyeColor = Constants.Colors.backgroundPrimary
+    // Colors — the icon's, in both modes
+    private let bodyColor = Constants.Colors.sun
+    private let feather = Constants.Colors.wing
+    private let beak = Constants.Colors.beak
+    private let eyeColor = Constants.Colors.navy
+
+    /// The wire is navy against the day sky and pale cloud against the night.
+    private var wireColor: Color {
+        colorScheme == .dark ? Constants.Colors.cloud : Constants.Colors.navy
+    }
 
     private var scale: CGFloat { size / 200.0 }
+
+    /// icon.svg draws a bird with a 150-unit body radius; ours is 18 points
+    /// at `size` 200.
+    private static let iconUnit: CGFloat = 18.0 / 150.0
 
     var body: some View {
         Canvas { context, canvasSize in
             let cx = canvasSize.width / 2
             let cy = canvasSize.height / 2
             let s = scale
+            let k = Self.iconUnit * s
 
-            // -- Wire --
+            // -- Wire, with the chirp as a waveform between the birds --
             let wireY = cy + 28 * s + wireSway
-            var wirePath = Path()
-            // Slight catenary curve
-            wirePath.move(to: CGPoint(x: 0, y: wireY - 2 * s))
-            wirePath.addQuadCurve(
-                to: CGPoint(x: canvasSize.width, y: wireY - 2 * s),
-                control: CGPoint(x: cx, y: wireY + 6 * s)
-            )
+            let pulse = chirpBurst ? 1.0 : 0.45 + 0.55 * (soundLineOpacities[safe: 1] ?? 0)
             context.stroke(
-                wirePath,
-                with: .color(amber.opacity(0.5)),
-                lineWidth: max(1.5 * s, 1)
+                wirePath(width: canvasSize.width, cx: cx, wireY: wireY, s: s, amplitude: CGFloat(pulse)),
+                with: .color(wireColor),
+                style: StrokeStyle(lineWidth: max(1.4 * s, 1), lineCap: .round, lineJoin: .round)
             )
+
+            // Legs end on the wire: 178 icon units below the body centre.
+            let perchY = wireY - 178 * k
 
             // -- Left Bird (Chirper) --
-            let leftX = cx - 28 * s
-            let leftY = cy + 8 * s + breathOffset
-
             drawBird(
-                context: &context, x: leftX, y: leftY, s: s,
+                context: &context, x: cx - 26 * s, y: perchY + breathOffset * 0.3, k: k,
                 facingRight: true, beakOpen: true,
-                headTiltDeg: chirpHeadTilt
+                tiltDeg: chirpHeadTilt
             )
-
-            // Sound lines from beak
-            let soundBaseX = leftX + 22 * s
-            let soundBaseY = leftY - 8 * s
-            for i in 0..<3 {
-                let offset = CGFloat(i + 1) * 7 * s
-                let arcSize = CGFloat(6 + i * 4) * s
-                var arcPath = Path()
-                arcPath.addArc(
-                    center: CGPoint(x: soundBaseX + offset, y: soundBaseY),
-                    radius: arcSize,
-                    startAngle: .degrees(-40),
-                    endAngle: .degrees(40),
-                    clockwise: false
-                )
-                let lineOpacity = soundLineOpacities[safe: i] ?? 0.0
-                let brightness = chirpBurst ? min(lineOpacity + 0.3, 1.0) : lineOpacity
-                context.stroke(
-                    arcPath,
-                    with: .color(amber.opacity(brightness)),
-                    lineWidth: max(2.0 * s - CGFloat(i) * 0.3 * s, 0.8)
-                )
-            }
 
             // -- Right Bird (Listener) --
-            let rightX = cx + 28 * s
-            let rightY = cy + 8 * s + breathOffset * 0.6  // Slightly less bob
-
-            // Apply listener tilt by adjusting position slightly
-            let tiltOffsetX = -sin(listenerTilt * .pi / 180) * 3 * s
-            let tiltOffsetY = -abs(sin(listenerTilt * .pi / 180)) * 2 * s
-
             drawBird(
-                context: &context,
-                x: rightX + tiltOffsetX, y: rightY + tiltOffsetY, s: s,
+                context: &context, x: cx + 26 * s, y: perchY + breathOffset * 0.2, k: k,
                 facingRight: false, beakOpen: false,
-                headTiltDeg: listenerTilt
+                tiltDeg: listenerTilt
             )
-
-            // Feet on wire for both birds
-            drawFeet(context: &context, x: leftX, wireY: wireY, s: s, facingRight: true)
-            drawFeet(context: &context, x: rightX + tiltOffsetX, wireY: wireY, s: s, facingRight: false)
-
         }
         .frame(width: size, height: size * 0.6)
         .accessibilityHidden(true)
@@ -111,131 +82,96 @@ struct PerchBirdsView: View {
         }
     }
 
-    // MARK: - Draw Bird
+    // MARK: - Wire
 
-    private func drawBird(
-        context: inout GraphicsContext, x: CGFloat, y: CGFloat, s: CGFloat,
-        facingRight: Bool, beakOpen: Bool, headTiltDeg: Double
-    ) {
-        let dir: CGFloat = facingRight ? 1 : -1
-
-        // Body — round circle
-        let bodyRadius: CGFloat = 18 * s
-        let bodyRect = CGRect(
-            x: x - bodyRadius, y: y - bodyRadius,
-            width: bodyRadius * 2, height: bodyRadius * 2
-        )
-        context.fill(
-            Circle().path(in: bodyRect),
-            with: .linearGradient(
-                Gradient(colors: [amber, darkAmber]),
-                startPoint: CGPoint(x: x, y: y - bodyRadius),
-                endPoint: CGPoint(x: x, y: y + bodyRadius)
-            )
-        )
-
-        // Wing — darker ellipse on back side
-        let wingX = x - dir * 5 * s
-        let wingY = y + 2 * s
-        let wingW: CGFloat = 14 * s
-        let wingH: CGFloat = 10 * s
-        let wingRect = CGRect(
-            x: wingX - wingW / 2, y: wingY - wingH / 2,
-            width: wingW, height: wingH
-        )
-        context.fill(
-            Ellipse().path(in: wingRect),
-            with: .color(darkAmber.opacity(0.7))
-        )
-
-        // Eye
-        let eyeX = x + dir * 7 * s
-        let eyeY = y - 5 * s
-        let eyeRadius: CGFloat = 3.2 * s
-        let eyeRect = CGRect(
-            x: eyeX - eyeRadius, y: eyeY - eyeRadius,
-            width: eyeRadius * 2, height: eyeRadius * 2
-        )
-        context.fill(Circle().path(in: eyeRect), with: .color(eyeColor))
-
-        // Eye highlight
-        let hlRadius: CGFloat = 1.2 * s
-        let hlRect = CGRect(
-            x: eyeX + dir * 1 * s - hlRadius,
-            y: eyeY - 1.5 * s - hlRadius,
-            width: hlRadius * 2, height: hlRadius * 2
-        )
-        context.fill(Circle().path(in: hlRect), with: .color(.white.opacity(0.9)))
-
-        // Beak
-        let beakX = x + dir * 16 * s
-        let beakY = y - 2 * s
-        if beakOpen {
-            // Upper beak
-            var upperBeak = Path()
-            upperBeak.move(to: CGPoint(x: x + dir * 14 * s, y: beakY - 2 * s))
-            upperBeak.addLine(to: CGPoint(x: beakX + dir * 5 * s, y: beakY - 4 * s))
-            upperBeak.addLine(to: CGPoint(x: x + dir * 14 * s, y: beakY))
-            upperBeak.closeSubpath()
-            context.fill(upperBeak, with: .color(beakOrange))
-
-            // Lower beak
-            var lowerBeak = Path()
-            lowerBeak.move(to: CGPoint(x: x + dir * 14 * s, y: beakY))
-            lowerBeak.addLine(to: CGPoint(x: beakX + dir * 4 * s, y: beakY + 3 * s))
-            lowerBeak.addLine(to: CGPoint(x: x + dir * 14 * s, y: beakY + 2 * s))
-            lowerBeak.closeSubpath()
-            context.fill(lowerBeak, with: .color(beakOrange.opacity(0.85)))
-        } else {
-            // Closed beak
-            var beak = Path()
-            beak.move(to: CGPoint(x: x + dir * 14 * s, y: beakY - 1 * s))
-            beak.addLine(to: CGPoint(x: beakX + dir * 4 * s, y: beakY))
-            beak.addLine(to: CGPoint(x: x + dir * 14 * s, y: beakY + 1 * s))
-            beak.closeSubpath()
-            context.fill(beak, with: .color(beakOrange))
+    /// A straight wire with the icon's zigzag chirp in the middle. The
+    /// zigzag's height follows `amplitude` (0...1) so it pulses as they talk.
+    private func wirePath(width: CGFloat, cx: CGFloat, wireY: CGFloat, s: CGFloat, amplitude: CGFloat) -> Path {
+        // icon.svg's zigzag, relative to its centre, in icon pixels.
+        let zigzag: [(CGFloat, CGFloat)] = [
+            (-76, 0), (-60, -20), (-44, 26), (-28, -46), (-12, 50), (0, -66),
+            (12, 50), (28, -46), (44, 26), (60, -20), (76, 0),
+        ]
+        let unit = 18.0 / 135.0 * s   // the icon's birds are drawn at 0.9 scale
+        var path = Path()
+        path.move(to: CGPoint(x: 0, y: wireY))
+        for (dx, dy) in zigzag {
+            path.addLine(to: CGPoint(x: cx + dx * unit, y: wireY + dy * unit * amplitude))
         }
-
-        // Tail feathers on back
-        let tailX = x - dir * 16 * s
-        let tailY = y + 4 * s
-        for i in 0..<3 {
-            var feather = Path()
-            let spread = CGFloat(i - 1) * 4 * s
-            feather.move(to: CGPoint(x: x - dir * 14 * s, y: tailY))
-            feather.addLine(to: CGPoint(x: tailX - dir * 6 * s, y: tailY - 6 * s + spread))
-            feather.addLine(to: CGPoint(x: tailX - dir * 3 * s, y: tailY - 4 * s + spread))
-            feather.closeSubpath()
-            context.fill(feather, with: .color(darkAmber.opacity(0.5 + Double(i) * 0.1)))
-        }
+        path.addLine(to: CGPoint(x: width, y: wireY))
+        return path
     }
 
-    // MARK: - Draw Feet
+    // MARK: - Draw Bird
 
-    private func drawFeet(
-        context: inout GraphicsContext, x: CGFloat, wireY: CGFloat, s: CGFloat, facingRight: Bool
+    /// Draws icon.svg's bird with its body centred at (x, y). Paths are in the
+    /// icon's own units (facing right), mapped by `k` points per unit,
+    /// mirrored for the listener and tilted about the body centre.
+    private func drawBird(
+        context: inout GraphicsContext, x: CGFloat, y: CGFloat, k: CGFloat,
+        facingRight: Bool, beakOpen: Bool, tiltDeg: Double
     ) {
         let dir: CGFloat = facingRight ? 1 : -1
-        let footColor = beakOrange
+        let transform = CGAffineTransform(scaleX: dir * k, y: k)
+            .concatenating(CGAffineTransform(rotationAngle: CGFloat(tiltDeg * .pi / 180) * dir * 0.5))
+            .concatenating(CGAffineTransform(translationX: x, y: y))
 
-        for side in [-1.0, 1.0] {
-            let footX = x + CGFloat(side) * 4 * s
-            // Leg
-            var leg = Path()
-            leg.move(to: CGPoint(x: footX, y: wireY - 16 * s))
-            leg.addLine(to: CGPoint(x: footX, y: wireY))
-            context.stroke(leg, with: .color(footColor), lineWidth: max(1.5 * s, 1))
+        func polygon(_ points: [(CGFloat, CGFloat)]) -> Path {
+            var path = Path()
+            path.addLines(points.map { CGPoint(x: $0.0, y: $0.1) })
+            path.closeSubpath()
+            return path.applying(transform)
+        }
 
-            // Toes gripping wire
-            for toe in [-1.0, 0.0, 1.0] {
-                var toePath = Path()
-                toePath.move(to: CGPoint(x: footX, y: wireY))
-                toePath.addLine(to: CGPoint(
-                    x: footX + toe * 2.5 * s * dir,
-                    y: wireY + 2 * s
-                ))
-                context.stroke(toePath, with: .color(footColor), lineWidth: max(1.2 * s, 0.8))
-            }
+        func circle(_ cx: CGFloat, _ cy: CGFloat, _ r: CGFloat) -> Path {
+            Path(ellipseIn: CGRect(x: cx - r, y: cy - r, width: r * 2, height: r * 2)).applying(transform)
+        }
+
+        // Tail
+        context.fill(polygon([(-128, 30), (-196, 4), (-176, 38), (-204, 62), (-140, 70)]), with: .color(feather))
+
+        // Legs
+        var legs = Path()
+        legs.move(to: CGPoint(x: -22, y: 140))
+        legs.addLine(to: CGPoint(x: -26, y: 178))
+        legs.move(to: CGPoint(x: 26, y: 140))
+        legs.addLine(to: CGPoint(x: 30, y: 178))
+        context.stroke(
+            legs.applying(transform),
+            with: .color(feather),
+            style: StrokeStyle(lineWidth: max(10 * k, 1), lineCap: .round)
+        )
+
+        // Crest
+        var crest = Path()
+        crest.move(to: CGPoint(x: -10, y: -146))
+        crest.addCurve(to: CGPoint(x: 28, y: -176), control1: CGPoint(x: -4, y: -180), control2: CGPoint(x: 16, y: -188))
+        crest.addCurve(to: CGPoint(x: 12, y: -144), control1: CGPoint(x: 14, y: -170), control2: CGPoint(x: 10, y: -158))
+        crest.closeSubpath()
+        context.fill(crest.applying(transform), with: .color(feather))
+
+        // Body
+        context.fill(circle(0, 0, 150), with: .color(bodyColor))
+
+        // Wing
+        var wing = Path()
+        wing.move(to: CGPoint(x: -122, y: -6))
+        wing.addCurve(to: CGPoint(x: 30, y: 30), control1: CGPoint(x: -70, y: -44), control2: CGPoint(x: 6, y: -26))
+        wing.addCurve(to: CGPoint(x: -124, y: 70), control1: CGPoint(x: 8, y: 86), control2: CGPoint(x: -66, y: 104))
+        wing.addCurve(to: CGPoint(x: -122, y: -6), control1: CGPoint(x: -150, y: 48), control2: CGPoint(x: -148, y: 12))
+        wing.closeSubpath()
+        context.fill(wing.applying(transform), with: .color(feather))
+
+        // Eye
+        context.fill(circle(64, -46, 23), with: .color(eyeColor))
+        context.fill(circle(72, -54, 7), with: .color(.white))
+
+        // Beak
+        if beakOpen {
+            context.fill(polygon([(134, -48), (190, -38), (136, -24)]), with: .color(beak))
+            context.fill(polygon([(136, -16), (180, -4), (132, 0)]), with: .color(beak))
+        } else {
+            context.fill(polygon([(134, -44), (186, -26), (134, -8)]), with: .color(beak))
         }
     }
 

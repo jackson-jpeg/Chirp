@@ -28,6 +28,7 @@ struct ChannelCreationView: View {
 
     private let suggestedNames = ["Squad", "Base Camp", "Family", "Road Trip", "The Crew", "HQ"]
     private let amber = Constants.Colors.amber
+    private let amberInk = Constants.Colors.amberInk
     private let green = Constants.Colors.electricGreen
 
     var body: some View {
@@ -54,7 +55,7 @@ struct ChannelCreationView: View {
                     joinModeContent
                 }
             }
-            .background(Color.black)
+            .background(SkyBackdrop())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -77,7 +78,7 @@ struct ChannelCreationView: View {
             VStack(spacing: 6) {
                 TextField(String(localized: "channelCreation.create.namePlaceholder"), text: $channelName)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Constants.Colors.textPrimary)
                     .multilineTextAlignment(.center)
                     .autocorrectionDisabled()
                     .focused($isNameFocused)
@@ -87,7 +88,7 @@ struct ChannelCreationView: View {
 
                 // Amber underline
                 Rectangle()
-                    .fill(amber.opacity(isNameFocused ? 1.0 : 0.4))
+                    .fill(amberInk.opacity(isNameFocused ? 1.0 : 0.4))
                     .frame(height: 2)
                     .frame(maxWidth: 200)
                     .animation(.easeInOut(duration: 0.2), value: isNameFocused)
@@ -98,14 +99,14 @@ struct ChannelCreationView: View {
             HStack(spacing: 12) {
                 Image(systemName: isPrivate ? "lock.fill" : "lock.open")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(isPrivate ? amber : .secondary)
+                    .foregroundStyle(isPrivate ? amberInk : .secondary)
                     .frame(width: 24)
                     .contentTransition(.symbolEffect(.replace))
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(String(localized: "channelCreation.create.privateChannel"))
                         .font(.system(.body, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Constants.Colors.textPrimary)
 
                     if isPrivate {
                         Text(String(localized: "channelCreation.create.privateChannelHint"))
@@ -125,7 +126,7 @@ struct ChannelCreationView: View {
             .padding(.vertical, 14)
             .background(
                 RoundedRectangle(cornerRadius: 14)
-                    .fill(Color.white.opacity(0.05))
+                    .fill(Constants.Colors.ink.opacity(0.05))
             )
             .padding(.horizontal, 24)
             .animation(.easeInOut(duration: 0.2), value: isPrivate)
@@ -149,7 +150,7 @@ struct ChannelCreationView: View {
                                 Text(name)
                                     .font(.system(.subheadline, weight: .semibold))
                                     .foregroundStyle(
-                                        channelName == name ? .black : amber
+                                        channelName == name ? Constants.Colors.onAmber : amberInk
                                     )
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 9)
@@ -166,7 +167,7 @@ struct ChannelCreationView: View {
                                             .stroke(
                                                 channelName == name
                                                     ? Color.clear
-                                                    : amber.opacity(0.25),
+                                                    : amberInk.opacity(0.25),
                                                 lineWidth: 1
                                             )
                                     )
@@ -186,12 +187,12 @@ struct ChannelCreationView: View {
             Button(action: createChannel) {
                 Text(String(localized: "channelCreation.create.button"))
                     .font(.system(.headline, weight: .bold))
-                    .foregroundStyle(isCreateValid ? .black : .white.opacity(0.3))
+                    .foregroundStyle(isCreateValid ? Constants.Colors.onAmber : Constants.Colors.textTertiary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
                     .background(
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(isCreateValid ? amber : Color.white.opacity(0.08))
+                            .fill(isCreateValid ? amber : Constants.Colors.ink.opacity(0.08))
                     )
             }
             .disabled(!isCreateValid)
@@ -212,12 +213,12 @@ struct ChannelCreationView: View {
             VStack(spacing: 16) {
                 Image(systemName: "ticket")
                     .font(.system(size: 36, weight: .light))
-                    .foregroundStyle(amber.opacity(0.7))
+                    .foregroundStyle(amberInk.opacity(0.7))
                     .padding(.bottom, 4)
 
                 TextField(String(localized: "channelCreation.join.codePlaceholder"), text: $inviteCode)
                     .font(.system(size: 20, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Constants.Colors.textPrimary)
                     .multilineTextAlignment(.center)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
@@ -232,7 +233,7 @@ struct ChannelCreationView: View {
 
                 // Amber underline
                 Rectangle()
-                    .fill(amber.opacity(isCodeFocused ? 1.0 : 0.4))
+                    .fill(amberInk.opacity(isCodeFocused ? 1.0 : 0.4))
                     .frame(height: 2)
                     .frame(maxWidth: 240)
 
@@ -257,12 +258,12 @@ struct ChannelCreationView: View {
             Button(action: joinChannel) {
                 Text(String(localized: "channelCreation.join.button"))
                     .font(.system(.headline, weight: .bold))
-                    .foregroundStyle(isJoinValid ? .black : .white.opacity(0.3))
+                    .foregroundStyle(isJoinValid ? Constants.Colors.onAmber : Constants.Colors.textTertiary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
                     .background(
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(isJoinValid ? amber : Color.white.opacity(0.08))
+                            .fill(isJoinValid ? amber : Constants.Colors.ink.opacity(0.08))
                     )
             }
             .disabled(!isJoinValid)
@@ -318,11 +319,11 @@ struct ChannelCreationView: View {
             VStack(spacing: 16) {
                 Image(systemName: "lock.fill")
                     .font(.system(size: 36, weight: .light))
-                    .foregroundStyle(amber.opacity(0.8))
+                    .foregroundStyle(amberInk.opacity(0.8))
 
                 Text(String(localized: "channelCreation.invite.title"))
                     .font(.system(.title3, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Constants.Colors.textPrimary)
 
                 Text(String(localized: "channelCreation.invite.hint"))
                     .font(.system(.caption))
@@ -332,7 +333,7 @@ struct ChannelCreationView: View {
 
                 Text(code)
                     .font(.system(.subheadline, design: .monospaced, weight: .semibold))
-                    .foregroundStyle(amber)
+                    .foregroundStyle(amberInk)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                     .padding(.horizontal, 16)
@@ -343,7 +344,7 @@ struct ChannelCreationView: View {
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(amber.opacity(0.25), lineWidth: 1)
+                            .stroke(amberInk.opacity(0.25), lineWidth: 1)
                     )
                     .padding(.horizontal, 24)
                     .textSelection(.enabled)
@@ -360,14 +361,14 @@ struct ChannelCreationView: View {
                             systemImage: copiedInviteCode ? "checkmark" : "doc.on.doc"
                         )
                         .font(.system(.subheadline, weight: .semibold))
-                        .foregroundStyle(copiedInviteCode ? green : amber)
+                        .foregroundStyle(copiedInviteCode ? green : amberInk)
                     }
                     .buttonStyle(.plain)
 
                     ShareLink(item: code) {
                         Label(String(localized: "channelCreation.invite.share"), systemImage: "square.and.arrow.up")
                             .font(.system(.subheadline, weight: .semibold))
-                            .foregroundStyle(amber)
+                            .foregroundStyle(amberInk)
                     }
                 }
                 .padding(.top, 4)
@@ -381,7 +382,7 @@ struct ChannelCreationView: View {
             } label: {
                 Text(String(localized: "common.done"))
                     .font(.system(.headline, weight: .bold))
-                    .foregroundStyle(.black)
+                    .foregroundStyle(Constants.Colors.onAmber)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
                     .background(

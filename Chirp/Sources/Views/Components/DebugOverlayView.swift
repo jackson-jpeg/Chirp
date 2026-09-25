@@ -13,21 +13,21 @@ struct DebugOverlayView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "ladybug.fill")
                         .font(.system(size: 9))
-                        .foregroundStyle(Constants.Colors.amber)
+                        .foregroundStyle(Constants.Colors.amberInk)
 
                     Text("DEBUG")
                         .font(.system(size: 9, weight: .bold, design: .monospaced))
-                        .foregroundStyle(Constants.Colors.amber)
+                        .foregroundStyle(Constants.Colors.amberInk)
 
                     Spacer()
 
                     Text("tap to close")
                         .font(.system(size: 8, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.4))
+                        .foregroundStyle(Constants.Colors.textTertiary)
                 }
 
                 Divider()
-                    .background(Color.white.opacity(0.2))
+                    .background(Constants.Colors.ink.opacity(0.2))
 
                 // PTT State
                 HStack(spacing: 6) {
@@ -36,7 +36,7 @@ struct DebugOverlayView: View {
                         .frame(width: 6, height: 6)
 
                     Text("PTT")
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(Constants.Colors.textSecondary)
 
                     Spacer()
 
@@ -47,13 +47,13 @@ struct DebugOverlayView: View {
                 // Input level bar
                 HStack(spacing: 6) {
                     Text("IN")
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(Constants.Colors.textSecondary)
                         .frame(width: 22, alignment: .leading)
 
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 2)
-                                .fill(Color.white.opacity(0.15))
+                                .fill(Constants.Colors.ink.opacity(0.15))
 
                             RoundedRectangle(cornerRadius: 2)
                                 .fill(levelGradient)
@@ -63,26 +63,26 @@ struct DebugOverlayView: View {
                     .frame(height: 5)
 
                     Text(String(format: "%2.0f", appState.inputLevel * 100))
-                        .foregroundStyle(Constants.Colors.amber)
+                        .foregroundStyle(Constants.Colors.amberInk)
                         .frame(width: 22, alignment: .trailing)
                 }
 
                 // Audio format
                 HStack(spacing: 6) {
                     Text("FMT")
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(Constants.Colors.textSecondary)
 
                     Spacer()
 
                     let session = AVAudioSession.sharedInstance()
                     Text("\(Int(session.sampleRate))Hz / \(Int(session.outputNumberOfChannels))ch")
-                        .foregroundStyle(.white.opacity(0.8))
+                        .foregroundStyle(Constants.Colors.ink.opacity(0.8))
                 }
 
                 // Peers
                 HStack(spacing: 6) {
                     Text("PEERS")
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(Constants.Colors.textSecondary)
 
                     Spacer()
 
@@ -91,23 +91,23 @@ struct DebugOverlayView: View {
                         .foregroundStyle(
                             peerCount > 0
                                 ? Constants.Colors.electricGreen
-                                : .white.opacity(0.5)
+                                : Constants.Colors.textTertiary
                         )
                 }
 
                 // Channels
                 HStack(spacing: 6) {
                     Text("CH")
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(Constants.Colors.textSecondary)
 
                     Spacer()
 
                     if let active = appState.channelManager.activeChannel {
                         Text(active.name)
-                            .foregroundStyle(Constants.Colors.amber)
+                            .foregroundStyle(Constants.Colors.amberInk)
                     } else {
                         Text("none")
-                            .foregroundStyle(.white.opacity(0.4))
+                            .foregroundStyle(Constants.Colors.textTertiary)
                     }
                 }
 
@@ -122,11 +122,11 @@ struct DebugOverlayView: View {
                     .fill(.ultraThinMaterial)
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.black.opacity(0.6))
+                            .fill(Constants.Colors.surfaceHover)
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
+                            .stroke(Constants.Colors.ink.opacity(0.1), lineWidth: 0.5)
                     )
             )
             .onTapGesture {
@@ -178,7 +178,7 @@ private struct FPSCounterRow: View {
         TimelineView(.animation(minimumInterval: nil)) { timeline in
             HStack(spacing: 6) {
                 Text("FPS")
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(Constants.Colors.textSecondary)
 
                 Spacer()
 
@@ -203,7 +203,7 @@ private struct FPSCounterRow: View {
 
     private var fpsColor: Color {
         if fps >= 55 { return Constants.Colors.electricGreen }
-        if fps >= 30 { return Constants.Colors.amber }
+        if fps >= 30 { return Constants.Colors.amberInk }
         return Constants.Colors.hotRed
     }
 }

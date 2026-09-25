@@ -174,7 +174,7 @@ struct ChatView: View {
                 .font(.system(size: 56, weight: .thin))
                 .foregroundStyle(
                     LinearGradient(
-                        colors: [Constants.Colors.amber.opacity(0.6), Constants.Colors.amber.opacity(0.3)],
+                        colors: [Constants.Colors.amberInk.opacity(0.6), Constants.Colors.amberInk.opacity(0.3)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -527,7 +527,7 @@ struct ChatView: View {
                     .overlay(
                         Image(systemName: "chevron.down")
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(Constants.Colors.amber)
+                            .foregroundStyle(Constants.Colors.amberInk)
                     )
                     .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
 

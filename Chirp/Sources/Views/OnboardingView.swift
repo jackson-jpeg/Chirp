@@ -26,13 +26,13 @@ private struct MeshGradientBackground: View {
 
                     let colors: [(Color, CGFloat)] = i % 2 == 0
                         ? [
-                            (Color(red: 0.08, green: 0.05, blue: 0.25).opacity(0.8), 0),
-                            (Color(red: 0.12, green: 0.08, blue: 0.35).opacity(0.4), 0.5),
+                            (Color(day: 0x9FD9F7, night: 0x140D40, dayOpacity: 0.35).opacity(0.8), 0),
+                            (Color(day: 0x9FD9F7, night: 0x1F1459, dayOpacity: 0.35).opacity(0.4), 0.5),
                             (Color.clear, 1.0),
                         ]
                         : [
-                            (Color(red: 0.05, green: 0.08, blue: 0.30).opacity(0.7), 0),
-                            (Color(red: 0.10, green: 0.05, blue: 0.28).opacity(0.3), 0.5),
+                            (Color(day: 0xFFFFFF, night: 0x0D144D, dayOpacity: 0.45).opacity(0.7), 0),
+                            (Color(day: 0xFFFFFF, night: 0x1A0D47, dayOpacity: 0.45).opacity(0.3), 0.5),
                             (Color.clear, 1.0),
                         ]
 
@@ -91,7 +91,7 @@ private struct NetworkNodesBackground: View {
                             var path = Path()
                             path.move(to: CGPoint(x: positions[i].0, y: positions[i].1))
                             path.addLine(to: CGPoint(x: positions[j].0, y: positions[j].1))
-                            context.stroke(path, with: .color(.white.opacity(alpha)), lineWidth: 0.8)
+                            context.stroke(path, with: .color(Constants.Colors.ink.opacity(alpha)), lineWidth: 0.8)
                         }
                     }
                 }
@@ -111,7 +111,7 @@ private struct NetworkNodesBackground: View {
                     )
                     context.fill(
                         Path(ellipseIn: glowRect),
-                        with: .color(.white.opacity(0.04 + pulse * 0.03))
+                        with: .color(Constants.Colors.ink.opacity(0.04 + pulse * 0.03))
                     )
 
                     // Core
@@ -123,7 +123,7 @@ private struct NetworkNodesBackground: View {
                     )
                     context.fill(
                         Path(ellipseIn: rect),
-                        with: .color(.white.opacity(0.2 + pulse * 0.15))
+                        with: .color(Constants.Colors.ink.opacity(0.2 + pulse * 0.15))
                     )
                 }
             }
@@ -175,7 +175,7 @@ private struct ContinueButton: View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(Constants.Colors.onAmber)
                 .frame(maxWidth: .infinity)
                 .frame(height: 56)
                 .background(
@@ -200,7 +200,7 @@ private struct ShimmerStartButton: View {
         Button(action: action) {
             Text(String(localized: "Continue"))
                 .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(Constants.Colors.onAmber)
                 .frame(maxWidth: .infinity)
                 .frame(height: 58)
                 .background(
@@ -265,13 +265,13 @@ private struct TheMeshPage: View {
             // Small wordmark
             Text("ChirpChirps")
                 .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundStyle(Constants.Colors.amber.opacity(0.6))
+                .foregroundStyle(Constants.Colors.amberInk.opacity(0.6))
                 .padding(.bottom, 24)
 
             // Big bold title
             Text(String(localized: "Communication\nWithout Infrastructure"))
                 .font(.system(size: 34, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(Constants.Colors.textPrimary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 32)
@@ -324,7 +324,7 @@ private struct HowItWorksPage: View {
             HStack(spacing: 16) {
                 Image(systemName: icon)
                     .font(.system(size: 28, weight: .medium))
-                    .foregroundStyle(Constants.Colors.amber)
+                    .foregroundStyle(Constants.Colors.amberInk)
                     .frame(width: 56, height: 56)
                     .background(
                         RoundedRectangle(cornerRadius: 14)
@@ -338,7 +338,7 @@ private struct HowItWorksPage: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
                         .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Constants.Colors.textPrimary)
                     Text(subtitle)
                         .font(.system(size: 14, weight: .regular))
                         .foregroundStyle(Constants.Colors.textSecondary)
@@ -360,7 +360,7 @@ private struct HowItWorksPage: View {
 
             Text(String(localized: "How It Works"))
                 .font(Constants.Typography.heroTitle)
-                .foregroundStyle(.white)
+                .foregroundStyle(Constants.Colors.textPrimary)
                 .padding(.bottom, 40)
 
             VStack(spacing: 28) {
@@ -416,7 +416,7 @@ private struct IdentityPage: View {
 
             Text(String(localized: "Your Identity"))
                 .font(Constants.Typography.heroTitle)
-                .foregroundStyle(.white)
+                .foregroundStyle(Constants.Colors.textPrimary)
                 .opacity(contentOpacity)
                 .offset(y: contentOffset)
 
@@ -436,7 +436,7 @@ private struct IdentityPage: View {
             HStack(spacing: 12) {
                 TextField(String(localized: "Callsign"), text: $callsign)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Constants.Colors.textPrimary)
                     .multilineTextAlignment(.center)
                     .textInputAutocapitalization(.words)
                     .autocorrectionDisabled()
@@ -450,7 +450,7 @@ private struct IdentityPage: View {
                 } label: {
                     Image(systemName: "arrow.clockwise")
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(Constants.Colors.amber)
+                        .foregroundStyle(Constants.Colors.amberInk)
                         .frame(width: 44, height: 44)
                         .background(
                             Circle()
@@ -467,7 +467,7 @@ private struct IdentityPage: View {
 
             // Amber underline
             Rectangle()
-                .fill(Constants.Colors.amber)
+                .fill(Constants.Colors.amberInk)
                 .frame(height: 2)
                 .padding(.horizontal, 48)
                 .padding(.top, 8)
@@ -521,7 +521,7 @@ private struct RulesPage: View {
 
             Text(String(localized: "onboarding.rules.title"))
                 .font(Constants.Typography.heroTitle)
-                .foregroundStyle(.white)
+                .foregroundStyle(Constants.Colors.textPrimary)
                 .multilineTextAlignment(.center)
                 .accessibilityAddTraits(.isHeader)
 
@@ -540,11 +540,11 @@ private struct RulesPage: View {
                     HStack(alignment: .top, spacing: 14) {
                         Image(systemName: rule.icon)
                             .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(Constants.Colors.amber)
+                            .foregroundStyle(Constants.Colors.amberInk)
                             .frame(width: 28)
                         Text(rule.text)
                             .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.9))
+                            .foregroundStyle(Constants.Colors.ink.opacity(0.9))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -580,7 +580,7 @@ private struct RulesPage: View {
                         .foregroundStyle(hasAccepted ? Constants.Colors.electricGreen : Constants.Colors.textTertiary)
                     Text(String(localized: "onboarding.rules.agree"))
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Constants.Colors.textPrimary)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
@@ -589,7 +589,7 @@ private struct RulesPage: View {
                         .stroke(
                             hasAccepted
                                 ? Constants.Colors.electricGreen.opacity(0.5)
-                                : Color.white.opacity(0.15),
+                                : Constants.Colors.ink.opacity(0.15),
                             lineWidth: 1.5
                         )
                 )
@@ -620,7 +620,7 @@ private struct GoLivePage: View {
             // Title
             Text(String(localized: "Your mesh is ready"))
                 .font(Constants.Typography.heroTitle)
-                .foregroundStyle(.white)
+                .foregroundStyle(Constants.Colors.textPrimary)
                 .opacity(titleOpacity)
                 .accessibilityAddTraits(.isHeader)
 
@@ -725,13 +725,13 @@ private struct MicrophonePage: View {
                     .overlay(Circle().stroke(Constants.Colors.glassAmberBorder, lineWidth: 1))
                 Image(systemName: "mic.fill")
                     .font(.system(size: 44, weight: .semibold))
-                    .foregroundStyle(Constants.Colors.amber)
+                    .foregroundStyle(Constants.Colors.amberInk)
             }
             .padding(.bottom, 32)
 
             Text(String(localized: "onboarding.mic.title"))
                 .font(Constants.Typography.heroTitle)
-                .foregroundStyle(.white)
+                .foregroundStyle(Constants.Colors.textPrimary)
                 .multilineTextAlignment(.center)
                 .accessibilityAddTraits(.isHeader)
 
@@ -771,7 +771,7 @@ struct OnboardingView: View {
     var body: some View {
         ZStack {
             // Background layers
-            Constants.Colors.backgroundPrimary.ignoresSafeArea()
+            SkyBackdrop()
             MeshGradientBackground()
             if currentPage == 0 {
                 NetworkNodesBackground()

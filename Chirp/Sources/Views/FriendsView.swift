@@ -14,6 +14,7 @@ struct FriendsView: View {
     @State private var unresolvedPeerName: String?
 
     private let amber = Constants.Colors.amber
+    private let amberInk = Constants.Colors.amberInk
     private let green = Constants.Colors.electricGreen
 
     private var friendCount: Int { appState.friendsManager.friends.count }
@@ -22,7 +23,7 @@ struct FriendsView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color.black.ignoresSafeArea()
+            SkyBackdrop()
 
             if appState.friendsManager.friends.isEmpty {
                 emptyState
@@ -37,7 +38,7 @@ struct FriendsView: View {
                 } label: {
                     Label(String(localized: "friends.addFriend"), systemImage: "person.badge.plus")
                         .font(.system(.subheadline, weight: .bold))
-                        .foregroundStyle(.black)
+                        .foregroundStyle(Constants.Colors.onAmber)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 14)
                         .background(
@@ -147,7 +148,7 @@ struct FriendsView: View {
             HStack(alignment: .center) {
                 Text(String(localized: "friends.title"))
                     .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Constants.Colors.textPrimary)
 
                 Spacer()
 
@@ -156,7 +157,7 @@ struct FriendsView: View {
                     pillBadge(
                         icon: "person.2.fill",
                         text: "\(friendCount)",
-                        color: amber
+                        color: amberInk
                     )
 
                     // Online count pill
@@ -212,7 +213,7 @@ struct FriendsView: View {
             VStack(spacing: 12) {
                 Text(String(localized: "friends.emptyState.title"))
                     .font(.system(.title2, design: .rounded, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Constants.Colors.textPrimary)
 
                 Text(String(localized: "friends.emptyState.subtitle"))
                     .font(.system(.subheadline))
@@ -225,12 +226,12 @@ struct FriendsView: View {
             HStack(spacing: 10) {
                 Image(systemName: "qrcode")
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(amber.opacity(0.6))
+                    .foregroundStyle(amberInk.opacity(0.6))
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(String(localized: "friends.emptyState.shareCodeTitle"))
                         .font(.system(.caption, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(Constants.Colors.textSecondary)
                     Text(String(localized: "friends.emptyState.shareCodeSubtitle"))
                         .font(.system(.caption2))
                         .foregroundStyle(.secondary)
@@ -241,10 +242,10 @@ struct FriendsView: View {
             .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 14)
-                    .fill(Color.white.opacity(0.04))
+                    .fill(Constants.Colors.ink.opacity(0.04))
                     .overlay(
                         RoundedRectangle(cornerRadius: 14)
-                            .stroke(amber.opacity(0.1), lineWidth: 0.5)
+                            .stroke(amberInk.opacity(0.1), lineWidth: 0.5)
                     )
             )
             .padding(.horizontal, 32)
@@ -254,7 +255,7 @@ struct FriendsView: View {
             } label: {
                 Label(String(localized: "friends.addFriend"), systemImage: "person.badge.plus")
                     .font(.system(.body, weight: .bold))
-                    .foregroundStyle(.black)
+                    .foregroundStyle(Constants.Colors.onAmber)
                     .padding(.horizontal, 32)
                     .padding(.vertical, 15)
                     .background(
@@ -329,7 +330,7 @@ struct FriendsView: View {
 
                                 if friend.id != offlineFriends.last?.id {
                                     Divider()
-                                        .background(Color.white.opacity(0.06))
+                                        .background(Constants.Colors.ink.opacity(0.06))
                                         .padding(.leading, 64)
                                 }
                             }
@@ -339,7 +340,7 @@ struct FriendsView: View {
                                 .fill(.ultraThinMaterial.opacity(0.4))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 18)
-                                        .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
+                                        .stroke(Constants.Colors.ink.opacity(0.06), lineWidth: 0.5)
                                 )
                         )
                     }
@@ -393,7 +394,7 @@ struct FriendsView: View {
                         .frame(width: 12, height: 12)
                         .overlay(
                             Circle()
-                                .stroke(Color.black, lineWidth: 2)
+                                .stroke(Constants.Colors.backgroundPrimary, lineWidth: 2)
                         )
                         .offset(x: 20, y: 18)
                 }
@@ -401,7 +402,7 @@ struct FriendsView: View {
                 VStack(spacing: 6) {
                     Text(friend.name)
                         .font(.system(.subheadline, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Constants.Colors.textPrimary)
                         .lineLimit(1)
 
                     // Signal strength bars
@@ -467,7 +468,7 @@ struct FriendsView: View {
         HStack(spacing: 3) {
             ForEach(0..<4, id: \.self) { i in
                 RoundedRectangle(cornerRadius: 1.5)
-                    .fill(i < strength ? green : Color.white.opacity(0.15))
+                    .fill(i < strength ? green : Constants.Colors.ink.opacity(0.15))
                     .frame(width: 4, height: CGFloat(5 + i * 3))
             }
         }
@@ -503,7 +504,7 @@ struct FriendsView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(friend.name)
                         .font(.system(.body, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(Constants.Colors.textSecondary)
 
                     if let lastSeen = friend.lastSeen {
                         HStack(spacing: 4) {
@@ -531,7 +532,7 @@ struct FriendsView: View {
                 // Chevron hint
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.15))
+                    .foregroundStyle(Constants.Colors.ink.opacity(0.15))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 13)
@@ -598,6 +599,7 @@ private struct FriendDetailSheet: View {
     @State private var copiedID = false
 
     private let amber = Constants.Colors.amber
+    private let amberInk = Constants.Colors.amberInk
     private let green = Constants.Colors.electricGreen
 
     var body: some View {
@@ -626,7 +628,7 @@ private struct FriendDetailSheet: View {
                     Circle()
                         .stroke(
                             LinearGradient(
-                                colors: [amber, amber.opacity(0.5)],
+                                colors: [amberInk, amberInk.opacity(0.5)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             ),
@@ -661,7 +663,7 @@ private struct FriendDetailSheet: View {
                 VStack(spacing: 8) {
                     Text(friend.name)
                         .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Constants.Colors.textPrimary)
 
                     // Fingerprint-style peer ID with copy
                     Button {
@@ -685,7 +687,7 @@ private struct FriendDetailSheet: View {
                         .padding(.vertical, 5)
                         .background(
                             Capsule()
-                                .fill(Color.white.opacity(0.06))
+                                .fill(Constants.Colors.ink.opacity(0.06))
                         )
                     }
                     .buttonStyle(.plain)
@@ -733,11 +735,11 @@ private struct FriendDetailSheet: View {
                                     .shadow(color: amber.opacity(0.3), radius: 8, y: 2)
                                 Image(systemName: "waveform")
                                     .font(.system(size: 22, weight: .semibold))
-                                    .foregroundStyle(.black)
+                                    .foregroundStyle(Constants.Colors.onAmber)
                             }
                             Text(String(localized: "friends.detail.talk"))
                                 .font(.system(.caption, weight: .bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Constants.Colors.textPrimary)
                         }
                     }
 
@@ -749,15 +751,15 @@ private struct FriendDetailSheet: View {
                         VStack(spacing: 8) {
                             ZStack {
                                 Circle()
-                                    .fill(Color.white.opacity(0.1))
+                                    .fill(Constants.Colors.ink.opacity(0.1))
                                     .frame(width: 56, height: 56)
                                 Image(systemName: "text.bubble")
                                     .font(.system(size: 22, weight: .semibold))
-                                    .foregroundStyle(.white.opacity(0.7))
+                                    .foregroundStyle(Constants.Colors.textSecondary)
                             }
                             Text(String(localized: "friends.detail.message"))
                                 .font(.system(.caption, weight: .bold))
-                                .foregroundStyle(.white.opacity(0.5))
+                                .foregroundStyle(Constants.Colors.textTertiary)
                         }
                     }
                 }
@@ -818,7 +820,7 @@ private struct FriendDetailSheet: View {
         HStack(spacing: 3) {
             ForEach(0..<4, id: \.self) { i in
                 RoundedRectangle(cornerRadius: 1.5)
-                    .fill(i < strength ? green : Color.white.opacity(0.15))
+                    .fill(i < strength ? green : Constants.Colors.ink.opacity(0.15))
                     .frame(width: 4, height: CGFloat(5 + i * 3))
             }
         }

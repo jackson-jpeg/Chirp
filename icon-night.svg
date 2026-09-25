@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- ChirpChirps app icon, NIGHT variant — the "Sky classic" scene after dark,
+       shown when the home screen is in Dark Mode. Same birds and composition as
+       icon.svg; navy sky, dimmed clouds, stars, and a pale wire so it still reads.
+       Render with scripts/brand/render-icons.mjs. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a1024"/>
+      <stop offset="1" stop-color="#23345e"/>
+    </linearGradient>
+
+    <g id="bird">
+      <!-- tail -->
+      <path d="M-128 30 L-196 4 L-176 38 L-204 62 L-140 70 Z" fill="#ef961c"/>
+      <!-- legs -->
+      <g stroke="#ef961c" stroke-width="10" stroke-linecap="round" fill="none">
+        <path d="M-22 140 L-26 178"/>
+        <path d="M26 140 L30 178"/>
+      </g>
+      <!-- crest -->
+      <path d="M-10 -146 C-4 -180 16 -188 28 -176 C14 -170 10 -158 12 -144 Z" fill="#ef961c"/>
+      <!-- body -->
+      <circle r="150" fill="#ffc93a"/>
+      <!-- wing -->
+      <path d="M-122 -6 C-70 -44 6 -26 30 30 C8 86 -66 104 -124 70 C-150 48 -148 12 -122 -6 Z" fill="#ef961c"/>
+      <!-- eye -->
+      <circle cx="64" cy="-46" r="23" fill="#1f2d52"/>
+      <circle cx="72" cy="-54" r="7" fill="#ffffff"/>
+    </g>
+
+    <g id="cloud">
+      <g fill="#1a2748" transform="translate(0 12)">
+        <circle cx="0" cy="0" r="60"/><circle cx="72" cy="-34" r="82"/><circle cx="150" cy="0" r="60"/>
+        <rect x="0" y="0" width="150" height="60"/>
+      </g>
+      <g fill="#34466f">
+        <circle cx="0" cy="0" r="60"/><circle cx="72" cy="-34" r="82"/><circle cx="150" cy="0" r="60"/>
+        <rect x="0" y="0" width="150" height="60"/>
+      </g>
+    </g>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#sky)"/>
+
+  <g fill="#f6e7c1">
+    <circle cx="170" cy="120" r="6" opacity="0.6"/>
+    <circle cx="520" cy="90" r="5" opacity="0.5"/>
+    <circle cx="930" cy="380" r="6" opacity="0.55"/>
+    <circle cx="420" cy="300" r="4" opacity="0.4"/>
+    <circle cx="80" cy="470" r="4" opacity="0.35"/>
+    <circle cx="880" cy="70" r="4" opacity="0.4"/>
+  </g>
+
+  <use href="#cloud" xlink:href="#cloud" transform="translate(90 200) scale(0.9)"/>
+  <use href="#cloud" xlink:href="#cloud" transform="translate(600 150) scale(1.15)"/>
+  <use href="#cloud" xlink:href="#cloud" transform="translate(760 900) scale(0.8)"/>
+  <use href="#cloud" xlink:href="#cloud" transform="translate(40 880) scale(0.7)"/>
+
+  <g transform="translate(0 50)">
+    <!-- the wire, carrying a chirp between the two birds -->
+    <path d="M-20 626 L436 626 L452 606 L468 652 L484 580 L500 676 L512 560 L524 676 L540 580 L556 652 L572 606 L588 626 L1044 626"
+          stroke="#cfe8f7" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" fill="none"/>
+
+    <!-- left bird, beak open -->
+    <g transform="translate(318 464) scale(0.9)">
+      <use href="#bird" xlink:href="#bird"/>
+      <path d="M134 -48 L190 -38 L136 -24 Z" fill="#ff7a2e"/>
+      <path d="M136 -16 L180 -4 L132 0 Z" fill="#ff7a2e"/>
+    </g>
+
+    <!-- right bird, mirrored, beak closed -->
+    <g transform="translate(706 464) scale(-0.9 0.9)">
+      <use href="#bird" xlink:href="#bird"/>
+      <path d="M134 -44 L186 -26 L134 -8 Z" fill="#ff7a2e"/>
+    </g>
+  </g>
+</svg>

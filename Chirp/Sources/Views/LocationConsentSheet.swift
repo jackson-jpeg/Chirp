@@ -36,13 +36,14 @@ struct LocationConsentSheet: View {
     @State private var showAbout = false
 
     private let amber = Constants.Colors.amber
+    private let amberInk = Constants.Colors.amberInk
 
     var body: some View {
         VStack(spacing: 0) {
             VStack(spacing: 16) {
                 Image(systemName: "mappin.and.ellipse")
                     .font(.system(size: 38, weight: .semibold))
-                    .foregroundStyle(amber)
+                    .foregroundStyle(amberInk)
                     .padding(.top, 32)
 
                 Text(String(localized: "location.consent.title"))
@@ -64,7 +65,7 @@ struct LocationConsentSheet: View {
             } label: {
                 Text(String(localized: "location.about.link"))
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(amber)
+                    .foregroundStyle(amberInk)
                     .underline()
             }
             .accessibilityIdentifier(AccessibilityID.locationAboutLink)
@@ -81,7 +82,7 @@ struct LocationConsentSheet: View {
                 } label: {
                     Text(String(localized: "location.consent.share"))
                         .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(.black)
+                        .foregroundStyle(Constants.Colors.onAmber)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 15)
                         .background(
@@ -113,14 +114,7 @@ struct LocationConsentSheet: View {
         }
         .padding(.horizontal, Constants.Layout.horizontalPadding)
         .padding(.bottom, 28)
-        .background(
-            LinearGradient(
-                colors: [Constants.Colors.backgroundPrimary, Constants.Colors.backgroundSecondary],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-        )
+        .background(SkyBackdrop())
         .presentationDetents([.medium, .large])
         // Swipe-to-dismiss stays enabled on purpose: it is one of the ways to
         // say no, and `onDisappear` below turns it into one.
@@ -158,6 +152,7 @@ struct AboutLocationSharingView: View {
     @Environment(\.dismiss) private var dismiss
 
     private let amber = Constants.Colors.amber
+    private let amberInk = Constants.Colors.amberInk
 
     var body: some View {
         NavigationStack {
@@ -192,20 +187,13 @@ struct AboutLocationSharingView: View {
                 }
                 .padding(Constants.Layout.cardPadding)
             }
-            .background(
-                LinearGradient(
-                    colors: [Constants.Colors.backgroundPrimary, Constants.Colors.backgroundSecondary],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
-            )
+            .background(SkyBackdrop())
             .navigationTitle(String(localized: "location.about.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(String(localized: "common.done")) { dismiss() }
-                        .foregroundStyle(amber)
+                        .foregroundStyle(amberInk)
                 }
             }
         }
@@ -217,7 +205,7 @@ struct AboutLocationSharingView: View {
         HStack(alignment: .top, spacing: 14) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(amber)
+                .foregroundStyle(amberInk)
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 4) {

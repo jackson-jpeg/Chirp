@@ -11,12 +11,13 @@ struct AddFriendView: View {
     @State private var radarPhase: CGFloat = 0
 
     private let amber = Constants.Colors.amber
+    private let amberInk = Constants.Colors.amberInk
     private let green = Constants.Colors.electricGreen
 
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.black.ignoresSafeArea()
+                SkyBackdrop()
 
                 ScrollView {
                     VStack(spacing: 28) {
@@ -35,7 +36,7 @@ struct AddFriendView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(String(localized: "common.done")) { dismiss() }
                         .font(.system(.body, weight: .semibold))
-                        .foregroundStyle(amber)
+                        .foregroundStyle(amberInk)
                 }
             }
             .task {
@@ -65,7 +66,7 @@ struct AddFriendView: View {
                 } else {
                     Text(formattedFingerprint(peerFingerprint))
                         .font(.system(size: 20, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Constants.Colors.textPrimary)
                         .tracking(2)
                         .textSelection(.enabled)
                         .padding(.top, 4)
@@ -88,7 +89,7 @@ struct AddFriendView: View {
                             systemImage: showCopied ? "checkmark.circle.fill" : "doc.on.doc"
                         )
                         .font(.system(.caption, weight: .semibold))
-                        .foregroundStyle(showCopied ? green : amber)
+                        .foregroundStyle(showCopied ? green : amberInk)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
                         .background(
@@ -109,7 +110,7 @@ struct AddFriendView: View {
                         ) {
                             Label(String(localized: "addFriend.yourCode.share"), systemImage: "square.and.arrow.up")
                                 .font(.system(.caption, weight: .semibold))
-                                .foregroundStyle(amber)
+                                .foregroundStyle(amberInk)
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 8)
                                 .background(
@@ -125,10 +126,10 @@ struct AddFriendView: View {
             .frame(maxWidth: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(Color.white.opacity(0.04))
+                    .fill(Constants.Colors.ink.opacity(0.04))
                     .overlay(
                         RoundedRectangle(cornerRadius: 20)
-                            .stroke(amber.opacity(0.15), lineWidth: 1)
+                            .stroke(amberInk.opacity(0.15), lineWidth: 1)
                     )
                     .shadow(color: amber.opacity(0.12), radius: 24, y: 2)
             )
@@ -154,30 +155,30 @@ struct AddFriendView: View {
                 TextField(String(localized: "addFriend.add.codePlaceholder"), text: $friendCode)
                     .textFieldStyle(.plain)
                     .font(.system(.body, design: .monospaced, weight: .medium))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Constants.Colors.textPrimary)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
                     .padding(14)
                     .background(
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.white.opacity(0.06))
+                            .fill(Constants.Colors.ink.opacity(0.06))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                    .stroke(Constants.Colors.ink.opacity(0.08), lineWidth: 1)
                             )
                     )
 
                 TextField(String(localized: "addFriend.add.namePlaceholder"), text: $friendName)
                     .textFieldStyle(.plain)
                     .font(.system(.body, weight: .medium))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Constants.Colors.textPrimary)
                     .padding(14)
                     .background(
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.white.opacity(0.06))
+                            .fill(Constants.Colors.ink.opacity(0.06))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                    .stroke(Constants.Colors.ink.opacity(0.08), lineWidth: 1)
                             )
                     )
 
@@ -186,12 +187,12 @@ struct AddFriendView: View {
                 } label: {
                     Text(String(localized: "addFriend.add.button"))
                         .font(.system(.body, weight: .bold))
-                        .foregroundStyle(canAdd ? .black : .white.opacity(0.3))
+                        .foregroundStyle(canAdd ? Constants.Colors.onAmber : Constants.Colors.textTertiary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(
                             RoundedRectangle(cornerRadius: 14)
-                                .fill(canAdd ? amber : Color.white.opacity(0.08))
+                                .fill(canAdd ? amber : Constants.Colors.ink.opacity(0.08))
                         )
                 }
                 .disabled(!canAdd)
@@ -256,10 +257,10 @@ struct AddFriendView: View {
                 .padding(.vertical, 28)
                 .background(
                     RoundedRectangle(cornerRadius: 14)
-                        .fill(Color.white.opacity(0.03))
+                        .fill(Constants.Colors.ink.opacity(0.03))
                         .overlay(
                             RoundedRectangle(cornerRadius: 14)
-                                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                                .stroke(Constants.Colors.ink.opacity(0.05), lineWidth: 1)
                         )
                 )
             } else {
@@ -280,7 +281,7 @@ struct AddFriendView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(peer.name)
                                     .font(.system(.body, weight: .medium))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(Constants.Colors.textPrimary)
 
                                 Text(String(localized: "addFriend.nearby.inRange"))
                                     .font(.system(.caption))
@@ -297,7 +298,7 @@ struct AddFriendView: View {
                             } label: {
                                 Text(String(localized: "addFriend.nearby.add"))
                                     .font(.system(.caption, weight: .bold))
-                                    .foregroundStyle(.black)
+                                    .foregroundStyle(Constants.Colors.onAmber)
                                     .padding(.horizontal, 14)
                                     .padding(.vertical, 7)
                                     .background(
@@ -310,17 +311,17 @@ struct AddFriendView: View {
 
                         if peer.id != nearbyPeers.last?.id {
                             Divider()
-                                .background(Color.white.opacity(0.06))
+                                .background(Constants.Colors.ink.opacity(0.06))
                                 .padding(.leading, 68)
                         }
                     }
                 }
                 .background(
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.white.opacity(0.04))
+                        .fill(Constants.Colors.ink.opacity(0.04))
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                                .stroke(Constants.Colors.ink.opacity(0.06), lineWidth: 1)
                         )
                 )
             }

@@ -146,7 +146,7 @@ struct TranscriptOverlayView: View {
             HStack(spacing: 6) {
                 Text(entry.speakerName)
                     .font(.system(.caption2, weight: .bold))
-                    .foregroundStyle(Constants.Colors.amber)
+                    .foregroundStyle(Constants.Colors.amberInk)
 
                 Text(entry.timestamp, style: .time)
                     .font(Constants.Typography.monoSmall)
@@ -188,7 +188,7 @@ struct TranscriptOverlayView: View {
                         colors: [
                             (transcription.isTranscribing
                                 ? Constants.Colors.electricGreen
-                                : Color.white
+                                : Constants.Colors.ink
                             ).opacity(0.2),
                             Constants.Colors.surfaceBorder
                         ],

@@ -49,7 +49,7 @@ struct CircularWaveformView: View {
                     tickPath.addLine(to: CGPoint(x: tOuterX, y: tOuterY))
                     context.stroke(
                         tickPath,
-                        with: .color(Constants.Colors.amber.opacity(0.5)),
+                        with: .color(Constants.Colors.amberInk.opacity(0.5)),
                         style: StrokeStyle(lineWidth: 2, lineCap: .round)
                     )
                 }

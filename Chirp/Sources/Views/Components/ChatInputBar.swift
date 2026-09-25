@@ -85,7 +85,7 @@ struct ChatInputBar: View {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .strokeBorder(
                             isTextFieldFocused
-                                ? Constants.Colors.amber.opacity(0.5)
+                                ? Constants.Colors.amberInk.opacity(0.5)
                                 : Constants.Colors.surfaceBorder,
                             lineWidth: isTextFieldFocused ? 1.5 : Constants.Layout.glassBorderWidth
                         )
@@ -208,7 +208,7 @@ struct ChatInputBar: View {
                 } label: {
                     Image(systemName: "arrow.up")
                         .font(.system(size: 15, weight: .heavy))
-                        .foregroundStyle(Constants.Colors.slate900)
+                        .foregroundStyle(Constants.Colors.onAmber)
                         .frame(width: 32, height: 32)
                         .background(
                             Circle()

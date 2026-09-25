@@ -112,7 +112,7 @@ struct PeerActionSheet: View {
                             icon: "flag.fill",
                             title: String(localized: "moderation.reportUser"),
                             subtitle: String(localized: "moderation.reportUser.detail"),
-                            tint: Constants.Colors.amber
+                            tint: Constants.Colors.amberInk
                         )
                     }
                     .accessibilityIdentifier(AccessibilityID.peerSheetReportButton)
@@ -123,7 +123,7 @@ struct PeerActionSheet: View {
                 Spacer()
             }
             .frame(maxWidth: .infinity)
-            .background(Constants.Colors.backgroundPrimary.ignoresSafeArea())
+            .background(SkyBackdrop())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

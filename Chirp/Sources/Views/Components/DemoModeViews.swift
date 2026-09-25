@@ -12,7 +12,7 @@ struct DemoBanner: View {
             Text(String(localized: "demo.banner.badge"))
                 .font(.system(size: 11, weight: .black, design: .rounded))
                 .tracking(1.2)
-                .foregroundStyle(.black)
+                .foregroundStyle(Constants.Colors.onAmber)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
                 .background(Capsule().fill(Constants.Colors.amber))
@@ -32,10 +32,10 @@ struct DemoBanner: View {
             } label: {
                 Text(String(localized: "demo.banner.exit"))
                     .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(Constants.Colors.amber)
+                    .foregroundStyle(Constants.Colors.amberInk)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 5)
-                    .background(Capsule().stroke(Constants.Colors.amber.opacity(0.6), lineWidth: 1))
+                    .background(Capsule().stroke(Constants.Colors.amberInk.opacity(0.6), lineWidth: 1))
             }
             .accessibilityIdentifier(AccessibilityID.demoExitButton)
         }
@@ -45,7 +45,7 @@ struct DemoBanner: View {
         .background(
             Constants.Colors.slate900
                 .overlay(alignment: .bottom) {
-                    Rectangle().fill(Constants.Colors.amber.opacity(0.35)).frame(height: 1)
+                    Rectangle().fill(Constants.Colors.amberInk.opacity(0.35)).frame(height: 1)
                 }
                 .ignoresSafeArea(edges: .top)
         )
@@ -94,7 +94,7 @@ struct TryDemoModeButton: View {
                     Text(String(localized: "demo.try.button"))
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                 }
-                .foregroundStyle(.black)
+                .foregroundStyle(Constants.Colors.onAmber)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 11)
                 .background(Capsule().fill(Constants.Colors.amber))
@@ -158,7 +158,7 @@ struct PermissionNotice: View {
         HStack(alignment: .center, spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Constants.Colors.amber)
+                .foregroundStyle(Constants.Colors.amberInk)
                 .frame(width: 22)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -178,7 +178,7 @@ struct PermissionNotice: View {
             } label: {
                 Text(String(localized: "permission.openSettings"))
                     .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(.black)
+                    .foregroundStyle(Constants.Colors.onAmber)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                     .background(Capsule().fill(Constants.Colors.amber))
@@ -191,7 +191,7 @@ struct PermissionNotice: View {
                 .fill(Constants.Colors.slate900.opacity(0.94))
                 .overlay(
                     RoundedRectangle(cornerRadius: Constants.Layout.cornerRadius)
-                        .stroke(Constants.Colors.amber.opacity(0.35), lineWidth: 0.75)
+                        .stroke(Constants.Colors.amberInk.opacity(0.35), lineWidth: 0.75)
                 )
         )
         .accessibilityElement(children: .contain)

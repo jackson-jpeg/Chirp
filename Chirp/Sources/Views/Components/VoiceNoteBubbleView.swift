@@ -30,7 +30,7 @@ struct VoiceNoteBubbleView: View {
             } label: {
                 Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
                     .font(.system(size: 32, weight: .medium))
-                    .foregroundStyle(isFromSelf ? Constants.Colors.amber : Constants.Colors.blue500)
+                    .foregroundStyle(isFromSelf ? Constants.Colors.amberInk : Constants.Colors.blue500)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(isPlaying ? "Pause voice note" : "Play voice note")
@@ -73,7 +73,7 @@ struct VoiceNoteBubbleView: View {
 
                     RoundedRectangle(cornerRadius: 1)
                         .fill(isPlayed
-                              ? (isFromSelf ? Constants.Colors.amber : Constants.Colors.blue500)
+                              ? (isFromSelf ? Constants.Colors.amberInk : Constants.Colors.blue500)
                               : Constants.Colors.textTertiary.opacity(0.4))
                         .frame(width: 2, height: geometry.size.height * bars[index])
                 }

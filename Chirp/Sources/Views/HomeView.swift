@@ -12,7 +12,7 @@ private struct CompactHeader: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(callsign)
                     .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Constants.Colors.textPrimary)
 
                 HStack(spacing: 6) {
                     Circle()
@@ -194,7 +194,7 @@ private struct ChannelCard: View {
                 HStack(spacing: 6) {
                     Text(channel.name)
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Constants.Colors.textPrimary)
                         .lineLimit(1)
 
                     if isReceiving {
@@ -296,7 +296,7 @@ private struct ChannelCard: View {
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(
-                    isActive ? Constants.Colors.blue500.opacity(0.3) : Color.white.opacity(0.06),
+                    isActive ? Constants.Colors.blue500.opacity(0.3) : Constants.Colors.ink.opacity(0.06),
                     lineWidth: 1
                 )
         )
@@ -360,7 +360,7 @@ private struct ChannelEmptyState: View {
                 VStack(spacing: 8) {
                     Text(String(localized: "home.emptyState.title"))
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Constants.Colors.textPrimary)
 
                     Text(String(localized: "home.emptyState.subtitle"))
                         .font(.system(size: 14, weight: .regular))
@@ -370,7 +370,7 @@ private struct ChannelEmptyState: View {
 
                     Text(String(localized: "home.emptyState.tagline"))
                         .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(Constants.Colors.amber.opacity(0.7))
+                        .foregroundStyle(Constants.Colors.amberInk.opacity(0.7))
                         .padding(.top, 2)
                 }
 
@@ -445,7 +445,7 @@ private struct ChannelEmptyState: View {
         HStack(spacing: 12) {
             Image(systemName: "antenna.radiowaves.left.and.right")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(meshReady ? Constants.Colors.slate400 : Constants.Colors.amber.opacity(0.7))
+                .foregroundStyle(meshReady ? Constants.Colors.slate400 : Constants.Colors.amberInk.opacity(0.7))
                 .scaleEffect(meshReady ? 1.0 : meshSearchPulse)
                 .frame(width: 20)
 
@@ -456,14 +456,14 @@ private struct ChannelEmptyState: View {
             if !meshReady {
                 Text(String(localized: "home.readiness.searching"))
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Constants.Colors.amber.opacity(0.5))
+                    .foregroundStyle(Constants.Colors.amberInk.opacity(0.5))
             }
 
             Spacer()
 
             Image(systemName: meshReady ? "checkmark.circle.fill" : "xmark.circle.fill")
                 .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(meshReady ? Constants.Colors.electricGreen : Constants.Colors.amber.opacity(0.6))
+                .foregroundStyle(meshReady ? Constants.Colors.electricGreen : Constants.Colors.amberInk.opacity(0.6))
                 .scaleEffect(meshReady ? 1.0 : meshSearchPulse)
         }
         .onAppear {
@@ -535,7 +535,7 @@ private struct AmbientMeshBackground: View {
                             path.addLine(to: nodes[j])
                             context.stroke(
                                 path,
-                                with: .color(Constants.Colors.amber.opacity(lineOpacity * fade)),
+                                with: .color(Constants.Colors.amberInk.opacity(lineOpacity * fade)),
                                 lineWidth: 0.5
                             )
                         }
@@ -567,7 +567,7 @@ private struct AmbientMeshBackground: View {
                     )
                     context.fill(
                         Circle().path(in: dotRect),
-                        with: .color(Constants.Colors.amber.opacity(dotOpacity))
+                        with: .color(Constants.Colors.amberInk.opacity(dotOpacity))
                     )
                 }
             }
@@ -618,7 +618,7 @@ private struct ChannelInfoCard: View {
 
                     Text(channel?.name ?? String(localized: "home.channel.noChannel"))
                         .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Constants.Colors.textPrimary)
                         .lineLimit(1)
 
                     Image(systemName: "chevron.down")
@@ -637,7 +637,7 @@ private struct ChannelInfoCard: View {
                     .fill(Constants.Colors.slate800.opacity(0.6))
                     .overlay(
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
+                            .strokeBorder(Constants.Colors.ink.opacity(0.06), lineWidth: 1)
                     )
             )
         }
@@ -672,7 +672,7 @@ private struct MeshSignalRing: View {
     private var ringColor: Color {
         if peerCount == 0 { return Constants.Colors.slate700 }
         if peerCount >= 3 { return Constants.Colors.electricGreen }
-        return Constants.Colors.amber
+        return Constants.Colors.amberInk
     }
 
     var body: some View {
@@ -775,7 +775,7 @@ private struct PeerBubble: View {
     private var borderColor: Color {
         switch signalStrength {
         case 3: return Constants.Colors.electricGreen
-        case 2: return Constants.Colors.amber
+        case 2: return Constants.Colors.amberInk
         default: return Constants.Colors.slate600
         }
     }
@@ -830,7 +830,7 @@ private struct MeshStatusStrip: View {
         if peerCount == 0 { return Constants.Colors.slate600 }
         guard let stats = meshStats else { return Constants.Colors.slate500 }
         if stats.maxHops >= 3 { return Constants.Colors.electricGreen }
-        if stats.maxHops >= 1 { return Constants.Colors.amber }
+        if stats.maxHops >= 1 { return Constants.Colors.amberInk }
         return Constants.Colors.electricGreen
     }
 
@@ -894,7 +894,7 @@ private struct MeshStatusStrip: View {
                 .fill(Constants.Colors.slate800.opacity(0.4))
                 .overlay(alignment: .top) {
                     Rectangle()
-                        .fill(Color.white.opacity(0.04))
+                        .fill(Constants.Colors.ink.opacity(0.04))
                         .frame(height: 0.5)
                 }
         )
@@ -933,11 +933,11 @@ private struct BottomNavBar: View {
                     VStack(spacing: 4) {
                         Image(systemName: tab.icon)
                             .font(.system(size: 18, weight: selectedTab == tab ? .semibold : .regular))
-                            .foregroundStyle(selectedTab == tab ? Constants.Colors.amber : Constants.Colors.slate500)
+                            .foregroundStyle(selectedTab == tab ? Constants.Colors.amberInk : Constants.Colors.slate500)
 
                         Text(tab.rawValue)
                             .font(.system(size: 10, weight: selectedTab == tab ? .semibold : .medium))
-                            .foregroundStyle(selectedTab == tab ? Constants.Colors.amber : Constants.Colors.slate500)
+                            .foregroundStyle(selectedTab == tab ? Constants.Colors.amberInk : Constants.Colors.slate500)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
@@ -978,11 +978,11 @@ private struct ChannelSelectorPill: View {
             HStack(spacing: 8) {
                 Image(systemName: "waveform")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Constants.Colors.amber)
+                    .foregroundStyle(Constants.Colors.amberInk)
 
                 Text(activeChannel?.name ?? "No Channel")
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Constants.Colors.textPrimary)
                     .lineLimit(1)
 
                 Image(systemName: "chevron.down")
@@ -1041,9 +1041,8 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Dark blue-black background
-                Constants.Colors.slate900
-                    .ignoresSafeArea()
+                // The sky: pale by day, navy by night
+                SkyBackdrop()
 
                 VStack(spacing: 0) {
                     // Compact header with callsign + mesh status
@@ -1218,7 +1217,7 @@ struct HomeView: View {
                 } label: {
                     Image(systemName: "arrow.down.circle.fill")
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(Constants.Colors.amber)
+                        .foregroundStyle(Constants.Colors.amberInk)
                         .padding(10)
                         .background(Circle().fill(Constants.Colors.slate800.opacity(0.85)))
                 }
@@ -1410,7 +1409,7 @@ struct HomeView: View {
                 } label: {
                     Text(String(localized: "map.action.checkIn"))
                         .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(.black)
+                        .foregroundStyle(Constants.Colors.onAmber)
                         .padding(.horizontal, 18)
                         .padding(.vertical, 10)
                         .background(Capsule().fill(Constants.Colors.amber))
@@ -1682,7 +1681,7 @@ struct HomeView: View {
                             .tint(Constants.Colors.amber)
                         Text("Scanning mesh...")
                             .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundStyle(Constants.Colors.amber.opacity(0.8))
+                            .foregroundStyle(Constants.Colors.amberInk.opacity(0.8))
                     }
                     .padding(.top, 8)
                     .transition(.opacity)

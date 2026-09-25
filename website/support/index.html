@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support — ChirpChirps</title>
+    <meta name="description" content="Help, FAQs, and contact for ChirpChirps — the off-grid mesh walkie-talkie for iPhone.">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#b9e2f9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#070d1f" media="(prefers-color-scheme: dark)">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/brand.css?v=5">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+</head>
+<body>
+
+<nav class="nav">
+    <div class="nav-in">
+        <a href="/" class="nav-brand"><img class="mark" src="/img/icon-512.png" width="26" height="26" alt="">ChirpChirps</a>
+        <div class="nav-links">
+            <a href="/privacy">Privacy</a>
+            <a href="/support">Support</a>
+            <a href="/terms">Terms</a>
+            <a href="/credits">Credits</a>
+        </div>
+    </div>
+</nav>
+
+<main class="prose">
+        <h1>Support</h1>
+        <p class="subtitle">We're here to help.</p>
+        <div class="card">
+        <h3>Email us</h3>
+        <p>Bug reports, feature requests, or questions:</p>
+        <p><a href="mailto:support@chirpchirps.com">support@chirpchirps.com</a></p>
+        <p>We typically respond within 24 hours.</p>
+        </div>
+        <h2>How does ChirpChirps work without internet?</h2>
+        <p>ChirpChirps uses Bluetooth and peer-to-peer Wi-Fi to create a mesh network between nearby iPhones. Your messages hop directly from phone to phone — no cell towers, Wi-Fi routers, or internet connection needed.</p>
+        <h2>What is the range?</h2>
+        <p>Device-to-device range is approximately 30-100 meters depending on environment. With mesh relay, messages automatically hop through intermediate devices. Five phones can cover roughly a kilometer.</p>
+        <h2>Is it really encrypted?</h2>
+        <p>Yes. All channel communication is encrypted with AES-256-GCM. Each device has a unique Ed25519 identity key stored in the iOS Keychain. There are no servers that could be compromised — your messages exist only on the devices in the mesh.</p>
+        <h2>Why does it need my location?</h2>
+        <p>Location is used for sharing your position with nearby peers on the map. Location data is shared only with devices in your mesh — never sent to any server.</p>
+        <h2>Why does it need Bluetooth?</h2>
+        <p>Bluetooth is used to discover nearby devices for peer-to-peer communication and to provide awareness of devices in your environment.</p>
+        <h2>Does it work in airplane mode?</h2>
+        <p>Partially. You need Bluetooth and Wi-Fi radios active, which can be toggled on separately in Control Center even in airplane mode. Cellular signal is never used.</p>
+        <h2>How do I use push-to-talk?</h2>
+        <p>Hold the large PTT button on the home screen to transmit your voice. Release to stop. Everyone on your channel within range hears you instantly.</p>
+        <h2>What about battery life?</h2>
+        <p>ChirpChirps uses efficient peer-to-peer radios and Opus audio compression to minimize battery impact. The app is built for active, foreground use — when you leave the app, mesh activity pauses.</p>
+        <h2>How do I report a bug?</h2>
+        <p>Email <a href="mailto:support@chirpchirps.com">support@chirpchirps.com</a> with a description of the issue, your iPhone model, and iOS version.</p>
+</main>
+
+<footer class="foot">
+    <div class="foot-in">
+        <div class="foot-links">
+            <a href="/">Home</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/support">Support</a>
+            <a href="/terms">Terms</a>
+            <a href="/credits">Credits</a>
+        </div>
+        <small>&copy; 2026 ChirpChirps</small>
+    </div>
+</footer>
+
+</body>
+</html>

@@ -210,7 +210,7 @@ struct ChannelView: View {
                                 }
                                 .foregroundStyle(
                                     channelMode == mode
-                                        ? Constants.Colors.slate900
+                                        ? Constants.Colors.onAmber
                                         : Constants.Colors.textTertiary
                                 )
                                 .frame(maxWidth: .infinity)
@@ -454,9 +454,9 @@ struct ChannelView: View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
             let time = timeline.date.timeIntervalSinceReferenceDate
             Canvas { context, size in
-                // Base: deep black
+                // Base: the page — pale sky by day, navy by night
                 let baseRect = CGRect(origin: .zero, size: size)
-                context.fill(Path(baseRect), with: .color(.black))
+                context.fill(Path(baseRect), with: .color(Constants.Colors.slate900))
 
                 // State-dependent colors
                 let (color1, color2, color3) = meshColors(for: pttState)
@@ -496,31 +496,33 @@ struct ChannelView: View {
         .accessibilityHidden(true)
     }
 
+    /// Blob tints for the drifting background: sunlit sky tones by day, the
+    /// original deep tones by night. They're drawn at 8–17% opacity.
     private func meshColors(for state: PTTState) -> (Color, Color, Color) {
         switch state {
         case .idle:
             return (
-                Color(hex: 0x1A2040), // navy
-                Color(hex: 0x1E1E2E), // charcoal blue
-                Color(hex: 0x15192D)  // deep navy
+                Color(day: 0x4AACEA, night: 0x1A2040), // sky / navy
+                Color(day: 0x9FD9F7, night: 0x1E1E2E), // pale sky / charcoal blue
+                Color(day: 0xFFC93A, night: 0x15192D)  // sun / deep navy
             )
         case .transmitting:
             return (
-                Color(hex: 0x3A1520), // crimson
-                Color(hex: 0x2E1018), // dark crimson
-                Color(hex: 0x401825)  // deep red
+                Color(day: 0xFF7A2E, night: 0x3A1520), // beak orange / crimson
+                Color(day: 0xFF5A4E, night: 0x2E1018), // coral / dark crimson
+                Color(day: 0xFFC93A, night: 0x401825)  // sun / deep red
             )
         case .receiving:
             return (
-                Color(hex: 0x0F2E1A), // emerald
-                Color(hex: 0x122815), // dark green
-                Color(hex: 0x0A3320)  // deep emerald
+                Color(day: 0x34D27A, night: 0x0F2E1A), // leaf / emerald
+                Color(day: 0x4AACEA, night: 0x122815), // sky / dark green
+                Color(day: 0x9FE3B8, night: 0x0A3320)  // mint / deep emerald
             )
         case .denied:
             return (
-                Color(hex: 0x1A1A1E),
-                Color(hex: 0x151518),
-                Color(hex: 0x121215)
+                Color(day: 0x9AA8BD, night: 0x1A1A1E),
+                Color(day: 0xB8C3D3, night: 0x151518),
+                Color(day: 0xC9D2DE, night: 0x121215)
             )
         }
     }
@@ -555,7 +557,7 @@ struct ChannelView: View {
             RadialGradient(
                 gradient: Gradient(colors: [
                     Color.clear,
-                    Color.black.opacity(0.5)
+                    Constants.Colors.backgroundDeep.opacity(0.5)
                 ]),
                 center: .center,
                 startRadius: 200,
@@ -621,7 +623,7 @@ struct ChannelView: View {
             if channel.accessMode == .locked {
                 Image(systemName: "lock.fill")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(Constants.Colors.amber)
+                    .foregroundStyle(Constants.Colors.amberInk)
                     .padding(5)
                     .background(
                         Circle()
@@ -814,7 +816,7 @@ struct ChannelView: View {
 
                 Text(String(localized: "channel.status.live"))
                     .font(Constants.Typography.badge)
-                    .foregroundStyle(Constants.Colors.textPrimary)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(Capsule().fill(Constants.Colors.hotRed))
@@ -1065,7 +1067,7 @@ struct ChannelView: View {
                 Text(String(localized: "channel.loopback.on"))
                     .font(.system(.caption2, weight: .medium))
             }
-            .foregroundStyle(Constants.Colors.amber.opacity(0.6))
+            .foregroundStyle(Constants.Colors.amberInk.opacity(0.6))
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(

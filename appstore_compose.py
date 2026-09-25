@@ -3,7 +3,7 @@
 App Store screenshot set composer for ChirpChirps.
 
 Extends compose.py's device-frame technique with the brand treatment the
-raw captures deserve: the app's slate-900 dark world, amber accent pulled
+raw captures deserve: the "Sky classic" day sky and sunny accent pulled
 from the app icon, a tuning-dial motif across the set (each shot is one
 "channel" on the dial), condensed poster type. One short headline per
 shot, supplied by the manifest below.
@@ -41,12 +41,16 @@ DEVICE_Y = 760
 FRAME_PATH = os.path.join(ROOT, "assets", "device_frame.png")
 
 # ── Palette: the app's own world ─────────────────────────────────────
-BG_TOP = (15, 23, 42)        # slate900, the app background
-BG_BOTTOM = (8, 12, 24)      # deeper floor of the same blue-black
-CREAM = (242, 236, 220)      # warm headline white, vintage paper
-AMBER = (255, 184, 0)        # Constants.Colors.amber, from the icon
-TICK = (60, 74, 104)         # slate tick marks
-TICK_DIM = (42, 53, 78)
+# "Sky classic", straight from the app icon (icon.svg).
+BG_TOP = (74, 172, 234)      # icon sky, top      #4AACEA
+BG_BOTTOM = (159, 217, 247)  # icon sky, horizon  #9FD9F7
+CREAM = (31, 45, 82)         # headline ink: the icon's navy #1F2D52
+                             # (name kept from the dark-era palette)
+AMBER = (255, 201, 58)       # the birds' sunny yellow #FFC93A — the dial needle
+LABEL = (31, 45, 82)         # channel label; yellow text can't be read on sky
+GLOW = (255, 255, 255)       # a white cloud-glow behind the device
+TICK = (31, 45, 82)          # navy tick marks
+TICK_DIM = (70, 110, 150)
 
 # ── Type ─────────────────────────────────────────────────────────────
 HEADLINE_FONT = os.path.join(ROOT, "fonts", "BarlowCondensed-Bold.ttf")
@@ -144,11 +148,11 @@ def render_canvas(index, band, headline, raw_path,
     """One composition at an arbitrary canvas geometry. Returns RGB image."""
     canvas = vertical_gradient((canvas_w, canvas_h), BG_TOP, BG_BOTTOM).convert("RGBA")
 
-    # Soft amber glow rising from behind the device: warm tube-radio light.
+    # Soft white glow rising from behind the device, like a cloud.
     glow = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
     ImageDraw.Draw(glow).ellipse(
         [canvas_w // 2 - 620, device_y - 160, canvas_w // 2 + 620, device_y + 560],
-        fill=(*AMBER, 22),
+        fill=(*GLOW, 70),
     )
     glow = glow.filter(ImageFilter.GaussianBlur(120))
     canvas = Image.alpha_composite(canvas, glow)
@@ -158,7 +162,7 @@ def render_canvas(index, band, headline, raw_path,
     # 1. Dial strip + channel readout
     draw_dial(draw, index, len(SHOTS), y=150, left=margin, right=canvas_w - margin)
     mono = ImageFont.truetype(MONO_FONT, 42)
-    tracked_text(draw, canvas_w // 2, 236, f"CH 0{index + 1} · {band}", mono, AMBER, tracking=10)
+    tracked_text(draw, canvas_w // 2, 236, f"CH 0{index + 1} · {band}", mono, LABEL, tracking=10)
 
     # 2. Headline, centered in the band between readout and device
     band_top, band_bottom = 340, device_y - 60

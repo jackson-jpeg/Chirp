@@ -52,6 +52,12 @@ struct PTTButtonView: View {
         }
     }
 
+    /// The mic glyph. Idle uses `amberInk` so it holds up on the light
+    /// frosted face by day; the glow behind it stays `primaryColor`.
+    private var iconColor: Color {
+        pttState == .idle ? Constants.Colors.amberInk : primaryColor
+    }
+
     private var iconName: String {
         switch pttState {
         case .idle, .transmitting, .denied:
@@ -182,9 +188,9 @@ struct PTTButtonView: View {
 
                 // --- Main button body: FROSTED LIQUID GLASS ---
                 ZStack {
-                    // Base layer — dark ring for depth
+                    // Base layer — a white disc by day, a dark ring by night
                     Circle()
-                        .fill(Color.black.opacity(0.5))
+                        .fill(Color(day: 0xFFFFFF, night: 0x000000, dayOpacity: 0.85, nightOpacity: 0.5))
                         .frame(width: buttonSize + 4, height: buttonSize + 4)
 
                     // Button face — frosted glass material
@@ -218,7 +224,7 @@ struct PTTButtonView: View {
                         .stroke(
                             RadialGradient(
                                 colors: [
-                                    Color.black.opacity(0.4),
+                                    Color(day: 0x1F2D52, night: 0x000000, dayOpacity: 0.12, nightOpacity: 0.4),
                                     Color.clear
                                 ],
                                 center: .center,
@@ -254,7 +260,7 @@ struct PTTButtonView: View {
                 // --- Icon ---
                 Image(systemName: iconName)
                     .font(.system(size: 44, weight: .heavy))
-                    .foregroundStyle(primaryColor)
+                    .foregroundStyle(iconColor)
                     .shadow(color: primaryColor.opacity(0.8), radius: 12)
                     .shadow(color: primaryColor.opacity(0.3), radius: 4)
             }
@@ -300,7 +306,7 @@ struct PTTButtonView: View {
                 Text("HOLD TO TALK")
                     .font(.system(size: 13, weight: .black, design: .monospaced))
                     .tracking(4)
-                    .foregroundStyle(Constants.Colors.amber.opacity(0.5))
+                    .foregroundStyle(Constants.Colors.amberInk.opacity(0.5))
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
             } else if isTransmitting {
                 Text("LIVE")

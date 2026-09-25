@@ -8,6 +8,7 @@ struct OfflineMapDownloadSheet: View {
     @State private var radiusKm: Double = 10.0
 
     private let amber = Constants.Colors.amber
+    private let amberInk = Constants.Colors.amberInk
     private let green = Constants.Colors.electricGreen
 
     private var offlineMapManager: OfflineMapManager {
@@ -36,21 +37,13 @@ struct OfflineMapDownloadSheet: View {
                 .padding(.horizontal, Constants.Layout.horizontalPadding)
                 .padding(.bottom, 24)
             }
-            .background(
-                LinearGradient(
-                    colors: [Constants.Colors.backgroundPrimary, Constants.Colors.backgroundSecondary],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
-            )
+            .background(SkyBackdrop())
             .navigationTitle("Offline Maps")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
-                        .foregroundStyle(amber)
+                        .foregroundStyle(amberInk)
                 }
             }
         }
@@ -92,7 +85,7 @@ struct OfflineMapDownloadSheet: View {
                     Spacer()
                     Text("\(Int(radiusKm)) km")
                         .font(.system(size: 14, weight: .bold, design: .monospaced))
-                        .foregroundStyle(amber)
+                        .foregroundStyle(amberInk)
                 }
 
                 Slider(value: $radiusKm, in: 1...50, step: 1)
@@ -104,7 +97,7 @@ struct OfflineMapDownloadSheet: View {
             HStack {
                 Image(systemName: "internaldrive")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(amber.opacity(0.7))
+                    .foregroundStyle(amberInk.opacity(0.7))
                 Text("Estimated size:")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Constants.Colors.textSecondary)
@@ -131,7 +124,7 @@ struct OfflineMapDownloadSheet: View {
                 HStack(spacing: 8) {
                     if offlineMapManager.isDownloading {
                         ProgressView()
-                            .tint(.black)
+                            .tint(Constants.Colors.onAmber)
                             .scaleEffect(0.8)
                     } else {
                         Image(systemName: "arrow.down.circle.fill")
@@ -140,7 +133,7 @@ struct OfflineMapDownloadSheet: View {
                     Text(offlineMapManager.isDownloading ? "Downloading..." : "Download Visible Area")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                 }
-                .foregroundStyle(.black)
+                .foregroundStyle(Constants.Colors.onAmber)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .background(

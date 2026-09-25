@@ -47,12 +47,12 @@ struct LocationAttachmentView: View {
             // Header with pin icon
             HStack(spacing: 6) {
                 Image(systemName: "mappin.circle.fill")
-                    .foregroundStyle(Constants.Colors.amber)
+                    .foregroundStyle(Constants.Colors.amberInk)
                     .font(.title3)
                 Text("Shared Location")
                     .font(.caption)
                     .fontWeight(.semibold)
-                    .foregroundStyle(Constants.Colors.amber)
+                    .foregroundStyle(Constants.Colors.amberInk)
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Shared location")
@@ -73,7 +73,7 @@ struct LocationAttachmentView: View {
                     if let bearing = bearingDegrees {
                         Image(systemName: "location.north.fill")
                             .font(.caption)
-                            .foregroundStyle(Constants.Colors.amber)
+                            .foregroundStyle(Constants.Colors.amberInk)
                             .rotationEffect(.degrees(bearing))
                             .accessibilityLabel("Direction: \(Int(bearing)) degrees")
                     }
@@ -101,7 +101,7 @@ struct LocationAttachmentView: View {
                             .font(.caption)
                             .fontWeight(.medium)
                     }
-                    .foregroundStyle(Constants.Colors.amber)
+                    .foregroundStyle(Constants.Colors.amberInk)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .background(Constants.Colors.glassAmber)
@@ -111,7 +111,7 @@ struct LocationAttachmentView: View {
             }
         }
         .padding(12)
-        .background(Constants.Colors.surfaceGlass)
+        .background(Constants.Colors.surfaceHover)
         .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius))
         .overlay(
             RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius)
@@ -133,5 +133,5 @@ struct LocationAttachmentView: View {
         )
     }
     .padding()
-    .background(Color.black)
+    .background(Constants.Colors.backgroundPrimary)
 }

@@ -81,7 +81,7 @@ struct PeerAvatarView: View {
                         .stroke(
                             isActiveSpeaker
                                 ? Constants.Colors.electricGreen.opacity(0.9)
-                                : Color.white.opacity(0.15),
+                                : Constants.Colors.ink.opacity(0.15),
                             lineWidth: isActiveSpeaker ? 3 : 2.5
                         )
                 )

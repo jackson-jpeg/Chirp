@@ -7,6 +7,7 @@ struct SettingsView: View {
     @AppStorage("chirp.speakerOutput") private var speakerOutput = true
     @AppStorage("chirp.hapticFeedback") private var hapticFeedback = true
     @AppStorage("chirp.chirpSounds") private var chirpSounds = true
+    @AppStorage(AppAppearance.storageKey) private var appearance: AppAppearance = .system
 
     @State private var debugExpanded = false
     @State private var howItWorksExpanded = false
@@ -19,6 +20,7 @@ struct SettingsView: View {
     // MARK: - Color shortcuts
 
     private let amber = Constants.Colors.amber
+    private let amberInk = Constants.Colors.amberInk
     private let green = Constants.Colors.electricGreen
     private let red = Constants.Colors.hotRed
 
@@ -30,6 +32,7 @@ struct SettingsView: View {
                 profileHeroCard
                 demoModeSection
                 meshNetworkSection
+                appearanceSection
                 audioHapticsSection
                 privacySecuritySection
                 aboutSection
@@ -60,7 +63,7 @@ struct SettingsView: View {
             .padding(.top, Constants.Layout.smallSpacing)
         }
         .scrollContentBackground(.hidden)
-        .background(Constants.Colors.backgroundPrimary)
+        .background(SkyBackdrop())
         // children: .contain keeps the controls inside this screen
         // addressable: a bare identifier on a container is handed down
         // to every element in it, overwriting theirs.
@@ -83,7 +86,7 @@ struct SettingsView: View {
                 Circle()
                     .stroke(
                         LinearGradient(
-                            colors: [amber, amber.opacity(0.6)],
+                            colors: [amberInk, amberInk.opacity(0.6)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
@@ -98,7 +101,7 @@ struct SettingsView: View {
 
                 Text(avatarInitial)
                     .font(.system(size: 34, weight: .bold, design: .rounded))
-                    .foregroundStyle(Constants.Colors.textPrimary)
+                    .foregroundStyle(.white)
             }
             .shadow(color: amber.opacity(0.25), radius: 16, y: 4)
 
@@ -136,7 +139,7 @@ struct SettingsView: View {
                             Text(copiedID ? String(localized: "settings.profile.copied") : String(localized: "settings.profile.copyID"))
                                 .font(Constants.Typography.badge)
                         }
-                        .foregroundStyle(copiedID ? green : amber)
+                        .foregroundStyle(copiedID ? green : amberInk)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
                         .background(
@@ -197,7 +200,7 @@ struct SettingsView: View {
                 glassRow {
                     HStack(spacing: 12) {
                         Image(systemName: "antenna.radiowaves.left.and.right")
-                            .foregroundStyle(appState.connectedPeerCount > 0 ? green : amber)
+                            .foregroundStyle(appState.connectedPeerCount > 0 ? green : amberInk)
                             .frame(width: 24)
                         Text(String(localized: "settings.meshNetwork.nearbyPeers"))
                             .foregroundStyle(Constants.Colors.textPrimary)
@@ -221,7 +224,7 @@ struct SettingsView: View {
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "network")
-                                .foregroundStyle(amber)
+                                .foregroundStyle(amberInk)
                                 .frame(width: 24)
                             Text(String(localized: "settings.meshNetwork.localNetworkPermission"))
                                 .foregroundStyle(Constants.Colors.textPrimary)
@@ -252,13 +255,13 @@ struct SettingsView: View {
         glassRow {
             HStack(spacing: 12) {
                 Image(systemName: "arrow.triangle.branch")
-                    .foregroundStyle(amber)
+                    .foregroundStyle(amberInk)
                     .frame(width: 24)
                 Text(String(localized: "settings.meshNetwork.packetsRelayed"))
                     .foregroundStyle(Constants.Colors.textPrimary)
                 Spacer()
                 meshStatValue(stats.map { "\($0.relayed)" } ?? "\u{2014}",
-                              color: stats.map { $0.relayed > 0 ? green : amber } ?? .secondary)
+                              color: stats.map { $0.relayed > 0 ? green : amberInk } ?? .secondary)
             }
         }
 
@@ -271,7 +274,7 @@ struct SettingsView: View {
                     .foregroundStyle(Constants.Colors.textPrimary)
                 Spacer()
                 meshStatValue(stats.map { "\($0.delivered)" } ?? "\u{2014}",
-                              color: stats.map { $0.delivered > 0 ? green : amber } ?? .secondary)
+                              color: stats.map { $0.delivered > 0 ? green : amberInk } ?? .secondary)
             }
         }
 
@@ -291,26 +294,26 @@ struct SettingsView: View {
         glassRow {
             HStack(spacing: 12) {
                 Image(systemName: "point.topleft.down.to.point.bottomright.curvepath")
-                    .foregroundStyle(amber)
+                    .foregroundStyle(amberInk)
                     .frame(width: 24)
                 Text(String(localized: "settings.meshNetwork.maxHops"))
                     .foregroundStyle(Constants.Colors.textPrimary)
                 Spacer()
                 meshStatValue(stats.map { "\($0.maxHops)" } ?? "\u{2014}",
-                              color: stats.map { $0.maxHops > 1 ? green : amber } ?? .secondary)
+                              color: stats.map { $0.maxHops > 1 ? green : amberInk } ?? .secondary)
             }
         }
 
         glassRow {
             HStack(spacing: 12) {
                 Image(systemName: "scope")
-                    .foregroundStyle(amber)
+                    .foregroundStyle(amberInk)
                     .frame(width: 24)
                 Text(String(localized: "settings.meshNetwork.estRange"))
                     .foregroundStyle(Constants.Colors.textPrimary)
                 Spacer()
                 meshStatValue(stats.map { "\($0.estimatedRangeMeters)m" } ?? "\u{2014}",
-                              color: stats.map { $0.estimatedRangeMeters > 100 ? green : amber } ?? .secondary)
+                              color: stats.map { $0.estimatedRangeMeters > 100 ? green : amberInk } ?? .secondary)
             }
         }
     }
@@ -344,6 +347,30 @@ struct SettingsView: View {
             .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous))
 
             Text(String(localized: "settings.demo.description"))
+                .font(.system(.caption2))
+                .foregroundStyle(Constants.Colors.textTertiary)
+                .padding(.horizontal, 4)
+                .padding(.top, 8)
+        }
+    }
+
+    // MARK: - Appearance
+
+    private var appearanceSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sectionHeader(icon: "sun.horizon.fill", title: String(localized: "settings.appearance.title"))
+
+            glassRow {
+                Picker(String(localized: "settings.appearance.title"), selection: $appearance) {
+                    ForEach(AppAppearance.allCases) { option in
+                        Label(option.title, systemImage: option.icon).tag(option)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius, style: .continuous))
+
+            Text(String(localized: "settings.appearance.description"))
                 .font(.system(.caption2))
                 .foregroundStyle(Constants.Colors.textTertiary)
                 .padding(.horizontal, 4)
@@ -426,7 +453,7 @@ struct SettingsView: View {
                 glassRow {
                     HStack(spacing: 12) {
                         Image(systemName: "person.badge.key.fill")
-                            .foregroundStyle(amber)
+                            .foregroundStyle(amberInk)
                             .frame(width: 24)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(String(localized: "settings.privacySecurity.yourFingerprint"))
@@ -484,7 +511,7 @@ struct SettingsView: View {
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "mappin.and.ellipse")
-                                .foregroundStyle(amber)
+                                .foregroundStyle(amberInk)
                                 .frame(width: 24)
                             Text(String(localized: "location.about.title"))
                                 .foregroundStyle(Constants.Colors.textPrimary)
@@ -506,7 +533,7 @@ struct SettingsView: View {
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "hand.raised.fill")
-                                .foregroundStyle(amber)
+                                .foregroundStyle(amberInk)
                                 .frame(width: 24)
                             Text(String(localized: "settings.moderation.blockedUsers"))
                                 .foregroundStyle(Constants.Colors.textPrimary)
@@ -560,7 +587,7 @@ struct SettingsView: View {
                                     } label: {
                                         Text(String(localized: "settings.moderation.unblock"))
                                             .font(.system(.caption, weight: .semibold))
-                                            .foregroundStyle(amber)
+                                            .foregroundStyle(amberInk)
                                             .contentShape(Rectangle())
                                     }
                                     .buttonStyle(.plain)
@@ -591,7 +618,7 @@ struct SettingsView: View {
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "questionmark.circle")
-                                .foregroundStyle(amber)
+                                .foregroundStyle(amberInk)
                                 .frame(width: 24)
                             Text(String(localized: "settings.about.howItWorks"))
                                 .foregroundStyle(Constants.Colors.textPrimary)
@@ -630,7 +657,7 @@ struct SettingsView: View {
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "star.fill")
-                                .foregroundStyle(amber)
+                                .foregroundStyle(amberInk)
                                 .frame(width: 24)
                             Text(String(localized: "settings.about.rateApp"))
                                 .foregroundStyle(Constants.Colors.textPrimary)
@@ -653,7 +680,7 @@ struct SettingsView: View {
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "questionmark.circle.fill")
-                                .foregroundStyle(amber)
+                                .foregroundStyle(amberInk)
                                 .frame(width: 24)
                             Text("Support")
                                 .foregroundStyle(Constants.Colors.textPrimary)
@@ -676,7 +703,7 @@ struct SettingsView: View {
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "flag.fill")
-                                .foregroundStyle(amber)
+                                .foregroundStyle(amberInk)
                                 .frame(width: 24)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(String(localized: "settings.moderation.reportAbuse"))
@@ -704,7 +731,7 @@ struct SettingsView: View {
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "hand.raised.fill")
-                                .foregroundStyle(amber)
+                                .foregroundStyle(amberInk)
                                 .frame(width: 24)
                             Text(String(localized: "settings.about.privacyPolicy"))
                                 .foregroundStyle(Constants.Colors.textPrimary)
@@ -730,7 +757,7 @@ struct SettingsView: View {
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "doc.text.fill")
-                                .foregroundStyle(amber)
+                                .foregroundStyle(amberInk)
                                 .frame(width: 24)
                             Text(String(localized: "settings.about.terms"))
                                 .foregroundStyle(Constants.Colors.textPrimary)
@@ -754,7 +781,7 @@ struct SettingsView: View {
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "chevron.left.forwardslash.chevron.right")
-                                .foregroundStyle(amber)
+                                .foregroundStyle(amberInk)
                                 .frame(width: 24)
                             Text(String(localized: "settings.about.openSourceCredits"))
                                 .foregroundStyle(Constants.Colors.textPrimary)
@@ -922,7 +949,7 @@ struct SettingsView: View {
                                 inputLevelBar
                                     .frame(width: 100, height: 8)
                                 Text(String(format: "%.0f%%", appState.inputLevel * 100))
-                                    .foregroundStyle(amber)
+                                    .foregroundStyle(amberInk)
                                     .frame(width: 40, alignment: .trailing)
                             }
 
@@ -933,7 +960,7 @@ struct SettingsView: View {
                                     .foregroundStyle(.secondary)
                                 Spacer()
                                 Text(appState.localPeerID)
-                                    .foregroundStyle(amber)
+                                    .foregroundStyle(amberInk)
                                     .lineLimit(1)
                                     .truncationMode(.middle)
                                     .frame(maxWidth: 160, alignment: .trailing)
@@ -955,7 +982,7 @@ struct SettingsView: View {
                             if let stats = appState.meshStats {
                                 HStack(spacing: 6) {
                                     Image(systemName: "point.3.connected.trianglepath.dotted")
-                                        .foregroundStyle(amber)
+                                        .foregroundStyle(amberInk)
                                         .font(.system(size: 10))
                                     Text("Mesh Network")
                                         .foregroundStyle(Constants.Colors.textPrimary)
@@ -1073,7 +1100,7 @@ struct SettingsView: View {
         HStack(spacing: Constants.Layout.smallSpacing) {
             Image(systemName: icon)
                 .font(Constants.Typography.caption)
-                .foregroundStyle(dimmed ? .secondary : (tintColor ?? amber))
+                .foregroundStyle(dimmed ? .secondary : (tintColor ?? amberInk))
 
             Text(title.uppercased())
                 .font(Constants.Typography.badge)
@@ -1119,7 +1146,7 @@ struct SettingsView: View {
     private func settingsRow(icon: String, title: String) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .foregroundStyle(amber)
+                .foregroundStyle(amberInk)
                 .frame(width: 24)
             Text(title)
                 .foregroundStyle(Constants.Colors.textPrimary)
@@ -1132,13 +1159,13 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
             Spacer()
             Text(value)
-                .foregroundStyle(amber)
+                .foregroundStyle(amberInk)
         }
     }
 
     private var thinDivider: some View {
         Rectangle()
-            .fill(Constants.Colors.surfaceGlass)
+            .fill(Constants.Colors.surfaceBorder)
             .frame(height: 1)
     }
 
@@ -1167,7 +1194,7 @@ struct SettingsView: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 14))
-                .foregroundStyle(amber)
+                .foregroundStyle(amberInk)
                 .frame(width: 20)
 
             VStack(alignment: .leading, spacing: 2) {

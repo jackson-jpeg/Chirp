@@ -45,12 +45,12 @@ struct ImageAttachmentView: View {
             // Header
             HStack(spacing: 6) {
                 Image(systemName: "photo.fill")
-                    .foregroundStyle(Constants.Colors.amber)
+                    .foregroundStyle(Constants.Colors.amberInk)
                     .font(.title3)
                 Text("Shared Image")
                     .font(.caption)
                     .fontWeight(.semibold)
-                    .foregroundStyle(Constants.Colors.amber)
+                    .foregroundStyle(Constants.Colors.amberInk)
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Shared image")
@@ -87,7 +87,7 @@ struct ImageAttachmentView: View {
             }
         }
         .padding(12)
-        .background(Constants.Colors.surfaceGlass)
+        .background(Constants.Colors.surfaceHover)
         .clipShape(RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius))
         .overlay(
             RoundedRectangle(cornerRadius: Constants.Layout.glassCornerRadius)

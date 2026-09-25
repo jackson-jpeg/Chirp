@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy — ChirpChirps</title>
+    <meta name="description" content="ChirpChirps collects no data. No servers, no accounts, no analytics — here is the full privacy policy.">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#b9e2f9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#070d1f" media="(prefers-color-scheme: dark)">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/brand.css?v=5">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+</head>
+<body>
+
+<nav class="nav">
+    <div class="nav-in">
+        <a href="/" class="nav-brand"><img class="mark" src="/img/icon-512.png" width="26" height="26" alt="">ChirpChirps</a>
+        <div class="nav-links">
+            <a href="/privacy">Privacy</a>
+            <a href="/support">Support</a>
+            <a href="/terms">Terms</a>
+            <a href="/credits">Credits</a>
+        </div>
+    </div>
+</nav>
+
+<main class="prose">
+        <h1>Privacy Policy</h1>
+        <p class="updated">Last updated: September 15, 2026</p>
+        <h2>Overview</h2>
+        <p>ChirpChirps is a peer-to-peer communication app. We do not operate servers, collect data, or track users. Your messages travel directly between devices over Bluetooth and Wi-Fi — they never pass through our infrastructure because we have none.</p>
+        <h2>Data we collect</h2>
+        <p><strong>None.</strong> ChirpChirps does not collect, store, transmit, or sell any personal data. There are no accounts, no sign-ups, no analytics, and no telemetry.</p>
+        <h2>How communication works</h2>
+        <p>All communication occurs directly between devices using:</p>
+        <ul>
+        <li><strong>Bluetooth Low Energy</strong> — for device discovery</li>
+        <li><strong>Wi-Fi Direct / MultipeerConnectivity</strong> — for voice, text, and file transfer</li>
+        </ul>
+        <p>No data is routed through the internet or any third-party servers. Messages are encrypted end-to-end using AES-256-GCM before leaving your device.</p>
+        <h2>Encryption</h2>
+        <p>ChirpChirps encrypts all channel communication with AES-256-GCM. Each device generates a unique Ed25519 identity key pair stored in the iOS Keychain. Key material never leaves your device.</p>
+        <h2>Permissions</h2>
+        <p>ChirpChirps requests the following device permissions, all processed locally:</p>
+        <ul>
+        <li><strong>Microphone</strong> — push-to-talk voice communication</li>
+        <li><strong>Local Network</strong> — connect directly to nearby devices</li>
+        <li><strong>Location</strong> — optional; shares your position with nearby peers only during a check-in you start by hand (see <a href="#location">Location sharing</a>)</li>
+        <li><strong>Camera and Photos</strong> — capture and share media with nearby devices</li>
+        <li><strong>Speech Recognition</strong> — on-device live transcripts of incoming voice</li>
+        <li><strong>Notifications</strong> — message alerts</li>
+        </ul>
+        <p>Nothing is uploaded anywhere.</p>
+        <h2 id="location">Location sharing</h2>
+        <p>Location is the one permission that can put something about you in front of other
+        people, so it works differently from the rest.</p>
+        <ul>
+        <li><strong>It is off until you ask for it.</strong> ChirpChirps never requests location
+        access at launch or as a side effect of opening the map. The request appears only after
+        you open the check-in screen and read what sharing involves, and you can decline it.</li>
+        <li><strong>You check in manually, every time.</strong> Your position is shared only after
+        you tap <em>Check In</em>, and only for that session. There is no automatic check-in, no
+        background sharing, and no setting that shares your position continuously.</li>
+        <li><strong>Each check-in lasts 15 minutes.</strong> Sharing then stops on its own. It also
+        stops the moment you tap <em>Stop</em>, if you leave the app, or if you turn location
+        access off. It never restarts by itself — including after you reopen the app.</li>
+        <li><strong>Only nearby peers see it.</strong> Your position travels directly to devices on
+        the mesh around you over Bluetooth and Wi-Fi. It is not uploaded, not stored by us, and
+        not shared with anyone else — we operate no servers that could receive it.</li>
+        <li><strong>Declining costs you nothing else.</strong> Push-to-talk, channels, voice notes,
+        text messages and the map itself all work without location. You simply will not appear on
+        other people's maps.</li>
+        <li><strong>You can block anyone.</strong> A blocked peer is dropped entirely on your
+        device — voice, messages and map position alike — and disappears from your map.</li>
+        </ul>
+        <h2>Third-party services</h2>
+        <p>ChirpChirps does not integrate any third-party analytics, advertising, or tracking. The only optional network connection is downloading offline map tiles from <a href="https://openfreemap.org">OpenFreeMap</a>, which occurs only when you explicitly request it.</p>
+        <h2>Data storage</h2>
+        <p>Messages and settings are stored locally on your device using an encrypted SQLite database. Uninstalling the app permanently deletes all data.</p>
+        <h2>Age rating and children's privacy</h2>
+        <p>ChirpChirps is rated 18+ and is not directed to children. Because the app can show a user's location to other people nearby, it is intended for adults only. We do not knowingly collect information from anyone, of any age: the app has no accounts and no servers, and collects no personal information from any user.</p>
+        <h2>Changes to this policy</h2>
+        <p>If we update this policy, we will post the revised version here with an updated date.</p>
+        <h2>Contact</h2>
+        <p>Questions? Email <a href="mailto:support@chirpchirps.com">support@chirpchirps.com</a>.</p>
+</main>
+
+<footer class="foot">
+    <div class="foot-in">
+        <div class="foot-links">
+            <a href="/">Home</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/support">Support</a>
+            <a href="/terms">Terms</a>
+            <a href="/credits">Credits</a>
+        </div>
+        <small>&copy; 2026 ChirpChirps</small>
+    </div>
+</footer>
+
+</body>
+</html>

@@ -82,6 +82,9 @@ struct ImagePreviewSheet: View {
             }
             .opacity(backgroundOpacity)
         }
+        // A photo viewer stays dark in both modes, so the tokens it uses
+        // (the green "Saved" state) resolve to their night values over black.
+        .environment(\.colorScheme, .dark)
         .sheet(isPresented: $showShareSheet) {
             ShareSheetView(items: [image])
         }

@@ -81,7 +81,7 @@ struct MessageBubbleView: View {
                     .overlay(
                         bubbleShape
                             .strokeBorder(
-                                isFromSelf ? Constants.Colors.amber.opacity(0.2) : Constants.Colors.surfaceBorder,
+                                isFromSelf ? Constants.Colors.amberInk.opacity(0.2) : Constants.Colors.surfaceBorder,
                                 lineWidth: 0.5
                             )
                     )
@@ -301,7 +301,7 @@ struct MessageBubbleView: View {
 
             // Highlighted match
             result = result + Text(remaining[matchStartIndex..<matchEndIndex])
-                .foregroundColor(Constants.Colors.amber)
+                .foregroundColor(Constants.Colors.amberInk)
                 .bold()
 
             remaining = remaining[matchEndIndex...]
@@ -320,13 +320,13 @@ struct MessageBubbleView: View {
     private func replyPreview(_ reply: MeshTextMessage) -> some View {
         HStack(spacing: 6) {
             RoundedRectangle(cornerRadius: 1.5)
-                .fill(Constants.Colors.amber)
+                .fill(Constants.Colors.amberInk)
                 .frame(width: 3)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(reply.senderName)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Constants.Colors.amber)
+                    .foregroundStyle(Constants.Colors.amberInk)
 
                 Text(reply.text)
                     .font(.system(size: 12))
@@ -335,7 +335,7 @@ struct MessageBubbleView: View {
             }
         }
         .padding(6)
-        .background(Constants.Colors.surfaceGlass)
+        .background(Constants.Colors.surfaceHover)
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
@@ -348,7 +348,7 @@ struct MessageBubbleView: View {
             Text(attachmentLabel(type))
                 .font(.system(size: 11, weight: .medium))
         }
-        .foregroundStyle(Constants.Colors.amber)
+        .foregroundStyle(Constants.Colors.amberInk)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(Constants.Colors.glassAmber)

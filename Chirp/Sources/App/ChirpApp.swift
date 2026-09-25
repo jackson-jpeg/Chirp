@@ -4,6 +4,7 @@ import SwiftUI
 struct ChirpApp: App {
     @State private var appState = AppState()
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage(AppAppearance.storageKey) private var appearance: AppAppearance = .system
 
     var body: some Scene {
         WindowGroup {
@@ -16,7 +17,7 @@ struct ChirpApp: App {
             }
             .demoBanner()
             .environment(appState)
-            .preferredColorScheme(.dark)
+            .preferredColorScheme(appearance.colorScheme)
             .task {
                 await appState.start()
                 #if DEBUG

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum Constants {
     static let subsystem = "com.chirpchirp.app"
@@ -43,62 +44,101 @@ enum Constants {
         static let maxPerChannel = 200
     }
 
+    /// The "Sky classic" palette, taken from the app icon: a daytime sky
+    /// (#4AACEA → #9FD9F7) with white clouds, sunny birds (#FFC93A body,
+    /// #EF961C wing, #FF7A2E beak) and navy ink (#1F2D52).
+    ///
+    /// Every token is adaptive: `day` in Light Mode, `night` in Dark Mode. The
+    /// names predate the sky theme (the app was once dark-only slate + amber),
+    /// so read them as ROLES, not hues:
+    ///
+    /// - `slate900` / `backgroundPrimary` — the page. Night navy / pale sky.
+    /// - `slate800` / `cardBackground`    — a raised card. Night card / white.
+    /// - `slate700`                       — inactive fills and hairlines.
+    /// - `slate600`, `slate500`, `slate400` — tertiary → secondary text.
+    /// - `textPrimary` / `ink`            — the main foreground. White / navy.
+    /// - `surfaceGlass`                   — a translucent card on the page:
+    ///   a white card by day. Too faint for a divider — use `surfaceBorder`.
+    ///
+    /// `amber` is a FILL (the PTT button, selected tabs, badges); put
+    /// `onAmber` text on it. For amber TEXT or icons on the page use
+    /// `amberInk`, which darkens by day so it stays readable on white.
+    /// Every text pairing here clears WCAG AA (4.5:1) in both modes, measured.
     enum Colors {
-        // Primary
-        static let amber = Color(hex: 0xFFB800)
-        static let amberLight = Color(hex: 0xFFD060)
-        static let amberDark = Color(hex: 0xCC9300)
+        // Brand — straight from the icon, the same in both modes
+        static let sky = Color(hex: 0x4AACEA)
+        static let skyLight = Color(hex: 0x9FD9F7)
+        static let cloud = Color(hex: 0xCFE8F7)
+        static let navy = Color(hex: 0x1F2D52)
+        static let sun = Color(hex: 0xFFC93A)
+        static let wing = Color(hex: 0xEF961C)
+        static let beak = Color(hex: 0xFF7A2E)
+
+        // Primary accent (a fill — see `amberInk` for text)
+        static let amber = Color(day: 0xFFBF2E, night: 0xFFC93A)
+        static let amberLight = Color(day: 0xFFE08A, night: 0xFFD866)
+        static let amberDark = Color(day: 0xC96F00, night: 0xEF961C)
+        /// Accent for text and icons drawn on the page or a card.
+        static let amberInk = Color(day: 0xA85800, night: 0xFFC93A)
+        /// Text and icons drawn on an `amber` fill.
+        static let onAmber = Color(hex: 0x1F2D52)
 
         // Status
-        static let electricGreen = Color(hex: 0x30D158)
-        static let hotRed = Color(hex: 0xFF3B30)
-        static let emergencyRed = Color(hex: 0xCC0000)
+        static let electricGreen = Color(day: 0x1A8440, night: 0x34D27A)
+        static let hotRed = Color(day: 0xD7281C, night: 0xFF5A4E)
+        static let emergencyRed = Color(day: 0xB8140C, night: 0xE0241A)
 
-        // Modern palette
-        static let slate50 = Color(hex: 0xF8FAFC)
-        static let slate400 = Color(hex: 0x94A3B8)
-        static let slate500 = Color(hex: 0x64748B)
-        static let slate600 = Color(hex: 0x475569)
-        static let slate700 = Color(hex: 0x334155)
-        static let slate800 = Color(hex: 0x1E293B)
-        static let slate900 = Color(hex: 0x0F172A)
-        static let blue500 = Color(hex: 0x3B82F6)
-        static let blue600 = Color(hex: 0x2563EB)
+        // Role palette (see the table above)
+        static let slate50 = Color(day: 0x1F2D52, night: 0xF5F9FF)
+        static let slate400 = Color(day: 0x4A5D82, night: 0x9FB0D0)
+        static let slate500 = Color(day: 0x5F7394, night: 0x7A8BAB)
+        static let slate600 = Color(day: 0x7B8CAB, night: 0x5A6B8E)
+        static let slate700 = Color(day: 0xC9DEEE, night: 0x2B3B66)
+        static let slate800 = Color(day: 0xFFFFFF, night: 0x16213F)
+        static let slate900 = Color(day: 0xEEF7FD, night: 0x0D1630)
+        /// Sky blue for buttons and active states. White text on it passes AA.
+        static let blue500 = Color(day: 0x1877C2, night: 0x3A9AE0)
+        static let blue600 = Color(day: 0x13639F, night: 0x2A84CC)
 
         // Backgrounds
-        static let backgroundPrimary = Color(hex: 0x0F172A)
-        static let backgroundSecondary = Color(hex: 0x0F172A)
-        static let backgroundTertiary = Color(hex: 0x1E293B)
-        static let backgroundDeep = Color(hex: 0x05051F)
-        static let cardBackground = Color(hex: 0x1E293B)
+        static let backgroundPrimary = Color(day: 0xEEF7FD, night: 0x0D1630)
+        static let backgroundSecondary = Color(day: 0xEEF7FD, night: 0x0D1630)
+        static let backgroundTertiary = Color(day: 0xFFFFFF, night: 0x16213F)
+        static let backgroundDeep = Color(day: 0xDCEFFA, night: 0x070D1F)
+        static let cardBackground = Color(day: 0xFFFFFF, night: 0x16213F)
+
+        /// The main foreground: white at night, navy by day. Use it wherever
+        /// the old code said `.white` for text or hairlines on the page, e.g.
+        /// `ink.opacity(0.06)` for a divider.
+        static let ink = Color(day: 0x1F2D52, night: 0xFFFFFF)
 
         // Surface
-        static let surfaceGlass = Color.white.opacity(0.08)
-        static let surfaceBorder = Color.white.opacity(0.10)
-        static let surfaceHover = Color.white.opacity(0.15)
+        static let surfaceGlass = Color(day: 0xFFFFFF, night: 0xFFFFFF, dayOpacity: 0.82, nightOpacity: 0.08)
+        static let surfaceBorder = Color(day: 0x1F2D52, night: 0xFFFFFF, dayOpacity: 0.12, nightOpacity: 0.10)
+        static let surfaceHover = Color(day: 0x1F2D52, night: 0xFFFFFF, dayOpacity: 0.08, nightOpacity: 0.15)
 
         // Text
-        static let textPrimary = Color.white
-        static let textSecondary = Color.white.opacity(0.6)
-        static let textTertiary = Color.white.opacity(0.35)
+        static let textPrimary = Color(day: 0x1F2D52, night: 0xFFFFFF)
+        static let textSecondary = Color(day: 0x1F2D52, night: 0xFFFFFF, dayOpacity: 0.72, nightOpacity: 0.6)
+        static let textTertiary = Color(day: 0x1F2D52, night: 0xFFFFFF, dayOpacity: 0.5, nightOpacity: 0.35)
 
         // Mesh
-        static let meshHealthGood = Color(hex: 0x30D158)
-        static let meshHealthFair = Color(hex: 0xFFB800)
-        static let meshHealthPoor = Color(hex: 0xFF3B30)
+        static let meshHealthGood = electricGreen
+        static let meshHealthFair = Color(day: 0xE08A00, night: 0xFFC93A)
+        static let meshHealthPoor = hotRed
 
         // Frosted Glass Tints — brighter for material refraction
-        static let glassAmber = Color(hex: 0xFFB800).opacity(0.20)
-        static let glassAmberBorder = Color(hex: 0xFFB800).opacity(0.50)
-        static let glassAmberGlow = Color(hex: 0xFFB800).opacity(0.40)
+        static let glassAmber = amber.opacity(0.20)
+        static let glassAmberBorder = amber.opacity(0.50)
+        static let glassAmberGlow = amber.opacity(0.40)
 
-        static let glassGreen = Color(hex: 0x30D158).opacity(0.18)
-        static let glassGreenBorder = Color(hex: 0x30D158).opacity(0.45)
-        static let glassGreenGlow = Color(hex: 0x30D158).opacity(0.35)
+        static let glassGreen = electricGreen.opacity(0.18)
+        static let glassGreenBorder = electricGreen.opacity(0.45)
+        static let glassGreenGlow = electricGreen.opacity(0.35)
 
-        static let glassRed = Color(hex: 0xFF3B30).opacity(0.20)
-        static let glassRedBorder = Color(hex: 0xFF3B30).opacity(0.50)
-        static let glassRedGlow = Color(hex: 0xFF3B30).opacity(0.40)
+        static let glassRed = hotRed.opacity(0.20)
+        static let glassRedBorder = hotRed.opacity(0.50)
+        static let glassRedGlow = hotRed.opacity(0.40)
     }
 
     enum Typography {
@@ -142,5 +182,27 @@ extension Color {
         let green = Double((hex >> 8) & 0xFF) / 255.0
         let blue = Double(hex & 0xFF) / 255.0
         self.init(.sRGB, red: red, green: green, blue: blue, opacity: opacity)
+    }
+}
+
+extension Color {
+    /// An appearance-adaptive color: `day` in Light Mode, `night` in Dark Mode.
+    init(day: UInt, night: UInt, dayOpacity: Double = 1.0, nightOpacity: Double = 1.0) {
+        self.init(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(hex: night, alpha: nightOpacity)
+                : UIColor(hex: day, alpha: dayOpacity)
+        })
+    }
+}
+
+private extension UIColor {
+    convenience init(hex: UInt, alpha: Double) {
+        self.init(
+            red: CGFloat((hex >> 16) & 0xFF) / 255.0,
+            green: CGFloat((hex >> 8) & 0xFF) / 255.0,
+            blue: CGFloat(hex & 0xFF) / 255.0,
+            alpha: CGFloat(alpha)
+        )
     }
 }

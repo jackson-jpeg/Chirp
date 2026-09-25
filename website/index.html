@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChirpChirps — Walkie-Talkie That Works Without Signal</title>
+    <meta name="description" content="Talk, text, and share with nearby iPhones — no cell towers, no Wi-Fi, no internet required. ChirpChirps turns every iPhone into a mesh relay node.">
+    <link rel="canonical" href="https://chirpchirps.com/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="ChirpChirps">
+    <meta property="og:url" content="https://chirpchirps.com/">
+    <meta property="og:title" content="ChirpChirps — Walkie-Talkie That Works Without Signal">
+    <meta property="og:description" content="Talk, text, and share with nearby iPhones — no cell towers, no Wi-Fi, no internet, no accounts.">
+    <meta property="og:image" content="https://chirpchirps.com/img/og.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="ChirpChirps — Walkie-Talkie That Works Without Signal">
+    <meta name="twitter:description" content="Talk, text, and share with nearby iPhones — no cell towers, no Wi-Fi, no internet, no accounts.">
+    <meta name="twitter:image" content="https://chirpchirps.com/img/og.png">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#b9e2f9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#070d1f" media="(prefers-color-scheme: dark)">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/brand.css?v=5">
+    <script>document.documentElement.className += ' js';</script>
+
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+</head>
+<body>
+
+<nav class="nav">
+    <div class="nav-in">
+        <a href="/" class="nav-brand"><img class="mark" src="/img/icon-512.png" width="26" height="26" alt="">ChirpChirps</a>
+        <div class="nav-links">
+            <a href="#how" class="jump">How</a>
+            <a href="#features" class="jump">Features</a>
+            <a href="/support">Support</a>
+            <a href="/privacy">Privacy</a>
+        </div>
+    </div>
+</nav>
+
+<!-- ── Hero ─────────────────────────────────────────── -->
+<header class="hero">
+    <canvas id="mesh" aria-hidden="true"></canvas>
+    <div class="hero-sky" aria-hidden="true">
+        <svg class="cloud c1" viewBox="-62 -118 274 192" aria-hidden="true"><g class="shade" transform="translate(0 12)"><circle r="60"/><circle cx="72" cy="-34" r="82"/><circle cx="150" r="60"/><rect width="150" height="60"/></g><g class="fill"><circle r="60"/><circle cx="72" cy="-34" r="82"/><circle cx="150" r="60"/><rect width="150" height="60"/></g></svg>
+        <svg class="cloud c2" viewBox="-62 -118 274 192" aria-hidden="true"><g class="shade" transform="translate(0 12)"><circle r="60"/><circle cx="72" cy="-34" r="82"/><circle cx="150" r="60"/><rect width="150" height="60"/></g><g class="fill"><circle r="60"/><circle cx="72" cy="-34" r="82"/><circle cx="150" r="60"/><rect width="150" height="60"/></g></svg>
+        <svg class="cloud c3" viewBox="-62 -118 274 192" aria-hidden="true"><g class="shade" transform="translate(0 12)"><circle r="60"/><circle cx="72" cy="-34" r="82"/><circle cx="150" r="60"/><rect width="150" height="60"/></g><g class="fill"><circle r="60"/><circle cx="72" cy="-34" r="82"/><circle cx="150" r="60"/><rect width="150" height="60"/></g></svg>
+    </div>
+    <div class="wrap hero-in">
+        <p class="eyebrow">CH 01 <span class="dot">·</span> Peer-to-peer mesh</p>
+        <h1>
+            <span>No signal?</span>
+            <span class="amber">Still works.</span>
+        </h1>
+        <p class="lede">ChirpChirps turns the iPhones around you into a private walkie-talkie mesh. Your voice hops phone to phone over Bluetooth and peer-to-peer Wi-Fi — no cell towers, no internet, no accounts, no servers to trust.</p>
+        <div class="hero-cta">
+            <a class="btn btn-primary" href="https://apps.apple.com/app/id6761436901">Download for iPhone</a>
+            <a class="btn btn-ghost" href="#how">How it works</a>
+        </div>
+        <div class="hero-strip">
+            <span><b>0</b> servers</span>
+            <span><b>0</b> accounts</span>
+            <span><b>0</b> bytes collected</span>
+            <span><b>8</b> hops of relay</span>
+        </div>
+    </div>
+    <!-- The app icon's two birds, one chirping down the wire to the other -->
+    <div class="perch" aria-hidden="true">
+        <svg viewBox="100 330 824 406" preserveAspectRatio="xMidYMax meet">
+            <defs>
+                <g id="bird">
+                    <path d="M-128 30 L-196 4 L-176 38 L-204 62 L-140 70 Z" fill="#ef961c"/>
+                    <g stroke="#ef961c" stroke-width="10" stroke-linecap="round" fill="none"><path d="M-22 140 L-26 178"/><path d="M26 140 L30 178"/></g>
+                    <path d="M-10 -146 C-4 -180 16 -188 28 -176 C14 -170 10 -158 12 -144 Z" fill="#ef961c"/>
+                    <circle r="150" fill="#ffc93a"/>
+                    <path d="M-122 -6 C-70 -44 6 -26 30 30 C8 86 -66 104 -124 70 C-150 48 -148 12 -122 -6 Z" fill="#ef961c"/>
+                    <circle cx="64" cy="-46" r="23" fill="#1f2d52"/>
+                    <circle cx="72" cy="-54" r="7" fill="#fff"/>
+                </g>
+            </defs>
+            <g transform="translate(0 50)">
+                <path class="wire" d="M-4000 626 L436 626 L452 606 L468 652 L484 580 L500 676 L512 560 L524 676 L540 580 L556 652 L572 606 L588 626 L5000 626" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" fill="none"/>
+                <g transform="translate(318 464) scale(0.9)"><use href="#bird"/><path d="M134 -48 L190 -38 L136 -24 Z" fill="#ff7a2e"/><path d="M136 -16 L180 -4 L132 0 Z" fill="#ff7a2e"/></g>
+                <g transform="translate(706 464) scale(-0.9 0.9)"><use href="#bird"/><path d="M134 -44 L186 -26 L134 -8 Z" fill="#ff7a2e"/></g>
+            </g>
+        </svg>
+    </div>
+</header>
+
+<div class="wrap"><div class="ticks"></div></div>
+
+<!-- ── How it works ─────────────────────────────────── -->
+<section class="section" id="how">
+    <div class="wrap">
+        <div class="section-head rise">
+            <p class="eyebrow">CH 02 <span class="dot">·</span> How it works</p>
+            <h2>Three steps.<br>Zero infrastructure.</h2>
+        </div>
+    </div>
+    <div class="wrap">
+        <div class="steps rise">
+            <div class="step">
+                <span class="num">01</span>
+                <h3>Open the app</h3>
+                <p>No sign-up, no account, no phone number. Pick a callsign and you're on the mesh.</p>
+            </div>
+            <div class="step">
+                <span class="num">02</span>
+                <h3>Press and hold</h3>
+                <p>The PTT button transmits your voice to everyone on your channel. Release to listen.</p>
+            </div>
+            <div class="step">
+                <span class="num">03</span>
+                <h3>Messages relay</h3>
+                <p>Out of range? Your signal hops through the phones between you. Five devices cover about a kilometer.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── Screens ──────────────────────────────────────── -->
+<section class="section">
+    <div class="wrap">
+        <div class="section-head rise">
+            <p class="eyebrow">CH 03 <span class="dot">·</span> A look inside</p>
+            <h2>Talk. Chat.<br>Find each other.</h2>
+        </div>
+        <div class="shots rise">
+            <figure class="shot">
+                <img src="/img/talk.webp" width="840" height="1825" loading="lazy" decoding="async"
+                     alt="The ChirpChirps talk screen: a push-to-talk button ringed by four nearby peers on the Basecamp channel.">
+                <figcaption><span class="tag">Talk</span>Hold to talk. Everyone on the channel hears you — directly, or by relay through the phones in between.</figcaption>
+            </figure>
+            <figure class="shot">
+                <img src="/img/messages.webp" width="840" height="1825" loading="lazy" decoding="async"
+                     alt="The ChirpChirps chat screen showing encrypted text messages between peers on a channel.">
+                <figcaption><span class="tag">Chat</span>Text costs a fraction of the bandwidth voice does, so it travels furthest when the mesh is thin.</figcaption>
+            </figure>
+            <figure class="shot">
+                <img src="/img/map.webp" width="840" height="1825" loading="lazy" decoding="async"
+                     alt="The ChirpChirps map screen showing nearby peer positions on a downloaded offline map.">
+                <figcaption><span class="tag">Map</span>See where your group is, on map regions you downloaded before you left the signal behind.</figcaption>
+            </figure>
+        </div>
+    </div>
+</section>
+
+<!-- ── Capabilities ─────────────────────────────────── -->
+<section class="section" id="features">
+    <div class="wrap">
+        <div class="section-head rise">
+            <p class="eyebrow">CH 04 <span class="dot">·</span> Capabilities</p>
+            <h2>Everything you need.<br>Nothing you don't.</h2>
+        </div>
+        <div class="caps rise">
+            <div class="cap"><span class="ix">01</span><h3>Push-to-Talk</h3><p>Opus voice that adapts to the link, up to 24 kbps. Hold the button and talk.</p></div>
+            <div class="cap"><span class="ix">02</span><h3>Mesh Relay</h3><p>Every phone is a relay node. Packets hop device to device with TTL routing and automatic deduplication.</p></div>
+            <div class="cap"><span class="ix">03</span><h3>Text Chat</h3><p>Type when you can't talk. Messages ride the same mesh as voice for a fraction of the bandwidth.</p></div>
+            <div class="cap"><span class="ix">04</span><h3>Live Transcription</h3><p>On-device speech recognition captions incoming voice as it plays. Read what you couldn't hear.</p></div>
+            <div class="cap"><span class="ix">05</span><h3>Encrypted Channels</h3><p>AES-256-GCM between channel members, Ed25519 device identity, keys held in the iOS Keychain.</p></div>
+            <div class="cap"><span class="ix">06</span><h3>Voice Messages</h3><p>Friend out of range? The message waits on your phone and delivers itself the moment they're reachable.</p></div>
+            <div class="cap"><span class="ix">07</span><h3>Photo Sharing</h3><p>Send pictures straight to the phones around you. Compressed for the mesh, uploaded nowhere.</p></div>
+            <div class="cap"><span class="ix">08</span><h3>Offline Maps</h3><p>Download map regions ahead of time, then watch your group move across them without a signal.</p></div>
+            <div class="cap"><span class="ix">09</span><h3>Block &amp; Report</h3><p>Silence any peer instantly. Report abuse from inside the app — no server needed to protect yourself.</p></div>
+        </div>
+    </div>
+</section>
+
+<!-- ── Specs ────────────────────────────────────────── -->
+<section class="section">
+    <div class="wrap">
+        <div class="section-head rise">
+            <p class="eyebrow">CH 05 <span class="dot">·</span> Under the hood</p>
+            <h2>Built thin<br>on purpose.</h2>
+            <p>Mesh links are shared and slow. Every byte the app spends is a byte the people around you don't get.</p>
+        </div>
+        <div class="specs rise">
+            <div class="spec"><span class="v">24 kbps</span><span class="k">Opus voice, adaptive</span></div>
+            <div class="spec"><span class="v">20 ms</span><span class="k">Frame latency</span></div>
+            <div class="spec"><span class="v">AES-256</span><span class="k">Channel encryption</span></div>
+            <div class="spec"><span class="v">8 hops</span><span class="k">Maximum mesh TTL</span></div>
+            <div class="spec"><span class="v">0 servers</span><span class="k">Infrastructure required</span></div>
+            <div class="spec"><span class="v">0 bytes</span><span class="k">Data collected</span></div>
+        </div>
+    </div>
+</section>
+
+<!-- ── Use cases ────────────────────────────────────── -->
+<section class="section">
+    <div class="wrap">
+        <div class="section-head rise">
+            <p class="eyebrow">CH 06 <span class="dot">·</span> Built for</p>
+            <h2>Where the<br>network isn't.</h2>
+        </div>
+        <div class="uses rise">
+            <div class="use">
+                <span class="ix">/ 01</span>
+                <h3>Backcountry</h3>
+                <p>No towers for miles. Your group stays connected across ridgelines and valleys.</p>
+            </div>
+            <div class="use">
+                <span class="ix">/ 02</span>
+                <h3>Crowded events</h3>
+                <p>Eighty thousand people overwhelm a cell tower. A mesh gets stronger with every device that joins it.</p>
+            </div>
+            <div class="use">
+                <span class="ix">/ 03</span>
+                <h3>Travel abroad</h3>
+                <p>No SIM, no roaming, no plan. Talk to the people you came with, in any country.</p>
+            </div>
+            <div class="use">
+                <span class="ix">/ 04</span>
+                <h3>Worksites &amp; campuses</h3>
+                <p>Warehouses, film sets, ski patrol, festivals — teams that work close together and can't count on coverage.</p>
+            </div>
+        </div>
+        <p class="disclaimer">ChirpChirps is not a substitute for emergency services and should not be relied on for life-safety communication. Range and delivery depend on radio conditions, device placement, and how many devices are nearby.</p>
+    </div>
+</section>
+
+<!-- ── Close ────────────────────────────────────────── -->
+<section class="close">
+    <div class="wrap">
+        <p class="eyebrow" style="text-align:center">CH 07 <span class="dot">·</span> Join the mesh</p>
+        <h2>The network<br>is the people.</h2>
+        <p class="lede">Every phone that installs ChirpChirps extends the mesh for everyone else standing nearby.</p>
+        <div class="hero-cta">
+            <a class="btn btn-primary" href="https://apps.apple.com/app/id6761436901">Get ChirpChirps</a>
+        </div>
+    </div>
+</section>
+
+<footer class="foot">
+    <div class="foot-in">
+        <div class="foot-links">
+            <a href="/privacy">Privacy</a>
+            <a href="/support">Support</a>
+            <a href="/terms">Terms</a>
+            <a href="/credits">Credits</a>
+        </div>
+        <small>&copy; 2026 ChirpChirps</small>
+    </div>
+</footer>
+
+<script src="/mesh.js?v=3" defer></script>
+<script>
+(function () {
+  if (!window.IntersectionObserver) {
+    document.querySelectorAll('.rise').forEach(function (e) { e.classList.add('in'); });
+    return;
+  }
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+    });
+  }, { rootMargin: '0px 0px -8% 0px', threshold: 0.06 });
+  document.querySelectorAll('.rise').forEach(function (e) { io.observe(e); });
+})();
+</script>
+
+</body>
+</html>

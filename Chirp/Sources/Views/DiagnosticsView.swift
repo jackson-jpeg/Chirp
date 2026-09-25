@@ -23,17 +23,16 @@ struct DiagnosticsView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 32)
             }
-            .background(Constants.Colors.backgroundPrimary)
+            .background(SkyBackdrop())
             .navigationTitle(String(localized: "diagnostics.title"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
             // This sheet had no way out but a flick. Everything else in the
             // app that presents a sheet offers a button, and App Review is
             // told to come here to block someone, so it needs one too.
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(String(localized: "common.done")) { dismiss() }
-                        .foregroundStyle(Constants.Colors.amber)
+                        .foregroundStyle(Constants.Colors.amberInk)
                 }
             }
             .task {
@@ -85,12 +84,12 @@ struct DiagnosticsView: View {
                 statCard(
                     label: String(localized: "diagnostics.totalPeers"),
                     value: "\(peers.count)",
-                    color: Constants.Colors.amber
+                    color: Constants.Colors.amberInk
                 )
                 statCard(
                     label: String(localized: "diagnostics.maxHops"),
                     value: "\(stats?.maxHops ?? 0)",
-                    color: (stats?.maxHops ?? 0) >= 1 ? Constants.Colors.amber : Constants.Colors.slate500
+                    color: (stats?.maxHops ?? 0) >= 1 ? Constants.Colors.amberInk : Constants.Colors.slate500
                 )
                 statCard(
                     label: String(localized: "diagnostics.estRange"),
@@ -198,7 +197,7 @@ struct DiagnosticsView: View {
                         label: String(localized: "diagnostics.relayed"),
                         value: "\(stats.relayed)",
                         icon: "arrow.triangle.branch",
-                        color: Constants.Colors.amber
+                        color: Constants.Colors.amberInk
                     )
                     Divider().background(Constants.Colors.slate700)
                     statRow(
@@ -243,7 +242,7 @@ struct DiagnosticsView: View {
         HStack(spacing: 6) {
             Image(systemName: icon)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Constants.Colors.amber)
+                .foregroundStyle(Constants.Colors.amberInk)
 
             Text(title)
                 .font(.system(size: 13, weight: .bold, design: .monospaced))
