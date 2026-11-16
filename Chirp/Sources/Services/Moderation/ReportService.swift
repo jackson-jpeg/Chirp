@@ -15,7 +15,7 @@ enum ReportService {
     /// Published contact for abuse reports. Also shown in Settings and on
     /// the website. This is the support mailbox — it is the one address on
     /// the domain that verifiably receives mail.
-    static let reportEmail = "support@chirpchirps.com"
+    static let reportEmail = "support@unpossible.studio"
 
     struct Report: Codable {
         let reportedPeerID: String

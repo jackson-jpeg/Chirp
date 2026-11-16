@@ -48,8 +48,8 @@ final class ReportComposeTests: XCTestCase {
         let url = try XCTUnwrap(ReportService.mailComposeURL(for: report()))
 
         XCTAssertEqual(url.scheme, "mailto")
-        XCTAssertEqual(url.path, "support@chirpchirps.com")
-        XCTAssertEqual(ReportService.reportEmail, "support@chirpchirps.com",
+        XCTAssertEqual(url.path, "support@unpossible.studio")
+        XCTAssertEqual(ReportService.reportEmail, "support@unpossible.studio",
                        "The address in the app must be the one the review notes and the site publish")
 
         let body = try XCTUnwrap(queryItem("body", in: url))

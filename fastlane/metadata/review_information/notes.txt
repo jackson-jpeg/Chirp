@@ -26,7 +26,7 @@ After iOS grants permission, the app asks separately whether to share: a sheet h
 The consent sheet appears on every Check In, including the second in one session. Nothing is remembered: no "don't ask again", no automatic or always-on option, no background sharing, no setting that shares continuously. Relaunching always begins checked out. A session lasts 15 minutes and ends on its own, on Stop, or when the app leaves the foreground.
 
 REPORTING AND FILTERING (Guideline 1.2)
-Report sits beside Block on the same sheet, from every path in section 1. It blocks the peer and opens a prefilled email to support@chirpchirps.com with the reported device's fingerprint, a reason picker and, where the report came from a message, its text. With no servers, email is the reporting channel. Terms of Use at https://chirpchirps.com/terms state zero tolerance for objectionable content and abusive users and commit to acting within 24 hours; agreement is required at onboarding.
+Report sits beside Block on the same sheet, from every path in section 1. It blocks the peer and opens a prefilled email to support@unpossible.studio with the reported device's fingerprint, a reason picker and, where the report came from a message, its text. With no servers, email is the reporting channel. Terms of Use at https://chirpchirps.com/terms state zero tolerance for objectionable content and abusive users and commit to acting within 24 hours; agreement is required at onboarding.
 
 Incoming messages are screened on device and collapsed behind "Hidden message, tap to show", on by default; toggle at Settings > Message Filter.
 
