@@ -250,6 +250,9 @@ struct ChatIncomingRow: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            // The waveform row stretches, so a voice bubble fills its 298 max
+            // as in the design (the frame below caps it), not the caption's width.
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 12)
             .padding(.horizontal, 14)
             .accessibilityElement(children: .contain)
