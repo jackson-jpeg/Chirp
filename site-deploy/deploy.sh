@@ -58,7 +58,11 @@ echo "▸ live checks"
 page=$(curl -fsS https://chirpchirps.com/)
 grep -q 'Coming to iPhone' <<<"$page" || { echo "FAIL: live page lacks the new CTA" >&2; exit 1; }
 if grep -qE 'apps\.apple\.com' <<<"$page"; then echo "FAIL: live page still links the App Store" >&2; exit 1; fi
-code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Accept: application/json' --data 'email=not-an-address' https://chirpchirps.com/api/signup)
+# A reload swaps nginx's workers in the background: give it a few seconds.
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+    code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Accept: application/json' --data 'email=not-an-address' https://chirpchirps.com/api/signup)
+    [ "$code" = 400 ] && break; sleep 1
+done
 [ "$code" = 400 ] || { echo "FAIL: signup answered $code to a bad address (want 400)" >&2; exit 1; }
 curl -fsS -o /dev/null https://chirpchirps.com/thanks.html
 echo "deployed"
