@@ -1,0 +1,9 @@
+[Unit]
+Description=chirpchirps.com release list: nightly backup
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /srv/chirpchirps/signup_backup.sh
+Nice=19
+IOSchedulingClass=idle
+CPUQuota=10%

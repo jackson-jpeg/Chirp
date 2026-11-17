@@ -1,0 +1,10 @@
+[Unit]
+Description=chirpchirps.com release list: nightly backup (17:45 UTC, when the Mac is most often awake)
+
+[Timer]
+OnCalendar=*-*-* 17:45:00 UTC
+RandomizedDelaySec=300
+Persistent=true
+
+[Install]
+WantedBy=timers.target
