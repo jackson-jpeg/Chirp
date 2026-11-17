@@ -13,6 +13,7 @@ public struct Presence: Equatable, Sendable {
     public let signingKey: Data
     public let agreementKey: Data
     public let name: String
+    public let bird: Bird
     public let sentAt: Date
 
     public var peer: PeerID { PeerID(signingPublicKey: signingKey) }
@@ -21,16 +22,17 @@ public struct Presence: Equatable, Sendable {
     /// but a phone in airplane mode for a week does not.
     public static let clockTolerance: TimeInterval = 10 * 60
 
-    public init(signingKey: Data, agreementKey: Data, name: String, sentAt: Date) {
+    public init(signingKey: Data, agreementKey: Data, name: String, bird: Bird = .default, sentAt: Date) {
         self.signingKey = signingKey
         self.agreementKey = agreementKey
         self.name = name
+        self.bird = bird
         self.sentAt = sentAt
     }
 
-    public init(identity: LocalIdentity, name: String, at: Date) {
+    public init(identity: LocalIdentity, name: String, bird: Bird = .default, at: Date) {
         self.init(signingKey: identity.signingPublicKey, agreementKey: identity.agreementPublicKey,
-                  name: name, sentAt: at)
+                  name: name, bird: bird, sentAt: at)
     }
 
     private var body: Data {
@@ -39,6 +41,8 @@ public struct Presence: Equatable, Sendable {
         out.append(agreementKey)
         out.appendBigEndian(UInt64(max(0, sentAt.timeIntervalSince1970 * 1000)))
         out.appendString(name, maxBytes: 64)
+        out.append(bird.palette)
+        out.append(bird.chirp)
         return out
     }
 
@@ -52,14 +56,15 @@ public struct Presence: Equatable, Sendable {
     /// to `origin`, and the time is within tolerance of `now`.
     public static func verify(_ payload: Data, origin: PeerID, now: Date) -> Presence? {
         var r = ByteReader(payload)
-        guard let sk = r.bytes(32), let ak = r.bytes(32), let ms = r.u64(), let name = r.string() else { return nil }
-        let bodyLength = 32 + 32 + 8 + 2 + Data(name.utf8).count
+        guard let sk = r.bytes(32), let ak = r.bytes(32), let ms = r.u64(), let name = r.string(),
+              let palette = r.u8(), let chirp = r.u8(), let bird = Bird(palette: palette, chirp: chirp) else { return nil }
+        let bodyLength = 32 + 32 + 8 + 2 + Data(name.utf8).count + 2
         guard let sig = r.bytes(64), r.isAtEnd else { return nil }
         guard PeerID(signingPublicKey: sk) == origin,
               LocalIdentity.verify(signature: sig, of: payload.prefix(bodyLength), signingPublicKey: sk) else { return nil }
         let sentAt = Date(timeIntervalSince1970: Double(ms) / 1000)
         guard abs(sentAt.timeIntervalSince(now)) <= clockTolerance else { return nil }
-        return Presence(signingKey: sk, agreementKey: ak, name: name, sentAt: sentAt)
+        return Presence(signingKey: sk, agreementKey: ak, name: name, bird: bird, sentAt: sentAt)
     }
 }
 
@@ -72,6 +77,7 @@ public struct Roster: Sendable {
     public struct Person: Equatable, Sendable, Identifiable {
         public let id: PeerID
         public var name: String
+        public var bird: Bird
         public var signingKey: Data
         public var agreementKey: Data
         public var lastSeen: Date
@@ -89,7 +95,7 @@ public struct Roster: Sendable {
     @discardableResult
     public mutating func update(with presence: Presence, hops: UInt8, now: Date) -> Bool {
         let isNew = people[presence.peer] == nil
-        people[presence.peer] = Person(id: presence.peer, name: presence.name, signingKey: presence.signingKey,
+        people[presence.peer] = Person(id: presence.peer, name: presence.name, bird: presence.bird, signingKey: presence.signingKey,
                                        agreementKey: presence.agreementKey, lastSeen: now, hops: hops)
         return isNew
     }

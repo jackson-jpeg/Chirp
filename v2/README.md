@@ -36,6 +36,9 @@ design routes, the screens are plain placeholders.
 | `Whisper.swift` | Whisper (scope 1): a private two-person channel, ID from both PeerIDs, key from their X25519 agreement; ping and battery travel on it, so they are friends-only on the wire. | Scope 1, 4, 5 |
 | `Messages.swift` | Roll call, help (its own kind, sent first), meet-up spot with RSVPs, ping with a rate limit, battery rounded to 10%, signed bodies, the send queue. | Scope 4, 5; 1.0 broadcast battery to strangers |
 | `CatchUp.swift` | Catch up (scope 3): phones hold texts, meet-ups, roll calls and help as received (still sealed and signed), capped per sender, in total and at 24 h; a returning phone asks by channel and gets them in order in bundles that skip the router's replay window and dedup by message ID. | Scope 3 |
+| `Bird.swift` | Each person's bird (scope 6): palette and chirp as indices into a shipped set, signed in presence. | Scope 6 |
+| `Photo.swift` | Small photos (scope 5): at most 48 KB in 8 KB chunks, one relay, last in the queue; reassembly bounded in count and time. | Scope 5; 1.0's two image paths |
+| `Find.swift` | Find (scope 4): NI token exchange on the whisper channel, friends only; a fallback that claims only in range, through others or out of range. | Scope 4; 1.0's fake signal bars and metres |
 | `SendGate.swift` | Demo channels are recognisable from the header; nothing leaves or enters while sandboxed. | 2.1(a) |
 
 ## Rules 2.0 holds to (from the four rejections)

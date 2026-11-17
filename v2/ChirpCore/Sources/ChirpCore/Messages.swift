@@ -195,13 +195,13 @@ public struct BatteryLevel: Equatable, Sendable {
 // MARK: - Who may send what
 
 public enum Admission {
-    /// Ping and battery count only on a whisper channel to me, from a friend.
+    /// Ping, battery and Find tokens count only on a whisper channel to me, from a friend.
     /// Anything else of those kinds is dropped: the "friends only" rule holds
     /// on the wire, not only in the UI.
     public static func accepts(_ packet: Packet, me: PeerID, friends: Set<PeerID>, blocked: Set<PeerID>) -> Bool {
         if blocked.contains(packet.origin) { return false }
         switch packet.kind {
-        case .ping, .battery:
+        case .ping, .battery, .find:
             return friends.contains(packet.origin) && Whisper.isFor(packet, me: me)
         default:
             return true

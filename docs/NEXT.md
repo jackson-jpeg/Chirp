@@ -42,16 +42,17 @@ work. MultipeerConnectivity is deprecated in Xcode 27, so 2.0's transport moves 
 framework. Hardware proof is still to come.
 
 - [ ] Background proof on hardware: BACKGROUND.md section 4, tests B1 to B5 (needs the Chirp simulator and the shared iPhone, ideally a second iPhone); update BACKGROUND.md and the Mac copy with results
-- [ ] Core for the new scope, in ChirpCore with tests, in this order (done so far: `Whisper.swift`, `Messages.swift`, `CatchUp.swift`; Whisper is a private two-person channel, so relays cannot tell who it is for):
+- [ ] Core for the new scope, in ChirpCore with tests, in this order (done so far: `Whisper.swift`, `Messages.swift`, `CatchUp.swift`, `Bird.swift`, `Photo.swift`, `Find.swift`, 88 tests; Whisper is a private two-person channel, so relays cannot tell who it is for):
   - [x] Whisper: a packet addressed to one PeerID, sealed pairwise (`LocalIdentity.sharedKey`), relayed but delivered only to that person, with its own floor
   - [x] Roll call and meet-up spot message kinds; roll call "I need help" gets priority relay (a higher TTL and first in the send queue)
   - [x] Catch up: store and forward of texts for an absent friend, with a cap per person and in total, delivered in order, deduped by message ID
   - [x] Battery level: sent only to friends, never in the public presence (the audit flagged 1.0 broadcasting it to strangers)
   - [x] Ping: a message kind that asks a friend's phone to chirp; rate-limited, only from friends, never from blocked people
-  - [ ] Each person's bird: colors and a chirp choice carried in the signed presence (an ID from a fixed set, not raw audio)
-  - [ ] Small photos: a capped, chunked message kind (size limit, sealed on locked channels)
-  - [ ] Captions: on-device speech to text of received voice in the app (Speech framework); the speech permission asked on the first tap of captions, never at launch (5.1.1(iv)); captions-only mode
-  - [ ] Find: Nearby Interaction token exchange over the mesh between friends, distance fallback from hops and signal; the NI permission asked on first use
+  - [x] Each person's bird: colors and a chirp choice carried in the signed presence (an ID from a fixed set, not raw audio)
+  - [x] Small photos: a capped, chunked message kind (size limit, sealed on locked channels)
+  - [ ] Captions (app side, needs `ios build`, so the simulator): on-device speech to text of received voice in the app (Speech framework); the speech permission asked on the first tap of captions, never at launch (5.1.1(iv)); captions-only mode
+  - [x] Find, core part: Nearby Interaction token exchange over the whisper channel (friends only) and an honest in range / through others / out of range fallback (`Find.swift`)
+  - [ ] Find, app part: NISession ranging from the exchanged tokens, the NI permission asked on the first Find tap; needs `ios build` (simulator) and two UWB iPhones to prove
 - [ ] Transport on Network framework (Bonjour with peer-to-peer Wi-Fi) instead of MultipeerConnectivity (deprecated in Xcode 27 beta); replaces the MultipeerConnectivity transport sub-item under item 2
 - [ ] 7) Lock Screen / Dynamic Island: decided by Jackson's answer on BACKGROUND.md's options (Needs Jackson)
 

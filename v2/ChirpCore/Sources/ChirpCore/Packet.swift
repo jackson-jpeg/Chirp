@@ -56,14 +56,18 @@ public enum PacketKind: UInt8, Sendable, CaseIterable {
     case battery = 10
     /// Catch-up request or bundle of held packets. One link only.
     case catchUp = 11
+    /// One chunk of a small photo.
+    case photo = 12
+    /// Find: a Nearby Interaction discovery token for one friend. Only on a whisper channel.
+    case find = 13
 
     /// How many links a new packet of this kind may cross. Floor control has
     /// the same reach as audio on purpose: a device that cannot hear a speaker
     /// must not be told the floor is taken.
     public var initialTTL: UInt8 {
         switch self {
-        case .audio, .floor, .presence: return 2   // at most one relay
-        case .text, .ack, .rollCall, .help, .meetup, .ping, .battery: return 4
+        case .audio, .floor, .presence, .photo: return 2   // at most one relay
+        case .text, .ack, .rollCall, .help, .meetup, .ping, .battery, .find: return 4
         case .catchUp: return 1   // between two phones in range, never relayed
         }
     }
@@ -84,9 +88,10 @@ public enum PacketKind: UInt8, Sendable, CaseIterable {
         case .help: return 0
         case .floor: return 1
         case .audio: return 2
-        case .rollCall, .ping: return 3
+        case .rollCall, .ping, .find: return 3
         case .text, .ack, .meetup: return 4
         case .presence, .battery, .catchUp: return 5
+        case .photo: return 6
         }
     }
 }
