@@ -5,15 +5,21 @@ import ChirpCore
 struct ChirpApp: App {
     @State private var flock = Flock.demo
     @State private var router = Router.fromLaunchArguments()
+    /// Opens nothing until someone talks; closes on background (2.5.4).
+    @State private var audio = AudioSession()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(flock)
                 .environment(router)
+                .environment(audio)
                 .preferredColorScheme(router.forcedScheme)
                 .tint(Theme.ink)
+                .task { audio.observeSystem() }
         }
+        .onChange(of: scenePhase, initial: true) { _, phase in audio.follow(phase) }
     }
 }
 

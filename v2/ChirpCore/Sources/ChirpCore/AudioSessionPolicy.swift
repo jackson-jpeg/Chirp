@@ -51,4 +51,12 @@ public enum AudioSessionPolicy {
         if let ended = i.lastSpeechEnded, now.timeIntervalSince(ended) < playbackTail { return .playback }
         return .off
     }
+
+    /// When `need` will change with no new input (the playback tail running
+    /// out), so the adapter can look again then. Nil when only a new input
+    /// can change it.
+    public static func recheck(_ i: AudioSessionInputs, now: Date) -> Date? {
+        guard need(i, now: now) == .playback, i.floor.speaker == nil, let ended = i.lastSpeechEnded else { return nil }
+        return ended.addingTimeInterval(playbackTail)
+    }
 }

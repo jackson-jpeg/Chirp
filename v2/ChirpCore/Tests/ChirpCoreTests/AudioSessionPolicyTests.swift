@@ -31,4 +31,22 @@ import Testing
         #expect(AudioSessionPolicy.need(i, now: at(AudioSessionPolicy.playbackTail - 0.1)) == .playback)
         #expect(AudioSessionPolicy.need(i, now: at(AudioSessionPolicy.playbackTail)) == .off)
     }
+
+    /// The adapter is told to look again exactly when the tail runs out.
+    @Test func recheckIsWhenTheTailRunsOut() {
+        let i = AudioSessionInputs(foreground: true, floor: .idle, lastSpeechEnded: t0)
+        #expect(AudioSessionPolicy.recheck(i, now: at(0.5)) == at(AudioSessionPolicy.playbackTail))
+        #expect(AudioSessionPolicy.recheck(i, now: at(AudioSessionPolicy.playbackTail)) == nil)
+    }
+
+    /// While someone talks, or the mic is open, or nothing is open, only a new input changes the need.
+    @Test func noRecheckWhileTheNeedHangsOnTheFloor() {
+        for floor in [holding, listening, .refused(under: listening)] {
+            let i = AudioSessionInputs(foreground: true, floor: floor, lastSpeechEnded: t0)
+            #expect(AudioSessionPolicy.recheck(i, now: at(0.5)) == nil)
+        }
+        #expect(AudioSessionPolicy.recheck(AudioSessionInputs(foreground: true), now: t0) == nil)
+        let background = AudioSessionInputs(foreground: false, lastSpeechEnded: t0)
+        #expect(AudioSessionPolicy.recheck(background, now: at(0.5)) == nil)
+    }
 }

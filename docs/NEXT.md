@@ -49,7 +49,6 @@ simulator destination, no device needed); screenshots follow once the simulator 
   - [x] Screens, light then dark: Welcome, MakeBird, Talk (listen and hold), Chat, Nearby (with Block), Find, Meetup, RollCall, CatchUp; compile clean (no warnings; 88 core tests pass). Not yet seen running: the match to the PNGs is unproven until the screenshots
   - [x] Fold the screen-local color tokens (`ChatStyle`, `CoverTokens`, Welcome's sky, raw navy) into `Theme.swift` (one `Theme.well` for all seven palettes), and share the wire scene's drawing: `SceneDrawing` (sky, glow, clouds, wire, chirp arcs) is used by `WireScene`, `TalkScene` and `WelcomeScene` (branch `v2/theme-tidy`)
   - [x] The chosen chirp moved from `@AppStorage` into `Flock.you`, and your bird (name, colors, chirp) is saved and restored by `Flock`
-  - [ ] Chat messages live in `ChatView` state (`ChatItem.demo()`); move them into `Flock` when dispatch lands (the message model comes from dispatch)
   - [ ] Simulator screenshots of each screen, light and dark, next to the design PNG in ~/Downloads/chirpchirps-redo/build-vs-design/; then one Inbox item (needs the simulator)
   - [ ] LockScreen (Live Activity): waits on Jackson's background answer (Inbox `chirp-2-0-background`)
   - [ ] Watch: the scope message says Apple Watch is 2.1 while the design draws it; build after 2.0 unless Jackson says otherwise
@@ -90,10 +89,11 @@ it as soon as a simulator exists, and correct the core if it disproves anything.
   - [x] The receive jitter buffer resets for a new speaker, so a sender whose counter restarted is heard (audit defect). In ChirpCore: per (peer, epoch) stream in the jitter buffer and the router
   - [x] Texts with delivery ticks in ChirpCore: signed, acked only on a joined channel, ticks stored with the message
   - [ ] App target: `v2/project.yml` (xcodegen, bundle ID unchanged, no `UIBackgroundModes`, no camera, photo, speech or "Always" location strings) building the package and an empty placeholder app with `ios build`
-  - [ ] Audio session opened only while talking or listening, closed on background; no UIBackgroundModes (2.5.4; see branch fix/2-5-4-foreground-only). The rule is done and tested in ChirpCore (`AudioSessionPolicy`); left: the app's AVAudioSession adapter that follows it, with interruption and route-change handling (1.0's `AudioSessionManager.swift:84-164` is the checklist)
+  - [x] Audio session opened only while talking or listening, closed on background; no UIBackgroundModes (2.5.4). `AudioSessionPolicy` plus `recheck` (the tail's end) in ChirpCore, tested; the app's adapter `v2/App/Sources/App/AudioSession.swift` follows the scene phase, releases the floor on an interruption or a lost input, reapplies after a media services reset, and opens nothing at launch. Compiles; not yet run (no simulator, and audio needs a device)
   - [ ] Audio engine in the app: capture to 16 kHz Opus 20 ms frames and playback through ChirpCore's JitterBuffer; carry over the render-thread copy, the persistent converter and the DEBUG sine mic (audit section 7)
   - [ ] Transport in the app: MultipeerConnectivity behind one send gate (ChirpCore `SendGate`), peers keyed by PeerID from presence, an invitation tie-break, advertising and browsing only after the first tap that needs them (5.1.1(iv))
   - [ ] Dispatch in the app: one switch on `PacketKind`, seal and open with the channel, verify floor and texts against the roster's keys
+    Then move chat messages from `ChatView` state (`ChatItem.demo()`) into `Flock` (the message model comes from dispatch), and feed `AudioSession.setFloor` from the floor reducer
   - [ ] Demo Mode content: simulated people and a channel on `SendGate.demoChannel`, entering through the real receive path
   - [ ] Plain placeholder screens: Talk, Channels, Nearby (with Block), Texts, Check In; system styles only until Jackson picks a route
 - [ ] 1) Audit, read-only, on a phone plus the simulator: what truly works (push to talk both ways, texts with acks, a relay hop), what is dead, faked or duplicated; write ~/Downloads/chirpchirps-redo/AUDIT.md
