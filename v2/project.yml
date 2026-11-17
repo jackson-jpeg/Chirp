@@ -36,6 +36,9 @@ targets:
     dependencies:
     - package: ChirpCore
       product: ChirpCore
+    scheme:
+      testTargets:
+      - ChirpUITests
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp
@@ -64,3 +67,17 @@ targets:
         NSLocationWhenInUseUsageDescription: When you check in, your friends see where you are for 15 minutes. You are asked every time.
         NSSpeechRecognitionUsageDescription: Captions turn what your friends say into text. They are made on your phone, and your voice is never sent anywhere for them.
         NSNearbyInteractionUsageDescription: Find shows which way a friend is and how far, only while you have Find open.
+  # Build-vs-design screenshots (App/UITests/BuildVsDesignTests.swift), run
+  # through `ios test chirp --only ChirpUITests --env SCREENSHOT_DIR=...`.
+  ChirpUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+    - path: App/UITests
+    dependencies:
+    - target: Chirp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp.uitests
+        GENERATE_INFOPLIST_FILE: true
+        TEST_TARGET_NAME: Chirp
