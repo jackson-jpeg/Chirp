@@ -11,6 +11,8 @@ struct ChirpApp: App {
     @State private var captions = LiveCaptions()
     /// The radio. Starts on the first hold to talk, not at launch (5.1.1(iv)).
     @State private var transport = Transport(local: ChirpApp.identity.peerID)
+    /// Every packet in and out goes through ChirpCore's `Dispatch` here.
+    @State private var mesh: Mesh?
     /// Created on first launch and kept in the Keychain.
     static let identity: LocalIdentity = {
         do { return try LocalIdentity.loadOrCreate(from: KeychainStore()) } catch {
@@ -30,7 +32,15 @@ struct ChirpApp: App {
                 .environment(transport)
                 .preferredColorScheme(router.forcedScheme)
                 .tint(Theme.ink)
-                .task { audio.observeSystem() }
+                .task {
+                    audio.observeSystem()
+                    // Dispatch between the radio and the flock. Starts nothing:
+                    // the radio still waits for the first hold to talk.
+                    if mesh == nil {
+                        mesh = Mesh(identity: ChirpApp.identity, flock: flock, transport: transport)
+                        mesh?.startHeartbeat()
+                    }
+                }
         }
         .onChange(of: scenePhase, initial: true) { _, phase in
             audio.follow(phase)

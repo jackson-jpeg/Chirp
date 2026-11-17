@@ -9,6 +9,8 @@ struct Person: Identifiable, Hashable {
     /// Their start-talking chirp: 0 Finch, 1 Robin, 2 Wren (ChirpCore `Bird.chirp`).
     var chirp: Int = 0
     var isYou = false
+    /// Their key fingerprint, for people heard on the air (nil in the demo).
+    var peer: PeerID? = nil
 
     static func == (a: Person, b: Person) -> Bool { a.id == b.id }
     func hash(into h: inout Hasher) { h.combine(id) }
@@ -68,6 +70,40 @@ final class Flock {
 
     private static func saveYou(_ p: Person, to defaults: UserDefaults = .standard) {
         defaults.set(["name": p.name, "palette": p.palette.name, "chirp": p.chirp], forKey: "you")
+    }
+
+    // MARK: From the air (Mesh)
+
+    /// Texts on every channel, ticks included, as dispatch stored them.
+    var texts: [StoredText] = []
+
+    /// Takes the events that change who is here and what was said. Returns
+    /// false for the ones it leaves to others (audio, floor, ping, Find...).
+    @discardableResult
+    func apply(_ event: Dispatch.Event) -> Bool {
+        switch event {
+        case .presence(let p):
+            let id = p.id.hex
+            guard !isBlocked(id) else { return true }
+            let person = Person(id: id, name: p.name, palette: BirdPalette[p.bird], chirp: Int(p.bird.chirp), peer: p.id)
+            if let i = others.firstIndex(where: { $0.id == id }) { others[i] = person } else { others.append(person) }
+            return true
+        case .text(let t):
+            guard !isBlocked(t.sender), !texts.contains(where: { $0.id == t.id }) else { return true }
+            texts.append(t)
+            return true
+        case .delivered(let id, let from):
+            if let i = texts.firstIndex(where: { $0.id == id }) { texts[i].deliveredTo.insert(from.hex) }
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Someone not heard for a while has gone out of range.
+    func left(_ peer: PeerID) {
+        others.removeAll { $0.peer == peer }
+        if let t = talkerID, person(t)?.peer == peer { talkerID = nil }
     }
 
     var everyone: [Person] { [you] + others }
