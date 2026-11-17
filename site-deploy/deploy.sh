@@ -74,6 +74,8 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
 done
 [ "$code" = 400 ] || { echo "FAIL: signup answered $code to a bad address (want 400)" >&2; exit 1; }
 curl -fsS -o /dev/null https://chirpchirps.com/thanks.html
+www=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' https://www.chirpchirps.com/support/)
+[ "$www" = "301 https://chirpchirps.com/support/" ] || { echo "FAIL: www answered '$www' (want a 301 to chirpchirps.com)" >&2; exit 1; }
 curl -fsS https://chirpchirps.com/robots.txt | grep -q '^Sitemap: ' || { echo "FAIL: robots.txt not served" >&2; exit 1; }
 curl -fsS https://chirpchirps.com/sitemap.xml | grep -q '<urlset' || { echo "FAIL: sitemap.xml not served" >&2; exit 1; }
 echo "deployed"
