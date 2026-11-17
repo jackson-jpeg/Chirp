@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Every public page. thanks.html (after the release-list signup) is left
+     out on purpose: it is noindex. Add a page here when one is added to site/. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://chirpchirps.com/</loc></url>
+  <url><loc>https://chirpchirps.com/support/</loc></url>
+  <url><loc>https://chirpchirps.com/privacy/</loc></url>
+  <url><loc>https://chirpchirps.com/terms/</loc></url>
+  <url><loc>https://chirpchirps.com/credits/</loc></url>
+</urlset>

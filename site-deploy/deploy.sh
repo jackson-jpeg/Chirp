@@ -21,6 +21,15 @@ if grep -rln $'—' --include=*.html "$site"; then echo "REFUSED: em dash in the
 if grep -rlnE 'apps\.apple\.com|itunes\.apple\.com' --include=*.html "$site"; then
     echo "REFUSED: App Store link in the pages above (nothing is on sale yet)" >&2; exit 1
 fi
+# Every page folder (<name>/index.html) is in the sitemap, and robots.txt points at it.
+for page in "$site"/*/index.html; do
+    name="$(basename "$(dirname "$page")")"
+    grep -q "<loc>https://chirpchirps.com/$name/</loc>" "$site/sitemap.xml" ||
+        { echo "REFUSED: /$name/ is missing from site/sitemap.xml" >&2; exit 1; }
+done
+grep -q '^Sitemap: https://chirpchirps.com/sitemap.xml$' "$site/robots.txt" ||
+    { echo "REFUSED: site/robots.txt does not name the sitemap" >&2; exit 1; }
+python3 -I -c 'import sys, xml.dom.minidom as m; m.parse(sys.argv[1])' "$site/sitemap.xml"
 
 echo "▸ signup service"
 s="$here/signup"
@@ -65,4 +74,6 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
 done
 [ "$code" = 400 ] || { echo "FAIL: signup answered $code to a bad address (want 400)" >&2; exit 1; }
 curl -fsS -o /dev/null https://chirpchirps.com/thanks.html
+curl -fsS https://chirpchirps.com/robots.txt | grep -q '^Sitemap: ' || { echo "FAIL: robots.txt not served" >&2; exit 1; }
+curl -fsS https://chirpchirps.com/sitemap.xml | grep -q '<urlset' || { echo "FAIL: sitemap.xml not served" >&2; exit 1; }
 echo "deployed"
