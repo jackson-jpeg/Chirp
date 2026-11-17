@@ -1,0 +1,59 @@
+{
+  "id": "chirp",
+  "name": "ChirpChirps",
+  "stage": "2.0 in development (complete redo); 1.0 rejected by App Review, nothing on sale",
+  "pitch": "Hold to talk to friends nearby with no signal: phones pass your voice and texts along, for festivals, ski trips, cruises and camping.",
+  "repos": ["https://github.com/jackson-jpeg/Chirp"],
+  "vpsPath": "/root/Chirp",
+  "nextMd": "/root/Chirp/docs/NEXT.md",
+  "latestHandoff": "/root/Chirp/docs/sessions/2026-11-17-handoff.md",
+  "domains": ["chirpchirps.com", "www.chirpchirps.com"],
+  "systemdUnits": ["chirpchirps-signup.service", "chirpchirps-backup.service"],
+  "ports": [3330],
+  "databases": [
+    {
+      "name": "chirpchirps release list (signups.db)",
+      "engine": "sqlite",
+      "backupPath": "/var/backups/chirpchirps"
+    }
+  ],
+  "storagePaths": ["/var/lib/private/chirpchirps", "/root/chirpchirps-site", "/root/chirpchirps-site-backups"],
+  "timers": ["chirpchirps-backup.timer"],
+  "deployCommand": "bash /root/Chirp/site-deploy/deploy.sh",
+  "healthUrl": "https://chirpchirps.com/",
+  "stagingUrl": null,
+  "apple": {
+    "appId": "6761436901",
+    "bundleId": "com.jacksonmsanger.chirpchirp",
+    "version": "2.0.0",
+    "state": "1.0 rejected 2026-09-29 (Guideline 2.5.4); 2.0 not yet uploaded",
+    "testflightGroups": null,
+    "ascKeyPath": null
+  },
+  "money": {
+    "stripe": null,
+    "affiliates": null,
+    "monthlyCosts": null
+  },
+  "audience": {
+    "analyticsSource": "umami (self-hosted)",
+    "analyticsId": "cfeb9746-8873-4c4f-807a-ad9fe8c8880e",
+    "searchConsole": null,
+    "tiktok": null,
+    "emailList": "chirpchirps-signup release list: one email on release day, then the list and its backups are deleted"
+  },
+  "trust": {
+    "privacyUrl": "https://chirpchirps.com/privacy/",
+    "termsUrl": "https://chirpchirps.com/terms/",
+    "supportUrl": "https://chirpchirps.com/support/",
+    "storePolicies": "App Review: 5.1.1(iv) no permission pre-prompts, 2.1(a) reviewer demo mode, 5.1.2(i) blocking and declinable location consent, 2.5.4 no UIBackgroundModes audio"
+  },
+  "rules": [
+    "Never submit to the App Store until Jackson has played the 2.0 TestFlight build",
+    "2.0 declares no audio background mode (2.5.4); bluetooth-central/peripheral only in the same change as the BLE code",
+    "No permission prompt before the tap that needs it (5.1.1(iv))",
+    "Site deploys only through site-deploy/deploy.sh (no em dash, no App Store link until 2.0 is on sale, every page in the sitemap)",
+    "Mac work only through ios build/run/test; one simulator, \"Chirp iPhone 17 Pro\"",
+    "No em dashes in user-facing copy"
+  ]
+}
