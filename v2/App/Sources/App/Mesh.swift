@@ -153,6 +153,9 @@ final class Mesh {
     private func beat() {
         guard transport.running else { return }
         send { try $0.presence(now: .now) }
+        // "I am on this channel" on each locked channel: how its people become
+        // friends (ping, battery, Find) before anyone says anything.
+        for p in dispatch.memberships(now: .now) { transport.send(p) }
         for gone in dispatch.prune(now: .now) { flock?.left(gone) }
     }
 

@@ -16,6 +16,13 @@ final class Phone {
         _ = receive(other.presence(at: s), at: s)
         _ = other.receive(presence(at: s), at: s)
     }
+    /// Both phones join one locked channel and say so: they are friends.
+    func befriend(_ other: Phone, on channel: Channel = .newLocked(name: "Ski trip"), at s: TimeInterval = 0) {
+        meet(other, at: s)
+        d.join(channel); other.d.join(channel)
+        for p in d.memberships(now: at(s)) { _ = other.receive(p, at: s) }
+        for p in other.d.memberships(now: at(s)) { _ = receive(p, at: s) }
+    }
 }
 
 @Suite struct DispatchTests {
@@ -115,14 +122,13 @@ final class Phone {
         let a = Phone("Maya"), b = Phone("Jon"), m = Phone("Mallory")
         a.meet(b); m.meet(b)
         #expect(throws: Dispatch.MakeError.notFriend) { try a.d.toFriend(.ping, Data(), peer: b.id, now: t0) }
-        a.d.friends = [b.id]; b.d.friends = [a.id]
+        a.befriend(b)
         #expect(b.receive(try a.d.toFriend(.ping, Data(), peer: b.id, now: t0)).events == [.ping(from: a.id)])
         #expect(b.receive(try a.d.toFriend(.ping, Data(), peer: b.id, now: at(1)), at: 1).events.isEmpty)
         #expect(b.receive(try a.d.toFriend(.ping, Data(), peer: b.id, now: at(11)), at: 11).events == [.ping(from: a.id)])
 
         // Mallory is not B's friend: even a whisper-channel ping is dropped.
-        m.d.friends = [b.id]
-        #expect(b.receive(try m.d.toFriend(.ping, Data(), peer: b.id, now: t0)).events.isEmpty)
+        #expect(b.receive(try m.d.make(.ping, on: m.d.whisperChannel(to: b.id), body: Data(), now: t0)).events.isEmpty)
     }
 
     @Test func aWhisperIsOpenOnlyToItsOnePerson() throws {
@@ -136,8 +142,7 @@ final class Phone {
 
     @Test func batteryAndFindReachAFriend() throws {
         let a = Phone("Maya"), b = Phone("Jon")
-        a.meet(b)
-        a.d.friends = [b.id]; b.d.friends = [a.id]
+        a.befriend(b)
         let level = BatteryLevel(fraction: 0.47, charging: false)
         #expect(b.receive(try a.d.toFriend(.battery, level.encode(), peer: b.id, now: t0)).events == [.battery(level, from: a.id)])
         let offer = Find.Message.offer(token: Data([1, 2, 3]))

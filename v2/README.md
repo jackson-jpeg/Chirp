@@ -40,6 +40,7 @@ design routes, the screens are plain placeholders.
 | `Photo.swift` | Small photos (scope 5): at most 48 KB in 8 KB chunks, one relay, last in the queue; reassembly bounded in count and time. | Scope 5; 1.0's two image paths |
 | `Find.swift` | Find (scope 4): NI token exchange on the whisper channel, friends only; a fallback that claims only in range, through others or out of range. | Scope 4; 1.0's fake signal bars and metres |
 | `Captions.swift` | Live captions (scope 2): the speech permission asked only on a tap, on-device or unavailable, captions-only silences only what is captioned; `CaptionTrack` holds one caption per speaker stream. App side: `App/Sources/App/LiveCaptions.swift` (Speech framework, `requiresOnDeviceRecognition`). | Scope 2; 5.1.1(iv) |
+| `Dispatch.swift` | Packets in to events, actions out to packets, one switch on the kind. Friends: someone who proved they hold the key of a locked channel I joined (a `member` packet each 10 s, or any signed packet that opened with that key); open channels and Nearby make nobody a friend; leaving the channel or blocking ends it. Ping, battery and Find go only between friends. | Section 7 magic strings; section 5 battery to strangers |
 | `SendGate.swift` | Demo channels are recognisable from the header; nothing leaves or enters while sandboxed. | 2.1(a) |
 
 ## Rules 2.0 holds to (from the four rejections)

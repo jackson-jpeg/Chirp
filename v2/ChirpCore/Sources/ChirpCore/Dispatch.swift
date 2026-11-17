@@ -38,6 +38,9 @@ public struct Dispatch: Sendable {
         case battery(BatteryLevel, from: PeerID)
         case photo(Data, id: UUID, from: PeerID, channel: ChannelID)
         case find(Find.Message, from: PeerID)
+        /// Someone proved they are on a locked channel I am on: they are now a
+        /// friend (once per person and channel).
+        case friend(PeerID, channel: ChannelID)
     }
 
     /// What one received packet asks of the app.
@@ -56,6 +59,8 @@ public struct Dispatch: Sendable {
     /// How many delivered text-like packets are remembered, so the same one
     /// live and again in a catch-up bundle is shown once.
     public static let deliveredMemory = 2048
+    /// How often `memberships` says "I am on this channel" on each locked one.
+    public static let memberInterval: TimeInterval = 10
 
     public let identity: LocalIdentity
     public var me: PeerID { identity.peerID }
@@ -67,9 +72,19 @@ public struct Dispatch: Sendable {
     public private(set) var roster = Roster()
     public private(set) var ledger = TextLedger()
     public private(set) var held = CatchUpStore()
-    /// People on a channel with me. Ping, battery and Find come only from them.
-    public var friends: Set<PeerID> = []
     public private(set) var blocked: Set<PeerID> = []
+    /// Who has proved they are on each locked channel I joined: a signed
+    /// packet from them that opened with that channel's key. Open channels
+    /// prove nothing (their code is the channel ID, which every packet on them
+    /// carries in the clear), and the nearby channel is everyone in range.
+    public private(set) var members: [ChannelID: Set<PeerID>] = [:]
+
+    /// People on a locked channel with me, never anyone blocked. Ping, battery
+    /// and Find come only from them and go only to them. Never "everyone heard
+    /// on Nearby": 1.0 sent battery to strangers (audit section 5).
+    public var friends: Set<PeerID> {
+        members.values.reduce(into: Set<PeerID>()) { $0.formUnion($1) }.subtracting(blocked)
+    }
 
     /// Channels this phone is on, the nearby channel always among them.
     public private(set) var channels: [ChannelID: Channel] = [ChannelID.nearby: .nearby]
@@ -78,6 +93,7 @@ public struct Dispatch: Sendable {
     private var pings = RateLimiter(interval: Dispatch.pingInterval)
     private var delivered: Set<Packet.Key> = []
     private var deliveredOrder: [Packet.Key] = []
+    private var memberSent: [ChannelID: Date] = [:]
 
     public init(identity: LocalIdentity, name: String, bird: Bird = .default,
                 epoch: UInt32 = UInt32.random(in: 1...UInt32.max), ledger: TextLedger = TextLedger()) {
@@ -92,7 +108,12 @@ public struct Dispatch: Sendable {
     // MARK: Settings the app changes
 
     public mutating func join(_ channel: Channel) { channels[channel.id] = channel }
-    public mutating func leave(_ id: ChannelID) { if !id.isNearby { channels.removeValue(forKey: id) } }
+    public mutating func leave(_ id: ChannelID) {
+        guard !id.isNearby else { return }
+        channels.removeValue(forKey: id)
+        members.removeValue(forKey: id)
+        memberSent.removeValue(forKey: id)
+    }
     public var joined: Set<ChannelID> { Set(channels.keys) }
 
     /// The block list, applied in the router (no delivery, no relay), to
@@ -100,7 +121,6 @@ public struct Dispatch: Sendable {
     public mutating func setBlocked(_ peers: Set<PeerID>) {
         blocked = peers
         router.blocked = peers
-        friends.subtract(peers)
     }
 
     /// Forget people not heard for `Roster.staleAfter`.
@@ -151,6 +171,7 @@ public struct Dispatch: Sendable {
         guard let key = roster.person(packet.origin)?.signingKey else { return }
         if packet.kind == .text {
             guard let body = TextBody.verify(plain, header: header, signingKey: key) else { return }
+            noteMember(packet, into: &out)
             let sender = roster.person(packet.origin)?.name ?? packet.origin.shortCode
             let on = Whisper.isFor(packet, me: me) ? joined.union([packet.channel]) : joined
             switch ledger.receive(body, channel: packet.channel, from: packet.origin, senderName: sender, joined: on) {
@@ -166,6 +187,7 @@ public struct Dispatch: Sendable {
         }
 
         guard let body = Signed.open(plain, header: header, signingKey: key) else { return }
+        noteMember(packet, into: &out)
         if CatchUpStore.heldKinds.contains(packet.kind), !remember(packet.key) { return }
 
         switch packet.kind {
@@ -193,8 +215,17 @@ public struct Dispatch: Sendable {
             }
         case .find:
             if let m = Find.Message.decode(body) { out.events.append(.find(m, from: packet.origin)) }
-        case .audio, .text, .presence, .catchUp:
+        case .member, .audio, .text, .presence, .catchUp:
             break
+        }
+    }
+
+    /// A signed packet that opened with a locked channel's key came from
+    /// someone holding that key.
+    private mutating func noteMember(_ packet: Packet, into out: inout Output) {
+        guard channels[packet.channel]?.isLocked == true, packet.origin != me else { return }
+        if members[packet.channel, default: []].insert(packet.origin).inserted {
+            out.events.append(.friend(packet.origin, channel: packet.channel))
         }
     }
 
@@ -290,6 +321,20 @@ public struct Dispatch: Sendable {
     public mutating func toFriend(_ kind: PacketKind, _ body: Data, peer: PeerID, now: Date) throws -> Packet {
         guard friends.contains(peer), !blocked.contains(peer) else { throw MakeError.notFriend }
         return try make(kind, on: whisperChannel(to: peer), body: body, now: now)
+    }
+
+    /// "I am on this channel", once per `memberInterval` on each locked
+    /// channel I joined (at once for one just joined). The app sends these with
+    /// its presence heartbeat.
+    public mutating func memberships(now: Date) -> [Packet] {
+        var out: [Packet] = []
+        for channel in channels.values.sorted(by: { $0.id.description < $1.id.description }) where channel.isLocked {
+            if let last = memberSent[channel.id], now.timeIntervalSince(last) < Self.memberInterval { continue }
+            guard let p = try? make(.member, on: channel.id, body: Data(), now: now) else { continue }
+            memberSent[channel.id] = now
+            out.append(p)
+        }
+        return out
     }
 
     /// "I'm back": the channels I am on and when I last heard each.

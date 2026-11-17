@@ -60,6 +60,11 @@ public enum PacketKind: UInt8, Sendable, CaseIterable {
     case photo = 12
     /// Find: a Nearby Interaction discovery token for one friend. Only on a whisper channel.
     case find = 13
+    /// "I am on this channel": an empty signed body, sealed with a locked
+    /// channel's key, so only someone holding the key can send one. It is how
+    /// the people on a locked channel become friends (`Dispatch.friends`)
+    /// before they have said anything.
+    case member = 14
 
     /// How many links a new packet of this kind may cross. Floor control has
     /// the same reach as audio on purpose: a device that cannot hear a speaker
@@ -67,7 +72,7 @@ public enum PacketKind: UInt8, Sendable, CaseIterable {
     public var initialTTL: UInt8 {
         switch self {
         case .audio, .floor, .presence, .photo: return 2   // at most one relay
-        case .text, .ack, .rollCall, .help, .meetup, .ping, .battery, .find: return 4
+        case .text, .ack, .rollCall, .help, .meetup, .ping, .battery, .find, .member: return 4
         case .catchUp: return 1   // between two phones in range, never relayed
         }
     }
@@ -90,7 +95,7 @@ public enum PacketKind: UInt8, Sendable, CaseIterable {
         case .audio: return 2
         case .rollCall, .ping, .find: return 3
         case .text, .ack, .meetup: return 4
-        case .presence, .battery, .catchUp: return 5
+        case .presence, .battery, .catchUp, .member: return 5
         case .photo: return 6
         }
     }
