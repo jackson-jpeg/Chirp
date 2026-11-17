@@ -31,21 +31,59 @@ Handoff: `docs/sessions/2026-11-17-handoff.md`.
 
 ## Queue
 
+## Scope addition (the lead, relayed through Jackson's Sessions page, 2026-11-17; word for word)
+
+> 2.0 scope grew (add to docs/NEXT.md, core first, styled UI still waits for Jackson's pick): build the core so it supports these. 1) Whisper: talk to one person, not the group. 2) Live captions on every voice message, on-device speech to text, captions-only mode. 3) Catch up: friends' phones hold messages for someone out of range and deliver them in order when they return (store and forward, with a cap). 4) Find: Nearby Interaction precision finding between iPhones with the UWB chip, plain distance fallback, plus Ping that makes a friend's phone chirp loudly. 5) New message types: meet-up spot (place, time, who's coming), roll call (are you OK, I need help with priority relay), small photos, battery level. 6) Each person's bird (colors) and their own start-talking chirp sound. 7) Lock screen and Dynamic Island Live Activity with a talk button. Before anything else, prove the app keeps receiving with the phone locked and no signal, and write what you find in ~/Downloads/chirpchirps-redo/BACKGROUND.md. That decides whether 7 is possible. Apple Watch and translation are 2.1.
+
+What the background research found (`docs/audit/BACKGROUND.md`, also in
+~/Downloads/chirpchirps-redo/): live voice while locked with no signal is not possible within
+App Store rules as far as Apple's documentation goes. Texts and alerts over Bluetooth LE might
+work. MultipeerConnectivity is deprecated in Xcode 27, so 2.0's transport moves to Network
+framework. Hardware proof is still to come.
+
+- [ ] Background proof on hardware: BACKGROUND.md section 4, tests B1 to B5 (needs the Chirp simulator and the shared iPhone, ideally a second iPhone); update BACKGROUND.md and the Mac copy with results
+- [ ] Core for the new scope, in ChirpCore with tests, in this order:
+  - [ ] Whisper: a packet addressed to one PeerID, sealed pairwise (`LocalIdentity.sharedKey`), relayed but delivered only to that person, with its own floor
+  - [ ] Roll call and meet-up spot message kinds; roll call "I need help" gets priority relay (a higher TTL and first in the send queue)
+  - [ ] Catch up: store and forward of texts for an absent friend, with a cap per person and in total, delivered in order, deduped by message ID
+  - [ ] Battery level: sent only to friends, never in the public presence (the audit flagged 1.0 broadcasting it to strangers)
+  - [ ] Ping: a message kind that asks a friend's phone to chirp; rate-limited, only from friends, never from blocked people
+  - [ ] Each person's bird: colors and a chirp choice carried in the signed presence (an ID from a fixed set, not raw audio)
+  - [ ] Small photos: a capped, chunked message kind (size limit, sealed on locked channels)
+  - [ ] Captions: on-device speech to text of received voice in the app (Speech framework); the speech permission asked on the first tap of captions, never at launch (5.1.1(iv)); captions-only mode
+  - [ ] Find: Nearby Interaction token exchange over the mesh between friends, distance fallback from hops and signal; the NI permission asked on first use
+- [ ] Transport on Network framework (Bonjour with peer-to-peer Wi-Fi) instead of MultipeerConnectivity (deprecated in Xcode 27 beta); replaces the MultipeerConnectivity transport sub-item under item 2
+- [ ] 7) Lock Screen / Dynamic Island: decided by Jackson's answer on BACKGROUND.md's options (Needs Jackson)
+
+Order note (2026-11-17, second session): item 2 now comes before the rest of item 1, because
+item 1's last open part (the hardware half) waits on Jackson's simulator answer, and the lead's
+update says to build the clean core now. The hardware half still decides what 2.0 keeps: run
+it as soon as a simulator exists, and correct the core if it disproves anything.
+
+- [ ] 2) New clean project, clean core only (audio, transport, blocking, consent, demo mode) with plain placeholder UI: carry over only code the audit proves, rewritten clean with tests; everything else is new; no UIBackgroundModes (2.5.4); no styled screen before Jackson's pick
+  - [x] Start from docs/audit/AUDIT.md: carry over only its CARRY OVER rows, one identity model (key fingerprint) instead of three. Done as the `v2/ChirpCore` Swift package (Foundation and CryptoKit only, `swift test` on the Mac, no simulator); map in `v2/README.md`
+  - [x] Push-to-talk audio and floor control carry the channel ID, so channels (and locked channels) separate voice (audit defect). In ChirpCore: channel on every packet, floor reducer scoped to a channel, locked channels seal voice and floor; the app still has to wire it
+  - [x] The receive jitter buffer resets for a new speaker, so a sender whose counter restarted is heard (audit defect). In ChirpCore: per (peer, epoch) stream in the jitter buffer and the router
+  - [x] Texts with delivery ticks in ChirpCore: signed, acked only on a joined channel, ticks stored with the message
+  - [ ] App target: `v2/project.yml` (xcodegen, bundle ID unchanged, no `UIBackgroundModes`, no camera, photo, speech or "Always" location strings) building the package and an empty placeholder app with `ios build`
+  - [ ] Audio session opened only while talking or listening, closed on background; no UIBackgroundModes (2.5.4; see branch fix/2-5-4-foreground-only). The rule is done and tested in ChirpCore (`AudioSessionPolicy`); left: the app's AVAudioSession adapter that follows it, with interruption and route-change handling (1.0's `AudioSessionManager.swift:84-164` is the checklist)
+  - [ ] Audio engine in the app: capture to 16 kHz Opus 20 ms frames and playback through ChirpCore's JitterBuffer; carry over the render-thread copy, the persistent converter and the DEBUG sine mic (audit section 7)
+  - [ ] Transport in the app: MultipeerConnectivity behind one send gate (ChirpCore `SendGate`), peers keyed by PeerID from presence, an invitation tie-break, advertising and browsing only after the first tap that needs them (5.1.1(iv))
+  - [ ] Dispatch in the app: one switch on `PacketKind`, seal and open with the channel, verify floor and texts against the roster's keys
+  - [ ] Demo Mode content: simulated people and a channel on `SendGate.demoChannel`, entering through the real receive path
+  - [ ] Plain placeholder screens: Talk, Channels, Nearby (with Block), Texts, Check In; system styles only until Jackson picks a route
 - [ ] 1) Audit, read-only, on a phone plus the simulator: what truly works (push to talk both ways, texts with acks, a relay hop), what is dead, faked or duplicated; write ~/Downloads/chirpchirps-redo/AUDIT.md
   - [x] Code-reading half of the audit (no Mac needed): what is dead, faked or duplicated, and what the hardware half must prove; draft in docs/audit/AUDIT.md, copied to ~/Downloads/chirpchirps-redo/AUDIT.md
-  - [ ] Hardware half: on the simulator and the shared iPhone (`ios device hold chirp`, release after), prove or disprove each claim the code-reading half lists; finish AUDIT.md
-  - [ ] Toolkit fix to propose (ios-toolkit, not this repo): `auto` in sim_resolver matches only names starting "iPhone", but every project names its simulator "<Project> iPhone ...", so `auto` never finds one
-- [ ] 2) New clean project, clean core only (audio, transport, blocking, consent, demo mode) with plain placeholder UI: carry over only code the audit proves, rewritten clean with tests; everything else is new; no UIBackgroundModes (2.5.4); no styled screen before Jackson's pick
-  - [ ] Start from docs/audit/AUDIT.md: carry over only its CARRY OVER rows, one identity model (key fingerprint) instead of three
-  - [ ] Push-to-talk audio and floor control carry the channel ID, so channels (and locked channels) separate voice (audit defect)
-  - [ ] The receive jitter buffer resets for a new speaker, so a sender whose counter restarted is heard (audit defect)
-  - [ ] Audio session opened only while talking or listening, closed on background; no UIBackgroundModes (2.5.4; see branch fix/2-5-4-foreground-only)
+  - [ ] Hardware half: on the simulator and the shared iPhone (`ios device hold chirp`, release after), prove or disprove each claim the code-reading half lists; finish AUDIT.md. Waits on the simulator (Needs Jackson)
+  - [x] Toolkit fix to propose (ios-toolkit, not this repo): `auto` in sim_resolver matches only names starting "iPhone", but every project names its simulator "<Project> iPhone ...", so `auto` never finds one. Written up in `docs/proposals/ios-toolkit-sim-auto.md`; applying it is the toolkit owner's call
 - [ ] 3) v2.0 scope on that core: hold to talk to friends nearby, channels, texts with delivery ticks, who is nearby, block a person, location off by default and asked every time, demo mode for App Review; answers 5.1.1(iv), 2.1(a), 5.1.2(i) and 2.5.4
 - [x] 4) Design directions: skipped by the mandate update; the lead's three routes (Dawn Chorus, Night Wire, Trail Signal) are with Jackson
 
 ## Needs Jackson
 
-- [ ] Create, or let me create, one simulator for Chirp ("Chirp iPhone 17 Pro", installed iOS 26.5 runtime): Inbox item ref chirp-2-0-jackson, filed 2026-11-17. The foreman allows only ios build/run/test, which cannot create one; blocks the hardware half of the audit
+- [ ] Background behaviour: pick an option in `docs/audit/BACKGROUND.md` section 3 (recommended: foreground voice, texts and alerts over Bluetooth LE while locked; no `audio` background mode). Decides scope item 7. Inbox item ref chirp-2-0-background
+
+- [ ] Create, or let me create, one simulator for Chirp ("Chirp iPhone 17 Pro", installed iOS 26.5 runtime): Inbox item ref chirp-2-0-jackson, filed 2026-11-17. The foreman allows only ios build/run/test, which cannot create one; blocks the hardware half of the audit, and every `ios build` of the 2.0 app target (`ios` resolves a simulator even to compile). ChirpCore does not need it: its tests run with `swift test` on the Mac
 - [ ] Pick one of the lead's three routes (Dawn Chorus, Night Wire, Trail Signal); every styled screen waits for it
 - [ ] Play the 2.0 TestFlight build before anything is submitted
 - [ ] 1.0 resubmission: parked by the redo. Branch `fix/2-5-4-foreground-only` answers the 2.5.4 rejection on 1.0's code but was never compiled; only resume it if Jackson wants 1.0 in the store before 2.0
