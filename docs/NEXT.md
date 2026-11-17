@@ -42,16 +42,15 @@ simulator destination, no device needed); screenshots follow once the simulator 
 
 ## Queue
 
-- [ ] Dawn Chorus build (branch `v2/dawn-chorus`)
+Note (2026-11-17, fifth session): every open item below is app code that is proved by compiling it on the Mac. `ios build` cannot compile it without a Chirp simulator (Inbox `chirp-2-0-jackson`), and foreman Mac jobs may use only `ios build`/`run`/`test`, so `v2/scripts/mac-compile.sh` (ssh xcodebuild to a generic simulator destination, no device) is not used under them. Either answer unblocks the Queue.
+
+- [x] Dawn Chorus build (branch `v2/dawn-chorus`): every screen built and compiling; the screenshots, Lock Screen and Watch moved to Needs Jackson (2026-11-17)
   - [x] App icon rendered at 1024 from Main's SVG (`v2/design/icon/AppIcon.svg`, `v2/scripts/render-svg.mjs`)
   - [x] The bird as one SwiftUI view from the design's paths (`v2/scripts/gen-bird-paths.py` writes `BirdPaths.swift`; `BirdView`, `BirdRenderer`, seven `BirdPalette`s; ChirpCore's set is now 7 colors and 3 chirps to match)
   - [x] Theme tokens light and dark, Nunito bundled (OFL), shared components, `v2/project.yml` (no UIBackgroundModes)
   - [x] Screens, light then dark: Welcome, MakeBird, Talk (listen and hold), Chat, Nearby (with Block), Find, Meetup, RollCall, CatchUp; compile clean (no warnings; 88 core tests pass). Not yet seen running: the match to the PNGs is unproven until the screenshots
   - [x] Fold the screen-local color tokens (`ChatStyle`, `CoverTokens`, Welcome's sky, raw navy) into `Theme.swift` (one `Theme.well` for all seven palettes), and share the wire scene's drawing: `SceneDrawing` (sky, glow, clouds, wire, chirp arcs) is used by `WireScene`, `TalkScene` and `WelcomeScene` (branch `v2/theme-tidy`)
   - [x] The chosen chirp moved from `@AppStorage` into `Flock.you`, and your bird (name, colors, chirp) is saved and restored by `Flock`
-  - [ ] Simulator screenshots of each screen, light and dark, next to the design PNG in ~/Downloads/chirpchirps-redo/build-vs-design/; then one Inbox item (needs the simulator)
-  - [ ] LockScreen (Live Activity): waits on Jackson's background answer (Inbox `chirp-2-0-background`)
-  - [ ] Watch: the scope message says Apple Watch is 2.1 while the design draws it; build after 2.0 unless Jackson says otherwise
 
 ## Scope addition (the lead, relayed through Jackson's Sessions page, 2026-11-17; word for word)
 
@@ -63,7 +62,6 @@ App Store rules as far as Apple's documentation goes. Texts and alerts over Blue
 work. MultipeerConnectivity is deprecated in Xcode 27, so 2.0's transport moves to Network
 framework. Hardware proof is still to come.
 
-- [ ] Background proof on hardware: BACKGROUND.md section 4, tests B1 to B5 (needs the Chirp simulator and the shared iPhone, ideally a second iPhone); update BACKGROUND.md and the Mac copy with results
 - [ ] Core for the new scope, in ChirpCore with tests, in this order (done so far: `Whisper.swift`, `Messages.swift`, `CatchUp.swift`, `Bird.swift`, `Photo.swift`, `Find.swift`, 88 tests; Whisper is a private two-person channel, so relays cannot tell who it is for):
   - [x] Whisper: a packet addressed to one PeerID, sealed pairwise (`LocalIdentity.sharedKey`), relayed but delivered only to that person, with its own floor
   - [x] Roll call and meet-up spot message kinds; roll call "I need help" gets priority relay (a higher TTL and first in the send queue)
@@ -76,7 +74,6 @@ framework. Hardware proof is still to come.
   - [x] Find, core part: Nearby Interaction token exchange over the whisper channel (friends only) and an honest in range / through others / out of range fallback (`Find.swift`)
   - [ ] Find, app part: NISession ranging from the exchanged tokens, the NI permission asked on the first Find tap; needs `ios build` (simulator) and two UWB iPhones to prove
 - [ ] Transport on Network framework (Bonjour with peer-to-peer Wi-Fi) instead of MultipeerConnectivity (deprecated in Xcode 27 beta); replaces the MultipeerConnectivity transport sub-item under item 2
-- [ ] 7) Lock Screen / Dynamic Island: decided by Jackson's answer on BACKGROUND.md's options (Needs Jackson)
 
 Order note (2026-11-17, second session): item 2 now comes before the rest of item 1, because
 item 1's last open part (the hardware half) waits on Jackson's simulator answer, and the lead's
@@ -97,8 +94,8 @@ it as soon as a simulator exists, and correct the core if it disproves anything.
   - [ ] Demo Mode content: simulated people and a channel on `SendGate.demoChannel`, entering through the real receive path
   - [ ] Plain placeholder screens: Talk, Channels, Nearby (with Block), Texts, Check In; system styles only until Jackson picks a route
 - [ ] 1) Audit, read-only, on a phone plus the simulator: what truly works (push to talk both ways, texts with acks, a relay hop), what is dead, faked or duplicated; write ~/Downloads/chirpchirps-redo/AUDIT.md
+  Its hardware half is under Needs Jackson (waits on the simulator).
   - [x] Code-reading half of the audit (no Mac needed): what is dead, faked or duplicated, and what the hardware half must prove; draft in docs/audit/AUDIT.md, copied to ~/Downloads/chirpchirps-redo/AUDIT.md
-  - [ ] Hardware half: on the simulator and the shared iPhone (`ios device hold chirp`, release after), prove or disprove each claim the code-reading half lists; finish AUDIT.md. Waits on the simulator (Needs Jackson)
   - [x] Toolkit fix to propose (ios-toolkit, not this repo): `auto` in sim_resolver matches only names starting "iPhone", but every project names its simulator "<Project> iPhone ...", so `auto` never finds one. Written up in `docs/proposals/ios-toolkit-sim-auto.md`; applying it is the toolkit owner's call
 - [ ] 3) v2.0 scope on that core: hold to talk to friends nearby, channels, texts with delivery ticks, who is nearby, block a person, location off by default and asked every time, demo mode for App Review; answers 5.1.1(iv), 2.1(a), 5.1.2(i) and 2.5.4
 - [x] 4) Design directions: skipped by the mandate update; the lead's three routes (Dawn Chorus, Night Wire, Trail Signal) are with Jackson
@@ -108,7 +105,12 @@ it as soon as a simulator exists, and correct the core if it disproves anything.
 - [ ] Background behaviour: pick an option in `docs/audit/BACKGROUND.md` section 3 (recommended: foreground voice, texts and alerts over Bluetooth LE while locked; no `audio` background mode). Decides scope item 7. Inbox item ref chirp-2-0-background
 
 - [ ] Create, or let me create, one simulator for Chirp ("Chirp iPhone 17 Pro", installed iOS 26.5 runtime): Inbox item ref chirp-2-0-jackson, filed 2026-11-17. The foreman allows only ios build/run/test, which cannot create one; blocks the hardware half of the audit, and every `ios build` of the 2.0 app target (`ios` resolves a simulator even to compile). ChirpCore does not need it: its tests run with `swift test` on the Mac
-- [ ] Pick one of the lead's three routes (Dawn Chorus, Night Wire, Trail Signal); every styled screen waits for it
+- [ ] (Waits on the simulator, Inbox chirp-2-0-jackson; moved here 2026-11-17 so the foreman stops sending it) Simulator screenshots of each screen, light and dark, next to the design PNG in ~/Downloads/chirpchirps-redo/build-vs-design/; then one Inbox item (needs the simulator). Also needs the `ios` registry entry `chirp` pointed at `v2/project.yml` (it still builds 1.0's root `project.yml`)
+- [ ] (Waits on the simulator) Background proof on hardware: BACKGROUND.md section 4, tests B1 to B5 (needs the Chirp simulator and the shared iPhone, ideally a second iPhone); update BACKGROUND.md and the Mac copy with results
+- [ ] (Waits on the simulator) Audit Hardware half: on the simulator and the shared iPhone (`ios device hold chirp`, release after), prove or disprove each claim the code-reading half lists; finish AUDIT.md.
+- [ ] (Waits on Inbox chirp-2-0-background) 7) Lock Screen / Dynamic Island Live Activity with a talk button: decided by Jackson's answer on BACKGROUND.md's options
+- [ ] Watch in 2.0 or 2.1: the scope message says 2.1 while the design draws it; build after 2.0 unless Jackson says otherwise
+- [x] Pick one of the lead's three routes: Jackson approved Dawn Chorus (2026-11-17)
 - [ ] Play the 2.0 TestFlight build before anything is submitted
 - [ ] 1.0 resubmission: parked by the redo. Branch `fix/2-5-4-foreground-only` answers the 2.5.4 rejection on 1.0's code but was never compiled; only resume it if Jackson wants 1.0 in the store before 2.0
 
