@@ -2,6 +2,18 @@ import Foundation
 import Testing
 @testable import ChirpCore
 
+/// Reference wrappers: `#expect` cannot call a mutating method on a local
+/// value inside its expression.
+private final class Assembler {
+    var r = Reassembler()
+    var inFlight: Int { r.inFlight }
+    func add(_ f: Data, now: Date) -> Data? { r.add(f, now: now) }
+}
+private final class Alerts {
+    var a = LockedAlerts()
+    func alert(for e: Dispatch.Event, now: Date, name: (PeerID) -> String?) -> LockedAlert? { a.alert(for: e, now: now, name: name) }
+}
+
 @Suite struct BluetoothTests {
     private func bytes(_ n: Int) -> Data { Data((0..<n).map { UInt8($0 % 251) }) }
     private let peer = newIdentity().peerID
@@ -31,7 +43,7 @@ import Testing
         for mtu in [20, 23, 100, 182, 185, 512, 2048] {
             let parts = Fragments.split(wire, id: 7, maxWrite: mtu)
             #expect(!parts.isEmpty && parts.allSatisfy { $0.count <= mtu })
-            var r = Reassembler()
+            let r = Assembler()
             var out: Data?
             for p in parts.reversed() { out = r.add(p, now: t0) ?? out }   // any order
             #expect(Packet.decode(try #require(out)) == packet)
@@ -47,7 +59,7 @@ import Testing
 
     @Test func aDuplicateFragmentIsCountedOnce() throws {
         let parts = Fragments.split(bytes(300), id: 2, maxWrite: 100)
-        var r = Reassembler()
+        let r = Assembler()
         #expect(r.add(parts[0], now: t0) == nil)
         #expect(r.add(parts[0], now: t0) == nil)
         #expect(r.add(parts[1], now: t0) == nil)
@@ -57,13 +69,13 @@ import Testing
 
     @Test func anUnfinishedPacketExpires() {
         let parts = Fragments.split(bytes(300), id: 4, maxWrite: 100)
-        var r = Reassembler()
+        let r = Assembler()
         for p in parts.dropLast() { _ = r.add(p, now: t0) }
         #expect(r.add(parts.last!, now: at(Reassembler.timeout + 1)) == nil)
     }
 
     @Test func malformedFragmentsAreIgnored() {
-        var r = Reassembler()
+        let r = Assembler()
         #expect(r.add(Data([0, 1, 0]), now: t0) == nil)            // short header
         #expect(r.add(Data([0, 1, 2, 2, 9]), now: t0) == nil)      // index past count
         #expect(r.add(Data([0, 1, 0, 0, 9]), now: t0) == nil)      // count 0
@@ -72,7 +84,7 @@ import Testing
     }
 
     @Test func aPeerCannotMakeUsAssembleMoreThanTheCap() {
-        var r = Reassembler()
+        let r = Assembler()
         // 255 fragments claimed, each 100 bytes: over the cap long before the end.
         var got: Data?
         for i in 0..<20 {
@@ -83,7 +95,7 @@ import Testing
     }
 
     @Test func atMostMaxPendingPacketsAreInFlight() {
-        var r = Reassembler()
+        let r = Assembler()
         for id in 0..<UInt16(Reassembler.maxPending + 5) {
             _ = r.add(Fragments.split(bytes(200), id: id, maxWrite: 100)[0], now: at(Double(id)))
         }
@@ -96,7 +108,7 @@ import Testing
     private func name(_ p: PeerID) -> String? { p == maya ? "Maya" : nil }
 
     @Test func aTextShowsWhoAndWhat() {
-        var a = LockedAlerts()
+        let a = Alerts()
         let t = StoredText(id: UUID(), channel: UUID(), sender: maya.hex, senderName: "Maya", sentAt: t0,
                            text: "At the lodge", outgoing: false, deliveredTo: [])
         #expect(a.alert(for: .text(t), now: t0, name: name)?.title == "Maya")
@@ -107,7 +119,7 @@ import Testing
     }
 
     @Test func helpAndRollCallAreTimeSensitive() {
-        var a = LockedAlerts()
+        let a = Alerts()
         let help = a.alert(for: .help(HelpCall(at: t0, note: "twisted ankle"), from: maya, channel: .nearby), now: t0, name: name)
         #expect(help?.title == "Maya needs help" && help?.body == "twisted ankle" && help?.urgency == .timeSensitive)
         let ask = a.alert(for: .rollCall(.ask(id: UUID(), at: t0), from: maya, channel: .nearby), now: t0, name: name)
@@ -116,14 +128,14 @@ import Testing
     }
 
     @Test func aMeetupReplyIsNotANewSpot() {
-        var a = LockedAlerts()
+        let a = Alerts()
         let spot = Meetup.spot(id: UUID(), place: "Blue gondola", latitude: nil, longitude: nil, at: t0)
         #expect(a.alert(for: .meetup(spot, from: maya, channel: .nearby), now: t0, name: name)?.body.hasPrefix("Blue gondola") == true)
         #expect(a.alert(for: .meetup(.reply(id: UUID(), coming: true), from: maya, channel: .nearby), now: t0, name: name) == nil)
     }
 
     @Test func isTalkingAtMostOnceAMinutePerPerson() {
-        var a = LockedAlerts()
+        let a = Alerts()
         let press = Dispatch.Event.floor(.request(sender: maya, name: "Maya", claimedAt: t0), channel: .nearby)
         #expect(a.alert(for: press, now: t0, name: name)?.title == "Maya is talking")
         #expect(a.alert(for: press, now: at(30), name: name) == nil)
@@ -132,13 +144,13 @@ import Testing
     }
 
     @Test func anUnknownPersonIsAFriendNeverAnID() {
-        var a = LockedAlerts()
+        let a = Alerts()
         let stranger = newIdentity().peerID
         #expect(a.alert(for: .ping(from: stranger), now: t0, name: name)?.title == "A friend is looking for you")
     }
 
     @Test func noAlertCopyHasAnEmDash() {
-        var a = LockedAlerts()
+        let a = Alerts()
         let events: [Dispatch.Event] = [
             .help(HelpCall(at: t0, note: ""), from: maya, channel: .nearby),
             .rollCall(.ask(id: UUID(), at: t0), from: maya, channel: .nearby),
