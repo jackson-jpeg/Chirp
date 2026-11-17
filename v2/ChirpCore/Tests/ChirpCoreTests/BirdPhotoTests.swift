@@ -12,7 +12,7 @@ import Testing
 
     @Test func theBirdTravelsSignedInPresenceAndReachesTheRoster() throws {
         let id = newIdentity()
-        let bird = try #require(Bird(palette: 7, chirp: 3))
+        let bird = try #require(Bird(palette: 5, chirp: 2))
         let payload = try Presence(identity: id, name: "Wren", bird: bird, at: t0).signedPayload(by: id)
         let p = try #require(Presence.verify(payload, origin: id.peerID, now: t0))
         #expect(p.bird == bird)

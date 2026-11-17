@@ -29,7 +29,27 @@ foreground-only, or it will be rejected the same way. Details and a worked fix (
 are on branch `fix/2-5-4-foreground-only`, in `docs/sessions/2026-11-17-review-2-5-4.md`.
 Handoff: `docs/sessions/2026-11-17-handoff.md`.
 
+## Design approved (Jackson, 2026-11-17, relayed by the lead; word for word)
+
+> Jackson APPROVED the ChirpChirps 2.0 design (Dawn Chorus). It is the spec now, not a direction. All 14 screens are in ~/Downloads/chirpchirps-redo/design/ on the Mac: PNGs at 3x, and the source of each in design/source/ with exact colors, sizes, copy and the bird drawing as SVG paths (the symbol named bird, beakOpen, beakClosed, and the app icon). Build to them: 1) The app icon from Main: two birds on a wire, yellow one with the gold tuft (no dark cap), coral one listening. Render it at 1024 from the SVG for the asset catalog. 2) The bird is one reusable SwiftUI view drawn from those SVG paths, colored per person, beak open while talking. 3) Every screen in the files, every state, light mode first, then a dark version that keeps the same feel. 4) Plain words from the screens, never mesh or node jargon. Do the background-receive proof first as asked, then the core, then these screens. Put simulator screenshots of each screen next to the matching design PNG in ~/Downloads/chirpchirps-redo/build-vs-design/ and file one Inbox item when they match. Never submit until Jackson plays it.
+
+The design files are copied into the repo at `v2/design/` (PNGs and `source/*.dc.html`).
+
+Order the lead gave: background proof, then the core, then the screens. The background proof
+and every run of the app wait on the Chirp simulator (Inbox `chirp-2-0-jackson`), so the
+screens are being built now and proved by compiling (`v2/scripts/mac-compile.sh`, generic
+simulator destination, no device needed); screenshots follow once the simulator exists.
+
 ## Queue
+
+- [ ] Dawn Chorus build (branch `v2/dawn-chorus`)
+  - [x] App icon rendered at 1024 from Main's SVG (`v2/design/icon/AppIcon.svg`, `v2/scripts/render-svg.mjs`)
+  - [x] The bird as one SwiftUI view from the design's paths (`v2/scripts/gen-bird-paths.py` writes `BirdPaths.swift`; `BirdView`, `BirdRenderer`, seven `BirdPalette`s; ChirpCore's set is now 7 colors and 3 chirps to match)
+  - [x] Theme tokens light and dark, Nunito bundled (OFL), shared components, `v2/project.yml` (no UIBackgroundModes)
+  - [ ] Screens, light then dark: Welcome, MakeBird, Talk (listen and hold), Chat, Nearby (with Block), Find, Meetup, RollCall, CatchUp; compile clean
+  - [ ] Simulator screenshots of each screen, light and dark, next to the design PNG in ~/Downloads/chirpchirps-redo/build-vs-design/; then one Inbox item (needs the simulator)
+  - [ ] LockScreen (Live Activity): waits on Jackson's background answer (Inbox `chirp-2-0-background`)
+  - [ ] Watch: the scope message says Apple Watch is 2.1 while the design draws it; build after 2.0 unless Jackson says otherwise
 
 ## Scope addition (the lead, relayed through Jackson's Sessions page, 2026-11-17; word for word)
 

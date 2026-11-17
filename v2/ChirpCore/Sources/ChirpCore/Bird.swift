@@ -5,12 +5,13 @@ import Foundation
 ///
 /// Carried as two indices in the signed presence, never as colors or audio:
 /// a peer cannot push arbitrary sound or an unreadable color pair onto
-/// someone else's phone, and the set can be designed (and checked for
-/// contrast in light and dark) once Jackson picks a visual route. Until then
-/// the app maps the indices to placeholder colors and system sounds.
+/// someone else's phone. The set is the approved Dawn Chorus design
+/// (`v2/design/source/MakeBird.dc.html`): seven feather colors (blue, teal,
+/// yellow, coral, green, lilac, orange, in that order) and three chirps
+/// (Finch, Robin, Wren). The app maps each index to its colors and sound.
 public struct Bird: Equatable, Hashable, Sendable {
-    public static let paletteCount: UInt8 = 12
-    public static let chirpCount: UInt8 = 8
+    public static let paletteCount: UInt8 = 7
+    public static let chirpCount: UInt8 = 3
     public static let `default` = Bird(palette: 0, chirp: 0)!
 
     public let palette: UInt8

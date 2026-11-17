@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Apple Watch</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#FFFFFF}a:hover{color:#EAF6FC}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 520px; height: 320px; box-sizing: border-box; padding: 32px; background: #DCEFF9; font-family: Nunito, system-ui, sans-serif; display: flex; gap: 40px; align-items: center; justify-content: center">
+<svg width="0" height="0" style="position: absolute" aria-hidden="true"><defs>
+<symbol id="bird" viewBox="-180 -120 340 260" overflow="visible">
+<path d="M-92 18 C-120 30 -150 52 -172 78 C-160 84 -140 82 -122 72 C-110 64 -96 48 -84 36 Z" fill="var(--tail)"/>
+<path d="M-100 22 C-102 -24 -62 -56 -12 -60 C2 -96 36 -112 66 -106 C100 -100 120 -72 116 -42 C112 -14 96 6 92 24 C88 70 46 100 -6 100 C-58 100 -98 70 -100 22 Z" fill="var(--body)"/>
+<path d="M40 -98 C30 -120 38 -140 50 -138 C54 -124 54 -110 52 -98 Z M56 -102 C54 -126 66 -142 78 -136 C76 -122 70 -110 64 -100 Z" fill="var(--tuft, transparent)"/>
+<path d="M-40 52 C-30 18 20 0 70 6 C86 8 92 24 88 40 C80 76 44 96 -2 96 C-26 96 -44 80 -40 52 Z" fill="var(--belly)"/>
+<path d="M8 -84 C26 -108 72 -112 98 -90 C108 -82 114 -70 116 -58 C96 -70 60 -76 30 -70 C20 -72 12 -76 8 -84 Z" fill="var(--cap)"/>
+<path d="M-84 6 C-64 -30 -6 -40 34 -14 C46 -6 50 8 44 20 C30 44 -10 56 -48 50 C-70 46 -88 30 -84 6 Z" fill="var(--wing)"/>
+<ellipse cx="76" cy="-26" rx="14" ry="10" fill="#FF8A7A" opacity=".55"/>
+<circle cx="74" cy="-56" r="12" fill="#14233F"/><circle cx="78" cy="-60" r="4.2" fill="#FFFFFF"/>
+</symbol>
+<symbol id="beakOpen" viewBox="0 0 60 40" overflow="visible"><path d="M0 2 C16 0 34 -6 46 -12 C38 0 18 12 0 16 Z" fill="#FF7A45"/><path d="M0 20 C14 24 30 32 42 40 C30 38 12 34 0 32 Z" fill="#E9632F"/></symbol>
+</defs></svg>
+
+<div style="width: 198px; height: 242px; border-radius: 46px; background: #000000; box-sizing: border-box; padding: 16px 14px; color: #FFFFFF; display: flex; flex-direction: column; align-items: center; gap: 6px; box-shadow: 0 0 0 8px #2A2F38, 0 14px 30px rgba(20,35,63,0.25)">
+<p style="margin: 0; align-self: flex-start; font-size: 14px; font-weight: 900; color: #FFC531">Ski trip</p>
+<p style="margin: 0; align-self: flex-start; font-size: 12px; font-weight: 800; color: #C7D6E2">Maya is talking</p>
+<button type="button" aria-label="Hold to talk" style="margin-top: 4px; width: 118px; height: 118px; border-radius: 59px; border: none; background: #FFC531; box-shadow: inset 0 -5px 0 #F2A100; display: flex; align-items: center; justify-content: center; padding: 0">
+<svg width="80" height="70" viewBox="0 0 80 70" aria-hidden="true"><g style="--body:#4FA8E8;--belly:#CDE9FA;--cap:#2F8ED6;--wing:#2F8ED6;--tail:#2A7FC2" transform="translate(38 38) scale(0.2)"><use href="#bird" x="-180" y="-120" width="340" height="260"/></g></svg>
+</button>
+<p style="margin: 0; font-size: 13px; font-weight: 900">Hold to talk</p>
+</div>
+
+<div style="width: 198px; height: 242px; border-radius: 46px; background: #FFC531; box-sizing: border-box; padding: 16px 14px; color: #14233F; display: flex; flex-direction: column; align-items: center; gap: 4px; box-shadow: 0 0 0 8px #2A2F38, 0 14px 30px rgba(20,35,63,0.25)">
+<p style="margin: 0; align-self: flex-start; font-size: 14px; font-weight: 900">Finding Maya</p>
+<svg width="96" height="96" viewBox="0 0 100 100" role="img" aria-label="Arrow pointing ahead and a little to the right" style="margin-top: 6px; transform: rotate(18deg)"><path d="M50 6 L84 74 Q 86 80 80 78 L50 64 L20 78 Q 14 80 16 74 Z" fill="#14233F"/></svg>
+<p style="margin: 0; font-size: 34px; font-weight: 900; line-height: 1">12 m</p>
+<p style="margin: 0; font-size: 12px; font-weight: 800">Taps get faster as you near</p>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":520,"height":320}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

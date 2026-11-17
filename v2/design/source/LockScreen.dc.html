@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lock screen and Dynamic Island</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#FFFFFF}a:hover{color:#EAF6FC}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #1E4E7C; font-family: Nunito, system-ui, sans-serif; color: #FFFFFF; display: flex; flex-direction: column; align-items: center; position: relative; overflow: hidden">
+<svg width="390" height="844" viewBox="0 0 390 844" aria-hidden="true" style="position: absolute; inset: 0">
+<defs>
+<symbol id="bird" viewBox="-180 -120 340 260" overflow="visible">
+<path d="M-92 18 C-120 30 -150 52 -172 78 C-160 84 -140 82 -122 72 C-110 64 -96 48 -84 36 Z" fill="var(--tail)"/>
+<path d="M-100 22 C-102 -24 -62 -56 -12 -60 C2 -96 36 -112 66 -106 C100 -100 120 -72 116 -42 C112 -14 96 6 92 24 C88 70 46 100 -6 100 C-58 100 -98 70 -100 22 Z" fill="var(--body)"/>
+<path d="M40 -98 C30 -120 38 -140 50 -138 C54 -124 54 -110 52 -98 Z M56 -102 C54 -126 66 -142 78 -136 C76 -122 70 -110 64 -100 Z" fill="var(--tuft, transparent)"/>
+<path d="M-40 52 C-30 18 20 0 70 6 C86 8 92 24 88 40 C80 76 44 96 -2 96 C-26 96 -44 80 -40 52 Z" fill="var(--belly)"/>
+<path d="M8 -84 C26 -108 72 -112 98 -90 C108 -82 114 -70 116 -58 C96 -70 60 -76 30 -70 C20 -72 12 -76 8 -84 Z" fill="var(--cap)"/>
+<path d="M-84 6 C-64 -30 -6 -40 34 -14 C46 -6 50 8 44 20 C30 44 -10 56 -48 50 C-70 46 -88 30 -84 6 Z" fill="var(--wing)"/>
+<ellipse cx="76" cy="-26" rx="14" ry="10" fill="#FF8A7A" opacity=".55"/>
+<circle cx="74" cy="-56" r="12" fill="#14233F"/><circle cx="78" cy="-60" r="4.2" fill="#FFFFFF"/>
+<path d="M-8 96 L-12 124 M22 94 L24 124" stroke="#E07A2E" stroke-width="7" stroke-linecap="round"/>
+<path d="M-26 126 C-18 118 -6 118 2 126 M10 126 C18 118 30 118 38 126" stroke="#E07A2E" stroke-width="6" fill="none" stroke-linecap="round"/>
+</symbol>
+<symbol id="beakOpen" viewBox="0 0 60 40" overflow="visible"><path d="M0 2 C16 0 34 -6 46 -12 C38 0 18 12 0 16 Z" fill="#FF7A45"/><path d="M0 20 C14 24 30 32 42 40 C30 38 12 34 0 32 Z" fill="#E9632F"/><path d="M0 16 C10 18 18 20 24 22 L0 22 Z" fill="#B23A2A"/></symbol>
+<symbol id="beakClosed" viewBox="0 0 60 40" overflow="visible"><path d="M0 4 C16 6 34 12 44 20 C34 26 16 30 0 30 Z" fill="#FF7A45"/></symbol>
+<linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#173E66"/><stop offset=".55" stop-color="#3E8CC7"/><stop offset="1" stop-color="#9ED3EF"/></linearGradient>
+<radialGradient id="dawn" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFE7A3" stop-opacity=".9"/><stop offset="1" stop-color="#FFE7A3" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="390" height="844" fill="url(#wall)"/>
+<circle cx="195" cy="640" r="260" fill="url(#dawn)"/>
+<path d="M-10 470 Q 195 500 400 466" stroke="#0E2440" stroke-width="3" fill="none" opacity=".7"/>
+<g style="--body:#FFC531;--belly:#FFE596;--cap:#FFB81C;--tuft:#F2A100;--wing:#F2A100;--tail:#D98A00" transform="translate(120 446) scale(0.18)"><use href="#bird" x="-180" y="-120" width="340" height="260"/><use href="#beakClosed" x="112" y="-52" width="60" height="40"/></g>
+<g style="--body:#FF8C69;--belly:#FFD6C4;--cap:#E2603F;--wing:#E86A4A;--tail:#C9533A" transform="translate(262 444) scale(-0.18 0.18)"><use href="#bird" x="-180" y="-120" width="340" height="260"/><use href="#beakClosed" x="112" y="-52" width="60" height="40"/></g>
+</svg>
+
+<div style="position: relative; margin-top: 11px; width: 250px; height: 40px; border-radius: 20px; background: #000000; display: flex; align-items: center; justify-content: space-between; padding: 0 14px 0 8px; box-sizing: border-box">
+<svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="14" fill="#FFF1C2"/><g style="--body:#FFC531;--belly:#FFE596;--cap:#FFB81C;--tuft:#F2A100;--wing:#F2A100;--tail:#D98A00" transform="translate(12 17) scale(0.09)"><use href="#bird" x="-180" y="-120" width="340" height="260"/><use href="#beakOpen" x="112" y="-52" width="60" height="40"/></g></svg>
+<span style="font-size: 13px; font-weight: 900; color: #FFFFFF">Maya</span>
+<svg width="44" height="16" viewBox="0 0 44 16" aria-hidden="true"><g fill="#FFC531"><rect x="0" y="6" width="3" height="4" rx="1.5"/><rect x="6" y="3" width="3" height="10" rx="1.5"/><rect x="12" y="0" width="3" height="16" rx="1.5"/><rect x="18" y="4" width="3" height="8" rx="1.5"/><rect x="24" y="1" width="3" height="14" rx="1.5"/><rect x="30" y="5" width="3" height="6" rx="1.5"/><rect x="36" y="3" width="3" height="10" rx="1.5"/><rect x="41" y="6" width="3" height="4" rx="1.5"/></g></svg>
+</div>
+
+<div style="position: relative; margin-top: 46px; display: flex; flex-direction: column; align-items: center">
+<p style="margin: 0; font-size: 20px; font-weight: 700; font-family: system-ui, sans-serif; opacity: 0.9">Tuesday, November 17</p>
+<p style="margin: -6px 0 0; font-size: 100px; font-weight: 700; font-family: system-ui, sans-serif; letter-spacing: -0.03em; line-height: 1.05">9:41</p>
+</div>
+
+<div style="flex-grow: 1"></div>
+
+<section aria-label="ChirpChirps live activity" style="position: relative; margin: 0 12px 52px; width: 366px; box-sizing: border-box; padding: 14px 16px 16px; border-radius: 26px; background: rgba(250,252,255,0.92); color: #14233F; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.25)">
+<div style="display: flex; align-items: center; gap: 8px">
+<span style="width: 10px; height: 10px; border-radius: 5px; background: #FFC531; box-shadow: 0 0 0 3px #FFF1C2"></span>
+<span style="font-size: 13px; font-weight: 900; letter-spacing: 0.02em">Ski trip</span>
+<span style="font-size: 13px; font-weight: 700; color: #3D5170">· 3 on the line</span>
+</div>
+<div style="display: flex; align-items: center; gap: 12px">
+<svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="24" fill="#FFF1C2"/><g style="--body:#FFC531;--belly:#FFE596;--cap:#FFB81C;--tuft:#F2A100;--wing:#F2A100;--tail:#D98A00" transform="translate(21 29) scale(0.14)"><use href="#bird" x="-180" y="-120" width="340" height="260"/><use href="#beakOpen" x="112" y="-52" width="60" height="40"/></g></svg>
+<div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<p style="margin: 0; font-size: 17px; font-weight: 900">Maya is talking</p>
+<p style="margin: 0; font-size: 15px; font-weight: 700; line-height: 1.35; color: #2B3D5C">“We got a table by the fire. Lodge, second floor…”</p>
+</div>
+<button type="button" aria-label="Hold to talk" style="flex-shrink: 0; width: 64px; height: 64px; border-radius: 32px; border: none; background: #FFC531; box-shadow: inset 0 -4px 0 #F2A100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 0; color: #14233F">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><rect x="8" y="3" width="8" height="12" rx="4"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+<span style="font-size: 11px; font-weight: 900">Hold</span>
+</button>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
