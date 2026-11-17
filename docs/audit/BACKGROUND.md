@@ -6,6 +6,16 @@ replies; NOT yet proven on hardware.** The hardware test (section 4) needs two d
 has no simulator yet (Inbox item `chirp-2-0-jackson`). Until it runs, treat every "no" below as
 "Apple says no", which is strong but not a measurement.
 
+## Decision (Jackson, 2026-11-17, Inbox, word for word)
+
+> 1. Talking works with the app open; texts, roll call, pings and "Sam is talking" alerts reach a locked phone over Bluetooth; Lock Screen card opens the app to reply. Move to Network framework. Option 2 (PTT server) is a later add-on, not 2.0. Decided by the lead under Jackson's authority.
+
+What follows for the build (not Jackson's words): 2.0 declares `bluetooth-central` and
+`bluetooth-peripheral` and never `audio`. The Bluetooth modes go into `v2/project.yml` in the same
+change as the Bluetooth LE code that uses them, never before (an unused mode is its own 2.5.4
+problem). Voice and everything else in the foreground run on the Network framework transport.
+Section 4's test still has to show that two locked iPhones exchange anything over BLE.
+
 ## Short answer
 
 - **Live voice while locked, with no signal: no, not within the App Store rules.** Apple's

@@ -2,7 +2,9 @@
 # not committed. Same bundle ID as 1.0 so 2.0 ships as its update.
 #
 # Rules this file holds (docs/NEXT.md, docs/audit/AUDIT.md):
-# - No UIBackgroundModes, ever (Guideline 2.5.4, 1.0's last rejection).
+# - Never the `audio` background mode (Guideline 2.5.4, 1.0's last rejection).
+#   Jackson chose option 1 (docs/audit/BACKGROUND.md): `bluetooth-central` and
+#   `bluetooth-peripheral` arrive with the Bluetooth LE code that uses them, not before.
 # - Usage strings only for what 2.0 asks for, and each asked on first use,
 #   never at launch (5.1.1(iv)). Speech is asked on the first tap of
 #   captions. No camera, photo library or "Always" location strings until a
