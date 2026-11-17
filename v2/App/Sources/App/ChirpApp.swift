@@ -50,6 +50,8 @@ struct ChirpApp: App {
                 }
                 .task {
                     audio.observeSystem()
+                    // Demo Mode for App Review; the visible way in is still to come (docs/NEXT.md).
+                    if ProcessInfo.processInfo.arguments.contains("-demo") { mesh.startDemo() }
                     // Sends only while the radio runs.
                     mesh.startHeartbeat()
                 }

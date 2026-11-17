@@ -200,8 +200,8 @@ extension BluetoothLink: CBCentralManagerDelegate {
     }
 
     nonisolated func centralManager(_ central: CBCentralManager, willRestoreState dict: [String: Any]) {
-        let restored = dict[CBCentralManagerRestoredStatePeripheralsKey] as? [CBPeripheral] ?? []
         MainActor.assumeIsolated {
+            let restored = dict[CBCentralManagerRestoredStatePeripheralsKey] as? [CBPeripheral] ?? []
             // iOS relaunched the app for Bluetooth: it was running before.
             running = true
             for p in restored { adopt(p) }
@@ -291,8 +291,8 @@ extension BluetoothLink: CBPeripheralManagerDelegate {
     }
 
     nonisolated func peripheralManager(_ peripheral: CBPeripheralManager, willRestoreState dict: [String: Any]) {
-        let services = dict[CBPeripheralManagerRestoredStateServicesKey] as? [CBMutableService] ?? []
         MainActor.assumeIsolated {
+            let services = dict[CBPeripheralManagerRestoredStateServicesKey] as? [CBMutableService] ?? []
             running = true
             characteristic = services.first { $0.uuid == serviceUUID }?
                 .characteristics?.first { $0.uuid == packetUUID } as? CBMutableCharacteristic

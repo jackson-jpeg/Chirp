@@ -56,7 +56,7 @@ final class Mesh {
         syncBlocked()
         let out = dispatch.receive(packet, from: link, now: .now)
         if let relay = out.relay { transport.send(relay, except: link) }
-        for p in out.broadcast { transport.send(p) }
+        for p in out.broadcast { emit(p) }
         for p in out.reply { transport.send(p, to: link) }
         for e in out.events {
             liveCard.apply(e) { [dispatch] peer in
@@ -136,7 +136,7 @@ final class Mesh {
     @discardableResult
     func sendText(_ words: String, on channel: ChannelID = .nearby) -> Bool {
         guard let p = try? dispatch.text(words, on: channel, now: .now) else { return false }
-        transport.send(p)
+        emit(p)
         if let stored = dispatch.ledger.texts.last { flock?.texts.append(stored) }
         return true
     }
@@ -144,7 +144,7 @@ final class Mesh {
     func send(_ make: (inout Dispatch) throws -> Packet) {
         syncBlocked()
         guard let p = try? make(&dispatch) else { return }
-        transport.send(p)
+        emit(p)
     }
 
     // MARK: Presence
@@ -174,6 +174,56 @@ final class Mesh {
         if let flock {
             liveCard.start(flock: flock.flockName, onLine: dispatch.roster.visible(excluding: dispatch.blocked).count)
         }
+    }
+
+    // MARK: Demo Mode (App Review 2.1(a))
+
+    @ObservationIgnored private var demo: DemoFlock?
+    @ObservationIgnored private var demoLoop: Task<Void, Never>?
+    var inDemo: Bool { demo != nil }
+
+    /// Pretend friends on the demo flock, entering through `receive` like
+    /// packets off the air. The radio is sandboxed first, so nothing of the
+    /// demo (or anything else) reaches a real phone while it runs.
+    func startDemo() {
+        guard demo == nil else { return }
+        transport.sandboxed = true
+        dispatch.join(DemoFlock.channel)
+        demo = DemoFlock(now: .now)
+        demoLoop = Task { [weak self] in
+            while !Task.isCancelled {
+                guard self?.demoBeat() != nil else { return }
+                try? await Task.sleep(for: .seconds(1))
+            }
+        }
+    }
+
+    func stopDemo() {
+        demoLoop?.cancel()
+        demoLoop = nil
+        demo = nil
+        dispatch.leave(DemoFlock.channel.id)
+        transport.sandboxed = false
+    }
+
+    private func demoBeat() {
+        guard var d = demo else { return }
+        let now = Date.now
+        let packets = d.tick(now: now)
+        // They learn my keys from my presence, as a real phone would.
+        if let mine = try? dispatch.presence(now: now) { _ = d.receive(mine, now: now) }
+        demo = d
+        for p in packets { receive(p, from: p.origin) }
+    }
+
+    /// Out to the radio, and in Demo Mode to the pretend friends too, whose
+    /// answers (ticks) come back through `receive`.
+    private func emit(_ p: Packet) {
+        transport.send(p)
+        guard var d = demo else { return }
+        let back = d.receive(p, now: .now)
+        demo = d
+        for b in back { receive(b, from: b.origin) }
     }
 
     func stopHeartbeat() {
