@@ -4,6 +4,8 @@ import SwiftUI
 /// on a wire, the pitch, and the two ways in. Both lead to Make your bird.
 struct WelcomeView: View {
     @Environment(Router.self) private var router
+    @Environment(Mesh.self) private var mesh
+    @Environment(Flock.self) private var flock
 
     var body: some View {
         GeometryReader { proxy in
@@ -41,6 +43,19 @@ struct WelcomeView: View {
                             .foregroundStyle(Theme.inkSecondary)
                             .multilineTextAlignment(.center)
                             .padding(.top, 6)
+                        // Demo Mode (App Review 2.1(a)): pretend friends, the radio sandboxed.
+                        Button { router.enterDemo(mesh, flock: flock) } label: {
+                            Text("Try it with pretend friends")
+                                .font(.nunito(14, .bold, relativeTo: .footnote))
+                                .underline()
+                                .foregroundStyle(Theme.inkSecondary)
+                                .multilineTextAlignment(.center)
+                                .frame(minHeight: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("welcome.demo")
+                        .accessibilityHint("Shows the app with pretend friends. Nothing leaves this phone.")
                     }
                     .padding(.horizontal, 20)
                     // 40 from the screen's bottom edge, as drawn (clear of the home indicator).

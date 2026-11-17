@@ -9,6 +9,7 @@ struct TalkView: View {
     @Environment(Router.self) private var router
     @Environment(LiveCaptions.self) private var captions
     @Environment(Transport.self) private var transport
+    @Environment(Mesh.self) private var mesh
     @Environment(\.openURL) private var openURL
 
     @State private var holding = false
@@ -44,6 +45,7 @@ struct TalkView: View {
         GeometryReader { geo in
             ScrollView {
                 VStack(spacing: 0) {
+                    if mesh.inDemo { demoBanner }
                     header
                     statusRow
                         .padding(.top, 2)
@@ -73,6 +75,31 @@ struct TalkView: View {
         case .listening: .listening
         case .quiet: .quiet
         }
+    }
+
+    // MARK: Demo banner
+
+    /// Demo Mode (App Review 2.1(a)): a thin strip over the header, with the
+    /// way out. Not in the design files; the copy was approved by Jackson.
+    private var demoBanner: some View {
+        HStack(spacing: 8) {
+            Text("Demo flock. Nothing leaves this phone.")
+                .font(.nunito(13, .heavy, relativeTo: .footnote))
+                .foregroundStyle(Theme.turnText)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button("Leave demo") { router.leaveDemo(mesh) }
+                .font(.nunito(13, .black, relativeTo: .footnote))
+                .foregroundStyle(Theme.ink)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("talk.leaveDemo")
+        }
+        .padding(.horizontal, 20)
+        .background(Theme.sunGlow)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("talk.demoBanner")
     }
 
     // MARK: Header

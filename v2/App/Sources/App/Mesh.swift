@@ -180,7 +180,9 @@ final class Mesh {
 
     @ObservationIgnored private var demo: DemoFlock?
     @ObservationIgnored private var demoLoop: Task<Void, Never>?
-    var inDemo: Bool { demo != nil }
+    /// Stored (not derived from `demo`, which observation ignores) so Talk's
+    /// demo banner appears and goes with it.
+    private(set) var inDemo = false
 
     /// Pretend friends on the demo flock, entering through `receive` like
     /// packets off the air. The radio is sandboxed first, so nothing of the
@@ -190,6 +192,7 @@ final class Mesh {
         transport.sandboxed = true
         dispatch.join(DemoFlock.channel)
         demo = DemoFlock(now: .now)
+        inDemo = true
         demoLoop = Task { [weak self] in
             while !Task.isCancelled {
                 guard self?.demoBeat() != nil else { return }
@@ -202,6 +205,7 @@ final class Mesh {
         demoLoop?.cancel()
         demoLoop = nil
         demo = nil
+        inDemo = false
         dispatch.leave(DemoFlock.channel.id)
         transport.sandboxed = false
     }

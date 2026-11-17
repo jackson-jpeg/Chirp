@@ -50,8 +50,9 @@ struct ChirpApp: App {
                 }
                 .task {
                     audio.observeSystem()
-                    // Demo Mode for App Review; the visible way in is still to come (docs/NEXT.md).
-                    if ProcessInfo.processInfo.arguments.contains("-demo") { mesh.startDemo() }
+                    // Demo Mode by launch argument (UI tests). People and App Review
+                    // come in by Welcome's "Try it with pretend friends".
+                    if ProcessInfo.processInfo.arguments.contains("-demo") { router.enterDemo(mesh, flock: flock) }
                     // Sends only while the radio runs.
                     mesh.startHeartbeat()
                 }
@@ -108,7 +109,36 @@ final class Router {
 
     enum OnboardingStep { case welcome, makeBird }
 
+    /// Came in by Welcome's "Try it with pretend friends": onboarded for this
+    /// launch only (never saved), so leaving the demo goes back to Welcome.
+    var demoSkippedOnboarding = false
+
     init(onboarded: Bool) { self.onboarded = onboarded }
+
+    /// Welcome's demo link: straight onto Talk with a default bird.
+    @MainActor
+    func enterDemo(_ mesh: Mesh, flock: Flock) {
+        if flock.you.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { flock.you.name = "You" }
+        mesh.youChanged(flock.you)
+        mesh.startDemo()
+        demoSkippedOnboarding = !onboarded
+        overlay = nil
+        tab = .talk
+        onboarded = true
+    }
+
+    /// Talk's demo banner: the pretend friends go, and someone who skipped
+    /// Make your bird to get here is back on Welcome.
+    @MainActor
+    func leaveDemo(_ mesh: Mesh) {
+        mesh.stopDemo()
+        overlay = nil
+        if demoSkippedOnboarding {
+            demoSkippedOnboarding = false
+            onboardingStep = .welcome
+            onboarded = false
+        }
+    }
 
     static func fromLaunchArguments(_ args: [String] = ProcessInfo.processInfo.arguments) -> Router {
         let r = Router(onboarded: true)
