@@ -28,14 +28,16 @@ Handoff: `docs/sessions/2026-11-17-handoff.md`.
 ## Queue
 
 - [ ] 1) Audit, read-only, on a phone plus the simulator: what truly works (push to talk both ways, texts with acks, a relay hop), what is dead, faked or duplicated; write ~/Downloads/chirpchirps-redo/AUDIT.md
-  - [ ] Get a simulator for Chirp: the Mac has none (`ios test` found no device on 2026-11-17); one per project, reuse it, never a second, never download a runtime without asking
-  - [ ] Hold the shared iPhone with `ios device hold chirp` for the phone half, release it after
+  - [ ] Code-reading half of the audit (no Mac needed): what is dead, faked or duplicated, and what the hardware half must prove; draft in docs/audit/AUDIT.md, copied to ~/Downloads/chirpchirps-redo/AUDIT.md
+  - [ ] Hardware half: on the simulator and the shared iPhone (`ios device hold chirp`, release after), prove or disprove each claim the code-reading half lists; finish AUDIT.md
+  - [ ] Toolkit fix to propose (ios-toolkit, not this repo): `auto` in sim_resolver matches only names starting "iPhone", but every project names its simulator "<Project> iPhone ...", so `auto` never finds one
 - [ ] 2) New clean project: carry over only code the audit proves on hardware (likely the audio and transport core), rewritten clean with tests; everything else is new; no UIBackgroundModes (2.5.4)
 - [ ] 3) v2.0 scope: hold to talk to friends nearby, channels, texts with delivery ticks, who is nearby, block a person, location off by default and asked every time, demo mode for App Review; answers 5.1.1(iv), 2.1(a), 5.1.2(i) and 2.5.4
 - [ ] 4) Design: 3 truly different directions as Talk-screen phone mockups in ~/Downloads/chirpchirps-redo/design/ (not the old amber radio look, not another studio app's style), then file ONE Inbox item for Jackson to pick, and stop; no UI build before he picks
 
 ## Needs Jackson
 
+- [ ] Create, or let me create, one simulator for Chirp ("Chirp iPhone 17 Pro", installed iOS 26.5 runtime): Inbox item ref chirp-2-0-jackson, filed 2026-11-17. The foreman allows only ios build/run/test, which cannot create one; blocks the hardware half of the audit
 - [ ] Pick one of the 3 design directions (after item 4; Inbox item)
 - [ ] Play the 2.0 TestFlight build before anything is submitted
 - [ ] 1.0 resubmission: parked by the redo. Branch `fix/2-5-4-foreground-only` answers the 2.5.4 rejection on 1.0's code but was never compiled; only resume it if Jackson wants 1.0 in the store before 2.0
