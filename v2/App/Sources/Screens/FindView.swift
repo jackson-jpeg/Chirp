@@ -5,8 +5,8 @@ import ChirpCore
 /// points; without one it says only what the line knows (ChirpCore `Find.Fallback`).
 enum FindState: Equatable {
     /// A precision fix: metres away, and the bearing in degrees from straight
-    /// ahead (positive is to your right).
-    case pointing(meters: Int, bearing: Double)
+    /// ahead (positive is to your right), nil while the direction is unknown.
+    case pointing(meters: Int, bearing: Double?)
     case fallback(ChirpCore.Find.Fallback)
 }
 
@@ -14,8 +14,11 @@ enum FindState: Equatable {
 /// `v2/design/Find.dc.html`.
 struct FindView: View {
     @Environment(Router.self) private var router
-    @State private var state: FindState = FindDemo.state
+    @Environment(\.scenePhase) private var scenePhase
     @State private var pinging = false
+    // TODO: the transport's send on the whisper channel to this friend
+    // (dispatch); until then the offer goes nowhere and Find shows the fallback.
+    @State private var ranging = FindRanging(send: { _ in })
 
     private let target = FindDemo.target
 
@@ -39,14 +42,21 @@ struct FindView: View {
         }
         .foregroundStyle(Theme.findInk)
         .background(Theme.findBackground.ignoresSafeArea())
-        // TODO: NearbyInteraction. Start an NISession on appear: ask for
-        // permission on this first Find tap, swap discovery tokens through
-        // ChirpCore `Find.Message.offer/answer` on the whisper channel, and map
-        // each NINearbyObject's distance and horizontal angle into
-        // `state = .pointing(...)`. Without a fix, set `state` from
-        // `ChirpCore.Find.fallback(for:lastSeen:now:)`.
-        // TODO: tap faster as the distance shrinks (UIImpactFeedbackGenerator).
-        // TODO: send `Find.Message.stop` and invalidate the session on close.
+        // Opening Find is the tap that brings up the Nearby Interaction prompt.
+        .onAppear { if !router.screenshotRun { ranging.open() } }
+        .onDisappear { ranging.close() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { ranging.close() } else if phase == .active, !router.screenshotRun { ranging.open() }
+        }
+    }
+
+    /// The design's content on screenshot runs; otherwise the fix, or what the
+    /// line knows.
+    private var state: FindState {
+        if router.screenshotRun { return FindDemo.state }
+        if let fix = ranging.fix { return .pointing(meters: fix.meters, bearing: fix.bearing) }
+        // TODO: `Find.fallback(for:lastSeen:now:)` from the roster once dispatch fills it.
+        return .fallback(.outOfRange(lastSeen: nil))
     }
 
     // MARK: Header
@@ -87,7 +97,9 @@ struct FindView: View {
             Circle().fill(Theme.card.opacity(0.35)).frame(width: 304, height: 304)
             Circle().fill(Theme.card).frame(width: 268, height: 268)
             switch state {
-            case .pointing(_, let bearing):
+            case .pointing(_, nil):
+                fallbackMark(.inRange)
+            case .pointing(_, let bearing?):
                 FindArrow()
                     .fill(Theme.ink)
                     .frame(width: 170, height: 170)
@@ -122,7 +134,7 @@ struct FindView: View {
                     .tracking(-1.68)
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
-                Text(FindWords.direction(bearing))
+                Text(bearing.map(FindWords.direction) ?? "Hold your phone up and turn slowly")
                     .font(.nunito(22, .black, relativeTo: .title2))
             case .fallback(let fallback):
                 Text(FindWords.headline(fallback))
@@ -150,7 +162,7 @@ struct FindView: View {
     private var spokenSummary: String {
         switch state {
         case .pointing(let meters, let bearing):
-            return "\(target.name), \(meters) \(meters == 1 ? "meter" : "meters"), \(FindWords.spokenDirection(bearing))"
+            return "\(target.name), \(meters) \(meters == 1 ? "meter" : "meters"), \(bearing.map(FindWords.spokenDirection) ?? "direction not known yet, turn slowly")"
         case .fallback(let f):
             return "\(target.name), \(FindWords.headline(f)). \(FindWords.line(f, name: target.name))"
         }
