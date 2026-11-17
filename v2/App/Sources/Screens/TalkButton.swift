@@ -63,8 +63,8 @@ struct TalkButtonBird: View {
                               center: talking ? CGPoint(x: 50, y: 52) : CGPoint(x: 54, y: 50), scale: 0.3)
             if talking {
                 let arcs = Path { p in
-                    p.addPath(TalkSceneDrawing.arc(100, 30, 104, 26, 104, 20, 100, 16))
-                    p.addPath(TalkSceneDrawing.arc(107, 36, 114, 28, 114, 14, 107, 6))
+                    p.addPath(SceneDrawing.arc(100, 30, 104, 26, 104, 20, 100, 16))
+                    p.addPath(SceneDrawing.arc(107, 36, 114, 28, 114, 14, 107, 6))
                 }
                 // On the sun disc in both schemes, so always the design's ink.
                 ctx.stroke(arcs, with: .color(BirdRenderer.ink), style: .init(lineWidth: 3, lineCap: .round))

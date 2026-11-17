@@ -37,43 +37,75 @@ struct WireScene: View {
         Canvas { ctx, size in
             let k = size.width / designSize.width
             ctx.scaleBy(x: k, y: k)
-            let rect = CGRect(origin: .zero, size: designSize)
-            ctx.fill(Path(rect), with: .linearGradient(
-                Gradient(stops: [.init(color: Theme.sceneTop, location: 0), .init(color: Theme.sceneMid, location: 0.7),
-                                 .init(color: Theme.sceneBottom, location: 1)]),
-                startPoint: .zero, endPoint: CGPoint(x: 0, y: designSize.height)))
-            let g = glow
-            ctx.opacity = scheme == .dark ? 0.45 : 1
-            ctx.fill(Path(ellipseIn: CGRect(x: g.center.x - g.radius, y: g.center.y - g.radius, width: g.radius * 2, height: g.radius * 2)),
-                     with: .radialGradient(Gradient(stops: [.init(color: Theme.glowCore, location: 0),
-                                                           .init(color: Theme.glowEdge.opacity(0.9), location: 0.5),
-                                                           .init(color: Theme.glowEdge.opacity(0), location: 1)]),
-                                           center: g.center, startRadius: 0, endRadius: g.radius))
-            ctx.opacity = 1
-            for (c, r) in clouds {
-                ctx.fill(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)),
-                         with: .color(Theme.cloud.opacity(scheme == .dark ? 0.30 : 0.8)))
-            }
-            var w = Path()
-            w.move(to: wire.start); w.addQuadCurve(to: wire.end, control: wire.control)
-            ctx.stroke(w, with: .color(Theme.wire), style: .init(lineWidth: wireWidth, lineCap: .round))
+            let dark = scheme == .dark
+            SceneDrawing.sky(&ctx, CGRect(origin: .zero, size: designSize))
+            SceneDrawing.glow(&ctx, center: glow.center, radius: glow.radius, dark: dark)
+            SceneDrawing.clouds(&ctx, clouds.map { ($0.0.x, $0.0.y, $0.1) }, dark: dark)
+            SceneDrawing.wire(&ctx, from: wire.start, control: wire.control, to: wire.end, width: wireWidth)
             for b in birds {
                 BirdRenderer.draw(&ctx, palette: b.palette, beakOpen: b.talking, center: b.center, scale: b.scale, facingLeft: b.facingLeft)
             }
-            for a in arcs {
-                ctx.stroke(a, with: .color(scheme == .dark ? Color.white.opacity(0.9) : BirdRenderer.ink),
-                           style: .init(lineWidth: arcWidth, lineCap: .round))
-            }
+            for a in arcs { SceneDrawing.chirp(&ctx, a, width: arcWidth, dark: dark) }
             for chip in chips {
                 let r = CGRect(x: chip.center.x - chip.width / 2, y: chip.center.y - 12, width: chip.width, height: 24)
                 ctx.fill(Path(roundedRect: r, cornerRadius: 12),
-                         with: .color(chip.strong ? Color.hex(0x14233F) : Theme.chipOnScene))
+                         with: .color(chip.strong ? Theme.navy : Theme.chipOnScene))
                 ctx.draw(Text(chip.text).font(.custom("Nunito", fixedSize: 12.5).weight(.black))
                             .foregroundStyle(chip.strong ? Color.white : Theme.ink),
                          at: CGPoint(x: chip.center.x, y: chip.center.y))
             }
         }
         .aspectRatio(designSize.width / designSize.height, contentMode: .fit)
+    }
+}
+
+/// The drawing steps every wire scene shares, in the scene's design coordinates:
+/// `WireScene`, `TalkScene` (ripples behind the wire, check-mark chips) and
+/// `WelcomeScene` (its own sky stops, two rows of clouds) each compose these
+/// rather than redraw them. Not a View member, so not main-actor isolated.
+enum SceneDrawing {
+    /// The dawn sky (or Welcome's, given its own stops), top to bottom over `rect`.
+    static func sky(_ ctx: inout GraphicsContext, _ rect: CGRect,
+                    stops: [Gradient.Stop] = [.init(color: Theme.sceneTop, location: 0),
+                                              .init(color: Theme.sceneMid, location: 0.7),
+                                              .init(color: Theme.sceneBottom, location: 1)]) {
+        ctx.fill(Path(rect), with: .linearGradient(Gradient(stops: stops),
+                                                   startPoint: CGPoint(x: rect.minX, y: rect.minY),
+                                                   endPoint: CGPoint(x: rect.minX, y: rect.maxY)))
+    }
+
+    /// The sun's glow; dimmed at dusk. `edge` is the edge color's opacity at mid radius.
+    static func glow(_ ctx: inout GraphicsContext, center c: CGPoint, radius r: CGFloat, edge: Double = 0.9, dark: Bool) {
+        var g = ctx
+        g.opacity = dark ? 0.45 : 1
+        g.fill(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)),
+               with: .radialGradient(Gradient(stops: [.init(color: Theme.glowCore, location: 0),
+                                                     .init(color: Theme.glowEdge.opacity(edge), location: 0.5),
+                                                     .init(color: Theme.glowEdge.opacity(0), location: 1)]),
+                                     center: c, startRadius: 0, endRadius: r))
+    }
+
+    /// Cloud puffs as `(x, y, r)`, in the cloud color (or `color` when given).
+    static func clouds(_ ctx: inout GraphicsContext, _ puffs: [(CGFloat, CGFloat, CGFloat)],
+                       opacity: Double = 0.8, color: Color? = nil, dark: Bool) {
+        let fill = color ?? Theme.cloud.opacity(dark ? 0.30 : opacity)
+        for (x, y, r) in puffs {
+            ctx.fill(Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)), with: .color(fill))
+        }
+    }
+
+    /// The wire: `M from Q control to`.
+    static func wire(_ ctx: inout GraphicsContext, from: CGPoint, control: CGPoint, to: CGPoint, width: CGFloat) {
+        var w = Path()
+        w.move(to: from)
+        w.addQuadCurve(to: to, control: control)
+        ctx.stroke(w, with: .color(Theme.wire), style: .init(lineWidth: width, lineCap: .round))
+    }
+
+    /// A talker's sound arcs: navy by day, near-white at dusk.
+    static func chirp(_ ctx: inout GraphicsContext, _ arcs: Path, width: CGFloat, dark: Bool) {
+        ctx.stroke(arcs, with: .color(dark ? Color.white.opacity(0.9) : BirdRenderer.ink),
+                   style: .init(lineWidth: width, lineCap: .round))
     }
 
     /// An arc from the files' `M x0 y0 C c1 c2 x1 y1` form.

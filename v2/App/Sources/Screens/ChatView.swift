@@ -94,7 +94,7 @@ struct ChatView: View {
                 .foregroundStyle(Theme.inkBody)
                 .padding(.vertical, 4)
                 .padding(.horizontal, 12)
-                .background(ChatStyle.eventPill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(Theme.eventPill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .frame(maxWidth: .infinity)
         case .message(let m):
             switch m.sender {
@@ -112,7 +112,7 @@ struct ChatView: View {
         HStack(spacing: 10) {
             ZStack(alignment: .leading) {
                 TextField("", text: $draft,
-                          prompt: Text("Message the flock").foregroundStyle(ChatStyle.placeholder))
+                          prompt: Text("Message the flock").foregroundStyle(Theme.placeholder))
                     .font(.nunito(16, .bold, relativeTo: .body))
                     .foregroundStyle(Theme.ink)
                     .submitLabel(.send)
@@ -128,7 +128,7 @@ struct ChatView: View {
             }
             .padding(.horizontal, 16)
             .frame(maxWidth: .infinity, minHeight: 44)
-            .background(ChatStyle.field, in: Capsule())
+            .background(Theme.field, in: Capsule())
 
             if trimmedDraft.isEmpty {
                 micButton
@@ -137,7 +137,7 @@ struct ChatView: View {
                     ZStack {
                         ChatSunFill(shape: Circle())
                         ChatIcon.arrowUp
-                            .stroke(Color.hex(0x14233F), style: StrokeStyle(lineWidth: 2.6, lineCap: .round, lineJoin: .round))
+                            .stroke(Theme.navy, style: StrokeStyle(lineWidth: 2.6, lineCap: .round, lineJoin: .round))
                             .frame(width: 22, height: 22)
                     }
                     .frame(width: 48, height: 48)
@@ -161,7 +161,7 @@ struct ChatView: View {
                         top: recording ? Theme.coral : Theme.sun,
                         lip: recording ? Theme.coralHot : Theme.sunDeep)
             ChatIcon.mic
-                .stroke(Color.hex(0x14233F), style: StrokeStyle(lineWidth: 2.6, lineCap: .round, lineJoin: .round))
+                .stroke(Theme.navy, style: StrokeStyle(lineWidth: 2.6, lineCap: .round, lineJoin: .round))
                 .frame(width: 22, height: 22)
         }
         .frame(width: 48, height: 48)
@@ -259,7 +259,7 @@ struct ChatIncomingRow: View {
     private var name: some View {
         Text(person.name)
             .font(.nunito(13, .black, relativeTo: .footnote))
-            .foregroundStyle(ChatStyle.nameColor(person.palette))
+            .foregroundStyle(Theme.nameColor(person.palette))
     }
 }
 
@@ -292,7 +292,7 @@ struct ChatOutgoingRow: View {
         case .text(let text):
             Text(text)
                 .font(.nunito(16, .heavy, relativeTo: .body))
-                .foregroundStyle(Color.hex(0x14233F))   // ink on sun in both schemes
+                .foregroundStyle(Theme.navy)   // ink on sun in both schemes
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.vertical, 10)
                 .padding(.horizontal, 14)
@@ -303,7 +303,7 @@ struct ChatOutgoingRow: View {
                 if let caption {
                     Text(caption)
                         .font(.nunito(15, .bold, relativeTo: .body))
-                        .foregroundStyle(Color.hex(0x14233F))
+                        .foregroundStyle(Theme.navy)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -330,14 +330,14 @@ struct ChatOutgoingRow: View {
             let all = people.count == othersCount && people.count > 1
             HStack(spacing: 4) {
                 ChatTicks(double: true)
-                    .stroke(ChatStyle.signalText, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                    .stroke(Theme.signalText, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
                     .frame(width: 16, height: 12)
-                Text(all ? "Heard by all \(people.count)" : "Heard by \(ChatStyle.names(people))")
+                Text(all ? "Heard by all \(people.count)" : "Heard by \(TalkText.list(people.map(\.name)))")
             }
             .font(.nunito(12, .heavy, relativeTo: .caption))
             .foregroundStyle(Theme.inkSecondary)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Heard by \(ChatStyle.names(people))")
+            .accessibilityLabel("Heard by \(TalkText.list(people.map(\.name)))")
         }
     }
 }
@@ -385,10 +385,10 @@ struct ChatVoicePlayer: View {
                             RoundedRectangle(cornerRadius: 1).frame(width: 3.5, height: 11)
                             RoundedRectangle(cornerRadius: 1).frame(width: 3.5, height: 11)
                         }
-                        .foregroundStyle(Color.hex(0x14233F))
+                        .foregroundStyle(Theme.navy)
                     } else {
                         ChatPlayTriangle()
-                            .fill(Color.hex(0x14233F))
+                            .fill(Theme.navy)
                             .frame(width: 14, height: 14)
                     }
                 }
@@ -409,7 +409,7 @@ struct ChatVoicePlayer: View {
 
             Text(String(format: "%d:%02d", seconds / 60, seconds % 60))
                 .font(.nunito(13, .heavy, relativeTo: .footnote))
-                .foregroundStyle(onSun ? Color.hex(0x14233F) : Theme.inkSecondary)
+                .foregroundStyle(onSun ? Theme.navy : Theme.inkSecondary)
                 .accessibilityLabel("\(seconds) seconds")
         }
         .task(id: playing) {
@@ -424,8 +424,8 @@ struct ChatVoicePlayer: View {
         }
     }
 
-    private var playedColor: Color { onSun ? Color.hex(0x14233F) : Theme.ink }
-    private var restColor: Color { onSun ? Theme.sunDeep : ChatStyle.waveRest }
+    private var playedColor: Color { onSun ? Theme.navy : Theme.ink }
+    private var restColor: Color { onSun ? Theme.sunDeep : Theme.waveRest }
 }
 
 /// `M3 1.5 L12 7 L3 12.5 Z` in a 14 pt box.

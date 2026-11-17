@@ -122,7 +122,7 @@ struct NearbyView: View {
                         .foregroundStyle(Theme.ink)
                     Text(e.statusText)
                         .font(.nunito(14, .bold, relativeTo: .subheadline))
-                        .foregroundStyle(e.isDirect ? ChatStyle.signalText : Theme.inkSecondary)
+                        .foregroundStyle(e.isDirect ? Theme.signalText : Theme.inkSecondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 if e.distance != nil || e.direction != nil {
@@ -334,10 +334,10 @@ struct NearbyScene: View {
             }
 
             if placed.contains(where: \.isDirect) {
-                Self.chip(&ctx, CGRect(x: 88, y: 16, width: 74, height: 24), "Direct", ChatStyle.signalText)
+                Self.chip(&ctx, CGRect(x: 88, y: 16, width: 74, height: 24), "Direct", Theme.signalText)
                 var line = Path()
                 line.move(to: CGPoint(x: 14, y: 46)); line.addLine(to: CGPoint(x: 198, y: 46))
-                ctx.stroke(line, with: .color(ChatStyle.signalText.opacity(0.5)), lineWidth: 2)
+                ctx.stroke(line, with: .color(Theme.signalText.opacity(0.5)), lineWidth: 2)
             }
             if hasRelay, let relay = placed.first(where: { !$0.isDirect }), case .through(let via) = relay.route {
                 Self.chip(&ctx, CGRect(x: 216, y: 16, width: 100, height: 24), "Through \(via.name)", Theme.inkSecondary)
@@ -368,7 +368,7 @@ struct NearbyScene: View {
     private var accessibilityText: String {
         let direct = entries.filter(\.isDirect).map(\.person)
         var parts: [String] = []
-        if !direct.isEmpty { parts.append("Your voice goes straight to \(ChatStyle.names(direct)).") }
+        if !direct.isEmpty { parts.append("Your voice goes straight to \(TalkText.list(direct.map(\.name))).") }
         for e in entries {
             if case .through(let via) = e.route {
                 parts.append("It reaches \(e.person.name) through \(via.name)'s phone.")

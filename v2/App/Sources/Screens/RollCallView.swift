@@ -108,13 +108,13 @@ struct RollCallView: View {
     private func chip(_ status: RollCallDemo.Status) -> some View {
         switch status {
         case .ok(let time):
-            CoverChip(text: "OK · \(time)", fill: Theme.signalSoft, foreground: CoverTokens.okText,
+            CoverChip(text: "OK · \(time)", fill: Theme.signalSoft, foreground: Theme.okText,
                       verticalPadding: 3, cornerRadius: 10)
         case .noAnswer:
-            CoverChip(text: "No answer yet", fill: CoverTokens.pendingFill, foreground: Theme.inkSecondary,
+            CoverChip(text: "No answer yet", fill: Theme.pendingFill, foreground: Theme.inkSecondary,
                       verticalPadding: 3, cornerRadius: 10)
         case .yourTurn:
-            CoverChip(text: "Your turn", fill: Theme.sunGlow, foreground: CoverTokens.turnText,
+            CoverChip(text: "Your turn", fill: Theme.sunGlow, foreground: Theme.turnText,
                       verticalPadding: 3, cornerRadius: 10)
         case .help:
             CoverChip(text: "Needs help", fill: Theme.dangerSoft, foreground: Theme.danger,

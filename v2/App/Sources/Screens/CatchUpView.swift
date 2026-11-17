@@ -86,7 +86,7 @@ struct CatchUpView: View {
                     .foregroundStyle(.white)
                 Text("\(speed.duration(of: CatchUpDemo.totalSeconds)) at \(speed.label) · skips silence")
                     .font(.nunito(14, .bold, relativeTo: .subheadline))
-                    .foregroundStyle(CoverTokens.playerSecondary)
+                    .foregroundStyle(Theme.playerSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
@@ -100,7 +100,7 @@ struct CatchUpView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 10)
                     .frame(minWidth: 52, minHeight: 36)
-                    .overlay(Capsule().strokeBorder(CoverTokens.playerRim, lineWidth: 2))
+                    .overlay(Capsule().strokeBorder(Theme.playerRim, lineWidth: 2))
                     .frame(minHeight: 44)
                     .contentShape(Rectangle())
             }
@@ -109,7 +109,7 @@ struct CatchUpView: View {
             .accessibilityHint("Changes how fast the chirps play")
         }
         .padding(12)
-        .background(CoverTokens.player, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(Theme.player, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
     // MARK: Missed chirps
@@ -138,7 +138,7 @@ struct CatchUpView: View {
                     } label: {
                         HStack(spacing: 10) {
                             CatchUpFlagIcon()
-                                .stroke(CoverTokens.purple, style: .init(lineWidth: 2.4, lineCap: .round, lineJoin: .round))
+                                .stroke(Theme.purple, style: .init(lineWidth: 2.4, lineCap: .round, lineJoin: .round))
                                 .frame(width: 22, height: 22)
                                 .accessibilityHidden(true)
                             VStack(alignment: .leading, spacing: 0) {
@@ -155,7 +155,7 @@ struct CatchUpView: View {
                         .padding(.vertical, 10)
                         .padding(.horizontal, 12)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(CoverTokens.purpleSoft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .background(Theme.purpleSoft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                     .buttonStyle(.plain)
                     .accessibilityHint("Opens the meet-up")

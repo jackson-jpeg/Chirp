@@ -5,8 +5,6 @@ import SwiftUI
 struct MakeBirdView: View {
     @Environment(Flock.self) private var flock
     @Environment(Router.self) private var router
-    /// Finch, Robin, Wren (0...2). Kept here until `Person` carries a chirp.
-    @AppStorage("chirp") private var chirp = 0
     @FocusState private var nameFocused: Bool
 
     private static let chirps = ["Finch", "Robin", "Wren"]
@@ -160,8 +158,8 @@ struct MakeBirdView: View {
 
     @ViewBuilder private var chirpPills: some View {
         ForEach(Self.chirps.indices, id: \.self) { i in
-            ChoicePill(title: Self.chirps[i], systemImage: "play.fill", selected: chirp == i) {
-                chirp = i
+            ChoicePill(title: Self.chirps[i], systemImage: "play.fill", selected: flock.you.chirp == i) {
+                flock.you.chirp = i
                 // TODO: play chirp
             }
             .fixedSize(horizontal: false, vertical: true)

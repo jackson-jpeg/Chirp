@@ -21,7 +21,11 @@ struct Person: Identifiable, Hashable {
 @Observable
 final class Flock {
     var flockName: String
-    var you: Person
+    /// Your bird: name, colors and chirp. Saved on every change, so it is
+    /// kept across launches (Make your bird edits it in place).
+    var you: Person {
+        didSet { if you.name != oldValue.name || you.palette != oldValue.palette || you.chirp != oldValue.chirp { Self.saveYou(you) } }
+    }
     var others: [Person]
     /// Who has the line right now (nil when it is quiet).
     var talkerID: String?
@@ -52,6 +56,20 @@ final class Flock {
         Set(UserDefaults.standard.stringArray(forKey: "blockedIDs") ?? [])
     }
 
+    /// Your saved bird laid over `fallback` (the demo's), field by field.
+    static func loadYou(over fallback: Person, from defaults: UserDefaults = .standard) -> Person {
+        var p = fallback
+        guard let saved = defaults.dictionary(forKey: "you") else { return p }
+        if let name = saved["name"] as? String { p.name = name }
+        if let pal = saved["palette"] as? String, let match = BirdPalette.all.first(where: { $0.name == pal }) { p.palette = match }
+        if let chirp = saved["chirp"] as? Int, (0...2).contains(chirp) { p.chirp = chirp }
+        return p
+    }
+
+    private static func saveYou(_ p: Person, to defaults: UserDefaults = .standard) {
+        defaults.set(["name": p.name, "palette": p.palette.name, "chirp": p.chirp], forKey: "you")
+    }
+
     var everyone: [Person] { [you] + others }
     func person(_ id: String) -> Person? { everyone.first { $0.id == id } }
     var talker: Person? { talkerID.flatMap(person) }
@@ -63,7 +81,7 @@ final class Flock {
 
     static var demo: Flock {
         Flock(flockName: "Ski trip",
-              you: Person(id: "you", name: "Jackson", palette: .blue, isYou: true),
+              you: loadYou(over: Person(id: "you", name: "Jackson", palette: .blue, isYou: true)),
               others: [maya, jon, priya],
               talkerID: "maya")
     }

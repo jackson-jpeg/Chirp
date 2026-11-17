@@ -37,8 +37,8 @@ struct FindView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 10)
         }
-        .foregroundStyle(CoverTokens.findInk)
-        .background(CoverTokens.findBackground.ignoresSafeArea())
+        .foregroundStyle(Theme.findInk)
+        .background(Theme.findBackground.ignoresSafeArea())
         // TODO: NearbyInteraction. Start an NISession on appear: ask for
         // permission on this first Find tap, swap discovery tokens through
         // ChirpCore `Find.Message.offer/answer` on the whisper channel, and map
@@ -60,11 +60,11 @@ struct FindView: View {
                     .font(.nunito(20, .black, relativeTo: .title3))
                 Text(FindDemo.status)
                     .font(.nunito(14, .heavy, relativeTo: .subheadline))
-                    .foregroundStyle(CoverTokens.findSecondary)
+                    .foregroundStyle(Theme.findSecondary)
             }
             .accessibilityElement(children: .combine)
             Spacer(minLength: 8)
-            CoverCloseButton(label: "Stop finding", tint: CoverTokens.findInk) { router.overlay = nil }
+            CoverCloseButton(label: "Stop finding", tint: Theme.findInk) { router.overlay = nil }
         }
     }
 
@@ -133,7 +133,7 @@ struct FindView: View {
             }
             Text(hint)
                 .font(.nunito(15, .heavy, relativeTo: .subheadline))
-                .foregroundStyle(CoverTokens.findSecondary)
+                .foregroundStyle(Theme.findSecondary)
                 .padding(.top, 6)
         }
         .multilineTextAlignment(.center)
@@ -182,10 +182,10 @@ struct FindView: View {
                         .minimumScaleFactor(0.8)
                 }
                 .font(.nunito(17, .black, relativeTo: .headline))
-                .foregroundStyle(CoverTokens.findOnButton)
+                .foregroundStyle(Theme.findOnButton)
                 .padding(.horizontal, 16)
                 .frame(maxWidth: .infinity, minHeight: 56)
-                .background(CoverTokens.findButton, in: Capsule())
+                .background(Theme.findButton, in: Capsule())
             }
             .buttonStyle(.plain)
             .disabled(!canPing || pinging)

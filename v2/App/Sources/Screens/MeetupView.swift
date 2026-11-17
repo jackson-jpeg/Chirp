@@ -72,7 +72,7 @@ struct MeetupView: View {
                 Text("Meet-up · set by \(MeetupDemo.setBy.name)".uppercased())
                     .font(.nunito(13, .black, relativeTo: .caption))
                     .tracking(1.04)
-                    .foregroundStyle(CoverTokens.purple)
+                    .foregroundStyle(Theme.purple)
                 Text(MeetupDemo.place)
                     .font(.nunito(26, .black, relativeTo: .title))
                     .accessibilityAddTraits(.isHeader)
@@ -165,11 +165,11 @@ struct MeetupView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             switch row.status {
             case .there:
-                CoverChip(text: "There", fill: Theme.signalSoft, foreground: CoverTokens.okText)
+                CoverChip(text: "There", fill: Theme.signalSoft, foreground: Theme.okText)
             case .late:
-                CoverChip(text: "Running late", fill: Theme.dangerSoft, foreground: CoverTokens.lateText)
+                CoverChip(text: "Running late", fill: Theme.dangerSoft, foreground: Theme.lateText)
             case .notComing:
-                CoverChip(text: "Can't make it", fill: CoverTokens.pendingFill, foreground: Theme.inkSecondary)
+                CoverChip(text: "Can't make it", fill: Theme.pendingFill, foreground: Theme.inkSecondary)
             case .away(let minutes):
                 Text("\(minutes) min away")
                     .font(.nunito(14, .heavy, relativeTo: .subheadline))
@@ -280,11 +280,11 @@ struct MeetupHillScene: View {
             let k = size.width / 358
             ctx.scaleBy(x: k, y: k)
             ctx.fill(Path(CGRect(x: 0, y: 0, width: 358, height: 132)),
-                     with: .linearGradient(Gradient(colors: [CoverTokens.hillTop, CoverTokens.hillBottom]),
+                     with: .linearGradient(Gradient(colors: [Theme.hillTop, Theme.hillBottom]),
                                            startPoint: .zero, endPoint: CGPoint(x: 0, y: 132)))
             ctx.fill(Self.polygon([(0, 132), (0, 92), (70, 54), (120, 80), (190, 30), (260, 74), (310, 48),
                                    (358, 70), (358, 132)]),
-                     with: .color(CoverTokens.farHills.opacity(0.75)))
+                     with: .color(Theme.farHills.opacity(0.75)))
             ctx.fill(Self.polygon([(0, 132), (0, 108), (90, 84), (170, 102), (250, 86), (358, 104), (358, 132)]),
                      with: .color(Theme.card))
             var cable = Path()
@@ -298,11 +298,11 @@ struct MeetupHillScene: View {
             hanger.move(to: .zero); hanger.addLine(to: CGPoint(x: 0, y: -6))
             g.stroke(hanger, with: .color(Theme.ink), lineWidth: 2)
             g.fill(Path(roundedRect: CGRect(x: -16, y: -6, width: 32, height: 24), cornerRadius: 6),
-                   with: .color(CoverTokens.gondola))
+                   with: .color(Theme.gondola))
             g.fill(Path(roundedRect: CGRect(x: -11, y: -1, width: 9, height: 8), cornerRadius: 2),
-                   with: .color(CoverTokens.gondolaWindow))
+                   with: .color(Theme.gondolaWindow))
             g.fill(Path(roundedRect: CGRect(x: 2, y: -1, width: 9, height: 8), cornerRadius: 2),
-                   with: .color(CoverTokens.gondolaWindow))
+                   with: .color(Theme.gondolaWindow))
 
             // Flag, translate(296 84)
             var f = ctx
@@ -310,7 +310,7 @@ struct MeetupHillScene: View {
             var pole = Path()
             pole.move(to: CGPoint(x: 0, y: 26)); pole.addLine(to: CGPoint(x: 0, y: -14))
             f.stroke(pole, with: .color(Theme.ink), style: .init(lineWidth: 3, lineCap: .round))
-            f.fill(Self.polygon([(0, -14), (26, -6), (0, 2)]), with: .color(CoverTokens.flag))
+            f.fill(Self.polygon([(0, -14), (26, -6), (0, 2)]), with: .color(Theme.flag))
         }
         .aspectRatio(358.0 / 132.0, contentMode: .fit)
     }

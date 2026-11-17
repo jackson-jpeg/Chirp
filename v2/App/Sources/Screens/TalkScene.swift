@@ -6,8 +6,8 @@ import SwiftUI
 /// It is its own Canvas rather than `WireScene` because the Hold file draws
 /// the "you are heard" ripples *behind* the wire and birds, and its name chips
 /// carry a check mark with left-aligned text; `WireScene` draws arcs on top
-/// and centres plain chips. The sky, glow and clouds are drawn exactly as
-/// `WireScene` draws them.
+/// and centres plain chips. The sky, glow, clouds and wire are the shared
+/// `SceneDrawing` steps that `WireScene` uses too.
 struct TalkScene: View {
     enum Mode: Equatable { case listening, holding, quiet }
 
@@ -83,27 +83,12 @@ enum TalkSceneDrawing {
     ]
 
     static func sky(_ ctx: inout GraphicsContext, clouds: Bool, dark: Bool) {
-        let size = TalkScene.designSize
-        ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .linearGradient(
-            Gradient(stops: [.init(color: Theme.sceneTop, location: 0), .init(color: Theme.sceneMid, location: 0.7),
-                             .init(color: Theme.sceneBottom, location: 1)]),
-            startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
+        SceneDrawing.sky(&ctx, CGRect(origin: .zero, size: TalkScene.designSize))
         // <circle cx="70" cy="60" r="120" fill="url(#glow)"/>
-        let c = CGPoint(x: 70, y: 60), r: CGFloat = 120
-        var g = ctx
-        g.opacity = dark ? 0.45 : 1
-        g.fill(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)),
-               with: .radialGradient(Gradient(stops: [.init(color: Theme.glowCore, location: 0),
-                                                     .init(color: Theme.glowEdge.opacity(0.9), location: 0.5),
-                                                     .init(color: Theme.glowEdge.opacity(0), location: 1)]),
-                                     center: c, startRadius: 0, endRadius: r))
+        SceneDrawing.glow(&ctx, center: CGPoint(x: 70, y: 60), radius: 120, dark: dark)
         guard clouds else { return }
-        let puffs: [(CGFloat, CGFloat, CGFloat)] = [(20, 214, 34), (70, 222, 30), (130, 216, 34), (190, 224, 30),
-                                                    (250, 214, 34), (310, 222, 30), (360, 214, 30)]
-        for (x, y, r) in puffs {
-            ctx.fill(Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)),
-                     with: .color(Theme.cloud.opacity(dark ? 0.30 : 0.8)))
-        }
+        SceneDrawing.clouds(&ctx, [(20, 214, 34), (70, 222, 30), (130, 216, 34), (190, 224, 30),
+                                   (250, 214, 34), (310, 222, 30), (360, 214, 30)], dark: dark)
     }
 
     /// Hold: three white half rings rising from the bottom centre, behind the wire.
@@ -118,29 +103,17 @@ enum TalkSceneDrawing {
         }
     }
 
-    /// An arc from the files' `M x0 y0 C c1 c2 x1 y1` form (same as
-    /// `WireScene.arc`, which is main-actor isolated as a View member).
-    static func arc(_ x0: CGFloat, _ y0: CGFloat, _ c1x: CGFloat, _ c1y: CGFloat, _ c2x: CGFloat, _ c2y: CGFloat,
-                    _ x1: CGFloat, _ y1: CGFloat) -> Path {
-        var p = Path()
-        p.move(to: CGPoint(x: x0, y: y0))
-        p.addCurve(to: CGPoint(x: x1, y: y1), control1: CGPoint(x: c1x, y: c1y), control2: CGPoint(x: c2x, y: c2y))
-        return p
-    }
-
     /// `M-4 150 Q 179 186 362 144`, 3.5 wide.
     static func wire(_ ctx: inout GraphicsContext) {
-        var w = Path()
-        w.move(to: CGPoint(x: -4, y: 150))
-        w.addQuadCurve(to: CGPoint(x: 362, y: 144), control: CGPoint(x: 179, y: 186))
-        ctx.stroke(w, with: .color(Theme.wire), style: .init(lineWidth: 3.5, lineCap: .round))
+        SceneDrawing.wire(&ctx, from: CGPoint(x: -4, y: 150), control: CGPoint(x: 179, y: 186),
+                          to: CGPoint(x: 362, y: 144), width: 3.5)
     }
 
     /// The `)))` in front of the talker in the first slot.
     static func talkerArcs(_ ctx: inout GraphicsContext) {
         let p = Path { p in
-            p.addPath(TalkSceneDrawing.arc(121, 104, 125, 100, 125, 94, 121, 90))
-            p.addPath(TalkSceneDrawing.arc(129, 110, 137, 101, 137, 87, 129, 78))
+            p.addPath(SceneDrawing.arc(121, 104, 125, 100, 125, 94, 121, 90))
+            p.addPath(SceneDrawing.arc(129, 110, 137, 101, 137, 87, 129, 78))
         }
         ctx.stroke(p, with: .color(Theme.ink), style: .init(lineWidth: 3, lineCap: .round))
     }

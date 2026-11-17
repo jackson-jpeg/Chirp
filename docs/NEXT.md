@@ -47,8 +47,9 @@ simulator destination, no device needed); screenshots follow once the simulator 
   - [x] The bird as one SwiftUI view from the design's paths (`v2/scripts/gen-bird-paths.py` writes `BirdPaths.swift`; `BirdView`, `BirdRenderer`, seven `BirdPalette`s; ChirpCore's set is now 7 colors and 3 chirps to match)
   - [x] Theme tokens light and dark, Nunito bundled (OFL), shared components, `v2/project.yml` (no UIBackgroundModes)
   - [x] Screens, light then dark: Welcome, MakeBird, Talk (listen and hold), Chat, Nearby (with Block), Find, Meetup, RollCall, CatchUp; compile clean (no warnings; 88 core tests pass). Not yet seen running: the match to the PNGs is unproven until the screenshots
-  - [ ] Fold the screen-local color tokens (`ChatStyle`, `CoverTokens`, Welcome's sky) into `Theme.swift`, and let `WireScene` draw Talk's and Welcome's scenes (both redraw it today)
-  - [ ] Chat messages and the chosen chirp live in view state and `@AppStorage`; move them into `Flock` when dispatch lands
+  - [x] Fold the screen-local color tokens (`ChatStyle`, `CoverTokens`, Welcome's sky, raw navy) into `Theme.swift` (one `Theme.well` for all seven palettes), and share the wire scene's drawing: `SceneDrawing` (sky, glow, clouds, wire, chirp arcs) is used by `WireScene`, `TalkScene` and `WelcomeScene` (branch `v2/theme-tidy`)
+  - [x] The chosen chirp moved from `@AppStorage` into `Flock.you`, and your bird (name, colors, chirp) is saved and restored by `Flock`
+  - [ ] Chat messages live in `ChatView` state (`ChatItem.demo()`); move them into `Flock` when dispatch lands (the message model comes from dispatch)
   - [ ] Simulator screenshots of each screen, light and dark, next to the design PNG in ~/Downloads/chirpchirps-redo/build-vs-design/; then one Inbox item (needs the simulator)
   - [ ] LockScreen (Live Activity): waits on Jackson's background answer (Inbox `chirp-2-0-background`)
   - [ ] Watch: the scope message says Apple Watch is 2.1 while the design draws it; build after 2.0 unless Jackson says otherwise

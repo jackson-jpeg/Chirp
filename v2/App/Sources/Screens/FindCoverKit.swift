@@ -3,56 +3,7 @@ import UIKit
 
 // Small shared pieces for the four covers over the tabs (Find, Meetup,
 // RollCall, CatchUp). Named `Cover*` so they cannot collide with the shared kit.
-
-/// Colors the four cover designs use that `Theme` has no token for. Light
-/// values are exact from the .dc.html files; dark keeps the same feel.
-enum CoverTokens {
-    // Find's sun screen
-    static let findBackground = dyn(0xFFC531, 0x3A2C08)
-    static let findInk = dyn(0x14233F, 0xFFE9A8)
-    static let findSecondary = dyn(0x5A3F00, 0xE8C66A)
-    static let findButton = dyn(0x14233F, 0xFFE596)
-    static let findOnButton = dyn(0xFFFFFF, 0x14233F)
-
-    // Lilac (meet-ups)
-    static let lilacWell = dyn(0xECE5FF, 0x2E2650)
-    static let purple = dyn(0x6A4FD0, 0xB39DF2)
-    static let purpleSoft = dyn(0xF0EBFF, 0x2A2347)
-    static let flag = Color.hex(0x7D63D6)
-
-    // Status chips
-    static let okText = dyn(0x1F6B45, 0x5BD39A)
-    static let lateText = dyn(0xA3361F, 0xFF8A70)
-    static let pendingFill = dyn(0xEEF1F5, 0x22324C)
-    static let turnText = dyn(0x7A5200, 0xFFD866)
-
-    // Catch up's dark player card
-    static let player = dyn(0x14233F, 0x223C63)
-    static let playerSecondary = dyn(0xC7D6E2, 0xC7D6E2)
-    static let playerRim = dyn(0x3D5170, 0x5A7396)
-
-    // Meet-up hill scene
-    static let hillTop = dyn(0x6CC0EC, 0x1B3463)
-    static let hillBottom = dyn(0xCDEBF8, 0x3A4F86)
-    static let farHills = dyn(0xFFFFFF, 0x8C93BF)
-    static let gondola = Color.hex(0x3E8CC7)
-    static let gondolaWindow = Color.hex(0xCDE9FA)
-
-    /// The avatar well behind each palette, as the files color them.
-    static func well(for palette: BirdPalette) -> Color {
-        switch palette.name {
-        case "Green": return Theme.signalSoft
-        case "Yellow": return Theme.sunGlow
-        case "Lilac": return lilacWell
-        case "Coral": return Theme.coralSoft
-        default: return Theme.sky
-        }
-    }
-
-    static func dyn(_ light: UInt32, _ dark: UInt32) -> Color {
-        Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: dark) : UIColor(rgb: light) })
-    }
-}
+// Their colors live in `Theme`.
 
 /// A bird drawn at the file's own `translate(cx cy) scale(s)` inside a box of
 /// `size`. The tail may poke past the box, as it does in the files.
@@ -91,7 +42,7 @@ struct CoverBirdDisc: View {
 
     var body: some View {
         ZStack {
-            Circle().fill(well ?? CoverTokens.well(for: palette))
+            Circle().fill(well ?? Theme.well(palette))
             CoverBirdCanvas(palette: palette, size: CGSize(width: diameter, height: diameter),
                             center: center, scale: scale, showLegs: false)
         }
