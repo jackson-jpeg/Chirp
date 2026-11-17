@@ -3,16 +3,25 @@ import ChirpCore
 
 @main
 struct ChirpApp: App {
-    @State private var flock = Flock.demo
+    @State private var flock: Flock
     @State private var router = Router.fromLaunchArguments()
     /// Opens nothing until someone talks; closes on background (2.5.4).
     @State private var audio = AudioSession()
     /// Reads the speech status only; asks on the first tap of captions.
     @State private var captions = LiveCaptions()
     /// The radio. Starts on the first hold to talk, not at launch (5.1.1(iv)).
-    @State private var transport = Transport(local: ChirpApp.identity.peerID)
+    @State private var transport: Transport
     /// Every packet in and out goes through ChirpCore's `Dispatch` here.
-    @State private var mesh: Mesh?
+    /// Making it starts nothing: the radio still waits for the first hold.
+    @State private var mesh: Mesh
+
+    init() {
+        let flock = Flock.demo
+        let transport = Transport(local: ChirpApp.identity.peerID)
+        _flock = State(initialValue: flock)
+        _transport = State(initialValue: transport)
+        _mesh = State(initialValue: Mesh(identity: ChirpApp.identity, flock: flock, transport: transport))
+    }
     /// Created on first launch and kept in the Keychain.
     static let identity: LocalIdentity = {
         do { return try LocalIdentity.loadOrCreate(from: KeychainStore()) } catch {
@@ -30,16 +39,13 @@ struct ChirpApp: App {
                 .environment(audio)
                 .environment(captions)
                 .environment(transport)
+                .environment(mesh)
                 .preferredColorScheme(router.forcedScheme)
                 .tint(Theme.ink)
                 .task {
                     audio.observeSystem()
-                    // Dispatch between the radio and the flock. Starts nothing:
-                    // the radio still waits for the first hold to talk.
-                    if mesh == nil {
-                        mesh = Mesh(identity: ChirpApp.identity, flock: flock, transport: transport)
-                        mesh?.startHeartbeat()
-                    }
+                    // Sends only while the radio runs.
+                    mesh.startHeartbeat()
                 }
         }
         .onChange(of: scenePhase, initial: true) { _, phase in
@@ -77,6 +83,13 @@ final class Router {
     var tab: Tab = .talk
     /// A sheet or pushed screen over the tabs (Find, Meet-up, Roll call, Catch up).
     var overlay: Screen?
+    /// Who Find is finding (a `Person.id`); nil shows the design's friend.
+    var findTarget: String?
+
+    func find(_ person: Person) {
+        findTarget = person.id
+        overlay = .find
+    }
     /// Only for the screenshot runs: the Talk screen's "you are talking" state.
     var forceTalking = false
     var forcedScheme: ColorScheme?

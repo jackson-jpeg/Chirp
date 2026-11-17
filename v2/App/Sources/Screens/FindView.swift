@@ -14,13 +14,28 @@ enum FindState: Equatable {
 /// `v2/design/Find.dc.html`.
 struct FindView: View {
     @Environment(Router.self) private var router
+    @Environment(Flock.self) private var flock
+    @Environment(Mesh.self) private var mesh
     @Environment(\.scenePhase) private var scenePhase
     @State private var pinging = false
-    // TODO: the transport's send on the whisper channel to this friend
-    // (dispatch); until then the offer goes nowhere and Find shows the fallback.
-    @State private var ranging = FindRanging(send: { _ in })
+    /// Sends nowhere until `mesh.attach` points it at this friend.
+    @State private var ranging = FindRanging()
 
-    private let target = FindDemo.target
+    /// The friend being found; nil on screenshot runs and in Demo Mode.
+    private var person: Person? {
+        router.screenshotRun ? nil : router.findTarget.flatMap { flock.person($0) }
+    }
+
+    private var target: (name: String, palette: BirdPalette, pronoun: String) {
+        guard let person else { return FindDemo.target }
+        return (person.name, person.palette, "their")
+    }
+
+    private var status: String {
+        guard let person else { return FindDemo.status }
+        let asking = ranging.requested || person.peer.map { mesh.lookingForYou.contains($0) } == true
+        return asking ? "\(person.name) is looking for you" : "Works best when \(person.name) opens Find too"
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -43,8 +58,15 @@ struct FindView: View {
         .foregroundStyle(Theme.findInk)
         .background(Theme.findBackground.ignoresSafeArea())
         // Opening Find is the tap that brings up the Nearby Interaction prompt.
-        .onAppear { if !router.screenshotRun { ranging.open() } }
-        .onDisappear { ranging.close() }
+        .onAppear {
+            guard !router.screenshotRun else { return }
+            if let peer = person?.peer { mesh.attach(ranging, to: peer) }
+            ranging.open()
+        }
+        .onDisappear {
+            ranging.close()   // sends the stop before the mesh lets go
+            mesh.detach(ranging)
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background { ranging.close() } else if phase == .active, !router.screenshotRun { ranging.open() }
         }
@@ -55,8 +77,7 @@ struct FindView: View {
     private var state: FindState {
         if router.screenshotRun { return FindDemo.state }
         if let fix = ranging.fix { return .pointing(meters: fix.meters, bearing: fix.bearing) }
-        // TODO: `Find.fallback(for:lastSeen:now:)` from the roster once dispatch fills it.
-        return .fallback(.outOfRange(lastSeen: nil))
+        return .fallback(mesh.fallback(for: person?.peer))
     }
 
     // MARK: Header
@@ -68,7 +89,7 @@ struct FindView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Finding \(target.name)")
                     .font(.nunito(20, .black, relativeTo: .title3))
-                Text(FindDemo.status)
+                Text(status)
                     .font(.nunito(14, .heavy, relativeTo: .subheadline))
                     .foregroundStyle(Theme.findSecondary)
             }
@@ -178,8 +199,12 @@ struct FindView: View {
     private var buttons: some View {
         HStack(spacing: 10) {
             Button {
-                // TODO: send a Ping to their phone through ChirpCore (it plays the
-                // chirp sound even when silenced); clear `pinging` on its answer.
+                // A ping on the whisper channel (friends only, rate limited by
+                // the receiver). Nothing answers it yet, so the label resets
+                // after a few seconds.
+                if let peer = person?.peer {
+                    mesh.send { try $0.toFriend(.ping, Data(), peer: peer, now: .now) }
+                }
                 pinging = true
                 Task {
                     try? await Task.sleep(for: .seconds(3))
