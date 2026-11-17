@@ -90,7 +90,10 @@ final class Phone {
         #expect(relay.hops == 1)
 
         let atB = b.receive(relay, from: c.id)
-        guard case .text(let s) = atB.events.first else { Issue.record("B could not read"); return }
+        // A's first packet on the locked channel also makes A a friend (.friend comes with it).
+        #expect(atB.events.contains(.friend(a.id, channel: camp.id)))
+        guard let s = atB.events.lazy.compactMap({ e -> StoredText? in if case .text(let t) = e { return t }; return nil }).first
+        else { Issue.record("B could not read"); return }
         #expect(s.text == "secret")
         #expect(atB.broadcast.first?.channel == camp.id)   // the ack stays on the channel
     }
