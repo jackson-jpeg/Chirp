@@ -85,14 +85,19 @@ final class Mesh {
         guard heartbeat == nil else { return }
         heartbeat = Task { [weak self] in
             while !Task.isCancelled {
-                guard let self else { return }
-                if self.transport.running {
-                    self.send { try $0.presence(now: .now) }
-                    for gone in self.dispatch.prune(now: .now) { self.flock?.left(gone) }
-                }
-                try? await Task.sleep(for: Self.presenceInterval)
+                // Strong only for one beat: holding `self` across the sleep
+                // would keep the Mesh alive for as long as the loop runs.
+                guard self?.beat() != nil else { return }
+                try? await Task.sleep(for: Mesh.presenceInterval)
             }
         }
+    }
+
+    /// One heartbeat: a fresh presence, and people not heard lately leave.
+    private func beat() {
+        guard transport.running else { return }
+        send { try $0.presence(now: .now) }
+        for gone in dispatch.prune(now: .now) { flock?.left(gone) }
     }
 
     func stopHeartbeat() {
