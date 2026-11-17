@@ -57,7 +57,8 @@ final class LiveCardController {
         guard let a = activity else { return }
         activity = nil
         card = nil
-        Task { await a.end(nil, dismissalPolicy: .immediate) }
+        let h = Handle(activity: a)
+        Task.detached { await h.activity.end(nil, dismissalPolicy: .immediate) }
     }
 
     private func content(_ c: LiveCard) -> ActivityContent<LiveCard> {
@@ -68,7 +69,8 @@ final class LiveCardController {
         guard let a = activity, let c = card else { return }
         if pacer.shouldPush(c, now: .now) {
             let next = content(c)
-            Task { await a.update(next) }
+            let h = Handle(activity: a)
+            Task.detached { await h.activity.update(next) }
         } else if retry == nil {
             retry = Task { [weak self] in
                 try? await Task.sleep(for: .seconds(LiveCardPacer.interval))
@@ -78,4 +80,11 @@ final class LiveCardController {
             }
         }
     }
+}
+
+/// ActivityKit's `Activity` is not marked Sendable in the iOS 26 SDK, while
+/// its `update` and `end` are nonisolated async; it is documented as safe to
+/// use from any thread, so it crosses to a detached task in this box.
+private struct Handle: @unchecked Sendable {
+    let activity: Activity<ChirpActivity>
 }
