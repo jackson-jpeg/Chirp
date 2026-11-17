@@ -123,6 +123,13 @@ final class Transport {
         for id in table.byPeer.values { links[id]?.send(frame) }
     }
 
+    /// A relay copy: to every linked phone but the one it came in on.
+    func send(_ packet: Packet, except peer: PeerID) {
+        guard running, SendGate.allowsSend(packet, sandboxed: sandboxed) else { return }
+        let frame = Link.frame(packet.encode())
+        for (p, id) in table.byPeer where p != peer { links[id]?.send(frame) }
+    }
+
     /// To one phone, when it is linked directly.
     func send(_ packet: Packet, to peer: PeerID) {
         guard running, SendGate.allowsSend(packet, sandboxed: sandboxed),
