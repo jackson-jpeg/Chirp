@@ -44,7 +44,8 @@ design routes, the screens are plain placeholders.
 
 ## Rules 2.0 holds to (from the four rejections)
 
-- **2.5.4**: no `UIBackgroundModes`. The audio session opens on a press or an incoming floor and
+- **2.5.4**: never the `audio` background mode. The only background modes are `bluetooth-central` and
+  `bluetooth-peripheral` (Jackson's option 1, `docs/audit/BACKGROUND.md`), added with the BLE code. The audio session opens on a press or an incoming floor and
   closes when idle and on backgrounding. See branch `fix/2-5-4-foreground-only`.
 - **5.1.1(iv)**: no system prompt before the user acts. Local Network starts on the first tap
   that needs it, microphone on the first press, location only after our own consent sheet.

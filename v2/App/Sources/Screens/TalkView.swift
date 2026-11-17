@@ -8,6 +8,7 @@ struct TalkView: View {
     @Environment(Flock.self) private var flock
     @Environment(Router.self) private var router
     @Environment(LiveCaptions.self) private var captions
+    @Environment(Transport.self) private var transport
     @Environment(\.openURL) private var openURL
 
     @State private var holding = false
@@ -335,6 +336,8 @@ struct TalkView: View {
     private func start() {
         holding = true
         holdStart = .now
+        // The first hold is the tap that needs other phones: Local Network asks now.
+        transport.start()
         // TODO: open the floor: ask for the line and start the microphone.
     }
 

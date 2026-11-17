@@ -9,6 +9,15 @@ struct ChirpApp: App {
     @State private var audio = AudioSession()
     /// Reads the speech status only; asks on the first tap of captions.
     @State private var captions = LiveCaptions()
+    /// The radio. Starts on the first hold to talk, not at launch (5.1.1(iv)).
+    @State private var transport = Transport(local: ChirpApp.identity.peerID)
+    /// Created on first launch and kept in the Keychain.
+    static let identity: LocalIdentity = {
+        do { return try LocalIdentity.loadOrCreate(from: KeychainStore()) } catch {
+            // The Keychain refused: run with a key for this launch only.
+            return LocalIdentity(signingKey: .init(), agreementKey: .init())
+        }
+    }()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -18,12 +27,14 @@ struct ChirpApp: App {
                 .environment(router)
                 .environment(audio)
                 .environment(captions)
+                .environment(transport)
                 .preferredColorScheme(router.forcedScheme)
                 .tint(Theme.ink)
                 .task { audio.observeSystem() }
         }
         .onChange(of: scenePhase, initial: true) { _, phase in
             audio.follow(phase)
+            transport.follow(phase)
             if phase == .active { captions.refresh() }
         }
     }

@@ -42,6 +42,8 @@ simulator destination, no device needed); screenshots follow once the simulator 
 
 ## Queue
 
+- [ ] Build-vs-design screenshots (Jackson approved the simulator, 2026-11-17, Inbox chirp-2-0-jackson): simulator "Chirp iPhone 17 Pro" (AFF5BCE8-DAA0-4A1A-8931-7BCDBCC8C31A, iOS 26.5) is created; the `ios` registry entry `chirp` now points at `/root/Chirp/v2` (ios-toolkit `config/projects.yml`). `IOS_SIM_DEVICE="Chirp iPhone 17 Pro" ios run chirp`, then under `hub-lock mac-sim` relaunch with `-screen <Name>` and `-dark` (`xcrun simctl launch --terminate-running-process <id> com.jacksonmsanger.chirpchirp -screen <Name>`) and `xcrun simctl io <id> screenshot`, by UDID (two other simulators are booted). Each next to `v2/design/<Name>.png` in ~/Downloads/chirpchirps-redo/build-vs-design/; fix differences; one Inbox item when they match
+
 Note (2026-11-17, sixth session): the foreman's "continue" message carries no "only `ios build`/`run`/`test`" rule (that rule rides on Mac jobs), so this session proved Captions with `v2/scripts/mac-compile.sh` (ssh xcodebuild, generic simulator destination, no Simulator driven) and `swift test`. The fifth session's note below is kept for the record.
 
 Note (2026-11-17, fifth session): every open item below is app code that is proved by compiling it on the Mac. `ios build` cannot compile it without a Chirp simulator (Inbox `chirp-2-0-jackson`), and foreman Mac jobs may use only `ios build`/`run`/`test`, so `v2/scripts/mac-compile.sh` (ssh xcodebuild to a generic simulator destination, no device) is not used under them. Either answer unblocks the Queue.
@@ -76,7 +78,9 @@ framework. Hardware proof is still to come.
   - [x] Find, core part: Nearby Interaction token exchange over the whisper channel (friends only) and an honest in range / through others / out of range fallback (`Find.swift`)
   - [x] Find, app part: `FindSession` in ChirpCore (the token exchange as one reducer: nothing runs before you open Find, a friend's offer is only a request, stop and close end it; `Find.fix` and `Find.tapInterval`; 12 tests, 113 in all) and the app's `FindRanging.swift` (NISession, tokens archived, haptics quicken with distance, a refused permission falls back); FindView opens it on appear and closes it on leave and in background; with no angle it shows the distance and "turn slowly", never a made-up arrow. Compiles with no warnings; proving it needs two UWB iPhones
   - [ ] Find follow-ups (with dispatch): pass the transport's whisper send into `FindRanging`, route received `.find` packets to `received(_:)`, show `requested` ("Maya is looking for you"), and take the fallback from `Find.fallback` on the roster instead of "Not heard yet"
-- [ ] Transport on Network framework (Bonjour with peer-to-peer Wi-Fi) instead of MultipeerConnectivity (deprecated in Xcode 27 beta); replaces the MultipeerConnectivity transport sub-item under item 2
+- [x] Transport on Network framework (ChirpCore `Link.swift`, 6 tests, 119 in all; app `Transport.swift`, `KeychainStore.swift`; compiles with no warnings; not run: needs two phones) (Bonjour with peer-to-peer Wi-Fi) instead of MultipeerConnectivity (deprecated in Xcode 27 beta); replaces the MultipeerConnectivity transport sub-item under item 2. Confirmed by Jackson's option 1
+- [ ] Locked-phone link over Bluetooth LE (Jackson's option 1): texts, roll call, help, pings and "someone is talking" alerts as small framed packets over a GATT characteristic, through the same `SendGate` and router; `bluetooth-central` and `bluetooth-peripheral` added to `v2/project.yml` in the same change, never `audio`; Bluetooth asked on the same first tap as Local Network (5.1.1(iv)); a local notification for what arrives while locked. Proving it needs BACKGROUND.md section 4 on two iPhones
+- [ ] 7) Lock Screen and Dynamic Island Live Activity (Jackson's option 1): the flock, who talked last, and a button that opens the app to reply; no talk button that works locked. Widget extension with ActivityKit; started only while the app is in use
 
 Order note (2026-11-17, second session): item 2 now comes before the rest of item 1, because
 item 1's last open part (the hardware half) waits on Jackson's simulator answer, and the lead's
@@ -107,13 +111,11 @@ it as soon as a simulator exists, and correct the core if it disproves anything.
 
 ## Needs Jackson
 
-- [ ] Background behaviour: pick an option in `docs/audit/BACKGROUND.md` section 3 (recommended: foreground voice, texts and alerts over Bluetooth LE while locked; no `audio` background mode). Decides scope item 7. Inbox item ref chirp-2-0-background
+- [x] Background behaviour: Jackson picked option 1 (2026-11-17, Inbox chirp-2-0-background; word for word in `docs/audit/BACKGROUND.md`): talk with the app open; texts, roll call, pings and "someone is talking" alerts reach a locked phone over Bluetooth; the Lock Screen card opens the app to reply; a PTT server is a later add-on, not 2.0
 
-- [ ] Create, or let me create, one simulator for Chirp ("Chirp iPhone 17 Pro", installed iOS 26.5 runtime): Inbox item ref chirp-2-0-jackson, filed 2026-11-17. The foreman allows only ios build/run/test, which cannot create one; blocks the hardware half of the audit, and every `ios build` of the 2.0 app target (`ios` resolves a simulator even to compile). ChirpCore does not need it: its tests run with `swift test` on the Mac
-- [ ] (Waits on the simulator, Inbox chirp-2-0-jackson; moved here 2026-11-17 so the foreman stops sending it) Simulator screenshots of each screen, light and dark, next to the design PNG in ~/Downloads/chirpchirps-redo/build-vs-design/; then one Inbox item (needs the simulator). Also needs the `ios` registry entry `chirp` pointed at `v2/project.yml` (it still builds 1.0's root `project.yml`)
+- [x] One simulator for Chirp: approved by Jackson (lead decision, 2026-11-17), created "Chirp iPhone 17 Pro" on iOS 26.5; the screenshots moved to the top of the Queue
 - [ ] (Waits on the simulator) Background proof on hardware: BACKGROUND.md section 4, tests B1 to B5 (needs the Chirp simulator and the shared iPhone, ideally a second iPhone); update BACKGROUND.md and the Mac copy with results
 - [ ] (Waits on the simulator) Audit Hardware half: on the simulator and the shared iPhone (`ios device hold chirp`, release after), prove or disprove each claim the code-reading half lists; finish AUDIT.md.
-- [ ] (Waits on Inbox chirp-2-0-background) 7) Lock Screen / Dynamic Island Live Activity with a talk button: decided by Jackson's answer on BACKGROUND.md's options
 - [ ] Watch in 2.0 or 2.1: the scope message says 2.1 while the design draws it; build after 2.0 unless Jackson says otherwise
 - [x] Pick one of the lead's three routes: Jackson approved Dawn Chorus (2026-11-17)
 - [ ] Play the 2.0 TestFlight build before anything is submitted
