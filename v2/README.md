@@ -33,6 +33,8 @@ design routes, the screens are plain placeholders.
 | `LocationConsent.swift` | Check-in reducer: off at launch, our sheet every time, the iOS prompt only after a yes, 15 minutes, ends in background. | 5.1.2(i), 5.1.1(iv) |
 | `Texts.swift` | Signed texts, acks only on a joined channel, ticks stored with the message. | H8, H9; two acks with one magic (section 5) |
 | `AudioSessionPolicy.swift` | When the session is open: record only while holding, playback only while someone talks plus a 2 s tail, nothing in background, at launch or in an interruption. | 2.5.4 (section 6), H1, H13 |
+| `Whisper.swift` | Whisper (scope 1): a private two-person channel, ID from both PeerIDs, key from their X25519 agreement; ping and battery travel on it, so they are friends-only on the wire. | Scope 1, 4, 5 |
+| `Messages.swift` | Roll call, help (its own kind, sent first), meet-up spot with RSVPs, ping with a rate limit, battery rounded to 10%, signed bodies, the send queue. | Scope 4, 5; 1.0 broadcast battery to strangers |
 | `SendGate.swift` | Demo channels are recognisable from the header; nothing leaves or enters while sandboxed. | 2.1(a) |
 
 ## Rules 2.0 holds to (from the four rejections)

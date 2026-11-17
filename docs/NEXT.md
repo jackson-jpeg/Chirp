@@ -42,12 +42,12 @@ work. MultipeerConnectivity is deprecated in Xcode 27, so 2.0's transport moves 
 framework. Hardware proof is still to come.
 
 - [ ] Background proof on hardware: BACKGROUND.md section 4, tests B1 to B5 (needs the Chirp simulator and the shared iPhone, ideally a second iPhone); update BACKGROUND.md and the Mac copy with results
-- [ ] Core for the new scope, in ChirpCore with tests, in this order:
-  - [ ] Whisper: a packet addressed to one PeerID, sealed pairwise (`LocalIdentity.sharedKey`), relayed but delivered only to that person, with its own floor
-  - [ ] Roll call and meet-up spot message kinds; roll call "I need help" gets priority relay (a higher TTL and first in the send queue)
+- [ ] Core for the new scope, in ChirpCore with tests, in this order (done so far: `Whisper.swift`, `Messages.swift`; Whisper is a private two-person channel, so relays cannot tell who it is for):
+  - [x] Whisper: a packet addressed to one PeerID, sealed pairwise (`LocalIdentity.sharedKey`), relayed but delivered only to that person, with its own floor
+  - [x] Roll call and meet-up spot message kinds; roll call "I need help" gets priority relay (a higher TTL and first in the send queue)
   - [ ] Catch up: store and forward of texts for an absent friend, with a cap per person and in total, delivered in order, deduped by message ID
-  - [ ] Battery level: sent only to friends, never in the public presence (the audit flagged 1.0 broadcasting it to strangers)
-  - [ ] Ping: a message kind that asks a friend's phone to chirp; rate-limited, only from friends, never from blocked people
+  - [x] Battery level: sent only to friends, never in the public presence (the audit flagged 1.0 broadcasting it to strangers)
+  - [x] Ping: a message kind that asks a friend's phone to chirp; rate-limited, only from friends, never from blocked people
   - [ ] Each person's bird: colors and a chirp choice carried in the signed presence (an ID from a fixed set, not raw audio)
   - [ ] Small photos: a capped, chunked message kind (size limit, sealed on locked channels)
   - [ ] Captions: on-device speech to text of received voice in the app (Speech framework); the speech permission asked on the first tap of captions, never at launch (5.1.1(iv)); captions-only mode

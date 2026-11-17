@@ -43,6 +43,17 @@ public enum PacketKind: UInt8, Sendable, CaseIterable {
     case text = 3
     case ack = 4
     case presence = 5
+    /// Roll call: "is everyone OK?" and its answers.
+    case rollCall = 6
+    /// "I need help." Its own kind so a relay can see it in the header, even on
+    /// a locked channel, and send it first.
+    case help = 7
+    /// A meet-up spot and the replies saying who is coming.
+    case meetup = 8
+    /// Make a friend's phone chirp. Only on a whisper channel.
+    case ping = 9
+    /// Battery level. Only on a whisper channel, so only to friends.
+    case battery = 10
 
     /// How many links a new packet of this kind may cross. Floor control has
     /// the same reach as audio on purpose: a device that cannot hear a speaker
@@ -50,7 +61,7 @@ public enum PacketKind: UInt8, Sendable, CaseIterable {
     public var initialTTL: UInt8 {
         switch self {
         case .audio, .floor, .presence: return 2   // at most one relay
-        case .text, .ack: return 4
+        case .text, .ack, .rollCall, .help, .meetup, .ping, .battery: return 4
         }
     }
 
@@ -58,7 +69,21 @@ public enum PacketKind: UInt8, Sendable, CaseIterable {
     public var reliable: Bool {
         switch self {
         case .audio: return false
-        case .floor, .text, .ack, .presence: return true
+        default: return true
+        }
+    }
+
+    /// Send order when the radio is busy: lower goes first. Help beats
+    /// everything; live voice and its floor beat stored traffic; presence and
+    /// battery go last.
+    public var sendPriority: Int {
+        switch self {
+        case .help: return 0
+        case .floor: return 1
+        case .audio: return 2
+        case .rollCall, .ping: return 3
+        case .text, .ack, .meetup: return 4
+        case .presence, .battery: return 5
         }
     }
 }
