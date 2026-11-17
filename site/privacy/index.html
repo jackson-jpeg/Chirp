@@ -31,30 +31,31 @@
 
 <main class="prose">
         <h1>Privacy Policy</h1>
-        <p class="updated">Effective date: November 17, 2026</p>
+        <p class="updated">Effective date: November 17, 2026. This version describes ChirpChirps 2.0.</p>
         <h2>Overview</h2>
-        <p>ChirpChirps is a peer-to-peer communication app. The app uses no servers, collects no data, and does not track users. Your messages travel directly between devices over Bluetooth and Wi-Fi. They never pass through our infrastructure because the app has none.</p>
+        <p>ChirpChirps lets you talk and text with friends nearby, phone to phone. The app has no accounts and uses no servers, so it collects nothing and has nothing to send us. Your voice and messages go directly between phones over Wi-Fi and Bluetooth, never through the internet.</p>
         <h2>Data we collect</h2>
-        <p><strong>The app collects none.</strong> The ChirpChirps app does not collect, store, transmit, or sell any personal data. There are no accounts, no sign-ups, no analytics, and no telemetry.</p>
+        <p><strong>The app collects none.</strong> The ChirpChirps app does not collect, store on our side, transmit to us, or sell any personal data. There are no accounts, no sign-ups, no analytics and no telemetry.</p>
         <p>This website is separate from the app. The website counts visits, as described under <a href="#website-analytics">Visitor analytics</a>, and keeps the email addresses of people who ask to hear when the app is out, as described under <a href="#release-list">Release list</a>.</p>
-        <h2>How communication works</h2>
-        <p>All communication occurs directly between devices using:</p>
+        <h2 id="nearby">What phones nearby see</h2>
+        <p>Because there is no server, the phones around you are how ChirpChirps works. Here is what they get.</p>
         <ul>
-        <li><strong>Bluetooth Low Energy</strong>: for device discovery</li>
-        <li><strong>Wi-Fi Direct / MultipeerConnectivity</strong>: for voice, text, and file transfer</li>
+        <li><strong>Your name, your bird and your public keys</strong> are sent every few seconds to every phone in range running ChirpChirps, so they can show you on their Nearby screen and check that messages from you are really yours. Your private keys never leave your phone.</li>
+        <li><strong>The Nearby line is open.</strong> Talk and texts on it can be heard and read by anyone in range running ChirpChirps, like a walkie-talkie.</li>
+        <li><strong>Locked flocks and whispers are sealed.</strong> A flock locked with a code is encrypted with AES-256-GCM, and only phones with the code can hear or read it. A whisper is encrypted for its one recipient. Phones that pass a sealed message along cannot open it.</li>
+        <li><strong>Friends' phones hold messages for you.</strong> If you are out of range, phones in your flock keep the texts, roll calls, meet-ups and help calls you missed (still sealed, for at most 24 hours) and hand them over when you are back.</li>
+        <li><strong>Battery level and Find go to friends only</strong>: people in a locked flock with you, never strangers nearby.</li>
         </ul>
-        <p>No data is routed through the internet or any third-party servers. Messages are encrypted end-to-end using AES-256-GCM before leaving your device.</p>
-        <h2>Encryption</h2>
-        <p>ChirpChirps encrypts all channel communication with AES-256-GCM. Each device generates a unique Ed25519 identity key pair stored in the iOS Keychain. Key material never leaves your device.</p>
         <h2>Permissions</h2>
-        <p>ChirpChirps requests the following device permissions, all processed locally:</p>
+        <p>Each is asked the first time you use what needs it, never when the app opens, and everything is processed on your phone:</p>
         <ul>
-        <li><strong>Microphone</strong>: push-to-talk voice communication</li>
-        <li><strong>Local Network</strong>: connect directly to nearby devices</li>
-        <li><strong>Location</strong>: optional; shares your position with nearby peers only during a check-in you start by hand (see <a href="#location">Location sharing</a>)</li>
-        <li><strong>Camera and Photos</strong>: capture and share media with nearby devices</li>
-        <li><strong>Speech Recognition</strong>: on-device live transcripts of incoming voice</li>
-        <li><strong>Notifications</strong>: message alerts</li>
+        <li><strong>Microphone</strong>: only while you hold to talk</li>
+        <li><strong>Local Network</strong>: to reach the phones nearby</li>
+        <li><strong>Bluetooth</strong>: so texts, roll calls, help and pings reach you with your phone locked</li>
+        <li><strong>Notifications</strong>: to show those while the app is closed</li>
+        <li><strong>Speech Recognition</strong>: captions, made on your phone; your voice is never sent anywhere for them</li>
+        <li><strong>Nearby Interaction</strong>: the arrow in Find, only while Find is open</li>
+        <li><strong>Location</strong>: optional, only during a check-in you start (see <a href="#location">Location sharing</a>)</li>
         </ul>
         <p>Nothing is uploaded anywhere.</p>
         <h2 id="location">Location sharing</h2>
@@ -62,22 +63,21 @@
         people, so it works differently from the rest.</p>
         <ul>
         <li><strong>It is off until you ask for it.</strong> ChirpChirps never requests location
-        access at launch or as a side effect of opening the map. The request appears only after
-        you open the check-in screen and read what sharing involves, and you can decline it.</li>
-        <li><strong>You check in manually, every time.</strong> Your position is shared only after
-        you tap <em>Check In</em>, and only for that session. There is no automatic check-in, no
-        background sharing, and no setting that shares your position continuously.</li>
+        access at launch. The request appears only after you open check-in and read what sharing
+        involves, and you can decline it.</li>
+        <li><strong>You check in by hand, every time.</strong> Your position is shared only after
+        you tap <em>Check In</em>. There is no automatic check-in, no background sharing, and no
+        setting that shares your position all the time.</li>
         <li><strong>Each check-in lasts 15 minutes.</strong> Sharing then stops on its own. It also
         stops the moment you tap <em>Stop</em>, if you leave the app, or if you turn location
-        access off. It never restarts by itself, including after you reopen the app.</li>
-        <li><strong>Only nearby peers see it.</strong> Your position travels directly to devices on
-        the mesh around you over Bluetooth and Wi-Fi. It is not uploaded, not stored by us, and
-        not shared with anyone else: we operate no servers that could receive it.</li>
-        <li><strong>Declining costs you nothing else.</strong> Push-to-talk, channels, voice notes,
-        text messages and the map itself all work without location. You simply will not appear on
-        other people's maps.</li>
-        <li><strong>You can block anyone.</strong> A blocked peer is dropped entirely on your
-        device (voice, messages and map position alike) and disappears from your map.</li>
+        access off. It never restarts by itself.</li>
+        <li><strong>Only your flock sees it.</strong> Your position travels directly to the phones
+        in your flock. It is not uploaded, not stored by us, and not shared with anyone else: we
+        run no servers that could receive it.</li>
+        <li><strong>Declining costs you nothing else.</strong> Talking, flocks, texts and everything
+        else work without location.</li>
+        <li><strong>You can block anyone.</strong> A blocked person is dropped entirely on your
+        phone (voice, messages and position alike) and disappears from your screens.</li>
         </ul>
         <h2 id="release-list">Release list</h2>
         <p>If you enter your email address under "Coming to iPhone", we keep that address and the time you entered it, and nothing else: not your IP address, not your browser. It is stored on our own server and backed up there and on a computer of ours, and it is shared with no one.</p>
@@ -89,9 +89,9 @@
         <h2 id="website-cookies">Cookies and Do Not Track</h2>
         <p>This website sets no cookies, keeps nothing in your browser's storage, and loads nothing from other companies' servers (its fonts are served from chirpchirps.com). Because our visit counting does not follow you to other sites and sets no cookies, the site treats every visitor the same way whether or not your browser sends a Do Not Track signal.</p>
         <h2>Third-party services</h2>
-        <p>ChirpChirps does not integrate any third-party analytics, advertising, or tracking. The only optional network connection is downloading offline map tiles from <a href="https://openfreemap.org">OpenFreeMap</a>, which occurs only when you explicitly request it.</p>
+        <p>ChirpChirps includes no third-party analytics, advertising or tracking, and the app makes no internet connections at all.</p>
         <h2>Data storage</h2>
-        <p>Messages and settings are stored locally on your device using an encrypted SQLite database. Uninstalling the app permanently deletes all data.</p>
+        <p>Your messages, your bird and your settings are kept on your phone with iOS data protection, and your keys in the iOS Keychain. Deleting the app deletes them.</p>
         <h2>Age rating and children's privacy</h2>
         <p>ChirpChirps is rated 18+ and is not directed to children. Because the app can show a user's location to other people nearby, it is intended for adults only. The app has no accounts and no servers, and collects no personal information from any user. The website's release list is not meant for children; if a child's address reaches it, email us and we delete it.</p>
         <h2>Changes to this policy</h2>
