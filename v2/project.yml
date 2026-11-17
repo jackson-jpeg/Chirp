@@ -39,6 +39,7 @@ targets:
     scheme:
       testTargets:
       - ChirpUITests
+      - package: ChirpCore/ChirpCoreTests
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp

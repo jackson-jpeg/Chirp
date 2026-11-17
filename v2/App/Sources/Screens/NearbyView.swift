@@ -45,7 +45,7 @@ struct NearbyView: View {
         .confirmationDialog(chosen?.person.name ?? "", isPresented: Binding(
             get: { chosen != nil }, set: { if !$0 { chosen = nil } }
         ), titleVisibility: .hidden, presenting: chosen) { e in
-            Button("Find \(e.person.name)") { router.overlay = .find }
+            Button("Find \(e.person.name)") { router.find(e.person) }
             Button("Block \(e.person.name)", role: .destructive) { toBlock = e }
             Button("Cancel", role: .cancel) {}
         }
@@ -151,7 +151,7 @@ struct NearbyView: View {
         }
         .buttonStyle(.plain)
         .contextMenu {
-            Button("Find \(e.person.name)", systemImage: "location.circle") { router.overlay = .find }
+            Button("Find \(e.person.name)", systemImage: "location.circle") { router.find(e.person) }
             Button("Block \(e.person.name)", systemImage: "hand.raised", role: .destructive) { toBlock = e }
         }
         .accessibilityElement(children: .ignore)
@@ -159,7 +159,7 @@ struct NearbyView: View {
         .accessibilityHint("Shows Find and Block")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { chosen = e }
-        .accessibilityAction(named: "Find \(e.person.name)") { router.overlay = .find }
+        .accessibilityAction(named: "Find \(e.person.name)") { router.find(e.person) }
         .accessibilityAction(named: "Block \(e.person.name)") { toBlock = e }
     }
 

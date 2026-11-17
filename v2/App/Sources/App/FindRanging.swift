@@ -27,12 +27,14 @@ final class FindRanging: NSObject {
 
     @ObservationIgnored private var exchange = FindSession()
     @ObservationIgnored private var session: NISession?
-    @ObservationIgnored private let send: (Find.Message) -> Void
+    /// Where tokens go: the mesh sets it to the whisper channel when Find
+    /// opens on a friend (`Mesh.attach`). Nowhere until then, as in Demo Mode.
+    @ObservationIgnored var send: @MainActor (Find.Message) -> Void
     @ObservationIgnored private var haptics: Task<Void, Never>?
 
     static var supported: Bool { NISession.deviceCapabilities.supportsPreciseDistanceMeasurement }
 
-    init(send: @escaping (Find.Message) -> Void) {
+    init(send: @escaping @MainActor (Find.Message) -> Void = { _ in }) {
         self.send = send
     }
 
@@ -65,6 +67,10 @@ final class FindRanging: NSObject {
     /// A `.find` message from this friend, already opened and verified.
     func received(_ data: Data) {
         guard let message = Find.Message.decode(data) else { return }
+        received(message)
+    }
+
+    func received(_ message: Find.Message) {
         apply(exchange.handle(.received(message)))
     }
 

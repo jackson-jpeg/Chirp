@@ -30,6 +30,8 @@ struct BirdPalette: Equatable, Sendable {
     ]
 
     static subscript(_ bird: ChirpCore.Bird) -> BirdPalette { all[Int(bird.palette) % all.count] }
+    /// Its place in `all`, which is `ChirpCore.Bird.palette`.
+    var index: Int { Self.all.firstIndex(of: self) ?? 0 }
     static let blue = all[0], teal = all[1], yellow = all[2], coral = all[3], green = all[4], lilac = all[5], orange = all[6]
 }
 
