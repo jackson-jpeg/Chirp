@@ -15,6 +15,7 @@ struct WelcomeView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Talk to your flock, even with no signal.")
                             .font(.pageTitle)
+                            .lineHeight(.multiple(factor: 1.1))   // the design's line-height
                             .tracking(-0.48)
                             .foregroundStyle(Theme.ink)
                             .accessibilityAddTraits(.isHeader)

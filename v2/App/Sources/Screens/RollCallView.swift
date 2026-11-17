@@ -58,6 +58,7 @@ struct RollCallView: View {
             }
             Text("Roll call: everyone OK?")
                 .font(.nunito(34, .black, relativeTo: .largeTitle))
+                .lineHeight(.multiple(factor: 1.1))   // the design's line-height
                 .tracking(-0.34)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)

@@ -89,9 +89,13 @@ enum SceneDrawing {
     static func clouds(_ ctx: inout GraphicsContext, _ puffs: [(CGFloat, CGFloat, CGFloat)],
                        opacity: Double = 0.8, color: Color? = nil, dark: Bool) {
         let fill = color ?? Theme.cloud.opacity(dark ? 0.30 : opacity)
+        // One path, filled once: puffs filled one by one stacked their
+        // opacity where they overlap (bright lenses), where the design is one bank.
+        var bank = Path()
         for (x, y, r) in puffs {
-            ctx.fill(Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)), with: .color(fill))
+            bank.addEllipse(in: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2))
         }
+        ctx.fill(bank, with: .color(fill))
     }
 
     /// The wire: `M from Q control to`.

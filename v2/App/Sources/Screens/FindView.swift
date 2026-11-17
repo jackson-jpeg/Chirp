@@ -17,6 +17,7 @@ struct FindView: View {
     @Environment(Flock.self) private var flock
     @Environment(Mesh.self) private var mesh
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.colorScheme) private var scheme
     @State private var pinging = false
     /// Sends nowhere until `mesh.attach` points it at this friend.
     @State private var ranging = FindRanging()
@@ -114,8 +115,9 @@ struct FindView: View {
 
     private var dial: some View {
         ZStack {
-            Circle().fill(Theme.card.opacity(0.18)).frame(width: 348, height: 348)
-            Circle().fill(Theme.card.opacity(0.35)).frame(width: 304, height: 304)
+            // Dark mode's card is navy on dark gold: the light-mode opacities vanish there.
+            Circle().fill(Theme.card.opacity(scheme == .dark ? 0.45 : 0.18)).frame(width: 348, height: 348)
+            Circle().fill(Theme.card.opacity(scheme == .dark ? 0.7 : 0.35)).frame(width: 304, height: 304)
             Circle().fill(Theme.card).frame(width: 268, height: 268)
             switch state {
             case .pointing(_, nil):
@@ -152,6 +154,7 @@ struct FindView: View {
             case .pointing(let meters, let bearing):
                 Text("\(meters) m")
                     .font(.nunito(84, .black, relativeTo: .largeTitle))
+                    .lineHeight(.multiple(factor: 1))   // the design's line-height
                     .tracking(-1.68)
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)

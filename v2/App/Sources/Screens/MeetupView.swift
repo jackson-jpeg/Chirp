@@ -75,6 +75,7 @@ struct MeetupView: View {
                     .foregroundStyle(Theme.purple)
                 Text(MeetupDemo.place)
                     .font(.nunito(26, .black, relativeTo: .title))
+                    .lineHeight(.multiple(factor: 1.15))   // the design's line-height
                     .accessibilityAddTraits(.isHeader)
                 Text(MeetupDemo.when)
                     .font(.nunito(16, .heavy, relativeTo: .body))
