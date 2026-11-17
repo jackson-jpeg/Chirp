@@ -51,6 +51,7 @@ struct ChirpApp: App {
         .onChange(of: scenePhase, initial: true) { _, phase in
             audio.follow(phase)
             transport.follow(phase)
+            mesh.inBackground = phase == .background
             if phase == .active { captions.refresh() }
         }
     }

@@ -4,7 +4,7 @@
 # Rules this file holds (docs/NEXT.md, docs/audit/AUDIT.md):
 # - Never the `audio` background mode (Guideline 2.5.4, 1.0's last rejection).
 #   Jackson chose option 1 (docs/audit/BACKGROUND.md): `bluetooth-central` and
-#   `bluetooth-peripheral` arrive with the Bluetooth LE code that uses them, not before.
+#   `bluetooth-peripheral` only, used by App/Sources/App/BluetoothLink.swift.
 # - Usage strings only for what 2.0 asks for, and each asked on first use,
 #   never at launch (5.1.1(iv)). Speech is asked on the first tap of
 #   captions. No camera, photo library or "Always" location strings until a
@@ -67,6 +67,11 @@ targets:
         - _chirpchirps._udp
         NSLocationWhenInUseUsageDescription: When you check in, your friends see where you are for 15 minutes. You are asked every time.
         NSSpeechRecognitionUsageDescription: Captions turn what your friends say into text. They are made on your phone, and your voice is never sent anywhere for them.
+        NSBluetoothAlwaysUsageDescription: ChirpChirps uses Bluetooth so texts, roll calls and help from your friends reach you with your phone locked.
+        # Option 1 (docs/audit/BACKGROUND.md): Bluetooth only, for BluetoothLink.swift. Never `audio` (2.5.4).
+        UIBackgroundModes:
+        - bluetooth-central
+        - bluetooth-peripheral
         NSNearbyInteractionUsageDescription: Find shows which way a friend is and how far, only while you have Find open.
   # Build-vs-design screenshots (App/UITests/BuildVsDesignTests.swift), run
   # through `ios test chirp --only ChirpUITests --env SCREENSHOT_DIR=...`.

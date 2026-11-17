@@ -21,8 +21,16 @@ final class Transport {
     /// Phones with a working link right now.
     private(set) var linked: Set<PeerID> = []
     private(set) var running = false
-    /// Demo Mode: nothing leaves or enters.
-    var sandboxed = false
+    /// Demo Mode: nothing leaves or enters, on either radio.
+    var sandboxed = false {
+        didSet {
+            bluetooth.sandboxed = sandboxed
+            if sandboxed { bluetooth.stop() }
+        }
+    }
+    /// The locked-phone link: texts, alerts and presence over Bluetooth LE.
+    /// Started with this radio, and left running in the background.
+    @ObservationIgnored let bluetooth = BluetoothLink()
 
     /// Every packet that arrives, with the phone it came from.
     @ObservationIgnored var onPacket: ((Packet, PeerID) -> Void)?
@@ -37,6 +45,7 @@ final class Transport {
 
     init(local: PeerID) {
         self.local = local
+        bluetooth.onPacket = { [weak self] packet, link in self?.onPacket?(packet, link) }
     }
 
     private static func parameters() -> NWParameters {
@@ -51,8 +60,13 @@ final class Transport {
     // MARK: Start and stop
 
     func start() {
+        guard !sandboxed else { return }
+        // Bluetooth and notifications are asked on this same first tap as
+        // Local Network (5.1.1(iv)): what reaches a locked phone needs both.
+        if !wanted { Notifier.ask() }
         wanted = true
-        guard !running, !sandboxed else { return }
+        bluetooth.start()
+        guard !running else { return }
         running = true
         do {
             let l = try NWListener(using: Self.parameters())
@@ -117,7 +131,9 @@ final class Transport {
     // MARK: Sending
 
     /// To every linked phone (the router has already decided to send or relay).
+    /// Bluetooth gets its share first: it runs while this radio is off.
     func send(_ packet: Packet) {
+        bluetooth.send(packet)
         guard running, SendGate.allowsSend(packet, sandboxed: sandboxed) else { return }
         let frame = Link.frame(packet.encode())
         for id in table.byPeer.values { links[id]?.send(frame) }
@@ -125,6 +141,7 @@ final class Transport {
 
     /// A relay copy: to every linked phone but the one it came in on.
     func send(_ packet: Packet, except peer: PeerID) {
+        bluetooth.send(packet)
         guard running, SendGate.allowsSend(packet, sandboxed: sandboxed) else { return }
         let frame = Link.frame(packet.encode())
         for (p, id) in table.byPeer where p != peer { links[id]?.send(frame) }

@@ -24,6 +24,10 @@ final class Mesh {
     /// for the audio engine and the screens that use them.
     @ObservationIgnored var onEvent: ((Dispatch.Event) -> Void)?
     @ObservationIgnored private var heartbeat: Task<Void, Never>?
+    /// True while the app is not on screen: what arrives (over Bluetooth)
+    /// becomes a notification instead.
+    @ObservationIgnored var inBackground = false
+    @ObservationIgnored private var alerts = LockedAlerts()
 
     /// Friends whose Find is open on you ("Maya is looking for you").
     private(set) var lookingForYou: Set<PeerID> = []
@@ -53,6 +57,10 @@ final class Mesh {
         for p in out.broadcast { transport.send(p) }
         for p in out.reply { transport.send(p, to: link) }
         for e in out.events {
+            if inBackground,
+               let alert = alerts.alert(for: e, now: .now, name: { [dispatch] in dispatch.roster.person($0)?.name }) {
+                Notifier.post(alert)
+            }
             if case .find(let m, let from) = e {
                 routeFind(m, from: from)
             } else if flock?.apply(e) != true {
