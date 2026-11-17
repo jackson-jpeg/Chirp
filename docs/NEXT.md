@@ -32,10 +32,14 @@ Handoff: `docs/sessions/2026-11-17-handoff.md`.
 ## Queue
 
 - [ ] 1) Audit, read-only, on a phone plus the simulator: what truly works (push to talk both ways, texts with acks, a relay hop), what is dead, faked or duplicated; write ~/Downloads/chirpchirps-redo/AUDIT.md
-  - [ ] Code-reading half of the audit (no Mac needed): what is dead, faked or duplicated, and what the hardware half must prove; draft in docs/audit/AUDIT.md, copied to ~/Downloads/chirpchirps-redo/AUDIT.md
+  - [x] Code-reading half of the audit (no Mac needed): what is dead, faked or duplicated, and what the hardware half must prove; draft in docs/audit/AUDIT.md, copied to ~/Downloads/chirpchirps-redo/AUDIT.md
   - [ ] Hardware half: on the simulator and the shared iPhone (`ios device hold chirp`, release after), prove or disprove each claim the code-reading half lists; finish AUDIT.md
   - [ ] Toolkit fix to propose (ios-toolkit, not this repo): `auto` in sim_resolver matches only names starting "iPhone", but every project names its simulator "<Project> iPhone ...", so `auto` never finds one
 - [ ] 2) New clean project, clean core only (audio, transport, blocking, consent, demo mode) with plain placeholder UI: carry over only code the audit proves, rewritten clean with tests; everything else is new; no UIBackgroundModes (2.5.4); no styled screen before Jackson's pick
+  - [ ] Start from docs/audit/AUDIT.md: carry over only its CARRY OVER rows, one identity model (key fingerprint) instead of three
+  - [ ] Push-to-talk audio and floor control carry the channel ID, so channels (and locked channels) separate voice (audit defect)
+  - [ ] The receive jitter buffer resets for a new speaker, so a sender whose counter restarted is heard (audit defect)
+  - [ ] Audio session opened only while talking or listening, closed on background; no UIBackgroundModes (2.5.4; see branch fix/2-5-4-foreground-only)
 - [ ] 3) v2.0 scope on that core: hold to talk to friends nearby, channels, texts with delivery ticks, who is nearby, block a person, location off by default and asked every time, demo mode for App Review; answers 5.1.1(iv), 2.1(a), 5.1.2(i) and 2.5.4
 - [x] 4) Design directions: skipped by the mandate update; the lead's three routes (Dawn Chorus, Night Wire, Trail Signal) are with Jackson
 
