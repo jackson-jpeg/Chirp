@@ -1,7 +1,11 @@
 # Proposal for ios-toolkit: keep the cause when `ios test` runs no tests
 
-Written 2026-11-17 by a Chirp session. Not applied: committing it to ios-toolkit was refused
-by the permission check, and the toolkit is not this repo's. The toolkit owner's call.
+Written 2026-11-17 by a Chirp session. Committing it to ios-toolkit from here was refused by
+the permission check; the lead sent it to the toolkit's owner.
+
+**Applied 2026-11-17** by the SoGoJet session, ios-toolkit `3ae155c` and `0ec9800`: NO TESTS RAN
+prints xcodebuild's error lines and the raw log's last 60 lines, and simulator test runs pass
+`-collect-test-diagnostics never`. Tests `tests/no-tests-log.test.sh`.
 
 ## What happened
 

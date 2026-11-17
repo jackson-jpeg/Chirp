@@ -2,6 +2,10 @@
 
 Not a change to this repo. For whoever owns `/root/ios-toolkit` (Jackson's call to apply).
 
+**Applied 2026-11-17** by the SoGoJet session (owner of ios-toolkit), ios-toolkit `3ae155c`, on
+Jackson's word via Sessions: `auto` now prefers a device named "<registry key> ...", booted
+first; tests `tests/sim-resolve.test.sh`.
+
 ## The problem
 
 `bin/ios`, `sim_resolver()` (around line 333): with `IOS_SIM_DEVICE` unset the simulator is
