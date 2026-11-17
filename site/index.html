@@ -22,7 +22,7 @@
     <meta name="theme-color" content="#060a14">
 
     <link rel="stylesheet" href="/fonts/fonts.css">
-    <link rel="stylesheet" href="/brand.css?v=4">
+    <link rel="stylesheet" href="/brand.css?v=5">
     <script>document.documentElement.className += ' js';</script>
 
     <link rel="icon" href="/favicon.ico" sizes="any">
@@ -55,8 +55,15 @@
             <span class="amber">Still works.</span>
         </h1>
         <p class="lede">ChirpChirps turns the iPhones around you into a private walkie-talkie mesh. Your voice hops phone to phone over Bluetooth and peer-to-peer Wi-Fi. No cell towers, no internet, no accounts, no servers to trust.</p>
-        <div class="hero-cta">
-            <a class="btn btn-primary" href="https://apps.apple.com/app/id6761436901">Download for iPhone</a>
+        <div class="notify" id="notify">
+            <p class="soon">Coming to iPhone</p>
+            <form class="signup" method="post" action="/api/signup">
+                <label class="sr" for="email">Your email address</label>
+                <input id="email" name="email" type="email" required autocomplete="email" inputmode="email" maxlength="254" placeholder="you@example.com">
+                <div class="trap" aria-hidden="true"><label for="company">Company</label><input id="company" name="company" type="text" tabindex="-1" autocomplete="off"></div>
+                <button class="btn btn-primary" type="submit">Tell me when it is out</button>
+            </form>
+            <p class="signup-note" id="signup-note" role="status">One email on release day. Then we delete the list, your address with it.</p>
             <a class="btn btn-ghost" href="#how">How it works</a>
         </div>
         <div class="hero-strip">
@@ -206,7 +213,7 @@
         <h2>The network<br>is the people.</h2>
         <p class="lede">Every phone that installs ChirpChirps extends the mesh for everyone else standing nearby.</p>
         <div class="hero-cta">
-            <a class="btn btn-primary" href="https://apps.apple.com/app/id6761436901">Get ChirpChirps</a>
+            <a class="btn btn-primary" href="#notify">Tell me when it is out</a>
         </div>
     </div>
 </section>
@@ -225,6 +232,13 @@
 
 <script src="/mesh.js?v=2" defer></script>
 <script>
+(function () {
+  var s = new URLSearchParams(location.search).get('signup');
+  var msg = { invalid: 'That does not look like an email address. Please try again.',
+              busy: 'We are a little busy. Please try again in an hour.' }[s];
+  var note = document.getElementById('signup-note');
+  if (msg && note) { note.textContent = msg; note.classList.add('warn'); }
+})();
 (function () {
   if (!window.IntersectionObserver) {
     document.querySelectorAll('.rise').forEach(function (e) { e.classList.add('in'); });

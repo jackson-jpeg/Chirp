@@ -345,3 +345,27 @@ h3 { font-size: 1.32rem; line-height: 1.1; letter-spacing: 0.02em; }
   .nav-brand { font-size: 18px; }
   .nav-links a.jump { display: none; }
 }
+
+/* ── Release list (2026-11-17: nothing is on sale yet) ──── */
+
+.notify { margin-top: 38px; max-width: 560px; }
+.soon {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--amber); margin: 0 0 14px;
+}
+.signup { display: flex; flex-wrap: wrap; gap: 10px; }
+.signup input[type=email] {
+  flex: 1 1 240px; min-width: 0;
+  font: inherit; font-size: 16px; color: var(--cream);
+  background: rgba(242,236,224,0.04);
+  border: 1px solid var(--line); border-radius: 3px;
+  padding: 14px 16px;
+}
+.signup input[type=email]::placeholder { color: var(--muted); }
+.signup input[type=email]:focus { outline: 2px solid var(--amber); outline-offset: 1px; }
+.signup .btn { border: 0; cursor: pointer; }
+.signup-note { color: var(--muted); font-size: 14px; margin: 12px 0 22px; }
+.signup-note.warn { color: var(--amber); }
+.trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
