@@ -54,6 +54,8 @@ public enum PacketKind: UInt8, Sendable, CaseIterable {
     case ping = 9
     /// Battery level. Only on a whisper channel, so only to friends.
     case battery = 10
+    /// Catch-up request or bundle of held packets. One link only.
+    case catchUp = 11
 
     /// How many links a new packet of this kind may cross. Floor control has
     /// the same reach as audio on purpose: a device that cannot hear a speaker
@@ -62,6 +64,7 @@ public enum PacketKind: UInt8, Sendable, CaseIterable {
         switch self {
         case .audio, .floor, .presence: return 2   // at most one relay
         case .text, .ack, .rollCall, .help, .meetup, .ping, .battery: return 4
+        case .catchUp: return 1   // between two phones in range, never relayed
         }
     }
 
@@ -83,7 +86,7 @@ public enum PacketKind: UInt8, Sendable, CaseIterable {
         case .audio: return 2
         case .rollCall, .ping: return 3
         case .text, .ack, .meetup: return 4
-        case .presence, .battery: return 5
+        case .presence, .battery, .catchUp: return 5
         }
     }
 }
