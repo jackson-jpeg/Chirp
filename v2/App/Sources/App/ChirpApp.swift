@@ -7,6 +7,8 @@ struct ChirpApp: App {
     @State private var router = Router.fromLaunchArguments()
     /// Opens nothing until someone talks; closes on background (2.5.4).
     @State private var audio = AudioSession()
+    /// Reads the speech status only; asks on the first tap of captions.
+    @State private var captions = LiveCaptions()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -15,11 +17,15 @@ struct ChirpApp: App {
                 .environment(flock)
                 .environment(router)
                 .environment(audio)
+                .environment(captions)
                 .preferredColorScheme(router.forcedScheme)
                 .tint(Theme.ink)
                 .task { audio.observeSystem() }
         }
-        .onChange(of: scenePhase, initial: true) { _, phase in audio.follow(phase) }
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            audio.follow(phase)
+            if phase == .active { captions.refresh() }
+        }
     }
 }
 
@@ -53,6 +59,9 @@ final class Router {
     /// Only for the screenshot runs: the Talk screen's "you are talking" state.
     var forceTalking = false
     var forcedScheme: ColorScheme?
+    /// Launched with `-screen`: show the design's content (captions included)
+    /// whatever this simulator has been allowed.
+    var screenshotRun = false
 
     enum OnboardingStep { case welcome, makeBird }
 
@@ -67,6 +76,7 @@ final class Router {
             return r
         }
         r.show(s)
+        r.screenshotRun = true
         return r
     }
 

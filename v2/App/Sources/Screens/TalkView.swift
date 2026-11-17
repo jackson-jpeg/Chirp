@@ -1,4 +1,5 @@
 import SwiftUI
+import ChirpCore
 
 /// Talk: the flock's line. Built to `v2/design/Talk-Listen` (someone has the
 /// line) and `Talk-Hold` (you are talking), plus the quiet line neither file
@@ -6,6 +7,8 @@ import SwiftUI
 struct TalkView: View {
     @Environment(Flock.self) private var flock
     @Environment(Router.self) private var router
+    @Environment(LiveCaptions.self) private var captions
+    @Environment(\.openURL) private var openURL
 
     @State private var holding = false
     @State private var holdStart: Date?
@@ -141,7 +144,7 @@ struct TalkView: View {
                     } meter: {
                         VoiceMeter()
                     }
-                    captionText(TalkDemo.listenCaption)
+                    captionLine(TalkDemo.listenCaption)
                 case .you:
                     captionHeader(dot: TalkDot(fill: Theme.coralHot, ring: Theme.coralSoft), name: "You") {
                         if router.forceTalking || holdStart == nil {
@@ -154,8 +157,8 @@ struct TalkView: View {
                     } meter: {
                         VoiceMeter(heights: TalkDemo.holdMeter, played: TalkDemo.holdMeter.count, color: Theme.coralHot)
                     }
-                    // TODO: your live caption from speech recognition.
-                    captionText(TalkDemo.holdCaption)
+                    // TODO: your live caption from `captions.track` once the audio engine feeds it.
+                    captionLine(TalkDemo.holdCaption)
                 case .quiet:
                     HStack(spacing: 8) {
                         TalkDot(fill: Theme.hairline, ring: Theme.quiet)
@@ -172,13 +175,77 @@ struct TalkView: View {
         .shadow(color: Color.hex(0x14233F, opacity: 0.05), radius: 0, y: 1)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(captionAccessibilityLabel)
+        .contextMenu { captionModeMenu }
+        .alert("Captions", isPresented: noticeShown) {
+            if captions.card == .denied {
+                Button("Open Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                }
+            }
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(captions.notice ?? "")
+        }
+    }
+
+    /// The card as the design shows it on screenshot runs; otherwise what this
+    /// phone allows.
+    private var card: CaptionCard { router.screenshotRun ? .captioning : captions.card }
+
+    private var noticeShown: Binding<Bool> {
+        Binding(get: { captions.notice != nil }, set: { if !$0 { captions.notice = nil } })
+    }
+
+    @ViewBuilder private var captionModeMenu: some View {
+        Button("Captions on") { captions.send(.chose(.on)) }
+        Button("Captions only, no sound") { captions.send(.chose(.only)) }
+        Button("Captions off") { captions.send(.chose(.off)) }
+    }
+
+    /// The caption under the speaker, or what stands in for it.
+    @ViewBuilder private func captionLine(_ text: String) -> some View {
+        switch card {
+        case .captioning:
+            captionText(text)
+        case .hidden:
+            EmptyView()
+        case .offer:
+            Button { captions.send(.tappedCaptions) } label: {
+                Text("Turn on captions")
+                    .font(.nunito(15, .black, relativeTo: .subheadline))
+                    .underline()
+                    .frame(minHeight: 44, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Shows what people say as text, made on your phone")
+        case .denied:
+            captionStatus("Captions are off in Settings.")
+        case .unavailable:
+            captionStatus("Captions are not available for your language yet.")
+        }
+    }
+
+    private func captionStatus(_ s: String) -> some View {
+        Text(s)
+            .font(.meta)
+            .foregroundStyle(Theme.inkSecondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var captionAccessibilityLabel: String {
+        let who: String
+        let said: String
         switch line {
-        case .listening(let t): "Live caption. \(t.name): \(TalkDemo.listenCaption)"
-        case .you: "Live caption. You: \(TalkDemo.holdCaption)"
-        case .quiet: "The line is quiet."
+        case .listening(let t): who = t.name; said = TalkDemo.listenCaption
+        case .you: who = "You"; said = TalkDemo.holdCaption
+        case .quiet: return "The line is quiet."
+        }
+        switch card {
+        case .captioning: return "Live caption. \(who): \(said)"
+        case .hidden: return "\(who) is talking."
+        case .offer: return "\(who) is talking. Captions are not on yet."
+        case .denied: return "\(who) is talking. Captions are off in Settings."
+        case .unavailable: return "\(who) is talking. Captions are not available for your language yet."
         }
     }
 

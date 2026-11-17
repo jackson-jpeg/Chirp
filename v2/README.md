@@ -39,6 +39,7 @@ design routes, the screens are plain placeholders.
 | `Bird.swift` | Each person's bird (scope 6): palette and chirp as indices into a shipped set, signed in presence. | Scope 6 |
 | `Photo.swift` | Small photos (scope 5): at most 48 KB in 8 KB chunks, one relay, last in the queue; reassembly bounded in count and time. | Scope 5; 1.0's two image paths |
 | `Find.swift` | Find (scope 4): NI token exchange on the whisper channel, friends only; a fallback that claims only in range, through others or out of range. | Scope 4; 1.0's fake signal bars and metres |
+| `Captions.swift` | Live captions (scope 2): the speech permission asked only on a tap, on-device or unavailable, captions-only silences only what is captioned; `CaptionTrack` holds one caption per speaker stream. App side: `App/Sources/App/LiveCaptions.swift` (Speech framework, `requiresOnDeviceRecognition`). | Scope 2; 5.1.1(iv) |
 | `SendGate.swift` | Demo channels are recognisable from the header; nothing leaves or enters while sandboxed. | 2.1(a) |
 
 ## Rules 2.0 holds to (from the four rejections)

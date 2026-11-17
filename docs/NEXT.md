@@ -42,6 +42,8 @@ simulator destination, no device needed); screenshots follow once the simulator 
 
 ## Queue
 
+Note (2026-11-17, sixth session): the foreman's "continue" message carries no "only `ios build`/`run`/`test`" rule (that rule rides on Mac jobs), so this session proved Captions with `v2/scripts/mac-compile.sh` (ssh xcodebuild, generic simulator destination, no Simulator driven) and `swift test`. The fifth session's note below is kept for the record.
+
 Note (2026-11-17, fifth session): every open item below is app code that is proved by compiling it on the Mac. `ios build` cannot compile it without a Chirp simulator (Inbox `chirp-2-0-jackson`), and foreman Mac jobs may use only `ios build`/`run`/`test`, so `v2/scripts/mac-compile.sh` (ssh xcodebuild to a generic simulator destination, no device) is not used under them. Either answer unblocks the Queue.
 
 - [x] Dawn Chorus build (branch `v2/dawn-chorus`): every screen built and compiling; the screenshots, Lock Screen and Watch moved to Needs Jackson (2026-11-17)
@@ -70,7 +72,7 @@ framework. Hardware proof is still to come.
   - [x] Ping: a message kind that asks a friend's phone to chirp; rate-limited, only from friends, never from blocked people
   - [x] Each person's bird: colors and a chirp choice carried in the signed presence (an ID from a fixed set, not raw audio)
   - [x] Small photos: a capped, chunked message kind (size limit, sealed on locked channels)
-  - [ ] Captions (app side, needs `ios build`, so the simulator): on-device speech to text of received voice in the app (Speech framework); the speech permission asked on the first tap of captions, never at launch (5.1.1(iv)); captions-only mode
+  - [x] Captions: `Captions.swift` in ChirpCore (permission asked only on a tap, on-device or unavailable, captions-only silences only what is captioned, `CaptionTrack`; 11 tests, 101 in all) and the app's `LiveCaptions.swift` (Speech framework, `requiresOnDeviceRecognition`, one `CaptionFeed` per speaker stream); Talk's caption card offers "Turn on captions", says when Settings blocks it, and has a Captions on / only / off menu. Compiles with no warnings; not yet run (no simulator, and recognition needs a device)
   - [x] Find, core part: Nearby Interaction token exchange over the whisper channel (friends only) and an honest in range / through others / out of range fallback (`Find.swift`)
   - [ ] Find, app part: NISession ranging from the exchanged tokens, the NI permission asked on the first Find tap; needs `ios build` (simulator) and two UWB iPhones to prove
 - [ ] Transport on Network framework (Bonjour with peer-to-peer Wi-Fi) instead of MultipeerConnectivity (deprecated in Xcode 27 beta); replaces the MultipeerConnectivity transport sub-item under item 2
@@ -88,9 +90,11 @@ it as soon as a simulator exists, and correct the core if it disproves anything.
   - [ ] App target: `v2/project.yml` (xcodegen, bundle ID unchanged, no `UIBackgroundModes`, no camera, photo, speech or "Always" location strings) building the package and an empty placeholder app with `ios build`
   - [x] Audio session opened only while talking or listening, closed on background; no UIBackgroundModes (2.5.4). `AudioSessionPolicy` plus `recheck` (the tail's end) in ChirpCore, tested; the app's adapter `v2/App/Sources/App/AudioSession.swift` follows the scene phase, releases the floor on an interruption or a lost input, reapplies after a media services reset, and opens nothing at launch. Compiles; not yet run (no simulator, and audio needs a device)
   - [ ] Audio engine in the app: capture to 16 kHz Opus 20 ms frames and playback through ChirpCore's JitterBuffer; carry over the render-thread copy, the persistent converter and the DEBUG sine mic (audit section 7)
+    Also: open a `LiveCaptions.begin` feed per speaker stream (and your own while holding), append decoded PCM, `end` when the stream ends; skip playback when `LiveCaptions.playsAudio` is false (captions-only)
   - [ ] Transport in the app: MultipeerConnectivity behind one send gate (ChirpCore `SendGate`), peers keyed by PeerID from presence, an invitation tie-break, advertising and browsing only after the first tap that needs them (5.1.1(iv))
   - [ ] Dispatch in the app: one switch on `PacketKind`, seal and open with the channel, verify floor and texts against the roster's keys
     Then move chat messages from `ChatView` state (`ChatItem.demo()`) into `Flock` (the message model comes from dispatch), and feed `AudioSession.setFloor` from the floor reducer
+    And give `Person` its `PeerID`, so Talk's caption card and Chat's voice bubbles read `LiveCaptions.track` instead of the demo words
   - [ ] Demo Mode content: simulated people and a channel on `SendGate.demoChannel`, entering through the real receive path
   - [ ] Plain placeholder screens: Talk, Channels, Nearby (with Block), Texts, Check In; system styles only until Jackson picks a route
 - [ ] 1) Audit, read-only, on a phone plus the simulator: what truly works (push to talk both ways, texts with acks, a relay hop), what is dead, faked or duplicated; write ~/Downloads/chirpchirps-redo/AUDIT.md
