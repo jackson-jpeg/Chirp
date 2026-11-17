@@ -3,27 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChirpChirps | Walkie-Talkie That Works Without Signal</title>
-    <meta name="description" content="Talk, text, and share with nearby iPhones | no cell towers, no Wi-Fi, no internet required. ChirpChirps turns every iPhone into a mesh relay node.">
+    <title>ChirpChirps | Talk to your flock, even with no signal</title>
+    <meta name="description" content="Hold to talk to friends nearby, even with no signal. Phones pass your voice along, so it works on the mountain, at the festival and out at sea. Coming to iPhone.">
     <link rel="canonical" href="https://chirpchirps.com/">
 
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="ChirpChirps">
     <meta property="og:url" content="https://chirpchirps.com/">
-    <meta property="og:title" content="ChirpChirps | Walkie-Talkie That Works Without Signal">
-    <meta property="og:description" content="Talk, text, and share with nearby iPhones | no cell towers, no Wi-Fi, no internet, no accounts.">
+    <meta property="og:title" content="ChirpChirps | Talk to your flock, even with no signal">
+    <meta property="og:description" content="Hold to talk to friends nearby. Phones pass your voice along. No account, no phone number, no signal needed.">
     <meta property="og:image" content="https://chirpchirps.com/img/og.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="ChirpChirps | Walkie-Talkie That Works Without Signal">
-    <meta name="twitter:description" content="Talk, text, and share with nearby iPhones | no cell towers, no Wi-Fi, no internet, no accounts.">
+    <meta name="twitter:title" content="ChirpChirps | Talk to your flock, even with no signal">
+    <meta name="twitter:description" content="Hold to talk to friends nearby. Phones pass your voice along. No account, no phone number, no signal needed.">
     <meta name="twitter:image" content="https://chirpchirps.com/img/og.png">
-    <meta name="theme-color" content="#060a14">
+    <meta name="theme-color" content="#5DB8EA" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#1B3463" media="(prefers-color-scheme: dark)">
 
-    <link rel="stylesheet" href="/fonts/fonts.css">
-    <link rel="stylesheet" href="/brand.css?v=5">
-    <script>document.documentElement.className += ' js';</script>
+    <link rel="stylesheet" href="/fonts/fonts.css?v=6">
+    <link rel="stylesheet" href="/brand.css?v=6">
 
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -33,190 +33,200 @@
 </head>
 <body>
 
-<nav class="nav">
-    <div class="nav-in">
-        <a href="/" class="nav-brand"><span class="pip"></span>ChirpChirps</a>
-        <div class="nav-links">
-            <a href="#how" class="jump">How</a>
-            <a href="#features" class="jump">Features</a>
-            <a href="/support">Support</a>
-            <a href="/privacy">Privacy</a>
-        </div>
-    </div>
-</nav>
-
-<!-- ── Hero ─────────────────────────────────────────── -->
 <header class="hero">
-    <canvas id="mesh" aria-hidden="true"></canvas>
-    <div class="wrap hero-in">
-        <p class="eyebrow">CH 01 <span class="dot">·</span> Peer-to-peer mesh</p>
-        <h1>
-            <span>No signal?</span>
-            <span class="amber">Still works.</span>
-        </h1>
-        <p class="lede">ChirpChirps turns the iPhones around you into a private walkie-talkie mesh. Your voice hops phone to phone over Bluetooth and peer-to-peer Wi-Fi. No cell towers, no internet, no accounts, no servers to trust.</p>
-        <div class="notify" id="notify">
-            <p class="soon">Coming to iPhone</p>
-            <form class="signup" method="post" action="/api/signup">
-                <label class="sr" for="email">Your email address</label>
-                <input id="email" name="email" type="email" required autocomplete="email" inputmode="email" maxlength="254" placeholder="you@example.com">
-                <div class="trap" aria-hidden="true"><label for="company">Company</label><input id="company" name="company" type="text" tabindex="-1" autocomplete="off"></div>
-                <button class="btn btn-primary" type="submit">Tell me when it is out</button>
-            </form>
-            <p class="signup-note" id="signup-note" role="status">One email on release day. Then we delete the list, your address with it.</p>
-            <a class="btn btn-ghost" href="#how">How it works</a>
+    <nav class="nav">
+        <div class="nav-in">
+            <a href="/" class="nav-brand"><span class="pip" aria-hidden="true"></span>ChirpChirps</a>
+            <div class="nav-links">
+                <a href="#how">How it works</a>
+                <a href="/support">Support</a>
+                <a href="/privacy">Privacy</a>
+            </div>
         </div>
-        <div class="hero-strip">
-            <span><b>0</b> servers</span>
-            <span><b>0</b> accounts</span>
-            <span><b>0</b> bytes collected</span>
-            <span><b>8</b> hops of relay</span>
-        </div>
-    </div>
+    </nav>
+
+    <!-- The bird and beaks are the app icon's own drawing (v2/design/icon/AppIcon.svg). -->
+    <svg class="scene" viewBox="0 0 1600 560" preserveAspectRatio="xMidYMax slice" role="img"
+         aria-label="Two birds on a wire at sunrise, one chirping to the other">
+        <defs>
+            <symbol id="bird" viewBox="-180 -120 340 260" overflow="visible">
+                <path d="M-92 18 C-120 30 -150 52 -172 78 C-160 84 -140 82 -122 72 C-110 64 -96 48 -84 36 Z" fill="var(--tail)"/>
+                <path d="M-100 22 C-102 -24 -62 -56 -12 -60 C2 -96 36 -112 66 -106 C100 -100 120 -72 116 -42 C112 -14 96 6 92 24 C88 70 46 100 -6 100 C-58 100 -98 70 -100 22 Z" fill="var(--body)"/>
+                <path d="M40 -98 C30 -120 38 -140 50 -138 C54 -124 54 -110 52 -98 Z M56 -102 C54 -126 66 -142 78 -136 C76 -122 70 -110 64 -100 Z" fill="var(--tuft, transparent)"/>
+                <path d="M-40 52 C-30 18 20 0 70 6 C86 8 92 24 88 40 C80 76 44 96 -2 96 C-26 96 -44 80 -40 52 Z" fill="var(--belly)"/>
+                <path d="M8 -84 C26 -108 72 -112 98 -90 C108 -82 114 -70 116 -58 C96 -70 60 -76 30 -70 C20 -72 12 -76 8 -84 Z" fill="var(--cap)"/>
+                <path d="M-84 6 C-64 -30 -6 -40 34 -14 C46 -6 50 8 44 20 C30 44 -10 56 -48 50 C-70 46 -88 30 -84 6 Z" fill="var(--wing)"/>
+                <path d="M-62 34 C-40 40 -10 38 18 28 M-70 18 C-44 24 -12 22 22 10 M-70 2 C-48 6 -20 4 6 -6" stroke="#14233F" stroke-width="3.5" fill="none" opacity=".28" stroke-linecap="round"/>
+                <ellipse cx="76" cy="-26" rx="14" ry="10" fill="#FF8A7A" opacity=".55"/>
+                <circle cx="74" cy="-56" r="12" fill="#14233F"/><circle cx="78" cy="-60" r="4.2" fill="#FFFFFF"/>
+                <path d="M-8 96 L-12 124 M22 94 L24 124" stroke="#E07A2E" stroke-width="7" stroke-linecap="round"/>
+                <path d="M-26 126 C-18 118 -6 118 2 126 M10 126 C18 118 30 118 38 126" stroke="#E07A2E" stroke-width="6" fill="none" stroke-linecap="round"/>
+            </symbol>
+            <symbol id="beakClosed" viewBox="0 0 60 40" overflow="visible"><path d="M0 4 C16 6 34 12 44 20 C34 26 16 30 0 30 Z" fill="#FF7A45"/><path d="M0 18 C16 18 30 20 42 20" stroke="#C4502A" stroke-width="2.5" fill="none"/></symbol>
+            <symbol id="beakOpen" viewBox="0 0 60 40" overflow="visible"><path d="M0 2 C16 0 34 -6 46 -12 C38 0 18 12 0 16 Z" fill="#FF7A45"/><path d="M0 20 C14 24 30 32 42 40 C30 38 12 34 0 32 Z" fill="#E9632F"/><path d="M0 16 C10 18 18 20 24 22 L0 22 Z" fill="#B23A2A"/></symbol>
+        </defs>
+        <g class="cloud-back">
+            <circle cx="80" cy="520" r="70"/><circle cx="230" cy="500" r="64"/><circle cx="380" cy="530" r="70"/>
+            <circle cx="560" cy="505" r="66"/><circle cx="740" cy="530" r="70"/><circle cx="920" cy="505" r="64"/>
+            <circle cx="1090" cy="530" r="70"/><circle cx="1260" cy="500" r="66"/><circle cx="1420" cy="525" r="70"/><circle cx="1570" cy="505" r="64"/>
+        </g>
+        <path class="wire" d="M-20 450 Q800 520 1620 440" stroke-width="12" fill="none" stroke-linecap="round"/>
+        <g transform="translate(800 329) scale(.83) translate(-518 -521)">
+            <g style="--body:#FFC531;--belly:#FFE596;--cap:#FFB81C;--tuft:#F2A100;--wing:#F2A100;--tail:#D98A00" transform="translate(264 521) scale(1.45)"><use href="#bird" x="-180" y="-120" width="340" height="260"/><use href="#beakOpen" x="112" y="-52" width="60" height="40"/></g>
+            <g class="arcs" stroke-width="17" fill="none" stroke-linecap="round"><path d="M504 404 C520 388 520 366 504 350"/><path d="M544 424 C576 388 576 346 544 310"/></g>
+            <g style="--body:#FF8C69;--belly:#FFD6C4;--cap:#E2603F;--wing:#E86A4A;--tail:#C9533A" transform="translate(772 514) scale(-1.45 1.45)"><use href="#bird" x="-180" y="-120" width="340" height="260"/><use href="#beakClosed" x="112" y="-52" width="60" height="40"/></g>
+        </g>
+        <g class="cloud-front">
+            <circle cx="20" cy="600" r="80"/><circle cx="190" cy="585" r="72"/><circle cx="350" cy="610" r="80"/>
+            <circle cx="520" cy="590" r="72"/><circle cx="690" cy="612" r="80"/><circle cx="860" cy="588" r="72"/>
+            <circle cx="1030" cy="610" r="80"/><circle cx="1200" cy="590" r="72"/><circle cx="1370" cy="612" r="80"/><circle cx="1540" cy="590" r="72"/>
+            <rect x="-20" y="600" width="1640" height="40"/>
+        </g>
+    </svg>
 </header>
 
-<div class="wrap"><div class="ticks"></div></div>
+<main>
+<section class="intro">
+    <h1>Talk to your flock, even with no signal.</h1>
+    <p class="lede">Hold to talk to friends nearby. Phones pass your voice along, so it works on the mountain, at the festival and out at sea.</p>
+    <p class="small-print">No account. No phone number.</p>
 
-<!-- ── How it works ─────────────────────────────────── -->
+    <div class="notify" id="notify">
+        <p class="soon">Coming to iPhone</p>
+        <form class="signup" method="post" action="/api/signup">
+            <label class="sr" for="email">Your email address</label>
+            <input id="email" name="email" type="email" required autocomplete="email" inputmode="email" maxlength="254" placeholder="you@example.com">
+            <div class="trap" aria-hidden="true"><label for="company">Company</label><input id="company" name="company" type="text" tabindex="-1" autocomplete="off"></div>
+            <button class="btn btn-primary" type="submit">Tell me when it is out</button>
+        </form>
+        <p class="signup-note" id="signup-note" role="status">One email on release day. Then we delete the list, your address with it.</p>
+    </div>
+</section>
+
 <section class="section" id="how">
     <div class="wrap">
-        <div class="section-head rise">
-            <p class="eyebrow">CH 02 <span class="dot">·</span> How it works</p>
-            <h2>Three steps.<br>Zero infrastructure.</h2>
+        <div class="section-head">
+            <p class="eyebrow">How it works</p>
+            <h2>Three steps, then just talk.</h2>
         </div>
-    </div>
-    <div class="wrap">
-        <div class="steps rise">
+        <div class="steps">
             <div class="step">
-                <span class="num">01</span>
-                <h3>Open the app</h3>
-                <p>No sign-up, no account, no phone number. Pick a callsign and you're on the mesh.</p>
+                <span class="num">1</span>
+                <h3>Make your bird</h3>
+                <p>Pick a name, your colors and the chirp your friends hear when you start talking.</p>
             </div>
             <div class="step">
-                <span class="num">02</span>
-                <h3>Press and hold</h3>
-                <p>The PTT button transmits your voice to everyone on your channel. Release to listen.</p>
+                <span class="num">2</span>
+                <h3>Start a flock</h3>
+                <p>Friends join with your flock's code. Only people with the code can hear it.</p>
             </div>
             <div class="step">
-                <span class="num">03</span>
-                <h3>Messages relay</h3>
-                <p>Out of range? Your signal hops through the phones between you. Five devices cover about a kilometer.</p>
+                <span class="num">3</span>
+                <h3>Hold to talk</h3>
+                <p>Let go to send. Everyone in the flock hears you, and the phones in between pass it along.</p>
             </div>
         </div>
     </div>
 </section>
 
-<!-- ── Screens ──────────────────────────────────────── -->
 <section class="section">
     <div class="wrap">
-        <div class="section-head rise">
-            <p class="eyebrow">CH 03 <span class="dot">·</span> A look inside</p>
-            <h2>Talk. Chat.<br>Find each other.</h2>
+        <div class="section-head">
+            <p class="eyebrow">A look inside</p>
+            <h2>Talk, text and find each other.</h2>
+            <p>Screens from the app itself.</p>
         </div>
-        <div class="shots rise">
+        <div class="shots">
             <figure class="shot">
-                <img src="/img/talk.webp" width="840" height="1825" loading="lazy" decoding="async"
-                     alt="The ChirpChirps talk screen: a push-to-talk button ringed by four nearby peers on the Basecamp channel.">
-                <figcaption><span class="tag">Talk</span>Hold to talk. Everyone on the channel hears you: directly, or by relay through the phones in between.</figcaption>
+                <picture>
+                    <source srcset="/img/talk-dark.webp" media="(prefers-color-scheme: dark)">
+                    <img src="/img/talk-light.webp" width="600" height="1304" loading="lazy" decoding="async"
+                         alt="The Talk screen: Maya, Jon and Priya on a wire, Maya talking, her words as a caption, and a big button to hold.">
+                </picture>
+                <figcaption><span class="tag">Talk</span>Hold the button and talk. What friends say shows as a caption too.</figcaption>
             </figure>
             <figure class="shot">
-                <img src="/img/messages.webp" width="840" height="1825" loading="lazy" decoding="async"
-                     alt="The ChirpChirps chat screen showing encrypted text messages between peers on a channel.">
-                <figcaption><span class="tag">Chat</span>Text costs a fraction of the bandwidth voice does, so it travels furthest when the mesh is thin.</figcaption>
+                <picture>
+                    <source srcset="/img/chat-dark.webp" media="(prefers-color-scheme: dark)">
+                    <img src="/img/chat-light.webp" width="600" height="1304" loading="lazy" decoding="async"
+                         alt="The Chat screen: voice messages with captions and texts, one marked Heard by all 3.">
+                </picture>
+                <figcaption><span class="tag">Chat</span>Type when you cannot talk. Ticks show who has it.</figcaption>
             </figure>
             <figure class="shot">
-                <img src="/img/map.webp" width="840" height="1825" loading="lazy" decoding="async"
-                     alt="The ChirpChirps map screen showing nearby peer positions on a downloaded offline map.">
-                <figcaption><span class="tag">Map</span>See where your group is, on map regions you downloaded before you left the signal behind.</figcaption>
+                <picture>
+                    <source srcset="/img/nearby-dark.webp" media="(prefers-color-scheme: dark)">
+                    <img src="/img/nearby-light.webp" width="600" height="1304" loading="lazy" decoding="async"
+                         alt="The Nearby screen: who can hear you, how far away each friend is, and whose phone passes your voice to Priya.">
+                </picture>
+                <figcaption><span class="tag">Nearby</span>See who can hear you, and how your voice gets there.</figcaption>
+            </figure>
+            <figure class="shot">
+                <picture>
+                    <source srcset="/img/find-dark.webp" media="(prefers-color-scheme: dark)">
+                    <img src="/img/find-light.webp" width="600" height="1304" loading="lazy" decoding="async"
+                         alt="The Find screen: an arrow pointing to Maya, 12 metres ahead and a little to the right.">
+                </picture>
+                <figcaption><span class="tag">Find</span>An arrow to your friend in a crowd, on iPhones that can point one.</figcaption>
             </figure>
         </div>
     </div>
 </section>
 
-<!-- ── Capabilities ─────────────────────────────────── -->
 <section class="section" id="features">
     <div class="wrap">
-        <div class="section-head rise">
-            <p class="eyebrow">CH 04 <span class="dot">·</span> Capabilities</p>
-            <h2>Everything you need.<br>Nothing you don't.</h2>
+        <div class="section-head">
+            <p class="eyebrow">What it does</p>
+            <h2>Made for groups out of signal.</h2>
         </div>
-        <div class="caps rise">
-            <div class="cap"><span class="ix">01</span><h3>Push-to-Talk</h3><p>Opus voice that adapts to the link, up to 24 kbps. Hold the button and talk.</p></div>
-            <div class="cap"><span class="ix">02</span><h3>Mesh Relay</h3><p>Every phone is a relay node. Packets hop device to device with TTL routing and automatic deduplication.</p></div>
-            <div class="cap"><span class="ix">03</span><h3>Text Chat</h3><p>Type when you can't talk. Messages ride the same mesh as voice for a fraction of the bandwidth.</p></div>
-            <div class="cap"><span class="ix">04</span><h3>Live Transcription</h3><p>On-device speech recognition captions incoming voice as it plays. Read what you couldn't hear.</p></div>
-            <div class="cap"><span class="ix">05</span><h3>Encrypted Channels</h3><p>AES-256-GCM between channel members, Ed25519 device identity, keys held in the iOS Keychain.</p></div>
-            <div class="cap"><span class="ix">06</span><h3>Voice Messages</h3><p>Friend out of range? The message waits on your phone and delivers itself the moment they're reachable.</p></div>
-            <div class="cap"><span class="ix">07</span><h3>Photo Sharing</h3><p>Send pictures straight to the phones around you. Compressed for the mesh, uploaded nowhere.</p></div>
-            <div class="cap"><span class="ix">08</span><h3>Offline Maps</h3><p>Download map regions ahead of time, then watch your group move across them without a signal.</p></div>
-            <div class="cap"><span class="ix">09</span><h3>Block &amp; Report</h3><p>Silence any peer instantly. Report abuse from inside the app, with no server needed to protect yourself.</p></div>
+        <div class="caps">
+            <div class="cap"><span class="dot" style="background:#FFC531"></span><h3>Whisper</h3><p>Talk to one friend instead of the whole flock. Only they can hear it.</p></div>
+            <div class="cap"><span class="dot" style="background:#5BB98C"></span><h3>Captions</h3><p>Every voice message can be read. Captions are made on your phone, and there is a captions only mode for when you cannot play sound.</p></div>
+            <div class="cap"><span class="dot" style="background:#9A7FE8"></span><h3>Catch up</h3><p>Out of range for a while? Your friends' phones hold what you missed and play it back in order when you return.</p></div>
+            <div class="cap"><span class="dot" style="background:#FF8C69"></span><h3>Ping</h3><p>Make a friend's phone chirp loudly, so a lost phone or a lost friend can be found.</p></div>
+            <div class="cap"><span class="dot" style="background:#2F8ED6"></span><h3>Roll call</h3><p>Ask "everyone OK?" with one tap. "I need help" goes out ahead of everything else.</p></div>
+            <div class="cap"><span class="dot" style="background:#7D63D6"></span><h3>Meet-up spots</h3><p>Pick a place and a time, and see who is coming, who is running late and who cannot make it.</p></div>
+            <div class="cap"><span class="dot" style="background:#B5402A"></span><h3>Block</h3><p>Block anyone. They vanish from your screens and nothing of theirs reaches you.</p></div>
+            <div class="cap"><span class="dot" style="background:#1F8A5B"></span><h3>Location is yours</h3><p>Off unless you check in, and asked every time. A check-in lasts 15 minutes.</p></div>
+        </div>
+
+        <div class="locked">
+            <div>
+                <h3>With the phone locked</h3>
+                <p class="yes"><strong>Texts, roll calls, help and pings still reach you</strong>, over Bluetooth, as notifications.</p>
+            </div>
+            <div>
+                <h3>To talk and listen</h3>
+                <p>Open the app. Voice works while ChirpChirps is on screen, so it is never listening in your pocket.</p>
+            </div>
         </div>
     </div>
 </section>
 
-<!-- ── Specs ────────────────────────────────────────── -->
 <section class="section">
     <div class="wrap">
-        <div class="section-head rise">
-            <p class="eyebrow">CH 05 <span class="dot">·</span> Under the hood</p>
-            <h2>Built thin<br>on purpose.</h2>
-            <p>Mesh links are shared and slow. Every byte the app spends is a byte the people around you don't get.</p>
+        <div class="section-head">
+            <p class="eyebrow">Built for</p>
+            <h2>Wherever the signal gives up.</h2>
         </div>
-        <div class="specs rise">
-            <div class="spec"><span class="v">24 kbps</span><span class="k">Opus voice, adaptive</span></div>
-            <div class="spec"><span class="v">20 ms</span><span class="k">Frame latency</span></div>
-            <div class="spec"><span class="v">AES-256</span><span class="k">Channel encryption</span></div>
-            <div class="spec"><span class="v">8 hops</span><span class="k">Maximum mesh TTL</span></div>
-            <div class="spec"><span class="v">0 servers</span><span class="k">Infrastructure required</span></div>
-            <div class="spec"><span class="v">0 bytes</span><span class="k">Data collected</span></div>
+        <div class="uses">
+            <div class="use"><span class="ix" aria-hidden="true">&#x1F3BF;</span><h3>Ski trips</h3><p>Lift 4 is closed? Tell everyone at once, from the chair.</p></div>
+            <div class="use"><span class="ix" aria-hidden="true">&#x1F3AA;</span><h3>Festivals</h3><p>Eighty thousand people and no bars. Your flock still hears you.</p></div>
+            <div class="use"><span class="ix" aria-hidden="true">&#x1F6F3;&#xFE0F;</span><h3>Cruises</h3><p>No roaming plan, no ship Wi-Fi. Find each other on deck.</p></div>
+            <div class="use"><span class="ix" aria-hidden="true">&#x26FA;</span><h3>Camping</h3><p>From the trailhead to the tent, no tower needed.</p></div>
         </div>
+        <p class="disclaimer">ChirpChirps is not a substitute for emergency services and should not be relied on for life-safety communication. How far it reaches depends on the place, where the phones are, and how many are nearby.</p>
     </div>
 </section>
 
-<!-- ── Use cases ────────────────────────────────────── -->
-<section class="section">
-    <div class="wrap">
-        <div class="section-head rise">
-            <p class="eyebrow">CH 06 <span class="dot">·</span> Built for</p>
-            <h2>Where the<br>network isn't.</h2>
-        </div>
-        <div class="uses rise">
-            <div class="use">
-                <span class="ix">/ 01</span>
-                <h3>Backcountry</h3>
-                <p>No towers for miles. Your group stays connected across ridgelines and valleys.</p>
-            </div>
-            <div class="use">
-                <span class="ix">/ 02</span>
-                <h3>Crowded events</h3>
-                <p>Eighty thousand people overwhelm a cell tower. A mesh gets stronger with every device that joins it.</p>
-            </div>
-            <div class="use">
-                <span class="ix">/ 03</span>
-                <h3>Travel abroad</h3>
-                <p>No SIM, no roaming, no plan. Talk to the people you came with, in any country.</p>
-            </div>
-            <div class="use">
-                <span class="ix">/ 04</span>
-                <h3>Worksites &amp; campuses</h3>
-                <p>Warehouses, film sets, ski patrol, festivals: teams that work close together and can't count on coverage.</p>
-            </div>
-        </div>
-        <p class="disclaimer">ChirpChirps is not a substitute for emergency services and should not be relied on for life-safety communication. Range and delivery depend on radio conditions, device placement, and how many devices are nearby.</p>
-    </div>
-</section>
-
-<!-- ── Close ────────────────────────────────────────── -->
 <section class="close">
     <div class="wrap">
-        <p class="eyebrow" style="text-align:center">CH 07 <span class="dot">·</span> Join the mesh</p>
-        <h2>The network<br>is the people.</h2>
-        <p class="lede">Every phone that installs ChirpChirps extends the mesh for everyone else standing nearby.</p>
-        <div class="hero-cta">
-            <a class="btn btn-primary" href="#notify">Tell me when it is out</a>
-        </div>
+        <h2>Bring your flock.</h2>
+        <p class="lede">No account, no servers, nothing collected. Your voice goes from phone to phone.</p>
+        <a class="btn btn-sun" href="#notify">Tell me when it is out</a>
     </div>
 </section>
+</main>
 
 <footer class="foot">
     <div class="foot-in">
@@ -230,7 +240,6 @@
     </div>
 </footer>
 
-<script src="/mesh.js?v=2" defer></script>
 <script>
 (function () {
   var s = new URLSearchParams(location.search).get('signup');
@@ -238,18 +247,6 @@
               busy: 'We are a little busy. Please try again in an hour.' }[s];
   var note = document.getElementById('signup-note');
   if (msg && note) { note.textContent = msg; note.classList.add('warn'); }
-})();
-(function () {
-  if (!window.IntersectionObserver) {
-    document.querySelectorAll('.rise').forEach(function (e) { e.classList.add('in'); });
-    return;
-  }
-  var io = new IntersectionObserver(function (entries) {
-    entries.forEach(function (en) {
-      if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
-    });
-  }, { rootMargin: '0px 0px -8% 0px', threshold: 0.06 });
-  document.querySelectorAll('.rise').forEach(function (e) { io.observe(e); });
 })();
 </script>
 

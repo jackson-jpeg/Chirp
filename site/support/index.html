@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Support | ChirpChirps</title>
     <meta name="description" content="Help, FAQs, and contact for ChirpChirps | the off-grid mesh walkie-talkie for iPhone.">
-    <meta name="theme-color" content="#060a14">
-    <link rel="stylesheet" href="/fonts/fonts.css">
-    <link rel="stylesheet" href="/brand.css?v=5">
+    <meta name="theme-color" content="#EAF6FC" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0D182B" media="(prefers-color-scheme: dark)">
+    <link rel="stylesheet" href="/fonts/fonts.css?v=6">
+    <link rel="stylesheet" href="/brand.css?v=6">
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
@@ -30,31 +31,29 @@
 
 <main class="prose">
         <h1>Support</h1>
-        <p class="subtitle">We're here to help.</p>
+        <p class="subtitle">ChirpChirps is coming to iPhone. Questions before then are welcome too.</p>
         <div class="card">
         <h3>Email us</h3>
-        <p>Bug reports, feature requests, or questions:</p>
+        <p>Bug reports, ideas or questions:</p>
         <p><a href="mailto:support@unpossible.studio">support@unpossible.studio</a></p>
-        <p>We typically respond within 24 hours.</p>
+        <p>We usually answer within a day.</p>
         </div>
-        <h2>How does ChirpChirps work without internet?</h2>
-        <p>ChirpChirps uses Bluetooth and peer-to-peer Wi-Fi to create a mesh network between nearby iPhones. Your messages hop directly from phone to phone, with no cell towers, Wi-Fi routers, or internet connection needed.</p>
-        <h2>What is the range?</h2>
-        <p>Device-to-device range is approximately 30-100 meters depending on environment. With mesh relay, messages automatically hop through intermediate devices. Five phones can cover roughly a kilometer.</p>
-        <h2>Is it really encrypted?</h2>
-        <p>Yes. All channel communication is encrypted with AES-256-GCM. Each device has a unique Ed25519 identity key stored in the iOS Keychain. There are no servers that could be compromised: your messages exist only on the devices in the mesh.</p>
-        <h2>Why does it need my location?</h2>
-        <p>Location is used for sharing your position with nearby peers on the map. Location data is shared only with devices in your mesh, never sent to any server.</p>
-        <h2>Why does it need Bluetooth?</h2>
-        <p>Bluetooth is used to discover nearby devices for peer-to-peer communication and to provide awareness of devices in your environment.</p>
+        <h2>How does it work with no signal?</h2>
+        <p>The phones talk to each other directly, over peer-to-peer Wi-Fi and Bluetooth. No cell tower, Wi-Fi network or internet is involved. When a friend is too far for your phone, a phone in between can pass your voice along.</p>
+        <h2>How far does it reach?</h2>
+        <p>It depends on the place: open slopes carry further than a crowded festival field or the steel decks of a ship. The Nearby screen shows who can hear you right now, and whether directly or through someone's phone.</p>
+        <h2>Who can hear me?</h2>
+        <p>Everyone in your flock. A flock is locked with its code, and only phones that have the code can hear it or read its texts. A whisper goes to one friend only.</p>
+        <h2>Does it work with my phone locked?</h2>
+        <p>Partly. Texts, roll calls, help and pings reach a locked phone over Bluetooth and show as notifications. To talk and listen, open the app: voice only works while ChirpChirps is on screen, so it never listens in your pocket.</p>
+        <h2>Why does it ask for Bluetooth, Local Network and notifications?</h2>
+        <p>Local Network is how the phones nearby find each other, Bluetooth is how messages reach a locked phone, and notifications are how you see them. All three are asked the first time you start talking, never when the app opens.</p>
+        <h2>Does it need my location?</h2>
+        <p>No. Location is off unless you check in, and you are asked each time. A check-in shows your friends where you are for 15 minutes, then stops.</p>
+        <h2>How do I block someone?</h2>
+        <p>On the Nearby screen, tap the person and choose Block. They disappear from your screens and nothing of theirs reaches you.</p>
         <h2>Does it work in airplane mode?</h2>
-        <p>Partially. You need Bluetooth and Wi-Fi radios active, which can be toggled on separately in Control Center even in airplane mode. Cellular signal is never used.</p>
-        <h2>How do I use push-to-talk?</h2>
-        <p>Hold the large PTT button on the home screen to transmit your voice. Release to stop. Everyone on your channel within range hears you instantly.</p>
-        <h2>What about battery life?</h2>
-        <p>ChirpChirps uses efficient peer-to-peer radios and Opus audio compression to minimize battery impact. The app is built for active, foreground use. When you leave the app, mesh activity pauses.</p>
-        <h2>How do I report a bug?</h2>
-        <p>Email <a href="mailto:support@unpossible.studio">support@unpossible.studio</a> with a description of the issue, your iPhone model, and iOS version.</p>
+        <p>Yes, with Wi-Fi and Bluetooth turned back on in Control Center. Cellular is never used.</p>
 </main>
 
 <footer class="foot">
