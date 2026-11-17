@@ -33,23 +33,58 @@ Ported from LeftSaid's setup (`/root/LeftSaid/docs/rebuild/xcode-cloud.md`).
 
 - `status` ran: **no Xcode Cloud product for ChirpChirps** (app 6761436901). 2.54 of 25 hours
   logged this month across all apps.
-- Nothing is set up until Jackson's click below, and that waits for the Mac's Xcode 27 update.
+- Nothing is set up until the Create Workflow clicks below. The lead does them by computer use after the Mac's Xcode 27 install (Jackson, Inbox `chirp-xcode-cloud`).
 - **Note on cost:** "Tests" runs ChirpUITests too, including `BuildVsDesignTests` (20 app
   launches). If that costs too many minutes, split it out with a test plan.
 
-## Jackson's clicks (the API can't do these)
+## Create Workflow: exact steps (the lead, by computer use on the Mac; Jackson's decision 2026-11-17)
 
-1. **Create the product** once the Mac is back on Xcode 27. In Finder on the Mac, open
-   `~/Chirp/v2/ChirpChirps.xcodeproj` (`~/Chirp` is a git clone; if the `.xcodeproj` is missing,
-   a session runs `ios build chirp` first to generate it). In Xcode: **Integrate → Create
-   Workflow… → ChirpChirps → Next → Grant Access**. On GitHub, add **`jackson-jpeg/Chirp`** to
-   the Xcode Cloud app's repository access (GitHub → Settings → Applications → Xcode Cloud →
-   Configure → Repository access → Save). Back in Xcode, **Complete**. Don't press **Start
-   Build**; close it.
-   - **Watch for this:** on 2026-11-16, Create Workflow for Crease Cracker *reused* LeftSaid's
-     product and relinked it. Make sure Xcode is creating a **new** product named for
-     ChirpChirps, not picking an existing one. After the click, a session runs `status` to
-     confirm the product belongs to app 6761436901, then `setup`.
-2. **Next build number** (only before the first TestFlight run from Xcode Cloud): App Store
-   Connect → Xcode Cloud → ChirpChirps → Settings → Build Number → set it above the newest
-   ChirpChirps build.
+Jackson (Inbox `chirp-xcode-cloud`, lead decision): after the macOS and Xcode 27 install, the
+lead does these clicks on the Mac with computer use, one app after another. The API can't
+create a product. Names to expect:
+
+| What | Value |
+|------|-------|
+| Project to open | `~/Chirp/v2/ChirpChirps.xcodeproj` (XcodeGen project `ChirpChirps`, not in git) |
+| App target and **scheme** | **`Chirp`** (the scheme and the product Xcode lists are both "Chirp", not ChirpChirps) |
+| Other targets (not products) | `ChirpLive` (widget extension, embedded), `ChirpUITests`, package `ChirpCore` |
+| Bundle ID | `com.jacksonmsanger.chirpchirp` |
+| App Store Connect app | **ChirpChirps**, Apple ID **6761436901** (it already exists: pick it, never create one) |
+| Team | 2MU4PC84GZ |
+| GitHub repository | **`jackson-jpeg/Chirp`**, branch **`master`** |
+
+**Before the clicks (from the VPS, once the hold is lifted):**
+1. `san sync chirp`, so the Mac's `~/Chirp` matches master.
+2. If `~/Chirp/v2/ChirpChirps.xcodeproj` is missing: `ssh macbook-tunnel "cd ~/Chirp/v2 && /opt/homebrew/bin/xcodegen generate"`.
+3. `ssh macbook "git -C ~/Chirp remote get-url origin"` must print the GitHub URL of `jackson-jpeg/Chirp`. Xcode refuses Create Workflow in a folder that isn't a git clone, which LeftSaid hit. `~/Chirp/.git` existed on 2026-11-17.
+
+**The clicks:**
+1. In Finder, open `~/Chirp/v2/ChirpChirps.xcodeproj` in Xcode 27. Wait for package resolution to finish.
+2. Menu **Integrate → Create Workflow…**
+3. "Select a product": choose **Chirp** (the app). Next.
+4. Workflow review (Xcode's "Default"): leave it as it is, Next. `setup` disables it later.
+5. "Grant access to your source code": **Grant Access**. On GitHub, in the Xcode Cloud app's
+   repository access (Settings → Applications → Xcode Cloud → Configure → Repository access),
+   add **`jackson-jpeg/Chirp`** and Save. The app was installed for other repos only.
+   Back in Xcode, it should show the repository as connected.
+6. "App Store Connect app": choose the **existing** app **ChirpChirps** (6761436901,
+   `com.jacksonmsanger.chirpchirp`). Never "create a new app".
+7. **Complete.** Do **not** press **Start Build** at the end; close the sheet. A Default run
+   would start right away and spend the shared hours.
+8. **Check:** if any step offers a product named after another app (LeftSaid, CreaseCracker,
+   SimSunday), stop. On 2026-11-16, Crease Cracker's Create Workflow reused LeftSaid's
+   product and relinked it.
+
+**After the clicks (Chirp's session, from the VPS):**
+1. `python3 scripts/asc/xcode_cloud.py status`: the product must be new and belong to app
+   6761436901, with repository `Chirp`.
+2. `python3 scripts/asc/xcode_cloud.py setup --dry-run`, then `setup`: makes "Tests" and
+   "TestFlight" (scheme `Chirp`, container `v2/ChirpChirps.xcodeproj`, manual start on master
+   only) and disables Default. If `Xcode 27.1` isn't offered, it lists the names that are; set
+   `XCODE_CLOUD_XCODE`.
+3. `python3 scripts/asc/xcode_cloud.py start tests`, then `hours` once it finishes.
+
+## Before the first TestFlight run from Xcode Cloud
+
+**Next build number:** App Store Connect → Xcode Cloud → ChirpChirps → Settings → Build Number
+→ set it above the newest ChirpChirps build.

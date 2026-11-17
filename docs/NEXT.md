@@ -157,7 +157,7 @@ it as soon as a simulator exists, and correct the core if it disproves anything.
 
 ## Needs Jackson
 
-- [ ] Xcode Cloud product for ChirpChirps (Inbox `chirp-xcode-cloud`): once the Mac is on Xcode 27, Integrate > Create Workflow in `~/Chirp/v2/ChirpChirps.xcodeproj`, grant GitHub access to `jackson-jpeg/Chirp`, Complete, no Start Build. Steps in `docs/xcode-cloud.md`. Make sure it is a NEW product (Crease Cracker's click reused LeftSaid's)
+- [ ] Xcode Cloud product for ChirpChirps (Inbox `chirp-xcode-cloud`; Jackson's answer: the LEAD does the clicks by computer use after the Xcode 27 install, steps in `docs/xcode-cloud.md`): once the Mac is on Xcode 27, Integrate > Create Workflow in `~/Chirp/v2/ChirpChirps.xcodeproj`, grant GitHub access to `jackson-jpeg/Chirp`, Complete, no Start Build. Steps in `docs/xcode-cloud.md`. Make sure it is a NEW product (Crease Cracker's click reused LeftSaid's)
 - [x] Background behaviour: Jackson picked option 1 (2026-11-17, Inbox chirp-2-0-background; word for word in `docs/audit/BACKGROUND.md`): talk with the app open; texts, roll call, pings and "someone is talking" alerts reach a locked phone over Bluetooth; the Lock Screen card opens the app to reply; a PTT server is a later add-on, not 2.0
 
 - [x] One simulator for Chirp: approved by Jackson (lead decision, 2026-11-17), created "Chirp iPhone 17 Pro" on iOS 26.5; the screenshots moved to the top of the Queue
