@@ -31,11 +31,13 @@ targets:
     platform: iOS
     sources:
     - path: App/Sources
+    - path: App/Shared
     - path: App/Resources
     - path: App/Assets.xcassets
     dependencies:
     - package: ChirpCore
       product: ChirpCore
+    - target: ChirpLive
     scheme:
       testTargets:
       - ChirpUITests
@@ -67,12 +69,52 @@ targets:
         - _chirpchirps._udp
         NSLocationWhenInUseUsageDescription: When you check in, your friends see where you are for 15 minutes. You are asked every time.
         NSSpeechRecognitionUsageDescription: Captions turn what your friends say into text. They are made on your phone, and your voice is never sent anywhere for them.
+        NSSupportsLiveActivities: true
+        CFBundleURLTypes:
+        - CFBundleURLName: com.jacksonmsanger.chirpchirp
+          CFBundleURLSchemes:
+          - chirpchirps
         NSBluetoothAlwaysUsageDescription: ChirpChirps uses Bluetooth so texts, roll calls and help from your friends reach you with your phone locked.
         # Option 1 (docs/audit/BACKGROUND.md): Bluetooth only, for BluetoothLink.swift. Never `audio` (2.5.4).
         UIBackgroundModes:
         - bluetooth-central
         - bluetooth-peripheral
         NSNearbyInteractionUsageDescription: Find shows which way a friend is and how far, only while you have Find open.
+  # The Lock Screen and Dynamic Island card (item 7): a widget extension with
+  # only the Live Activity. Shares the bird drawing and tokens with the app.
+  ChirpLive:
+    type: app-extension
+    platform: iOS
+    sources:
+    - path: App/Widget
+    - path: App/Shared
+    - path: App/Sources/Design/Bird.swift
+    - path: App/Sources/Design/BirdPaths.swift
+    - path: App/Sources/Design/Theme.swift
+    - path: App/Resources/Fonts/Nunito.ttf
+      buildPhase: resources
+    dependencies:
+    - package: ChirpCore
+      product: ChirpCore
+    - sdk: WidgetKit.framework
+    - sdk: SwiftUI.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp.live
+        MARKETING_VERSION: 2.0.0
+        CURRENT_PROJECT_VERSION: '1'
+        GENERATE_INFOPLIST_FILE: false
+        SKIP_INSTALL: true
+    info:
+      path: App/Widget/Info.plist
+      properties:
+        CFBundleDisplayName: ChirpChirps
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UIAppFonts:
+        - Nunito.ttf
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
   # Build-vs-design screenshots (App/UITests/BuildVsDesignTests.swift), run
   # through `ios test chirp --only ChirpUITests --env SCREENSHOT_DIR=...`.
   ChirpUITests:

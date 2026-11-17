@@ -42,6 +42,12 @@ struct ChirpApp: App {
                 .environment(mesh)
                 .preferredColorScheme(router.forcedScheme)
                 .tint(Theme.ink)
+                // The Lock Screen card's Talk button (chirpchirps://talk).
+                .onOpenURL { url in
+                    guard url.scheme == "chirpchirps", url.host() == "talk" else { return }
+                    router.overlay = nil
+                    router.tab = .talk
+                }
                 .task {
                     audio.observeSystem()
                     // Sends only while the radio runs.

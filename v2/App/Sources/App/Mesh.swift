@@ -28,6 +28,8 @@ final class Mesh {
     /// becomes a notification instead.
     @ObservationIgnored var inBackground = false
     @ObservationIgnored private var alerts = LockedAlerts()
+    /// The Lock Screen and Dynamic Island card (item 7).
+    @ObservationIgnored let liveCard = LiveCardController()
 
     /// Friends whose Find is open on you ("Maya is looking for you").
     private(set) var lookingForYou: Set<PeerID> = []
@@ -57,6 +59,9 @@ final class Mesh {
         for p in out.broadcast { transport.send(p) }
         for p in out.reply { transport.send(p, to: link) }
         for e in out.events {
+            liveCard.apply(e) { [dispatch] peer in
+                dispatch.roster.person(peer).map { ($0.name, $0.bird.palette) }
+            }
             if inBackground,
                let alert = alerts.alert(for: e, now: .now, name: { [dispatch] in dispatch.roster.person($0)?.name }) {
                 Notifier.post(alert)
@@ -165,6 +170,10 @@ final class Mesh {
         // friends (ping, battery, Find) before anyone says anything.
         for p in dispatch.memberships(now: .now) { transport.send(p) }
         for gone in dispatch.prune(now: .now) { flock?.left(gone) }
+        // Started here, so only while the app is open and the radio is on.
+        if let flock {
+            liveCard.start(flock: flock.flockName, onLine: dispatch.roster.visible(excluding: dispatch.blocked).count)
+        }
     }
 
     func stopHeartbeat() {
