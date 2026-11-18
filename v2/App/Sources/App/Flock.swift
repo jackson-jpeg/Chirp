@@ -115,6 +115,20 @@ final class Flock {
     static let priya = Person(id: "priya", name: "Priya", palette: .lilac)
     static let sam = Person(id: "sam", name: "Sam", palette: .coral)
 
+    /// A real launch: your saved bird, your flock's name (empty until you
+    /// start or join one), and nobody else until they are heard. The
+    /// pretend friends are only for screenshot runs (`demo`) and Demo Mode,
+    /// whose people arrive through the real receive path.
+    static func real(flockName: String?) -> Flock {
+        Flock(flockName: flockName ?? "",
+              you: loadYou(over: Person(id: "you", name: "", palette: .blue, isYou: true)),
+              others: [],
+              talkerID: nil)
+    }
+
+    /// What the screens call the flock when there is none yet.
+    var displayName: String { flockName.isEmpty ? "Nearby" : flockName }
+
     static var demo: Flock {
         Flock(flockName: "Ski trip",
               you: loadYou(over: Person(id: "you", name: "Jackson", palette: .blue, isYou: true)),

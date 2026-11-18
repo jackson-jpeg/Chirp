@@ -14,6 +14,7 @@ struct TalkView: View {
     @Environment(\.openURL) private var openURL
 
     @State private var holding = false
+    @State private var confirmLeave = false
     @State private var holdStart: Date?
     /// Set when a hold slid away; stays set until the finger lifts.
     @State private var cancelled = false
@@ -91,7 +92,7 @@ struct TalkView: View {
                 .foregroundStyle(Theme.turnText)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Button("Leave demo") { router.leaveDemo(mesh) }
+            Button("Leave demo") { router.leaveDemo(mesh, flock: flock) }
                 .font(.nunito(13, .black, relativeTo: .footnote))
                 .foregroundStyle(Theme.ink)
                 .frame(minHeight: 44)
@@ -109,11 +110,11 @@ struct TalkView: View {
 
     private var header: some View {
         HStack(alignment: .center) {
-            Button {
-                // TODO: open the flock switcher.
+            Menu {
+                flockMenu
             } label: {
                 HStack(spacing: 6) {
-                    Text(flock.flockName)
+                    Text(flock.displayName)
                         .font(.screenTitle)
                         .tracking(-0.3)
                         .multilineTextAlignment(.leading)
@@ -126,7 +127,14 @@ struct TalkView: View {
                 .frame(minHeight: 44)
             }
             .buttonStyle(.plain)
-            .accessibilityHint("Shows your flocks")
+            .accessibilityHint(mesh.flockChannel == nil ? "Start or join a flock" : "Invite friends or leave the flock")
+            .accessibilityIdentifier("talk.flockMenu")
+            .alert("Leave \(flock.displayName)?", isPresented: $confirmLeave) {
+                Button("Leave", role: .destructive) { router.leaveFlock(mesh: mesh, flock: flock) }
+                Button("Stay", role: .cancel) {}
+            } message: {
+                Text("To come back, you need an invite again.")
+            }
 
             Spacer(minLength: 12)
 
@@ -142,6 +150,27 @@ struct TalkView: View {
         // whose safe area is 47 pt.
         .padding(.top, 9)
         .padding(.horizontal, 20)
+    }
+
+    /// The flock menu under the flock's name: invite by the share sheet
+    /// (the link carries the flock's key) and leave; with no flock, start
+    /// or join one. Nothing to change while the demo runs.
+    @ViewBuilder private var flockMenu: some View {
+        if mesh.inDemo {
+            Text("Pretend flock. Leave the demo to use your own.")
+        } else if let channel = mesh.flockChannel, let link = FlockInvite.link(for: channel) {
+            ShareLink(item: link,
+                      subject: Text("Join \(channel.name) on ChirpChirps"),
+                      message: Text("Join my flock on ChirpChirps, so we can talk with no signal. Open this link on your iPhone.")) {
+                Label("Invite friends", systemImage: "person.badge.plus")
+            }
+            Button(role: .destructive) { confirmLeave = true } label: {
+                Label("Leave \(channel.name)", systemImage: "rectangle.portrait.and.arrow.right")
+            }
+        } else {
+            Button { router.flockSetup = .start } label: { Label("Start a flock", systemImage: "plus") }
+            Button { router.flockSetup = .join } label: { Label("Join a flock", systemImage: "link") }
+        }
     }
 
     private var statusRow: some View {

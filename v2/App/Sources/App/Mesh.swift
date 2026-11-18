@@ -46,12 +46,37 @@ final class Mesh {
     /// Memory only.
     private(set) var checkIns = CheckInBoard()
 
-    init(identity: LocalIdentity, flock: Flock, transport: Transport) {
+    /// Your flock: the locked channel you started or joined by invite (one at
+    /// a time in 2.0). Its key is kept in the Keychain, as the invite link.
+    private(set) var flockChannel: Channel?
+    @ObservationIgnored private let flockStore: FlockStore?
+
+    /// The channel Talk and Chat are on: the demo flock while the demo runs,
+    /// else your flock, else Nearby.
+    var talkChannel: ChannelID {
+        if inDemo { return DemoFlock.channel.id }
+        return flockChannel?.id ?? .nearby
+    }
+
+    /// Starts using `channel` as your flock (nil leaves it), and keeps it.
+    func setFlock(_ channel: Channel?) {
+        if let old = flockChannel, old.id != channel?.id { dispatch.leave(old.id) }
+        flockChannel = channel
+        if let channel { dispatch.join(channel) }
+        flockStore?.save(channel)
+    }
+
+    init(identity: LocalIdentity, flock: Flock, transport: Transport, flockStore: FlockStore? = nil) {
         let you = flock.you
         dispatch = Dispatch(identity: identity, name: you.name,
                             bird: Bird(palette: UInt8(you.palette.index), chirp: UInt8(you.chirp)) ?? .default)
         self.transport = transport
         self.flock = flock
+        self.flockStore = flockStore
+        if let saved = flockStore?.load() {
+            flockChannel = saved
+            dispatch.join(saved)
+        }
         transport.onPacket = { [weak self] packet, link in self?.receive(packet, from: link) }
         syncBlocked()
     }

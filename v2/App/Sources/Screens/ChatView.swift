@@ -71,7 +71,7 @@ struct ChatView: View {
                 .tracking(-0.34)
                 .foregroundStyle(Theme.ink)
                 .accessibilityAddTraits(.isHeader)
-            Text("\(flock.flockName) · works with no signal")
+            Text("\(flock.displayName) · works with no signal")
                 .font(.meta)
                 .foregroundStyle(Theme.inkSecondary)
         }

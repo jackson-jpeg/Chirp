@@ -23,8 +23,8 @@ import OSLog
 final class Voice {
     private(set) var floor: FloorState = .idle
 
-    /// The channel Talk is on: the flock's locked channel, else Nearby.
-    var channel: ChannelID { mesh.dispatch.flockChannels.first ?? .nearby }
+    /// The channel Talk is on: the demo flock, your flock, else Nearby.
+    var channel: ChannelID { mesh.talkChannel }
 
     @ObservationIgnored private let mesh: Mesh
     @ObservationIgnored private let audio: AudioSession

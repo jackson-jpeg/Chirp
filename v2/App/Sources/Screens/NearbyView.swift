@@ -102,10 +102,23 @@ struct NearbyView: View {
                 Text("Nobody nearby yet")
                     .font(.nunito(17, .black, relativeTo: .headline))
                     .foregroundStyle(Theme.ink)
-                Text("When someone in \(flock.flockName) is close enough to hear you, they show up here.")
+                Text(flock.flockName.isEmpty
+                     ? "When someone is close enough to hear you, they show up here."
+                     : "When someone in \(flock.flockName) is close enough to hear you, they show up here.")
                     .font(.nunito(14, .bold, relativeTo: .subheadline))
                     .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
+                if !mesh.inDemo, let channel = mesh.flockChannel, let link = FlockInvite.link(for: channel) {
+                    ShareLink(item: link,
+                              subject: Text("Join \(channel.name) on ChirpChirps"),
+                              message: Text("Join my flock on ChirpChirps, so we can talk with no signal. Open this link on your iPhone.")) {
+                        Label("Invite friends", systemImage: "person.badge.plus")
+                            .font(.nunito(15, .black, relativeTo: .subheadline))
+                            .foregroundStyle(Theme.link)
+                            .frame(minHeight: 44)
+                    }
+                    .accessibilityIdentifier("nearby.invite")
+                }
             }
             .padding(.vertical, 16)
             .padding(.horizontal, 16)
@@ -202,7 +215,7 @@ struct NearbyView: View {
                 else { noFlock = true }
             }
         }
-        .alert("Share where you are with \(flock.flockName)?", isPresented: $checkIn.askingConsent) {
+        .alert("Share where you are with \(flock.displayName)?", isPresented: $checkIn.askingConsent) {
             Button("Share for 15 minutes") {
                 // The radio carries it; this tap is the one that needs other phones.
                 transport.start()

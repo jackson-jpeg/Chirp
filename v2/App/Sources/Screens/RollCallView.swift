@@ -129,7 +129,7 @@ struct RollCallView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(RollCallDemo.note)
             if answer == .needHelp {
-                Text("Everyone on \(flock.flockName) can see you asked for help, and where you were last heard.")
+                Text("Everyone on \(flock.displayName) can see you asked for help, and where you were last heard.")
                     .foregroundStyle(Theme.danger)
             }
         }

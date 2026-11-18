@@ -60,7 +60,7 @@ struct MakeBirdView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Eyebrow(text: "Joining \(flock.flockName)")
+            Eyebrow(text: eyebrow)
             Text("Make your bird")
                 .font(.pageTitle)
                 .tracking(-0.32)
@@ -68,6 +68,11 @@ struct MakeBirdView: View {
                 .accessibilityAddTraits(.isHeader)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var eyebrow: String {
+        if flock.flockName.isEmpty { return "Your bird" }
+        return router.startedFlock ? "Starting \(flock.flockName)" : "Joining \(flock.flockName)"
     }
 
     private var scene: some View {

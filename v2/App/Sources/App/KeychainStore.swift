@@ -20,6 +20,15 @@ struct KeychainStore: KeyStore {
         return out as? Data
     }
 
+    func delete(_ account: String) {
+        let match: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+        ]
+        SecItemDelete(match as CFDictionary)
+    }
+
     func save(_ data: Data, account: String) throws {
         let match: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,

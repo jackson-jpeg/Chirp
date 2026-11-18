@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// The first screen (`v2/design/Welcome`): a full-bleed sunrise with two birds
-/// on a wire, the pitch, and the two ways in. Both lead to Make your bird.
+/// on a wire, the pitch, and the two ways in: name a new flock, or paste a
+/// friend's invite. Both then lead to Make your bird.
 struct WelcomeView: View {
     @Environment(Router.self) private var router
     @Environment(Mesh.self) private var mesh
@@ -34,10 +35,14 @@ struct WelcomeView: View {
                     Spacer(minLength: 28)
 
                     VStack(spacing: 10) {
-                        Button("Start a flock") { router.onboardingStep = .makeBird }
+                        Button("Start a flock") { router.onboardingStep = .nameFlock }
                             .buttonStyle(PrimaryButtonStyle())
-                        Button("Join one nearby") { router.onboardingStep = .makeBird }
+                            .accessibilityIdentifier("welcome.start")
+                        // The design said "Join one nearby"; you join with a friend's
+                        // invite link, so the button says what it does.
+                        Button("Join a flock") { router.onboardingStep = .joinFlock }
                             .buttonStyle(SecondaryButtonStyle())
+                            .accessibilityIdentifier("welcome.join")
                         Text("No account. No phone number.")
                             .font(.nunito(14, .bold, relativeTo: .footnote))
                             .foregroundStyle(Theme.inkSecondary)
