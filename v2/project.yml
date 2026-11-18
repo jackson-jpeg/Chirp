@@ -50,10 +50,9 @@ targets:
     # /.well-known/apple-app-site-association (site/.well-known/, site-deploy).
     # The flock key rides in the fragment, which never reaches a server, and
     # ChirpApp's onContinueUserActivity hands the full URL to Router.openInvite.
-    entitlements:
-      path: App/Chirp.entitlements
-      properties:
-        com.apple.developer.associated-domains: ["applinks:chirpchirps.com"]
+    # Two committed entitlements files, picked per config below (xcodegen's
+    # `entitlements:` block set the path in a way a Release override could not
+    # beat, so the first TestFlight archive still asked for Associated Domains).
     scheme:
       testTargets:
       - ChirpUITests
@@ -67,6 +66,7 @@ targets:
         GENERATE_INFOPLIST_FILE: false
         # The Opus encoder controls (FEC, bitrate): App/Sources/App/Audio/opus_ctl_shim.c
         SWIFT_OBJC_BRIDGING_HEADER: App/Sources/App/Audio/Chirp-Bridging-Header.h
+        CODE_SIGN_ENTITLEMENTS: App/Chirp.entitlements
       # TestFlight and App Store archives (`ios ship chirp`, v2/fastlane): signed
       # with the match AppStore profiles, as 1.0 was (no Xcode account on the Mac).
       # Those profiles have no Associated Domains, so Release uses an entitlements
