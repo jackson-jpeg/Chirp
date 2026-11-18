@@ -23,6 +23,8 @@ final class Mesh {
     /// Events the flock does not take (audio, floor, ping, Find, photos),
     /// for the audio engine and the screens that use them.
     @ObservationIgnored var onEvent: ((Dispatch.Event) -> Void)?
+    /// Someone not heard for a while went out of range (the floor lets go of them).
+    @ObservationIgnored var onPeerGone: ((PeerID) -> Void)?
     @ObservationIgnored private var heartbeat: Task<Void, Never>?
     /// True while the app is not on screen: what arrives (over Bluetooth)
     /// becomes a notification instead.
@@ -200,7 +202,10 @@ final class Mesh {
         // "I am on this channel" on each locked channel: how its people become
         // friends (ping, battery, Find) before anyone says anything.
         for p in dispatch.memberships(now: .now) { transport.send(p) }
-        for gone in dispatch.prune(now: .now) { flock?.left(gone) }
+        for gone in dispatch.prune(now: .now) {
+            flock?.left(gone)
+            onPeerGone?(gone)
+        }
         if !checkIns.entries.isEmpty { checkIns.expire(now: .now) }
         // Started here, so only while the app is open and the radio is on.
         if let flock {

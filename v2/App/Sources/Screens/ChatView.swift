@@ -1,10 +1,25 @@
 import SwiftUI
+import ChirpCore
 
-/// Chat, built to `v2/design/Chat.dc.html`: the flock's written and voice
-/// messages, with a composer above the tab bar (MainTabs draws the bar).
+/// Chat, built to `v2/design/Chat.dc.html`: the texts on Talk's channel (the
+/// flock's locked channel, else Nearby) as dispatch stored them, ticks
+/// included, with a composer above the tab bar (MainTabs draws the bar).
+/// The screenshot runs show the design's conversation instead.
+///
+/// 2.0 has no recorded voice messages, only live voice, so outside the
+/// screenshot runs the mic button is Talk's hold to talk.
 struct ChatView: View {
     @Environment(Flock.self) private var flock
-    @State private var items: [ChatItem] = ChatItem.demo()
+    @Environment(Router.self) private var router
+    @Environment(Mesh.self) private var mesh
+    @Environment(Voice.self) private var voice
+    @Environment(Transport.self) private var transport
+    /// The design's conversation, for the screenshot runs only.
+    @State private var demoItems: [ChatItem] = ChatItem.demo()
+
+    private var items: [ChatItem] {
+        router.screenshotRun ? demoItems : ChatItem.from(flock.texts, channel: voice.channel, flock: flock)
+    }
 
     /// Messages from people you blocked are never shown (App Review 5.1.2(i)).
     private var visibleItems: [ChatItem] {
@@ -121,7 +136,7 @@ struct ChatView: View {
                     .accessibilityLabel("Message")
                     .opacity(recordingSince == nil ? 1 : 0)
                 if recordingSince != nil {
-                    Text("Recording. Let go to send.")
+                    Text(router.screenshotRun ? "Recording. Let go to send." : (voice.floor.microphoneIsOpen ? "Talking. Let go to stop." : "Waiting for the line."))
                         .font(.nunito(16, .heavy, relativeTo: .body))
                         .foregroundStyle(Theme.ink)
                 }
@@ -171,30 +186,45 @@ struct ChatView: View {
         .gesture(
             DragGesture(minimumDistance: 0)
                 .onChanged { _ in
-                    if recordingSince == nil { recordingSince = .now }
+                    guard recordingSince == nil else { return }
+                    recordingSince = .now
+                    if !router.screenshotRun { talk() }
                 }
                 .onEnded { _ in
                     guard let start = recordingSince else { return }
                     recordingSince = nil
+                    if !router.screenshotRun { voice.release(); return }
                     let held = Date.now.timeIntervalSince(start)
                     if held >= 0.4 { sendVoice(seconds: max(1, Int(held.rounded()))) }
                 }
         )
         .accessibilityElement()
-        .accessibilityLabel("Hold to send a voice message")
+        .accessibilityLabel(router.screenshotRun ? "Hold to send a voice message" : "Hold to talk to the flock")
         .accessibilityAddTraits(.isButton)
-        .accessibilityAction { sendVoice(seconds: 3) }
+        .accessibilityAction { if router.screenshotRun { sendVoice(seconds: 3) } }
+    }
+
+    /// The mic held outside a screenshot run: Talk's hold to talk, live.
+    private func talk() {
+        transport.start()   // the tap that needs other phones: Local Network asks now
+        voice.press()
     }
 
     private func send() {
         let text = trimmedDraft
         guard !text.isEmpty else { return }
-        items.append(.message(ChatMessage(sender: .you, kind: .text(text), status: .sent)))
         draft = ""
+        if router.screenshotRun {
+            demoItems.append(.message(ChatMessage(sender: .you, kind: .text(text), status: .sent)))
+            return
+        }
+        // Sending is a tap that needs other phones too (5.1.1(iv)).
+        transport.start()
+        mesh.sendText(text, on: voice.channel)
     }
 
     private func sendVoice(seconds: Int) {
-        items.append(.message(ChatMessage(
+        demoItems.append(.message(ChatMessage(
             sender: .you,
             kind: .voice(seconds: seconds, caption: nil, bars: ChatItem.bars(forSeconds: seconds), played: 0),
             status: .sent)))

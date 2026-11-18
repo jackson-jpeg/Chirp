@@ -48,6 +48,9 @@ final class Voice {
         self.engine = engine
 
         mesh.onEvent = { [weak self] e in self?.handle(e) }
+        // Whoever had the line went out of range: free it now rather than
+        // after the silence timeout.
+        mesh.onPeerGone = { [weak self] peer in self?.reduce(.peerGone(peer)) }
         audio.onMustReleaseFloor = { [weak self] in self?.release() }
         audio.onAppliedChange = { [weak self] need in self?.follow(need) }
 

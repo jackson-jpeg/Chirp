@@ -1,4 +1,5 @@
 import SwiftUI
+import ChirpCore
 
 /// Who wrote a message.
 enum ChatSender: Equatable {
@@ -20,7 +21,9 @@ struct ChatMessage: Identifiable {
         case heardBy([Person])
     }
 
-    let id = UUID()
+    /// A text's own ID when it came from the air, so rows keep their identity
+    /// as ticks arrive.
+    var id = UUID()
     var sender: ChatSender
     var kind: Kind
     var status: Status?
@@ -57,6 +60,29 @@ extension ChatItem {
                                  status: .heardBy([Flock.maya, Flock.jon, Flock.priya]))),
             .message(ChatMessage(sender: .person(Flock.priya), kind: .text("Grabbing the boards first, 15 min"))),
         ]
+    }
+
+    /// The texts dispatch stored for one channel, oldest first, as rows.
+    /// The sender is the person on the line with that key, else a bird made
+    /// from the name the text carried (they may have gone out of range).
+    /// Your texts say "Sent" until someone acks, then who heard them.
+    static func from(_ texts: [StoredText], channel: ChannelID, flock: Flock) -> [ChatItem] {
+        func person(_ hex: String, name: String) -> Person {
+            flock.others.first { $0.peer?.hex == hex }
+                ?? Person(id: hex, name: name.isEmpty ? "Someone" : name, palette: .yellow, peer: PeerID(hex: hex))
+        }
+        return texts
+            .filter { $0.channel == channel.uuid }
+            .sorted { $0.sentAt < $1.sentAt }
+            .map { t in
+                if t.outgoing {
+                    let heard = t.deliveredTo.sorted().map { hex in person(hex, name: "") }
+                    return .message(ChatMessage(id: t.id, sender: .you, kind: .text(t.text),
+                                                status: heard.isEmpty ? .sent : .heardBy(heard)))
+                }
+                return .message(ChatMessage(id: t.id, sender: .person(person(t.sender, name: t.senderName)),
+                                            kind: .text(t.text)))
+            }
     }
 
     /// A waveform for a new voice message of yours.
