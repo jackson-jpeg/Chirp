@@ -33,7 +33,7 @@ final class HoldToTalkTests: XCTestCase {
         link.tap()
         XCTAssertTrue(app.buttons["talk.leaveDemo"].waitForExistence(timeout: 10), "The demo did not open Talk")
 
-        // DemoFlock's Maya holds the line from 4 s to 8 s; hold before or after.
+        // DemoBirdhouse's Maya holds the line from 4 s to 8 s; hold before or after.
         let hold = app.descendants(matching: .any)["Hold to talk"]
         XCTAssertTrue(hold.waitForExistence(timeout: 5), "Talk has no hold button")
 

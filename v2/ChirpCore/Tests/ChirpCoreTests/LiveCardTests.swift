@@ -12,11 +12,11 @@ private final class Pacer {
     private let maya = newIdentity().peerID
     private let stranger = newIdentity().peerID
     private func person(_ p: PeerID) -> (name: String, palette: UInt8)? { p == maya ? ("Maya", 2) : nil }
-    private let start = LiveCard(flock: "Ski trip", onLine: 3)
+    private let start = LiveCard(birdhouse: "Ski trip", onLine: 3)
 
-    @Test func beforeAnyoneSpeaksItShowsTheFlock() {
+    @Test func beforeAnyoneSpeaksItShowsTheBirdhouse() {
         #expect(start.headline == "Ski trip" && start.count == "3 on the line")
-        #expect(LiveCard(flock: "Camp", onLine: 0).count == "Just you")
+        #expect(LiveCard(birdhouse: "Camp", onLine: 0).count == "Just you")
     }
 
     @Test func aFloorRequestShowsWhoIsTalkingAndAReleaseKeepsThemAsLast() throws {
@@ -51,13 +51,13 @@ private final class Pacer {
     }
 
     @Test func theCardRoundTripsAsActivityState() throws {
-        let card = LiveCard(flock: "Ski trip", onLine: 2, speaker: "Maya", palette: 2, line: "Lodge", talking: true)
+        let card = LiveCard(birdhouse: "Ski trip", onLine: 2, speaker: "Maya", palette: 2, line: "Lodge", talking: true)
         #expect(try JSONDecoder().decode(LiveCard.self, from: JSONEncoder().encode(card)) == card)
     }
 
     @Test func pushesAreSpacedButWhoIsTalkingGoesAtOnce() {
         let pacer = Pacer()
-        let a = LiveCard(flock: "Ski trip", onLine: 3, speaker: "Maya", line: "one")
+        let a = LiveCard(birdhouse: "Ski trip", onLine: 3, speaker: "Maya", line: "one")
         var b = a; b.line = "two"
         var c = b; c.talking = true
         #expect(pacer.shouldPush(a, now: t0))

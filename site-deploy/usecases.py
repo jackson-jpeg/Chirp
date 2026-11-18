@@ -37,7 +37,7 @@ PAGES = [
         ],
         "shots": ["talk", "rollcall"],
         "tips": [
-            "Everyone needs ChirpChirps on their own iPhone. Start a flock and send the invite link before you head up, while you still have signal.",
+            "Everyone needs ChirpChirps on their own iPhone. Start a birdhouse and send the invite link before you head up, while you still have signal.",
             "Range depends on the mountain: open slopes carry further than trees and ridges. Nearby shows who can hear you right now.",
             "Cold drains batteries. Keep your phone in an inside pocket between runs.",
         ],
@@ -53,13 +53,13 @@ PAGES = [
             ("Meet at the main stage", "Hold to talk and the whole group hears you. Or type it: ticks show who has it."),
             ("Too loud to listen", "Captions show what your friends say as text, made on your phone. Captions only mode keeps it silent."),
             ("Where are you?", "Find shows how far away a friend is, and which way to walk on iPhones that support it. Ping makes their phone chirp."),
-            ("Check in for a bit", "Share where you are with your flock for 15 minutes. It is off until you ask, and it asks every time."),
+            ("Check in for a bit", "Share where you are with everyone in your birdhouse for 15 minutes. It is off until you ask, and it asks every time."),
         ],
         "shots": ["find", "nearby"],
         "tips": [
-            "Start a flock and send the invite link before the gates, while there is still signal.",
+            "Start a birdhouse and send the invite link before the gates, while there is still signal.",
             "A crowd absorbs radio. You will reach friends further away in an open field than in the middle of the pit.",
-            "Your flock is locked with its own key. Only people with the invite link can hear it, and you can block anyone nearby.",
+            "Your birdhouse is locked with its own key. Only people with the invite link can hear it, and you can block anyone nearby.",
         ],
     },
     {
@@ -70,7 +70,7 @@ PAGES = [
         "h1": "Talk on board, without paying for ship Wi-Fi.",
         "lede": "At sea there is no signal and the ship's Wi-Fi costs extra. ChirpChirps goes phone to phone, so your group can talk on board for free.",
         "moments": [
-            ("Dinner in ten", "Hold to talk and everyone in your flock who is close by hears you. Or send a text, with ticks when it arrives."),
+            ("Dinner in ten", "Hold to talk and everyone in your birdhouse who is close by hears you. Or send a text, with ticks when it arrives."),
             ("Kids on the pool deck", "Roll call asks everyone if they are OK with one tap, and anyone can answer \"I need help\"."),
             ("Phone in the cabin", "With your phone locked, texts, roll calls and pings still come in over Bluetooth and show as notifications."),
             ("Which deck?", "Find shows how far away someone is, and which way to walk on iPhones that support it."),
@@ -79,7 +79,7 @@ PAGES = [
         "tips": [
             "Set your phone to airplane mode to avoid roaming, then turn Wi-Fi and Bluetooth back on in Control Center. ChirpChirps never uses cellular.",
             "Steel decks and walls block radio. Expect it to reach along a deck more easily than between decks.",
-            "Start a flock and send the invite link before you board.",
+            "Start a birdhouse and send the invite link before you board.",
         ],
     },
     {
@@ -97,7 +97,7 @@ PAGES = [
         ],
         "shots": ["rollcall", "nearby"],
         "tips": [
-            "Everyone needs ChirpChirps on their own iPhone. Start a flock and send the invite link at home.",
+            "Everyone needs ChirpChirps on their own iPhone. Start a birdhouse and send the invite link at home.",
             "Trees, hills and rock shorten the range. Nearby shows who can hear you right now.",
             "ChirpChirps is not a replacement for emergency services. Tell someone at home where you are going.",
         ],
@@ -239,7 +239,7 @@ def page(p: dict) -> str:
 
 <section class="close">
     <div class="wrap">
-        <h2>Bring your flock.</h2>
+        <h2>Bring your birdhouse.</h2>
         <p class="lede">No account, no servers, nothing collected. Your voice goes from phone to phone.</p>
         <a class="btn btn-sun" href="#notify">Tell me when it is out</a>
     </div>

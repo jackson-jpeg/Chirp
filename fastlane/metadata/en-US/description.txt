@@ -1,6 +1,6 @@
 ChirpChirps is a walkie-talkie for your group when there is no signal. Phones talk straight to each other, so it works on a ski lift, at a festival, on a cruise ship or at a campsite with no bars.
 
-Start a flock, give it a name, and send the invite link to your friends. Then hold the big button and talk. Everyone in your flock who is close by hears you.
+Start a birdhouse, give it a name, and send the invite link to your friends. Then hold the big button and talk. Everyone in your birdhouse who is close by hears you.
 
 TALK
 • Hold to talk, let go to listen. One person talks at a time, so nobody talks over anyone.
@@ -8,24 +8,24 @@ TALK
 • Your own bird, in your colors, with its own chirp when you start talking.
 
 TEXT
-• Texts to your flock, with ticks when they arrive.
-• With your phone locked, texts from your flock still come in over Bluetooth and show as notifications.
+• Texts to everyone in your birdhouse, with ticks when they arrive.
+• With your phone locked, texts from your birdhouse still come in over Bluetooth and show as notifications.
 
 FIND YOUR FRIENDS
 • Nearby shows who can hear you right now.
 • Find shows how far away a friend is, and which way to walk on iPhones that support it.
-• Share where you are with your flock for 15 minutes. It is off until you ask, and it asks every time.
-• Roll call asks everyone in your flock if they are OK, and anyone can say "I need help".
+• Share where you are with everyone in your birdhouse for 15 minutes. It is off until you ask, and it asks every time.
+• Roll call asks everyone in your birdhouse if they are OK, and anyone can say "I need help".
 • Ping a friend and their phone chirps, so you can find each other in a crowd.
 
 PRIVATE BY DESIGN
 • No account, no phone number, no servers. Nothing you say goes to the internet.
-• Your flock is locked with its own key. Only people you invite can hear it.
+• Your birdhouse is locked with its own key. Only people you invite can hear it.
 • Block anyone nearby and they disappear from your app.
 
-BIG FLOCK
-• Free: joining any flock, and starting one for up to 4 people.
-• Big Flock, one purchase: flocks you start can grow past 4, plus more bird colors and chirps. Friends who join never pay.
+BIG BIRDHOUSE
+• Free: joining any birdhouse, and starting one for up to 4 people.
+• Big Birdhouse, one purchase: birdhouses you start can grow past 4, plus more bird colors and chirps. Friends who join never pay.
 
 GOOD TO KNOW
 • Everyone needs ChirpChirps on their own iPhone, close by. Range depends on walls, crowds and terrain.

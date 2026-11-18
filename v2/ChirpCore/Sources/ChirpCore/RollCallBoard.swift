@@ -1,6 +1,6 @@
 import Foundation
 
-/// What a phone knows about the roll call on its flock: the latest "everyone
+/// What a phone knows about the roll call on its birdhouse: the latest "everyone
 /// OK?", who answered what and when, and anyone who asked for help.
 ///
 /// - A newer ask replaces the old one and clears every answer, yours too.
@@ -83,7 +83,7 @@ public struct RollCallBoard: Equatable, Sendable {
 
     public func status(of peer: PeerID) -> Status { answers[peer] ?? .noAnswer }
 
-    /// Everyone with an answer or a help call, for the tiles beside the flock.
+    /// Everyone with an answer or a help call, for the tiles beside the birdhouse.
     public var heardFrom: Set<PeerID> { Set(answers.keys).union(help.keys) }
 
     /// My turn: a roll call someone else started that I have not answered.

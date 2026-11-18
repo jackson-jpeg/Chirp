@@ -2,10 +2,10 @@ import Observation
 import StoreKit
 import UIKit
 
-/// The one purchase: Big Flock, bought once, restorable (Jackson: option A,
+/// The one purchase: Big Birdhouse, bought once, restorable (Jackson: option A,
 /// Inbox chirp-2-0-revenue, then "softer", chirp-2-0-revenue-shape;
-/// docs/proposals/revenue-2.0.md). What it adds is ChirpCore `BigFlock`:
-/// flocks you start past 4 birds, and every bird color and chirp. Joiners
+/// docs/proposals/revenue-2.0.md). What it adds is ChirpCore `BigBirdhouse`:
+/// birdhouses you start past 4 birds, and every bird color and chirp. Joiners
 /// never pay, and carrying others' messages is free for everyone.
 ///
 /// Ported from Crease Cracker's Store (the studio's shape for one unlock).
@@ -24,7 +24,7 @@ final class Store {
         static let unavailable = "The App Store is not answering. Try again in a minute."
         static let unverified = "The App Store could not confirm the purchase. You have not been charged twice; try Restore."
         static let failed = "The purchase did not go through. Nothing was charged."
-        static let nothingToRestore = "No Big Flock purchase was found for this Apple Account."
+        static let nothingToRestore = "No Big Birdhouse purchase was found for this Apple Account."
     }
 
     private(set) var product: Product?
@@ -32,8 +32,8 @@ final class Store {
     private(set) var status: Status = .idle
     /// The App Store has answered at least once (owned or not).
     private(set) var checked = false
-    /// `-bigFlock` pretends the purchase is made (UI tests and screenshots).
-    @ObservationIgnored var forceOwned = ProcessInfo.processInfo.arguments.contains("-bigFlock")
+    /// `-bigBirdhouse` pretends the purchase is made (UI tests and screenshots).
+    @ObservationIgnored var forceOwned = ProcessInfo.processInfo.arguments.contains("-bigBirdhouse")
 
     @ObservationIgnored private var updates: Task<Void, Never>?
 

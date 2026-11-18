@@ -16,7 +16,7 @@ struct NearbyEntry: Identifiable {
     /// Where the scene draws them (the `<g>` translate) and their name label's baseline.
     var sceneCenter: CGPoint?
     var labelBaseline: CGFloat = 132
-    /// They are sharing where they are (a check-in to your flock).
+    /// They are sharing where they are (a check-in to your birdhouse).
     var checkedIn = false
 
     var id: String { person.id }
@@ -51,14 +51,14 @@ extension NearbyEntry {
     /// The rows of `Nearby.dc.html`, keyed by person.
     static func demo(for person: Person) -> NearbyEntry {
         switch person.id {
-        case Flock.maya.id:
+        case Birdhouse.maya.id:
             NearbyEntry(person: person, route: .direct(strength: "strong"), distance: "140 m", direction: "Uphill",
                         arrowDegrees: 45, sceneCenter: CGPoint(x: 124, y: 84), labelBaseline: 136)
-        case Flock.jon.id:
+        case Birdhouse.jon.id:
             NearbyEntry(person: person, route: .direct(strength: "strong"), distance: "60 m", direction: "Behind you",
                         arrowDegrees: 190, sceneCenter: CGPoint(x: 200, y: 77), labelBaseline: 134)
-        case Flock.priya.id:
-            NearbyEntry(person: person, route: .through(Flock.jon), distance: "640 m", direction: "Downhill",
+        case Birdhouse.priya.id:
+            NearbyEntry(person: person, route: .through(Birdhouse.jon), distance: "640 m", direction: "Downhill",
                         arrowDegrees: 260, sceneCenter: CGPoint(x: 318, y: 75), labelBaseline: 128)
         default:
             NearbyEntry(person: person, route: .direct(strength: "good"))

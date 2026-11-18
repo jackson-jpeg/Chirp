@@ -6,19 +6,19 @@ import SwiftUI
 /// voice gets to them, then sharing where you are and Ping.
 /// Tap a person for Find and Block (App Review 5.1.2(i)); long press works too.
 struct NearbyView: View {
-    @Environment(Flock.self) private var flock
+    @Environment(Birdhouse.self) private var birdhouse
     @Environment(Router.self) private var router
     @Environment(Mesh.self) private var mesh
     @Environment(Transport.self) private var transport
     @Environment(CheckInLocation.self) private var checkIn
     @State private var chosen: NearbyEntry?
     @State private var toBlock: NearbyEntry?
-    @State private var noFlock = false
+    @State private var noBirdhouse = false
     @State private var askPing = false
     @State private var pinged: Person?
 
     private var entries: [NearbyEntry] {
-        flock.others
+        birdhouse.others
             .map(NearbyEntry.demo(for:))
             .map { e in
                 // A friend's check-in: what it says replaces the fixture's.
@@ -38,7 +38,7 @@ struct NearbyView: View {
         ScrollView {
             VStack(spacing: 0) {
                 header
-                NearbyScene(you: flock.you, entries: entries)
+                NearbyScene(you: birdhouse.you, entries: entries)
                     .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                     .shadow(color: Color.hex(0x14233F, opacity: 0.06), radius: 0, y: 1)
                     .shadow(color: Theme.shadow, radius: 15, y: 10)
@@ -103,16 +103,16 @@ struct NearbyView: View {
                 Text("Nobody nearby yet")
                     .font(.nunito(17, .black, relativeTo: .headline))
                     .foregroundStyle(Theme.ink)
-                Text(flock.flockName.isEmpty
+                Text(birdhouse.birdhouseName.isEmpty
                      ? "When someone is close enough to hear you, they show up here."
-                     : "When someone in \(flock.flockName) is close enough to hear you, they show up here.")
+                     : "When someone in \(birdhouse.birdhouseName) is close enough to hear you, they show up here.")
                     .font(.nunito(14, .bold, relativeTo: .subheadline))
                     .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
-                if !mesh.inDemo, let channel = mesh.flockChannel, let link = FlockInvite.link(for: channel) {
+                if !mesh.inDemo, let channel = mesh.birdhouseChannel, let link = BirdhouseInvite.link(for: channel) {
                     ShareLink(item: link,
                               subject: Text("Join \(channel.name) on ChirpChirps"),
-                              message: Text("Join my flock on ChirpChirps, so we can talk with no signal. Open this link on your iPhone.")) {
+                              message: Text("Join my birdhouse on ChirpChirps, so we can talk with no signal. Open this link on your iPhone.")) {
                         Label("Invite friends", systemImage: "person.badge.plus")
                             .font(.nunito(15, .black, relativeTo: .subheadline))
                             .foregroundStyle(Theme.link)
@@ -192,7 +192,7 @@ struct NearbyView: View {
     }
 
     private func block(_ e: NearbyEntry) {
-        withAnimation(.easeOut(duration: 0.25)) { flock.block(e.person.id) }
+        withAnimation(.easeOut(duration: 0.25)) { birdhouse.block(e.person.id) }
         if pinged == e.person { pinged = nil }
     }
 
@@ -213,10 +213,10 @@ struct NearbyView: View {
             ) {
                 if left != nil { checkIn.stop() }
                 else if mesh.canCheckIn { checkIn.tapShare() }
-                else { noFlock = true }
+                else { noBirdhouse = true }
             }
         }
-        .alert("Share where you are with \(flock.displayName)?", isPresented: $checkIn.askingConsent) {
+        .alert("Share where you are with \(birdhouse.displayName)?", isPresented: $checkIn.askingConsent) {
             Button("Share for 15 minutes") {
                 // The radio carries it; this tap is the one that needs other phones.
                 transport.start()
@@ -224,7 +224,7 @@ struct NearbyView: View {
             }
             Button("Not now", role: .cancel) { checkIn.answer(yes: false) }
         } message: {
-            Text("Only your flock sees it. It stops after 15 minutes, when you tap Stop, or when you leave the app. You're asked every time.")
+            Text("Only the birds in your birdhouse see it. It stops after 15 minutes, when you tap Stop, or when you leave the app. You're asked every time.")
         }
         .alert("Location is off for ChirpChirps", isPresented: $checkIn.showDenied) {
             Button("Open Settings") {
@@ -234,10 +234,10 @@ struct NearbyView: View {
         } message: {
             Text("To share where you are, allow location While Using the App in Settings. Everything else works without it.")
         }
-        .alert("Share with a locked flock", isPresented: $noFlock) {
+        .alert("Share with a locked birdhouse", isPresented: $noBirdhouse) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Where you are only goes to a locked flock you're in, never to everyone nearby.")
+            Text("Where you are only goes to a locked birdhouse you're in, never to everyone nearby.")
         }
     }
 

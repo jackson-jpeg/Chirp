@@ -50,7 +50,7 @@ struct TalkScene: View {
         .accessibilityAddTraits(.isImage)
     }
 
-    /// The files' aria-labels, built from the flock.
+    /// The files' aria-labels, built from the birdhouse.
     static func label(mode: Mode, names: [String]) -> String {
         guard !names.isEmpty else { return "No one else is on the wire yet." }
         let list = TalkText.list(names)

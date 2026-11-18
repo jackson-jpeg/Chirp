@@ -7,8 +7,8 @@ import Foundation
 /// Its state is ChirpCore's `LiveCard`, where the rules and tests live.
 struct ChirpActivity: ActivityAttributes {
     typealias ContentState = LiveCard
-    /// The flock this card follows.
-    var flockID: String
+    /// The birdhouse this card follows.
+    var birdhouseID: String
 }
 
 enum ChirpLinks {

@@ -23,16 +23,16 @@ import OSLog
 final class Voice {
     private(set) var floor: FloorState = .idle
 
-    /// The channel Talk is on: the demo flock, your flock, else Nearby.
+    /// The channel Talk is on: the demo birdhouse, your birdhouse, else Nearby.
     var channel: ChannelID { mesh.talkChannel }
 
     @ObservationIgnored private let mesh: Mesh
     @ObservationIgnored private let audio: AudioSession
     @ObservationIgnored private let captions: LiveCaptions
-    @ObservationIgnored private weak var flock: Flock?
+    @ObservationIgnored private weak var birdhouse: Birdhouse?
     @ObservationIgnored let engine: VoiceEngine
     /// The channel of the turn in progress (yours or someone's), so a change
-    /// of flock mid-turn does not move it.
+    /// of birdhouse mid-turn does not move it.
     @ObservationIgnored private var turnChannel: ChannelID?
     @ObservationIgnored private var engineMode: AudioSessionNeed = .off
     @ObservationIgnored private var ticker: Task<Void, Never>?
@@ -42,11 +42,11 @@ final class Voice {
     @ObservationIgnored private let mine = OwnCaptionFeed()
     private static let log = Logger(subsystem: "com.jacksonmsanger.chirpchirp", category: "voice")
 
-    init(mesh: Mesh, audio: AudioSession, captions: LiveCaptions, flock: Flock, engine: VoiceEngine = VoiceEngine()) {
+    init(mesh: Mesh, audio: AudioSession, captions: LiveCaptions, birdhouse: Birdhouse, engine: VoiceEngine = VoiceEngine()) {
         self.mesh = mesh
         self.audio = audio
         self.captions = captions
-        self.flock = flock
+        self.birdhouse = birdhouse
         self.engine = engine
 
         mesh.onEvent = { [weak self] e in self?.handle(e) }
@@ -114,13 +114,13 @@ final class Voice {
     }
 
     private func reduce(_ event: FloorEvent) {
-        guard let flock else { return }
+        guard let birdhouse else { return }
         reducing = true
         defer {
             reducing = false
             if releaseAfter { releaseAfter = false; reduce(.localReleased) }
         }
-        let out = FloorMachine.reduce(floor, on: event, me: mesh.dispatch.me, myName: flock.you.name,
+        let out = FloorMachine.reduce(floor, on: event, me: mesh.dispatch.me, myName: birdhouse.you.name,
                                       channel: turnChannel ?? channel)
         let speakerBefore = floor.speaker?.peer
         floor = out.state
@@ -135,7 +135,7 @@ final class Voice {
             // talking", Make your bird). Never your own, so it is not sent
             // back out through your microphone.
             if let s = floor.speaker?.peer, s != mesh.dispatch.me,
-               let who = flock.others.first(where: { $0.peer == s }) {
+               let who = birdhouse.others.first(where: { $0.peer == s }) {
                 ChirpPlayer.play(who.chirp)
             }
         }
@@ -171,10 +171,10 @@ final class Voice {
         mesh.send { try $0.audio(frame, on: ch, now: .now) }
     }
 
-    /// Talk's wire and caption card read the talker from the flock.
+    /// Talk's wire and caption card read the talker from the birdhouse.
     private func showTalker() {
-        guard let flock else { return }
-        flock.talkerID = floor.speaker.flatMap { s in flock.others.first { $0.peer == s.peer }?.id }
+        guard let birdhouse else { return }
+        birdhouse.talkerID = floor.speaker.flatMap { s in birdhouse.others.first { $0.peer == s.peer }?.id }
     }
 
     private func keepTicking() {

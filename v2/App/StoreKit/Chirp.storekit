@@ -10,13 +10,13 @@
       "internalID" : "6761436950",
       "localizations" : [
         {
-          "description" : "Start private flocks your friends join for free.",
-          "displayName" : "Big Flock",
+          "description" : "Start private birdhouses your friends join for free.",
+          "displayName" : "Big Birdhouse",
           "locale" : "en_US"
         }
       ],
       "productID" : "com.jacksonmsanger.chirpchirp.bigflock",
-      "referenceName" : "Big Flock",
+      "referenceName" : "Big Birdhouse",
       "type" : "NonConsumable"
     }
   ],

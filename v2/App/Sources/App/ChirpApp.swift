@@ -3,7 +3,7 @@ import ChirpCore
 
 @main
 struct ChirpApp: App {
-    @State private var flock: Flock
+    @State private var birdhouse: Birdhouse
     @State private var router = Router.fromLaunchArguments()
     /// Opens nothing until someone talks; closes on background (2.5.4).
     @State private var audio: AudioSession
@@ -18,26 +18,26 @@ struct ChirpApp: App {
     @State private var checkIn = CheckInLocation()
     /// Talk's floor and live voice, between the mesh and the audio session.
     @State private var voice: Voice
-    /// Big Flock, the one purchase. Reads what is owned; asks nothing.
+    /// Big Birdhouse, the one purchase. Reads what is owned; asks nothing.
     @State private var store = Store()
 
     init() {
-        // Screenshot runs show the design's flock; a real launch has only
-        // the flock you started or joined, and the people actually heard.
+        // Screenshot runs show the design's birdhouse; a real launch has only
+        // the birdhouse you started or joined, and the people actually heard.
         let screenshotRun = ProcessInfo.processInfo.arguments.contains("-screen")
-        let store: FlockStore? = screenshotRun ? nil : FlockStore()
+        let store: BirdhouseStore? = screenshotRun ? nil : BirdhouseStore()
         let saved = store?.load()
-        let flock = screenshotRun ? Flock.demo : Flock.real(flockName: saved?.name)
+        let birdhouse = screenshotRun ? Birdhouse.demo : Birdhouse.real(birdhouseName: saved?.name)
         let transport = Transport(local: ChirpApp.identity.peerID)
         let audio = AudioSession()
         let captions = LiveCaptions()
-        let mesh = Mesh(identity: ChirpApp.identity, flock: flock, transport: transport, flockStore: store)
-        _flock = State(initialValue: flock)
+        let mesh = Mesh(identity: ChirpApp.identity, birdhouse: birdhouse, transport: transport, birdhouseStore: store)
+        _birdhouse = State(initialValue: birdhouse)
         _transport = State(initialValue: transport)
         _audio = State(initialValue: audio)
         _captions = State(initialValue: captions)
         _mesh = State(initialValue: mesh)
-        _voice = State(initialValue: Voice(mesh: mesh, audio: audio, captions: captions, flock: flock))
+        _voice = State(initialValue: Voice(mesh: mesh, audio: audio, captions: captions, birdhouse: birdhouse))
     }
     /// Created on first launch and kept in the Keychain.
     static let identity: LocalIdentity = {
@@ -51,7 +51,7 @@ struct ChirpApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environment(flock)
+                .environment(birdhouse)
                 .environment(router)
                 .environment(audio)
                 .environment(captions)
@@ -64,7 +64,7 @@ struct ChirpApp: App {
                 .tint(Theme.ink)
                 .onOpenURL { url in
                     // An invite link (chirpchirps.com/join or chirpchirps://join).
-                    if router.openInvite(url, mesh: mesh, flock: flock) { return }
+                    if router.openInvite(url, mesh: mesh, birdhouse: birdhouse) { return }
                     // The Lock Screen card's Talk button (chirpchirps://talk).
                     guard url.scheme == "chirpchirps", url.host() == "talk" else { return }
                     router.overlay = nil
@@ -72,7 +72,7 @@ struct ChirpApp: App {
                 }
                 // A link opened from Safari (once universal links are on).
                 .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
-                    if let url = activity.webpageURL { _ = router.openInvite(url, mesh: mesh, flock: flock) }
+                    if let url = activity.webpageURL { _ = router.openInvite(url, mesh: mesh, birdhouse: birdhouse) }
                 }
                 .task {
                     audio.observeSystem()
@@ -83,23 +83,23 @@ struct ChirpApp: App {
                     checkIn.sendStopped = { [mesh] in mesh.sendCheckInStopped() }
                     // Demo Mode by launch argument (UI tests). People and App Review
                     // come in by Welcome's "Try it with pretend friends".
-                    if ProcessInfo.processInfo.arguments.contains("-demo") { router.enterDemo(mesh, flock: flock) }
+                    if ProcessInfo.processInfo.arguments.contains("-demo") { router.enterDemo(mesh, birdhouse: birdhouse) }
                     // Sends only while the radio runs.
                     mesh.startHeartbeat()
                 }
         }
-        // Left the last locked flock (the demo's, say): nobody to share with.
-        .onChange(of: "\(flock.you.name)|\(flock.you.palette.index)|\(flock.you.chirp)") { _, _ in
-            mesh.youChanged(flock.you)
+        // Left the last locked birdhouse (the demo's, say): nobody to share with.
+        .onChange(of: "\(birdhouse.you.name)|\(birdhouse.you.palette.index)|\(birdhouse.you.chirp)") { _, _ in
+            mesh.youChanged(birdhouse.you)
         }
-        // A refund (or another Apple Account) takes Big Flock away: a bird
+        // A refund (or another Apple Account) takes Big Birdhouse away: a bird
         // never keeps a color or chirp it no longer owns. Only once the App
         // Store has answered, so a launch never resets a paid choice.
         .onChange(of: store.checked && !store.unlocked) { _, lost in
             guard lost else { return }
-            let p = BigFlock.allowedPalette(flock.you.palette.index, unlocked: false)
-            if p != flock.you.palette.index { flock.you.palette = BirdPalette.all[p] }
-            flock.you.chirp = BigFlock.allowedChirp(flock.you.chirp, unlocked: false)
+            let p = BigBirdhouse.allowedPalette(birdhouse.you.palette.index, unlocked: false)
+            if p != birdhouse.you.palette.index { birdhouse.you.palette = BirdPalette.all[p] }
+            birdhouse.you.chirp = BigBirdhouse.allowedChirp(birdhouse.you.chirp, unlocked: false)
         }
         .onChange(of: mesh.canCheckIn) { _, can in
             if !can { checkIn.stop() }
@@ -157,107 +157,107 @@ final class Router {
     /// whatever this simulator has been allowed.
     var screenshotRun = false
 
-    enum OnboardingStep { case welcome, nameFlock, joinFlock, makeBird }
+    enum OnboardingStep { case welcome, nameBirdhouse, joinBirdhouse, makeBird }
 
-    /// Start or join a flock from Talk's flock menu, once you are onboarded.
-    var flockSetup: FlockSetup?
-    /// Big Flock's sheet (the one purchase), and why it opened.
-    var bigFlock: BigFlockReason?
+    /// Start or join a birdhouse from Talk's birdhouse menu, once you are onboarded.
+    var birdhouseSetup: BirdhouseSetup?
+    /// Big Birdhouse's sheet (the one purchase), and why it opened.
+    var bigBirdhouse: BigBirdhouseReason?
     /// Make your bird again, from Talk's "You and settings".
     var editingBird = false
-    enum FlockSetup: String, Identifiable { case start, join; var id: String { rawValue } }
+    enum BirdhouseSetup: String, Identifiable { case start, join; var id: String { rawValue } }
 
-    /// You started the flock you are making a bird for (Make your bird says
+    /// You started the birdhouse you are making a bird for (Make your bird says
     /// "Starting" instead of "Joining").
-    var startedFlock = false
-    /// An invite to another flock while you are in one: asked before switching.
+    var startedBirdhouse = false
+    /// An invite to another birdhouse while you are in one: asked before switching.
     var pendingInvite: Channel?
-    /// An invite link that holds no flock.
+    /// An invite link that holds no birdhouse.
     var inviteRefused = false
 
-    /// "Name your flock": a new locked flock with a fresh key, then Make your
+    /// "Name your birdhouse": a new locked birdhouse with a fresh key, then Make your
     /// bird (or straight back to Talk once onboarded).
     @MainActor
-    func startFlock(named raw: String, mesh: Mesh, flock: Flock) {
-        let name = FlockInvite.cleanName(raw)
+    func startBirdhouse(named raw: String, mesh: Mesh, birdhouse: Birdhouse) {
+        let name = BirdhouseInvite.cleanName(raw)
         guard !name.isEmpty else { return }
-        startedFlock = true
-        use(Channel.newLocked(name: name), mesh: mesh, flock: flock, started: true)
+        startedBirdhouse = true
+        use(Channel.newLocked(name: name), mesh: mesh, birdhouse: birdhouse, started: true)
     }
 
     /// A pasted invite or an opened link: join it, or ask first when it
-    /// would leave the flock you are in.
+    /// would leave the birdhouse you are in.
     @MainActor
-    func join(_ channel: Channel, mesh: Mesh, flock: Flock) {
-        if let current = mesh.flockChannel {
+    func join(_ channel: Channel, mesh: Mesh, birdhouse: Birdhouse) {
+        if let current = mesh.birdhouseChannel {
             if current.id == channel.id { goToTalk(); return }
             pendingInvite = channel
             return
         }
-        startedFlock = false
-        use(channel, mesh: mesh, flock: flock)
+        startedBirdhouse = false
+        use(channel, mesh: mesh, birdhouse: birdhouse)
     }
 
     /// The answer to "Leave X and join Y?".
     @MainActor
-    func confirmPendingInvite(mesh: Mesh, flock: Flock) {
+    func confirmPendingInvite(mesh: Mesh, birdhouse: Birdhouse) {
         guard let c = pendingInvite else { return }
         pendingInvite = nil
-        startedFlock = false
-        use(c, mesh: mesh, flock: flock)
+        startedBirdhouse = false
+        use(c, mesh: mesh, birdhouse: birdhouse)
     }
 
-    /// Talk's flock menu: back to Nearby only.
+    /// Talk's birdhouse menu: back to Nearby only.
     @MainActor
-    func leaveFlock(mesh: Mesh, flock: Flock) {
-        mesh.setFlock(nil)
-        flock.flockName = ""
+    func leaveBirdhouse(mesh: Mesh, birdhouse: Birdhouse) {
+        mesh.setBirdhouse(nil)
+        birdhouse.birdhouseName = ""
     }
 
     /// Returns true when `url` was an invite link (taken or refused).
     @MainActor
-    func openInvite(_ url: URL, mesh: Mesh, flock: Flock) -> Bool {
-        guard FlockInvite.isInviteURL(url) else { return false }
+    func openInvite(_ url: URL, mesh: Mesh, birdhouse: Birdhouse) -> Bool {
+        guard BirdhouseInvite.isInviteURL(url) else { return false }
         guard !screenshotRun else { return true }
-        guard let channel = FlockInvite.parse(url: url) else {
+        guard let channel = BirdhouseInvite.parse(url: url) else {
             inviteRefused = true
             return true
         }
-        join(channel, mesh: mesh, flock: flock)
+        join(channel, mesh: mesh, birdhouse: birdhouse)
         return true
     }
 
     @MainActor
-    private func use(_ channel: Channel, mesh: Mesh, flock: Flock, started: Bool = false) {
-        if mesh.inDemo { leaveDemo(mesh, flock: flock) }
-        mesh.setFlock(channel, started: started)
-        flock.flockName = channel.name
-        flockSetup = nil
+    private func use(_ channel: Channel, mesh: Mesh, birdhouse: Birdhouse, started: Bool = false) {
+        if mesh.inDemo { leaveDemo(mesh, birdhouse: birdhouse) }
+        mesh.setBirdhouse(channel, started: started)
+        birdhouse.birdhouseName = channel.name
+        birdhouseSetup = nil
         if onboarded { goToTalk() } else { onboardingStep = .makeBird }
     }
 
     private func goToTalk() {
         overlay = nil
-        flockSetup = nil
+        birdhouseSetup = nil
         tab = .talk
     }
 
     /// Came in by Welcome's "Try it with pretend friends": onboarded for this
     /// launch only (never saved), so leaving the demo goes back to Welcome.
     var demoSkippedOnboarding = false
-    /// Your flock's name, put back when the demo ends.
+    /// Your birdhouse's name, put back when the demo ends.
     private var nameBeforeDemo: String?
 
     init(onboarded: Bool) { self.onboarded = onboarded }
 
     /// Welcome's demo link: straight onto Talk with a default bird.
     @MainActor
-    func enterDemo(_ mesh: Mesh, flock: Flock) {
-        if flock.you.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { flock.you.name = "You" }
-        mesh.youChanged(flock.you)
+    func enterDemo(_ mesh: Mesh, birdhouse: Birdhouse) {
+        if birdhouse.you.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { birdhouse.you.name = "You" }
+        mesh.youChanged(birdhouse.you)
         mesh.startDemo()
-        nameBeforeDemo = flock.flockName
-        flock.flockName = DemoFlock.channel.name
+        nameBeforeDemo = birdhouse.birdhouseName
+        birdhouse.birdhouseName = DemoBirdhouse.channel.name
         demoSkippedOnboarding = !onboarded
         overlay = nil
         tab = .talk
@@ -267,9 +267,9 @@ final class Router {
     /// Talk's demo banner: the pretend friends go, and someone who skipped
     /// Make your bird to get here is back on Welcome.
     @MainActor
-    func leaveDemo(_ mesh: Mesh, flock: Flock? = nil) {
+    func leaveDemo(_ mesh: Mesh, birdhouse: Birdhouse? = nil) {
         mesh.stopDemo()
-        if let flock, let name = nameBeforeDemo { flock.flockName = name }
+        if let birdhouse, let name = nameBeforeDemo { birdhouse.birdhouseName = name }
         nameBeforeDemo = nil
         overlay = nil
         if demoSkippedOnboarding {
@@ -310,7 +310,7 @@ final class Router {
 struct RootView: View {
     @Environment(Router.self) private var router
     @Environment(Mesh.self) private var mesh
-    @Environment(Flock.self) private var flock
+    @Environment(Birdhouse.self) private var birdhouse
 
     var body: some View {
         @Bindable var router = router
@@ -318,8 +318,8 @@ struct RootView: View {
             if !router.onboarded {
                 switch router.onboardingStep {
                 case .welcome: WelcomeView()
-                case .nameFlock: NameFlockView { router.onboardingStep = .welcome }
-                case .joinFlock: JoinFlockView { router.onboardingStep = .welcome }
+                case .nameBirdhouse: NameBirdhouseView { router.onboardingStep = .welcome }
+                case .joinBirdhouse: JoinBirdhouseView { router.onboardingStep = .welcome }
                 case .makeBird: MakeBirdView()
                 }
             } else {
@@ -335,26 +335,26 @@ struct RootView: View {
             default: EmptyView()
             }
         }
-        .sheet(item: $router.bigFlock) { reason in
-            BigFlockView(reason: reason)
+        .sheet(item: $router.bigBirdhouse) { reason in
+            BigBirdhouseView(reason: reason)
                 .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $router.editingBird) {
             MakeBirdView(editing: true)
         }
-        .sheet(item: $router.flockSetup) { setup in
+        .sheet(item: $router.birdhouseSetup) { setup in
             switch setup {
-            case .start: NameFlockView { router.flockSetup = nil }
-            case .join: JoinFlockView { router.flockSetup = nil }
+            case .start: NameBirdhouseView { router.birdhouseSetup = nil }
+            case .join: JoinBirdhouseView { router.birdhouseSetup = nil }
             }
         }
-        .alert("Leave \(flock.displayName) and join \(router.pendingInvite?.name ?? "")?", isPresented: Binding(
+        .alert("Leave \(birdhouse.displayName) and join \(router.pendingInvite?.name ?? "")?", isPresented: Binding(
             get: { router.pendingInvite != nil }, set: { if !$0 { router.pendingInvite = nil } }
         )) {
-            Button("Join") { router.confirmPendingInvite(mesh: mesh, flock: flock) }
+            Button("Join") { router.confirmPendingInvite(mesh: mesh, birdhouse: birdhouse) }
             Button("Stay", role: .cancel) {}
         } message: {
-            Text("You can be in one flock at a time. To come back, you need an invite again.")
+            Text("You can be in one birdhouse at a time. To come back, you need an invite again.")
         }
         .alert("This invite link is not complete", isPresented: $router.inviteRefused) {
             Button("OK", role: .cancel) {}

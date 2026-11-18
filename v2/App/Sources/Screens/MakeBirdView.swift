@@ -7,23 +7,23 @@ struct MakeBirdView: View {
     /// Opened again from Talk's "You and settings" (a sheet): "Done" instead
     /// of "Hop on the line".
     var editing = false
-    @Environment(Flock.self) private var flock
+    @Environment(Birdhouse.self) private var birdhouse
     @Environment(Router.self) private var router
     @Environment(Store.self) private var store
     @Environment(\.dismiss) private var dismiss
     @FocusState private var nameFocused: Bool
     /// Its own sheet: Make your bird may itself be a sheet (editing), and one
     /// view cannot present two.
-    @State private var bigFlockSheet: BigFlockReason?
+    @State private var bigBirdhouseSheet: BigBirdhouseReason?
 
     private static let chirps = ChirpSound.names
     private static let maxNameLength = 24
 
-    private var trimmedName: String { flock.you.name.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var trimmedName: String { birdhouse.you.name.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var canHop: Bool { !trimmedName.isEmpty }
 
     var body: some View {
-        @Bindable var editable = flock
+        @Bindable var editable = birdhouse
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 header
@@ -60,11 +60,11 @@ struct MakeBirdView: View {
                 .background(Theme.morning.ignoresSafeArea())
         }
         .screenBackground()
-        .sheet(item: $bigFlockSheet) { reason in
-            BigFlockView(reason: reason).presentationDetents([.medium, .large])
+        .sheet(item: $bigBirdhouseSheet) { reason in
+            BigBirdhouseView(reason: reason).presentationDetents([.medium, .large])
         }
-        .onChange(of: flock.you.name) { _, new in
-            if new.count > Self.maxNameLength { flock.you.name = String(new.prefix(Self.maxNameLength)) }
+        .onChange(of: birdhouse.you.name) { _, new in
+            if new.count > Self.maxNameLength { birdhouse.you.name = String(new.prefix(Self.maxNameLength)) }
         }
     }
 
@@ -83,8 +83,8 @@ struct MakeBirdView: View {
     }
 
     private var eyebrow: String {
-        if editing || flock.flockName.isEmpty { return "Your bird" }
-        return router.startedFlock ? "Starting \(flock.flockName)" : "Joining \(flock.flockName)"
+        if editing || birdhouse.birdhouseName.isEmpty { return "Your bird" }
+        return router.startedBirdhouse ? "Starting \(birdhouse.birdhouseName)" : "Joining \(birdhouse.birdhouseName)"
     }
 
     private var scene: some View {
@@ -92,9 +92,9 @@ struct MakeBirdView: View {
                   wire: (start: CGPoint(x: -4, y: 168), control: CGPoint(x: 179, y: 192), end: CGPoint(x: 362, y: 164)),
                   wireWidth: 4,
                   glow: (center: CGPoint(x: 179, y: 70), radius: 140),
-                  birds: [SceneBird(palette: flock.you.palette, center: CGPoint(x: 172, y: 126), scale: 0.42)])
+                  birds: [SceneBird(palette: birdhouse.you.palette, center: CGPoint(x: 172, y: 126), scale: 0.42)])
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Your bird: \(flock.you.palette.name.lowercased())")
+            .accessibilityLabel("Your bird: \(birdhouse.you.palette.name.lowercased())")
             .accessibilityAddTraits(.isImage)
     }
 
@@ -139,12 +139,12 @@ struct MakeBirdView: View {
     }
 
     private func swatch(_ palette: BirdPalette) -> some View {
-        let selected = flock.you.palette == palette
-        // Big Flock colors show with a lock and open its sheet (ChirpCore `BigFlock`).
-        let locked = !store.unlocked && !BigFlock.paletteIsFree(palette.index)
+        let selected = birdhouse.you.palette == palette
+        // Big Birdhouse colors show with a lock and open its sheet (ChirpCore `BigBirdhouse`).
+        let locked = !store.unlocked && !BigBirdhouse.paletteIsFree(palette.index)
         return Button {
-            if locked { bigFlockSheet = .bird; return }
-            withAnimation(.snappy(duration: 0.2)) { flock.you.palette = palette }
+            if locked { bigBirdhouseSheet = .bird; return }
+            withAnimation(.snappy(duration: 0.2)) { birdhouse.you.palette = palette }
         } label: {
             Circle()
                 .fill(palette.swatch)
@@ -168,7 +168,7 @@ struct MakeBirdView: View {
                 .contentShape(Circle().inset(by: -5))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(locked ? "\(palette.name), comes with Big Flock" : palette.name)
+        .accessibilityLabel(locked ? "\(palette.name), comes with Big Birdhouse" : palette.name)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
@@ -186,15 +186,15 @@ struct MakeBirdView: View {
 
     @ViewBuilder private var chirpPills: some View {
         ForEach(Self.chirps.indices, id: \.self) { i in
-            let locked = !store.unlocked && !BigFlock.chirpIsFree(i)
-            ChoicePill(title: Self.chirps[i], systemImage: locked ? "lock.fill" : "play.fill", selected: flock.you.chirp == i) {
-                // A locked chirp still plays, so you hear what Big Flock adds.
+            let locked = !store.unlocked && !BigBirdhouse.chirpIsFree(i)
+            ChoicePill(title: Self.chirps[i], systemImage: locked ? "lock.fill" : "play.fill", selected: birdhouse.you.chirp == i) {
+                // A locked chirp still plays, so you hear what Big Birdhouse adds.
                 ChirpPlayer.play(i)
-                if locked { bigFlockSheet = .bird; return }
-                flock.you.chirp = i
+                if locked { bigBirdhouseSheet = .bird; return }
+                birdhouse.you.chirp = i
             }
             .fixedSize(horizontal: false, vertical: true)
-            .accessibilityHint(locked ? "Plays this chirp. It comes with Big Flock" : "Plays this chirp")
+            .accessibilityHint(locked ? "Plays this chirp. It comes with Big Birdhouse" : "Plays this chirp")
         }
     }
 
@@ -202,7 +202,7 @@ struct MakeBirdView: View {
 
     private func hop() {
         guard canHop else { return }
-        flock.you.name = trimmedName
+        birdhouse.you.name = trimmedName
         if editing { dismiss(); return }
         UserDefaults.standard.set(true, forKey: "onboarded")
         router.onboarded = true

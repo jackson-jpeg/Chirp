@@ -2,14 +2,14 @@ import SwiftUI
 import UIKit
 import ChirpCore
 
-/// Start a flock: name it, then make your bird. No design file covers this
-/// screen (Jackson approved the flow, Inbox chirp-2-0-flock-join), so it is
+/// Start a birdhouse: name it, then make your bird. No design file covers this
+/// screen (Jackson approved the flow, Inbox chirp-2-0-birdhouse-join), so it is
 /// built from Make your bird's parts: the eyebrow, the page title, one card
 /// with a field, and the primary button at the bottom.
-struct NameFlockView: View {
+struct NameBirdhouseView: View {
     @Environment(Router.self) private var router
     @Environment(Mesh.self) private var mesh
-    @Environment(Flock.self) private var flock
+    @Environment(Birdhouse.self) private var birdhouse
     let back: () -> Void
 
     init(back: @escaping () -> Void) { self.back = back }
@@ -17,16 +17,16 @@ struct NameFlockView: View {
     @State private var name = ""
     @FocusState private var focused: Bool
 
-    private var clean: String { FlockInvite.cleanName(name) }
+    private var clean: String { BirdhouseInvite.cleanName(name) }
 
     var body: some View {
-        FlockSetupPage(eyebrow: "Start a flock", title: "Name your flock", back: back) {
+        BirdhouseSetupPage(eyebrow: "Start a birdhouse", title: "Name your birdhouse", back: back) {
             VStack(alignment: .leading, spacing: 6) {
-                SetupField(label: "Flock name", prompt: "Ski trip", text: $name, focused: $focused)
+                SetupField(label: "Birdhouse name", prompt: "Ski trip", text: $name, focused: $focused)
                     .textInputAutocapitalization(.words)
                     .submitLabel(.next)
                     .onSubmit(next)
-                    .accessibilityIdentifier("flock.name")
+                    .accessibilityIdentifier("birdhouse.name")
                 Text("Everyone you invite sees this name.")
                     .font(.nunito(14, .bold, relativeTo: .footnote))
                     .foregroundStyle(Theme.inkSecondary)
@@ -37,26 +37,26 @@ struct NameFlockView: View {
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(clean.isEmpty)
                 .opacity(clean.isEmpty ? 0.4 : 1)
-                .accessibilityIdentifier("flock.next")
+                .accessibilityIdentifier("birdhouse.next")
         }
         .onAppear { focused = true }
         .onChange(of: name) { _, new in
-            if new.count > FlockInvite.maxNameLength { name = String(new.prefix(FlockInvite.maxNameLength)) }
+            if new.count > BirdhouseInvite.maxNameLength { name = String(new.prefix(BirdhouseInvite.maxNameLength)) }
         }
     }
 
     private func next() {
         guard !clean.isEmpty else { return }
-        router.startFlock(named: clean, mesh: mesh, flock: flock)
+        router.startBirdhouse(named: clean, mesh: mesh, birdhouse: birdhouse)
     }
 }
 
-/// Join a flock: the invite link usually opens the app by itself. This is
+/// Join a birdhouse: the invite link usually opens the app by itself. This is
 /// the fallback when it did not: paste the link (or the code) here.
-struct JoinFlockView: View {
+struct JoinBirdhouseView: View {
     @Environment(Router.self) private var router
     @Environment(Mesh.self) private var mesh
-    @Environment(Flock.self) private var flock
+    @Environment(Birdhouse.self) private var birdhouse
     let back: () -> Void
 
     init(back: @escaping () -> Void) { self.back = back }
@@ -66,7 +66,7 @@ struct JoinFlockView: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        FlockSetupPage(eyebrow: "Join a flock", title: "Paste your invite", back: back) {
+        BirdhouseSetupPage(eyebrow: "Join a birdhouse", title: "Paste your invite", back: back) {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Open the invite link a friend sent you and it brings you here. If it doesn't, copy the link and paste it below.")
                     .font(.nunito(15, .bold, relativeTo: .subheadline))
@@ -77,7 +77,7 @@ struct JoinFlockView: View {
                     .keyboardType(.URL)
                     .submitLabel(.join)
                     .onSubmit(join)
-                    .accessibilityIdentifier("flock.invite")
+                    .accessibilityIdentifier("birdhouse.invite")
                 // The system paste button reads the clipboard only when tapped,
                 // so there is no "allow paste" prompt.
                 PasteButton(payloadType: String.self) { strings in
@@ -92,7 +92,7 @@ struct JoinFlockView: View {
                         .font(.nunito(14, .bold, relativeTo: .footnote))
                         .foregroundStyle(Theme.danger)
                         .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("flock.refused")
+                        .accessibilityIdentifier("birdhouse.refused")
                 }
             }
         } bottom: {
@@ -100,24 +100,24 @@ struct JoinFlockView: View {
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .opacity(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.4 : 1)
-                .accessibilityIdentifier("flock.join")
+                .accessibilityIdentifier("birdhouse.join")
         }
         .onChange(of: text) { _, _ in refused = false }
     }
 
     private func join() {
-        guard let channel = FlockInvite.parse(text) else {
+        guard let channel = BirdhouseInvite.parse(text) else {
             refused = true
             UIAccessibility.post(notification: .announcement, argument: "That is not a ChirpChirps invite.")
             return
         }
-        router.join(channel, mesh: mesh, flock: flock)
+        router.join(channel, mesh: mesh, birdhouse: birdhouse)
     }
 }
 
 // MARK: - Shared parts
 
-private struct FlockSetupPage<Content: View, Bottom: View>: View {
+private struct BirdhouseSetupPage<Content: View, Bottom: View>: View {
     let eyebrow: String
     let title: String
     let back: () -> Void

@@ -258,13 +258,13 @@ enum CatchUpDemo {
     static let totalSeconds: Double = 61.5
 
     static let items: [Item] = [
-        Item(id: 0, name: Flock.jon.name, palette: Flock.jon.palette, meta: "9:55 · 0:08",
+        Item(id: 0, name: Birdhouse.jon.name, palette: Birdhouse.jon.palette, meta: "9:55 · 0:08",
              quote: "Lift 4 is closed, wind. Going to the blue gondola instead."),
-        Item(id: 1, name: Flock.maya.name, palette: Flock.maya.palette, meta: "9:58 · 0:05",
+        Item(id: 1, name: Birdhouse.maya.name, palette: Birdhouse.maya.palette, meta: "9:58 · 0:05",
              quote: "Same. Grabbing coffee at the bottom."),
-        Item(id: 2, name: Flock.jon.name, palette: Flock.jon.palette, meta: "10:01",
+        Item(id: 2, name: Birdhouse.jon.name, palette: Birdhouse.jon.palette, meta: "10:01",
              meetup: Meetup(title: "Meet-up: blue gondola", detail: "3:30 PM · 420 m from you")),
-        Item(id: 3, name: Flock.priya.name, palette: Flock.priya.palette, meta: "10:04 · 0:03",
+        Item(id: 3, name: Birdhouse.priya.name, palette: Birdhouse.priya.palette, meta: "10:04 · 0:03",
              quote: "See you there!"),
     ]
 }

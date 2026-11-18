@@ -150,7 +150,7 @@ struct Card<Content: View>: View {
     }
 }
 
-/// The 56 pt pill: "Hop on the line", "Start a flock".
+/// The 56 pt pill: "Hop on the line", "Start a birdhouse".
 struct PrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     func makeBody(configuration: Configuration) -> some View {

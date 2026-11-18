@@ -1,7 +1,7 @@
 import XCTest
 
 /// Roll call in Demo Mode, the way App Review sees it with one phone: Talk's
-/// flock menu opens it, "Ask everyone" goes to the pretend flock, and Maya
+/// birdhouse menu opens it, "Ask everyone" goes to the pretend birdhouse, and Maya
 /// and Jon answer OK while Priya (out of range, as on the design) does not.
 final class RollCallTests: XCTestCase {
     private static let emDash = "\u{2014}"
@@ -19,9 +19,9 @@ final class RollCallTests: XCTestCase {
 
         // Wait until the pretend friends have been heard (presence every 3 s).
         sleep(4)
-        app.buttons["talk.flockMenu"].tap()
+        app.buttons["talk.birdhouseMenu"].tap()
         let entry = app.buttons["Roll call: everyone OK?"]
-        XCTAssertTrue(entry.waitForExistence(timeout: 5), "Talk's flock menu has no roll call")
+        XCTAssertTrue(entry.waitForExistence(timeout: 5), "Talk's birdhouse menu has no roll call")
         entry.tap()
 
         let ask = app.buttons["rollCall.primary"]

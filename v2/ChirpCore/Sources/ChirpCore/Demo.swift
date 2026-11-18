@@ -8,13 +8,13 @@ import Foundation
 /// through the same receive path as packets off the air. What the app sends
 /// on the demo channel goes back to them, so its texts get real ticks.
 ///
-/// The demo flock is a locked channel whose ID starts "DEMO", so `SendGate`
+/// The demo birdhouse is a locked channel whose ID starts "DEMO", so `SendGate`
 /// keeps every packet on it off the radio, and the app runs Demo Mode only
 /// with the transport sandboxed: nothing of it reaches a real phone nearby.
 /// It has no voice (no audio frames): "Maya is talking" shows, then her words
 /// arrive as a text.
-public struct DemoFlock: Sendable {
-    /// The demo flock: locked (so its people are friends: ping, battery and
+public struct DemoBirdhouse: Sendable {
+    /// The demo birdhouse: locked (so its people are friends: ping, battery and
     /// Find work in the demo), with a fixed key that is no secret.
     public static let channel = Channel(id: SendGate.demoChannel(1), name: "Ski trip", seed: Data(repeating: 0x5A, count: Channel.seedLength))
 
@@ -55,7 +55,7 @@ public struct DemoFlock: Sendable {
         people = cast.map { name, palette in
             let id = LocalIdentity(signingKey: .init(), agreementKey: .init())
             var d = Dispatch(identity: id, name: name, bird: Bird(palette: palette, chirp: palette % Bird.chirpCount) ?? .default)
-            d.join(DemoFlock.channel)
+            d.join(DemoBirdhouse.channel)
             return d
         }
         started = now

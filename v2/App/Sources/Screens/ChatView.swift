@@ -2,14 +2,14 @@ import SwiftUI
 import ChirpCore
 
 /// Chat, built to `v2/design/Chat.dc.html`: the texts on Talk's channel (the
-/// flock's locked channel, else Nearby) as dispatch stored them, ticks
+/// birdhouse's locked channel, else Nearby) as dispatch stored them, ticks
 /// included, with a composer above the tab bar (MainTabs draws the bar).
 /// The screenshot runs show the design's conversation instead.
 ///
 /// 2.0 has no recorded voice messages, only live voice, so outside the
 /// screenshot runs the mic button is Talk's hold to talk.
 struct ChatView: View {
-    @Environment(Flock.self) private var flock
+    @Environment(Birdhouse.self) private var birdhouse
     @Environment(Router.self) private var router
     @Environment(Mesh.self) private var mesh
     @Environment(Voice.self) private var voice
@@ -18,13 +18,13 @@ struct ChatView: View {
     @State private var demoItems: [ChatItem] = ChatItem.demo()
 
     private var items: [ChatItem] {
-        router.screenshotRun ? demoItems : ChatItem.from(flock.texts, channel: voice.channel, flock: flock)
+        router.screenshotRun ? demoItems : ChatItem.from(birdhouse.texts, channel: voice.channel, birdhouse: birdhouse)
     }
 
     /// Messages from people you blocked are never shown (App Review 5.1.2(i)).
     private var visibleItems: [ChatItem] {
         items.filter { item in
-            if case .message(let m) = item, case .person(let p) = m.sender { return !flock.isBlocked(p.id) }
+            if case .message(let m) = item, case .person(let p) = m.sender { return !birdhouse.isBlocked(p.id) }
             return true
         }
     }
@@ -71,7 +71,7 @@ struct ChatView: View {
                 .tracking(-0.34)
                 .foregroundStyle(Theme.ink)
                 .accessibilityAddTraits(.isHeader)
-            Text("\(flock.displayName) · works with no signal")
+            Text("\(birdhouse.displayName) · works with no signal")
                 .font(.meta)
                 .foregroundStyle(Theme.inkSecondary)
         }
@@ -88,7 +88,7 @@ struct ChatView: View {
             Text("No messages yet")
                 .font(.cardTitle)
                 .foregroundStyle(Theme.ink)
-            Text("Say hi to the flock. Messages get through even with no signal.")
+            Text("Say hi to everyone. Messages get through even with no signal.")
                 .font(.meta)
                 .foregroundStyle(Theme.inkSecondary)
                 .multilineTextAlignment(.center)
@@ -114,7 +114,7 @@ struct ChatView: View {
         case .message(let m):
             switch m.sender {
             case .person(let p): ChatIncomingRow(message: m, person: p)
-            case .you: ChatOutgoingRow(message: m, othersCount: flock.others.count)
+            case .you: ChatOutgoingRow(message: m, othersCount: birdhouse.others.count)
             }
         }
     }
@@ -127,7 +127,7 @@ struct ChatView: View {
         HStack(spacing: 10) {
             ZStack(alignment: .leading) {
                 TextField("", text: $draft,
-                          prompt: Text("Message the flock").foregroundStyle(Theme.placeholder))
+                          prompt: Text("Message everyone").foregroundStyle(Theme.placeholder))
                     .font(.nunito(16, .bold, relativeTo: .body))
                     .foregroundStyle(Theme.ink)
                     .submitLabel(.send)
@@ -199,7 +199,7 @@ struct ChatView: View {
                 }
         )
         .accessibilityElement()
-        .accessibilityLabel(router.screenshotRun ? "Hold to send a voice message" : "Hold to talk to the flock")
+        .accessibilityLabel(router.screenshotRun ? "Hold to send a voice message" : "Hold to talk to everyone")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { if router.screenshotRun { sendVoice(seconds: 3) } }
     }

@@ -66,7 +66,7 @@ public enum PacketKind: UInt8, Sendable, CaseIterable {
     /// before they have said anything.
     case member = 14
     /// Check-in: where I am, for 15 minutes, or "stopped". Only on a locked
-    /// channel I am on (the flock), never Nearby, an open channel or a
+    /// channel I am on (the birdhouse), never Nearby, an open channel or a
     /// whisper; never held for catch up and never sent over Bluetooth.
     case checkIn = 15
 

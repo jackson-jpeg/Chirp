@@ -29,7 +29,7 @@ struct ChatMessage: Identifiable {
     var status: Status?
 }
 
-/// A row of the chat: a message, or a quiet line about the flock.
+/// A row of the chat: a message, or a quiet line about the birdhouse.
 enum ChatItem: Identifiable {
     case event(id: UUID, text: String)
     case message(ChatMessage)
@@ -51,14 +51,14 @@ extension ChatItem {
         [
             .event(id: UUID(), text: "Priya joined the line · 9:41"),
             .message(ChatMessage(
-                sender: .person(Flock.maya),
+                sender: .person(Birdhouse.maya),
                 kind: .voice(seconds: 6,
                              caption: "We got a table by the fire. Lodge, second floor, come up when you're done.",
                              bars: mayaBars, played: 6))),
-            .message(ChatMessage(sender: .person(Flock.jon), kind: .text("Lift 4 in 10?"))),
+            .message(ChatMessage(sender: .person(Birdhouse.jon), kind: .text("Lift 4 in 10?"))),
             .message(ChatMessage(sender: .you, kind: .text("On my way, save me a seat"),
-                                 status: .heardBy([Flock.maya, Flock.jon, Flock.priya]))),
-            .message(ChatMessage(sender: .person(Flock.priya), kind: .text("Grabbing the boards first, 15 min"))),
+                                 status: .heardBy([Birdhouse.maya, Birdhouse.jon, Birdhouse.priya]))),
+            .message(ChatMessage(sender: .person(Birdhouse.priya), kind: .text("Grabbing the boards first, 15 min"))),
         ]
     }
 
@@ -66,9 +66,9 @@ extension ChatItem {
     /// The sender is the person on the line with that key, else a bird made
     /// from the name the text carried (they may have gone out of range).
     /// Your texts say "Sent" until someone acks, then who heard them.
-    static func from(_ texts: [StoredText], channel: ChannelID, flock: Flock) -> [ChatItem] {
+    static func from(_ texts: [StoredText], channel: ChannelID, birdhouse: Birdhouse) -> [ChatItem] {
         func person(_ hex: String, name: String) -> Person {
-            flock.others.first { $0.peer?.hex == hex }
+            birdhouse.others.first { $0.peer?.hex == hex }
                 ?? Person(id: hex, name: name.isEmpty ? "Someone" : name, palette: .yellow, peer: PeerID(hex: hex))
         }
         return texts

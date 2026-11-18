@@ -1,14 +1,14 @@
 import Foundation
 
 /// What the Lock Screen card and the Dynamic Island show (item 7, Jackson's
-/// option 1): the flock, how many are on the line, who spoke last and what
+/// option 1): the birdhouse, how many are on the line, who spoke last and what
 /// they said. The card's button opens the app to reply; nothing on it works
 /// while the phone is locked, because voice never runs in the background
 /// (2.5.4).
 ///
 /// Codable and Hashable so it can be ActivityKit's content state as is.
 public struct LiveCard: Codable, Hashable, Sendable {
-    public var flock: String
+    public var birdhouse: String
     /// People on the line, you not counted.
     public var onLine: Int
     /// Who talked or texted last; nil until someone has.
@@ -22,8 +22,8 @@ public struct LiveCard: Codable, Hashable, Sendable {
 
     public static let maxLine = 80
 
-    public init(flock: String, onLine: Int, speaker: String? = nil, palette: UInt8 = 0, line: String? = nil, talking: Bool = false) {
-        self.flock = flock
+    public init(birdhouse: String, onLine: Int, speaker: String? = nil, palette: UInt8 = 0, line: String? = nil, talking: Bool = false) {
+        self.birdhouse = birdhouse
         self.onLine = onLine
         self.speaker = speaker
         self.palette = palette
@@ -31,9 +31,9 @@ public struct LiveCard: Codable, Hashable, Sendable {
         self.talking = talking
     }
 
-    /// "Maya is talking", "Maya", or the flock's name before anyone spoke.
+    /// "Maya is talking", "Maya", or the birdhouse's name before anyone spoke.
     public var headline: String {
-        guard let speaker else { return flock }
+        guard let speaker else { return birdhouse }
         return talking ? "\(speaker) is talking" : speaker
     }
 

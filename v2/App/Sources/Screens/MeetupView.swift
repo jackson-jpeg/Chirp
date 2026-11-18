@@ -12,7 +12,7 @@ enum MeetupRSVP: String, CaseIterable, Identifiable {
 /// `v2/design/Meetup.dc.html`.
 struct MeetupView: View {
     @Environment(Router.self) private var router
-    @Environment(Flock.self) private var flock
+    @Environment(Birdhouse.self) private var birdhouse
     @State private var rsvp: MeetupRSVP = .onMyWay
 
     var body: some View {
@@ -142,7 +142,7 @@ struct MeetupView: View {
                 .padding(.top, 10)
                 .padding(.bottom, 4)
                 .accessibilityAddTraits(.isHeader)
-            let rows = MeetupDemo.rows(you: flock.you, yourAnswer: rsvp)
+            let rows = MeetupDemo.rows(you: birdhouse.you, yourAnswer: rsvp)
             ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
                 comingRow(row)
                     .overlay(alignment: .bottom) {
@@ -195,7 +195,7 @@ struct MeetupView: View {
         let selected = rsvp == choice
         return Button {
             rsvp = choice
-            // TODO: send the RSVP to the flock through ChirpCore.
+            // TODO: send the RSVP to the birdhouse through ChirpCore.
         } label: {
             Text(choice.rawValue)
                 .font(.nunito(14, .black, relativeTo: .subheadline))
@@ -337,7 +337,7 @@ enum MeetupDemo {
         var status: Status
     }
 
-    static let setBy = Flock.jon
+    static let setBy = Birdhouse.jon
     static let place = "Bottom of the blue gondola"
     static let when = "3:30 PM · in 25 min"
     static let distance = "420 m, downhill"
@@ -351,10 +351,10 @@ enum MeetupDemo {
         case .cantMakeIt: yourStatus = .notComing
         }
         return [
-            Row(id: Flock.jon.id, name: Flock.jon.name, palette: Flock.jon.palette, status: .there),
-            Row(id: Flock.maya.id, name: Flock.maya.name, palette: Flock.maya.palette, status: .away(minutes: 3)),
+            Row(id: Birdhouse.jon.id, name: Birdhouse.jon.name, palette: Birdhouse.jon.palette, status: .there),
+            Row(id: Birdhouse.maya.id, name: Birdhouse.maya.name, palette: Birdhouse.maya.palette, status: .away(minutes: 3)),
             Row(id: you.id, name: "You", palette: you.palette, status: yourStatus),
-            Row(id: Flock.priya.id, name: Flock.priya.name, palette: Flock.priya.palette, status: .late),
+            Row(id: Birdhouse.priya.id, name: Birdhouse.priya.name, palette: Birdhouse.priya.palette, status: .late),
         ]
     }
 }

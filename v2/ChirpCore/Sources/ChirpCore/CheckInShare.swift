@@ -6,7 +6,7 @@ import Foundation
 // shared without a fresh yes, and sharing ends after 15 minutes, on Stop, on
 // leaving the app or when location access is turned off. This file is the
 // wire half. A position goes out only through `Dispatch.checkInPosition`,
-// which needs a sharing state and a locked channel, so "only your flock sees
+// which needs a sharing state and a locked channel, so "only your birdhouse sees
 // it, only while you check in" (site/privacy) holds in one place.
 
 public enum CheckInMessage: Equatable, Sendable {

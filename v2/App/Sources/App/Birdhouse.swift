@@ -17,12 +17,12 @@ struct Person: Identifiable, Hashable {
 }
 
 /// What the screens read. Until the transport and audio are wired in, the app
-/// runs on Demo Mode content: the same flock the design files show (Maya, Jon,
+/// runs on Demo Mode content: the same birdhouse the design files show (Maya, Jon,
 /// Priya, Sam on "Ski trip"), entering through this one model. Screen-specific
-/// demo content lives next to each screen (`Flock+<Screen>.swift`).
+/// demo content lives next to each screen (`Birdhouse+<Screen>.swift`).
 @Observable
-final class Flock {
-    var flockName: String
+final class Birdhouse {
+    var birdhouseName: String
     /// Your bird: name, colors and chirp. Saved on every change, so it is
     /// kept across launches (Make your bird edits it in place).
     var you: Person {
@@ -32,10 +32,10 @@ final class Flock {
     /// Who has the line right now (nil when it is quiet).
     var talkerID: String?
 
-    init(flockName: String, you: Person, others: [Person], talkerID: String?) {
-        self.flockName = flockName
+    init(birdhouseName: String, you: Person, others: [Person], talkerID: String?) {
+        self.birdhouseName = birdhouseName
         self.you = you
-        let blocked = Flock.loadBlocked()
+        let blocked = Birdhouse.loadBlocked()
         self.others = others.filter { !blocked.contains($0.id) }
         self.talkerID = talkerID.flatMap { blocked.contains($0) ? nil : $0 }
     }
@@ -43,7 +43,7 @@ final class Flock {
     /// People you blocked (App Review 5.1.2(i)). Kept across launches. A
     /// blocked person leaves Nearby, the wire and Chat, and in the transport
     /// ChirpCore's `BlockList` drops their packets both ways.
-    private(set) var blockedIDs: Set<String> = Flock.loadBlocked()
+    private(set) var blockedIDs: Set<String> = Birdhouse.loadBlocked()
 
     func block(_ id: String) {
         blockedIDs.insert(id)
@@ -115,22 +115,22 @@ final class Flock {
     static let priya = Person(id: "priya", name: "Priya", palette: .lilac)
     static let sam = Person(id: "sam", name: "Sam", palette: .coral)
 
-    /// A real launch: your saved bird, your flock's name (empty until you
+    /// A real launch: your saved bird, your birdhouse's name (empty until you
     /// start or join one), and nobody else until they are heard. The
     /// pretend friends are only for screenshot runs (`demo`) and Demo Mode,
     /// whose people arrive through the real receive path.
-    static func real(flockName: String?) -> Flock {
-        Flock(flockName: flockName ?? "",
+    static func real(birdhouseName: String?) -> Birdhouse {
+        Birdhouse(birdhouseName: birdhouseName ?? "",
               you: loadYou(over: Person(id: "you", name: "", palette: .blue, isYou: true)),
               others: [],
               talkerID: nil)
     }
 
-    /// What the screens call the flock when there is none yet.
-    var displayName: String { flockName.isEmpty ? "Nearby" : flockName }
+    /// What the screens call the birdhouse when there is none yet.
+    var displayName: String { birdhouseName.isEmpty ? "Nearby" : birdhouseName }
 
-    static var demo: Flock {
-        Flock(flockName: "Ski trip",
+    static var demo: Birdhouse {
+        Birdhouse(birdhouseName: "Ski trip",
               you: loadYou(over: Person(id: "you", name: "Jackson", palette: .blue, isYou: true)),
               others: [maya, jon, priya],
               talkerID: "maya")

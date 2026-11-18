@@ -14,7 +14,7 @@ enum FindState: Equatable {
 /// `v2/design/Find.dc.html`.
 struct FindView: View {
     @Environment(Router.self) private var router
-    @Environment(Flock.self) private var flock
+    @Environment(Birdhouse.self) private var birdhouse
     @Environment(Mesh.self) private var mesh
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var scheme
@@ -24,7 +24,7 @@ struct FindView: View {
 
     /// The friend being found; nil on screenshot runs and in Demo Mode.
     private var person: Person? {
-        router.screenshotRun ? nil : router.findTarget.flatMap { flock.person($0) }
+        router.screenshotRun ? nil : router.findTarget.flatMap { birdhouse.person($0) }
     }
 
     private var target: (name: String, palette: BirdPalette, pronoun: String) {
@@ -320,7 +320,7 @@ enum FindWords {
 
 /// Find's demo content, as `Find.dc.html` shows it.
 enum FindDemo {
-    static let target = (name: Flock.maya.name, palette: Flock.maya.palette, pronoun: "her")
+    static let target = (name: Birdhouse.maya.name, palette: Birdhouse.maya.palette, pronoun: "her")
     static let status = "Battery 64% · heard 1 min ago"
     static let state = FindState.pointing(meters: 12, bearing: 18)
 }

@@ -35,6 +35,7 @@ BANNED = {
     r"\bwatch\b": "Apple Watch is 2.1",
     r"\btranslat": "translation is 2.1",
     r"\bAES\b|\b256\b": "no cipher claims in store copy",
+    r"\bflocks?\b": "the group is a birdhouse (Jackson, 2026-11-18: Flock is a surveillance camera company)",
 }
 
 

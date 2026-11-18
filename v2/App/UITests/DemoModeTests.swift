@@ -18,7 +18,7 @@ final class DemoModeTests: XCTestCase {
         XCTAssertFalse(link.label.contains(Self.emDash))
         link.tap()
 
-        let banner = app.staticTexts["Demo flock. Nothing leaves this phone."]
+        let banner = app.staticTexts["Demo birdhouse. Nothing leaves this phone."]
         XCTAssertTrue(banner.waitForExistence(timeout: 10), "Talk shows no demo banner")
         XCTAssertFalse(banner.label.contains(Self.emDash))
 
@@ -28,7 +28,7 @@ final class DemoModeTests: XCTestCase {
         leave.tap()
 
         // Came in from Welcome without making a bird, so it is Welcome again.
-        XCTAssertTrue(app.buttons["Start a flock"].waitForExistence(timeout: 10), "Leaving the demo did not go back to Welcome")
+        XCTAssertTrue(app.buttons["Start a birdhouse"].waitForExistence(timeout: 10), "Leaving the demo did not go back to Welcome")
         XCTAssertFalse(banner.exists)
         app.terminate()
     }

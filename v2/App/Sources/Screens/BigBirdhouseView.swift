@@ -1,24 +1,24 @@
 import ChirpCore
 import SwiftUI
 
-/// Why Big Flock's sheet opened, so it can say so in one line.
-enum BigFlockReason: Hashable, Identifiable {
-    /// The starter of a full free flock tapped Invite friends.
+/// Why Big Birdhouse's sheet opened, so it can say so in one line.
+enum BigBirdhouseReason: Hashable, Identifiable {
+    /// The starter of a full free birdhouse tapped Invite friends.
     case invite
-    /// Talk's card: the flock grew past the free size anyway.
+    /// Talk's card: the birdhouse grew past the free size anyway.
     case grew(birds: Int)
     /// A locked color or chirp in Make your bird.
     case bird
-    /// Talk's flock menu.
+    /// Talk's birdhouse menu.
     case menu
     var id: Self { self }
 }
 
-/// Big Flock, the one purchase (ChirpCore `BigFlock`, `Store`): what it adds,
+/// Big Birdhouse, the one purchase (ChirpCore `BigBirdhouse`, `Store`): what it adds,
 /// the price from the App Store, Restore, and Not now. Nothing is cut off by
 /// saying Not now, and friends who join never see this.
-struct BigFlockView: View {
-    let reason: BigFlockReason
+struct BigBirdhouseView: View {
+    let reason: BigBirdhouseReason
     @Environment(Store.self) private var store
     @Environment(Mesh.self) private var mesh
     @Environment(\.dismiss) private var dismiss
@@ -26,30 +26,30 @@ struct BigFlockView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Eyebrow(text: "Big Flock")
+                Eyebrow(text: "Big Birdhouse")
                 Text(headline)
                     .font(.pageTitle)
                     .foregroundStyle(Theme.ink)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
                 VStack(alignment: .leading, spacing: 10) {
-                    line("person.3", "Flocks you start grow past \(BigFlock.freeBirds) birds")
+                    line("person.3", "Birdhouses you start grow past \(BigBirdhouse.freeBirds) birds")
                     line("paintpalette", "Every bird color and every chirp")
-                    line("gift", "Friends who join your flock never pay")
+                    line("gift", "Friends who join your birdhouse never pay")
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
 
                 if store.unlocked {
-                    Text("Big Flock is yours. Thank you!")
+                    Text("Big Birdhouse is yours. Thank you!")
                         .font(.nunito(17, .black, relativeTo: .headline))
                         .foregroundStyle(Theme.signalText)
-                        .accessibilityIdentifier("bigFlock.owned")
-                    if reason == .invite, let channel = mesh.flockChannel, let link = FlockInvite.link(for: channel) {
+                        .accessibilityIdentifier("bigBirdhouse.owned")
+                    if reason == .invite, let channel = mesh.birdhouseChannel, let link = BirdhouseInvite.link(for: channel) {
                         ShareLink(item: link,
                                   subject: Text("Join \(channel.name) on ChirpChirps"),
-                                  message: Text("Join my flock on ChirpChirps, so we can talk with no signal. Open this link on your iPhone.")) {
+                                  message: Text("Join my birdhouse on ChirpChirps, so we can talk with no signal. Open this link on your iPhone.")) {
                             Text("Invite friends")
                         }
                         .buttonStyle(PrimaryButtonStyle())
@@ -60,17 +60,17 @@ struct BigFlockView: View {
                     Button(buyTitle) { Task { await store.buy() } }
                         .buttonStyle(PrimaryButtonStyle())
                         .disabled(busy)
-                        .accessibilityIdentifier("bigFlock.buy")
+                        .accessibilityIdentifier("bigBirdhouse.buy")
                     Text("One purchase, yours for good. No subscription.")
                         .font(.meta)
                         .foregroundStyle(Theme.inkSecondary)
                     HStack {
                         Button("Restore purchase") { Task { await store.restore() } }
                             .disabled(busy)
-                            .accessibilityIdentifier("bigFlock.restore")
+                            .accessibilityIdentifier("bigBirdhouse.restore")
                         Spacer()
                         Button("Not now") { dismiss() }
-                            .accessibilityIdentifier("bigFlock.notNow")
+                            .accessibilityIdentifier("bigBirdhouse.notNow")
                     }
                     .font(.nunito(15, .black, relativeTo: .subheadline))
                     .foregroundStyle(Theme.link)
@@ -91,9 +91,9 @@ struct BigFlockView: View {
 
     private var headline: String {
         switch reason {
-        case .invite: "Your flock has \(BigFlock.freeBirds) birds. Big Flock lets it grow."
-        case .grew(let n): "Your flock has \(n) birds. Big Flock lets it grow."
-        case .bird: "More colors and chirps come with Big Flock."
+        case .invite: "Your birdhouse has \(BigBirdhouse.freeBirds) birds. Big Birdhouse lets it grow."
+        case .grew(let n): "Your birdhouse has \(n) birds. Big Birdhouse lets it grow."
+        case .bird: "More colors and chirps come with Big Birdhouse."
         case .menu: "Bring the whole group."
         }
     }
@@ -107,8 +107,8 @@ struct BigFlockView: View {
 
     private var buyTitle: String {
         if store.status == .purchasing { return "Buying\u{2026}" }
-        if let price = store.product?.displayPrice { return "Get Big Flock for \(price)" }
-        return "Get Big Flock"
+        if let price = store.product?.displayPrice { return "Get Big Birdhouse for \(price)" }
+        return "Get Big Birdhouse"
     }
 
     private func line(_ symbol: String, _ text: String) -> some View {

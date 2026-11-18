@@ -1,9 +1,9 @@
 import Foundation
 
-/// How a flock is started and joined (Jackson, Inbox chirp-2-0-flock-join,
-/// 2026-11-18): you name the flock, and friends join by an invite link you
-/// send them from the share sheet. The link carries the flock's key, so
-/// anyone who has it can hear the flock: it is meant for the people you
+/// How a birdhouse is started and joined (Jackson, Inbox chirp-2-0-birdhouse-join,
+/// 2026-11-18): you name the birdhouse, and friends join by an invite link you
+/// send them from the share sheet. The link carries the birdhouse's key, so
+/// anyone who has it can hear everyone in the birdhouse: it is meant for the people you
 /// send it to, like a door key.
 ///
 /// The link is `https://chirpchirps.com/join/#k=<invite code>&n=<name>`.
@@ -12,17 +12,17 @@ import Foundation
 /// page and the key still stays on that phone. The app also takes
 /// `chirpchirps://join#...` (the join page's "Open in ChirpChirps" button),
 /// and a pasted link or a bare 43-character code, so a friend whose link
-/// did not open the app can paste it on "Join a flock".
+/// did not open the app can paste it on "Join a birdhouse".
 ///
-/// Only locked flocks have invites: an open channel has no key to share.
-/// A demo channel ID is refused, so a link can never put a real flock on
+/// Only locked birdhouses have invites: an open channel has no key to share.
+/// A demo channel ID is refused, so a link can never put a real birdhouse on
 /// an ID that `SendGate` keeps off the air.
-public enum FlockInvite {
+public enum BirdhouseInvite {
     public static let host = "chirpchirps.com"
     public static let scheme = "chirpchirps"
     public static let maxNameLength = 32
-    /// What a flock is called when the link carries no usable name.
-    public static let fallbackName = "Your flock"
+    /// What a birdhouse is called when the link carries no usable name.
+    public static let fallbackName = "Your birdhouse"
 
     /// The link to share for `channel`, or nil for an open or demo channel.
     public static func link(for channel: Channel) -> URL? {
@@ -36,12 +36,12 @@ public enum FlockInvite {
         return c.url
     }
 
-    /// The flock in a link, a pasted message that contains one, or a bare
-    /// invite code. Nil when there is no locked flock in it.
+    /// The birdhouse in a link, a pasted message that contains one, or a bare
+    /// invite code. Nil when there is no locked birdhouse in it.
     public static func parse(_ text: String) -> Channel? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if let whole = channel(fromToken: trimmed) { return whole }
-        // A message around the link ("Join my flock: https://..."): try each word.
+        // A message around the link ("Join my birdhouse: https://..."): try each word.
         for token in trimmed.split(whereSeparator: { $0.isWhitespace }) {
             let t = token.trimmingCharacters(in: CharacterSet(charactersIn: "<>()[]\"'.,;!?"))
             if let found = channel(fromToken: t) { return found }
@@ -49,13 +49,13 @@ public enum FlockInvite {
         return nil
     }
 
-    /// The flock in an opened URL (universal link or the app's own scheme).
+    /// The birdhouse in an opened URL (universal link or the app's own scheme).
     public static func parse(url: URL) -> Channel? {
         guard isInviteURL(url) else { return nil }
         return parseFragment(url.fragment(percentEncoded: true) ?? "")
     }
 
-    /// The name a person typed, as a flock is called: trimmed, no control
+    /// The name a person typed, as a birdhouse is called: trimmed, no control
     /// characters, at most `maxNameLength` characters.
     public static func cleanName(_ raw: String) -> String {
         let kept = raw.unicodeScalars.filter { !CharacterSet.controlCharacters.contains($0) }

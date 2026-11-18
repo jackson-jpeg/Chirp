@@ -1,12 +1,12 @@
 import SwiftUI
 
 /// The first screen (`v2/design/Welcome`): a full-bleed sunrise with two birds
-/// on a wire, the pitch, and the two ways in: name a new flock, or paste a
+/// on a wire, the pitch, and the two ways in: name a new birdhouse, or paste a
 /// friend's invite. Both then lead to Make your bird.
 struct WelcomeView: View {
     @Environment(Router.self) private var router
     @Environment(Mesh.self) private var mesh
-    @Environment(Flock.self) private var flock
+    @Environment(Birdhouse.self) private var birdhouse
 
     var body: some View {
         GeometryReader { proxy in
@@ -16,7 +16,7 @@ struct WelcomeView: View {
                     WelcomeScene()
 
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Talk to your flock, even with no signal.")
+                        Text("Talk to your friends, even with no signal.")
                             .font(.pageTitle)
                             .lineHeight(.multiple(factor: 1.1))   // the design's line-height
                             .tracking(-0.48)
@@ -35,12 +35,12 @@ struct WelcomeView: View {
                     Spacer(minLength: 28)
 
                     VStack(spacing: 10) {
-                        Button("Start a flock") { router.onboardingStep = .nameFlock }
+                        Button("Start a birdhouse") { router.onboardingStep = .nameBirdhouse }
                             .buttonStyle(PrimaryButtonStyle())
                             .accessibilityIdentifier("welcome.start")
                         // The design said "Join one nearby"; you join with a friend's
                         // invite link, so the button says what it does.
-                        Button("Join a flock") { router.onboardingStep = .joinFlock }
+                        Button("Join a birdhouse") { router.onboardingStep = .joinBirdhouse }
                             .buttonStyle(SecondaryButtonStyle())
                             .accessibilityIdentifier("welcome.join")
                         Text("No account. No phone number.")
@@ -49,7 +49,7 @@ struct WelcomeView: View {
                             .multilineTextAlignment(.center)
                             .padding(.top, 6)
                         // Demo Mode (App Review 2.1(a)): pretend friends, the radio sandboxed.
-                        Button { router.enterDemo(mesh, flock: flock) } label: {
+                        Button { router.enterDemo(mesh, birdhouse: birdhouse) } label: {
                             Text("Try it with pretend friends")
                                 .font(.nunito(14, .bold, relativeTo: .footnote))
                                 .underline()

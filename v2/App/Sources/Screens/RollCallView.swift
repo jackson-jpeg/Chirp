@@ -12,12 +12,12 @@ enum RollCallAnswer: Equatable {
 /// `v2/design/RollCall.dc.html`.
 struct RollCallView: View {
     @Environment(Router.self) private var router
-    @Environment(Flock.self) private var flock
+    @Environment(Birdhouse.self) private var birdhouse
     @Environment(Mesh.self) private var mesh
     /// Screenshot runs only: the design's answer, kept on this screen.
     @State private var answer: RollCallAnswer = .notYet
 
-    /// Real use, or the demo flock (even in a UI test launched with `-screen`).
+    /// Real use, or the demo birdhouse (even in a UI test launched with `-screen`).
     private var live: Bool { !router.screenshotRun || mesh.inDemo }
     private var me: PeerID { mesh.dispatch.me }
     private var board: RollCallBoard { mesh.rollCalls }
@@ -35,21 +35,21 @@ struct RollCallView: View {
 
     private var eyebrow: String {
         guard live else { return RollCallDemo.eyebrow }
-        guard let ask = board.ask else { return "\(flock.displayName) · No roll call yet" }
+        guard let ask = board.ask else { return "\(birdhouse.displayName) · No roll call yet" }
         let who = ask.from == me ? "You" : (name(of: ask.from) ?? "Someone")
         let mins = max(0, Int(Date.now.timeIntervalSince(ask.at) / 60))
-        return "\(flock.displayName) · \(who) asked " + (mins == 0 ? "just now" : "\(mins) min ago")
+        return "\(birdhouse.displayName) · \(who) asked " + (mins == 0 ? "just now" : "\(mins) min ago")
     }
 
     private func name(of peer: PeerID) -> String? {
-        flock.others.first { $0.peer == peer }?.name ?? mesh.dispatch.roster.person(peer)?.name
+        birdhouse.others.first { $0.peer == peer }?.name ?? mesh.dispatch.roster.person(peer)?.name
     }
 
     private var tiles: [RollCallDemo.Tile] {
-        guard live else { return RollCallDemo.tiles(you: flock.you, yourAnswer: answer) }
+        guard live else { return RollCallDemo.tiles(you: birdhouse.you, yourAnswer: answer) }
         let friends = mesh.dispatch.friends
         let heard = board.heardFrom
-        let people = flock.others.filter { $0.peer.map { friends.contains($0) || heard.contains($0) } ?? false }
+        let people = birdhouse.others.filter { $0.peer.map { friends.contains($0) || heard.contains($0) } ?? false }
         let f = DateFormatter()
         f.dateFormat = "h:mm"
         var out = people.map { p -> RollCallDemo.Tile in
@@ -71,7 +71,7 @@ struct RollCallView: View {
         case .ok(let at): mine = .ok(f.string(from: at))
         case .notYet: mine = board.waitingOn(me) ? .yourTurn : .noAnswer
         }
-        out.append(RollCallDemo.Tile(id: flock.you.id, name: "You", palette: flock.you.palette, status: mine, isYou: true))
+        out.append(RollCallDemo.Tile(id: birdhouse.you.id, name: "You", palette: birdhouse.you.palette, status: mine, isYou: true))
         return out
     }
 
@@ -190,7 +190,7 @@ struct RollCallView: View {
         VStack(alignment: .leading, spacing: 8) {
             if let line = noteLine { Text(line) }
             if yourAnswer == .needHelp {
-                Text("Everyone on \(flock.displayName) who is close by can see you asked for help.")
+                Text("Everyone on \(birdhouse.displayName) who is close by can see you asked for help.")
                     .foregroundStyle(Theme.danger)
             }
         }
@@ -209,7 +209,7 @@ struct RollCallView: View {
         if !asking.isEmpty {
             return asking.count == 1 ? "\(asking[0]) asked for help." : "\(asking.joined(separator: ", ")) asked for help."
         }
-        if board.ask == nil { return "Ask everyone on \(flock.displayName) if they are OK. Answers come in as their phones hear it." }
+        if board.ask == nil { return "Ask everyone on \(birdhouse.displayName) if they are OK. Answers come in as their phones hear it." }
         return "Answers come in as each phone hears the roll call."
     }
 
@@ -288,9 +288,9 @@ enum RollCallDemo {
         case .needHelp: yours = .help
         }
         return [
-            Tile(id: Flock.jon.id, name: Flock.jon.name, palette: Flock.jon.palette, status: .ok("10:12")),
-            Tile(id: Flock.maya.id, name: Flock.maya.name, palette: Flock.maya.palette, status: .ok("10:12")),
-            Tile(id: Flock.priya.id, name: Flock.priya.name, palette: Flock.priya.palette, status: .noAnswer),
+            Tile(id: Birdhouse.jon.id, name: Birdhouse.jon.name, palette: Birdhouse.jon.palette, status: .ok("10:12")),
+            Tile(id: Birdhouse.maya.id, name: Birdhouse.maya.name, palette: Birdhouse.maya.palette, status: .ok("10:12")),
+            Tile(id: Birdhouse.priya.id, name: Birdhouse.priya.name, palette: Birdhouse.priya.palette, status: .noAnswer),
             Tile(id: you.id, name: "You", palette: you.palette, status: yours, isYou: true),
         ]
     }

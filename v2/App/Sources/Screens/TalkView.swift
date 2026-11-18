@@ -1,20 +1,20 @@
 import SwiftUI
 import ChirpCore
 
-/// Talk: the flock's line. Built to `v2/design/Talk-Listen` (someone has the
+/// Talk: the birdhouse's line. Built to `v2/design/Talk-Listen` (someone has the
 /// line) and `Talk-Hold` (you are talking), plus the quiet line neither file
 /// shows. The tab bar under it belongs to MainTabs.
 struct TalkView: View {
-    @Environment(Flock.self) private var flock
+    @Environment(Birdhouse.self) private var birdhouse
     @Environment(Router.self) private var router
     @Environment(LiveCaptions.self) private var captions
     @Environment(Transport.self) private var transport
     @Environment(Mesh.self) private var mesh
     @Environment(Voice.self) private var voice
     @Environment(Store.self) private var store
-    /// The flock size at which the starter last opened Big Flock's card: it
-    /// comes back only when the flock grows again.
-    @AppStorage("bigFlockCardSeenAt") private var bigFlockCardSeenAt = 0
+    /// The birdhouse size at which the starter last opened Big Birdhouse's card: it
+    /// comes back only when the birdhouse grows again.
+    @AppStorage("bigBirdhouseCardSeenAt") private var bigBirdhouseCardSeenAt = 0
     @Environment(\.openURL) private var openURL
 
     @State private var holding = false
@@ -35,14 +35,14 @@ struct TalkView: View {
 
     private var line: Line {
         if talking { return .you }
-        if let t = flock.talker, !t.isYou { return .listening(t) }
+        if let t = birdhouse.talker, !t.isYou { return .listening(t) }
         return .quiet
     }
 
     /// Who sits on the wire: the others, whoever had the line first.
     private var wireBirds: [Person] {
-        var list = flock.others
-        if let t = flock.talker, let i = list.firstIndex(of: t) {
+        var list = birdhouse.others
+        if let t = birdhouse.talker, let i = list.firstIndex(of: t) {
             list.remove(at: i)
             list.insert(t, at: 0)
         }
@@ -54,7 +54,7 @@ struct TalkView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     if mesh.inDemo { demoBanner }
-                    if !router.screenshotRun || mesh.inDemo { flockAlert }
+                    if !router.screenshotRun || mesh.inDemo { birdhouseAlert }
                     header
                     statusRow
                         .padding(.top, 2)
@@ -92,12 +92,12 @@ struct TalkView: View {
     /// way out. Not in the design files; the copy was approved by Jackson.
     private var demoBanner: some View {
         HStack(spacing: 8) {
-            Text("Demo flock. Nothing leaves this phone.")
+            Text("Demo birdhouse. Nothing leaves this phone.")
                 .font(.nunito(13, .heavy, relativeTo: .footnote))
                 .foregroundStyle(Theme.turnText)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Button("Leave demo") { router.leaveDemo(mesh, flock: flock) }
+            Button("Leave demo") { router.leaveDemo(mesh, birdhouse: birdhouse) }
                 .font(.nunito(13, .black, relativeTo: .footnote))
                 .foregroundStyle(Theme.ink)
                 .frame(minHeight: 44)
@@ -111,11 +111,11 @@ struct TalkView: View {
         .accessibilityIdentifier("talk.demoBanner")
     }
 
-    // MARK: Flock alert
+    // MARK: Birdhouse alert
 
     /// One line under the header, most urgent first: someone asked for help,
     /// a roll call is waiting on you, or a friend just pinged you.
-    @ViewBuilder private var flockAlert: some View {
+    @ViewBuilder private var birdhouseAlert: some View {
         let me = mesh.dispatch.me
         let board = mesh.rollCalls
         if let first = board.needingHelp(except: me).first {
@@ -131,20 +131,20 @@ struct TalkView: View {
                                ink: Theme.okText, id: "talk.pingAlert") {}
                 }
             }
-        } else if !mesh.inDemo, BigFlock.showsCard(birds: mesh.flockBirds, startedByMe: mesh.startedFlock,
+        } else if !mesh.inDemo, BigBirdhouse.showsCard(birds: mesh.birdhouseBirds, startedByMe: mesh.startedBirdhouse,
                                                    unlocked: store.unlocked,
-                                                   dismissedAt: bigFlockCardSeenAt == 0 ? nil : bigFlockCardSeenAt) {
-            let n = mesh.flockBirds
-            alertStrip(text: "\(flock.displayName) has \(n) birds. Big Flock lets it grow.", action: "See",
-                       fill: Theme.sunGlow, ink: Theme.turnText, id: "talk.bigFlockCard") {
-                bigFlockCardSeenAt = n
-                router.bigFlock = .grew(birds: n)
+                                                   dismissedAt: bigBirdhouseCardSeenAt == 0 ? nil : bigBirdhouseCardSeenAt) {
+            let n = mesh.birdhouseBirds
+            alertStrip(text: "\(birdhouse.displayName) has \(n) birds. Big Birdhouse lets it grow.", action: "See",
+                       fill: Theme.sunGlow, ink: Theme.turnText, id: "talk.bigBirdhouseCard") {
+                bigBirdhouseCardSeenAt = n
+                router.bigBirdhouse = .grew(birds: n)
             }
         }
     }
 
     private func personName(_ peer: PeerID) -> String {
-        flock.others.first { $0.peer == peer }?.name ?? mesh.dispatch.roster.person(peer)?.name ?? "Someone"
+        birdhouse.others.first { $0.peer == peer }?.name ?? mesh.dispatch.roster.person(peer)?.name ?? "Someone"
     }
 
     private func alertStrip(text: String, action: String?, fill: Color, ink: Color, id: String,
@@ -176,10 +176,10 @@ struct TalkView: View {
     private var header: some View {
         HStack(alignment: .center) {
             Menu {
-                flockMenu
+                birdhouseMenu
             } label: {
                 HStack(spacing: 6) {
-                    Text(flock.displayName)
+                    Text(birdhouse.displayName)
                         .font(.screenTitle)
                         .tracking(-0.3)
                         .multilineTextAlignment(.leading)
@@ -192,10 +192,10 @@ struct TalkView: View {
                 .frame(minHeight: 44)
             }
             .buttonStyle(.plain)
-            .accessibilityHint(mesh.flockChannel == nil ? "Start or join a flock" : "Invite friends or leave the flock")
-            .accessibilityIdentifier("talk.flockMenu")
-            .alert("Leave \(flock.displayName)?", isPresented: $confirmLeave) {
-                Button("Leave", role: .destructive) { router.leaveFlock(mesh: mesh, flock: flock) }
+            .accessibilityHint(mesh.birdhouseChannel == nil ? "Start or join a birdhouse" : "Invite friends or leave the birdhouse")
+            .accessibilityIdentifier("talk.birdhouseMenu")
+            .alert("Leave \(birdhouse.displayName)?", isPresented: $confirmLeave) {
+                Button("Leave", role: .destructive) { router.leaveBirdhouse(mesh: mesh, birdhouse: birdhouse) }
                 Button("Stay", role: .cancel) {}
             } message: {
                 Text("To come back, you need an invite again.")
@@ -206,7 +206,7 @@ struct TalkView: View {
             Button {
                 router.editingBird = true
             } label: {
-                BirdAvatar(palette: flock.you.palette, size: 44)
+                BirdAvatar(palette: birdhouse.you.palette, size: 44)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("You and settings")
@@ -217,47 +217,47 @@ struct TalkView: View {
         .padding(.horizontal, 20)
     }
 
-    /// The flock menu under the flock's name: invite by the share sheet
-    /// (the link carries the flock's key) and leave; with no flock, start
+    /// The birdhouse menu under the birdhouse's name: invite by the share sheet
+    /// (the link carries the birdhouse's key) and leave; with no birdhouse, start
     /// or join one. Nothing to change while the demo runs.
-    @ViewBuilder private var flockMenu: some View {
+    @ViewBuilder private var birdhouseMenu: some View {
         if mesh.rollCallChannel != nil {
             Button { router.overlay = .rollCall } label: {
                 Label("Roll call: everyone OK?", systemImage: "person.3")
             }
         }
         if mesh.inDemo {
-            Text("Pretend flock. Leave the demo to use your own.")
-        } else if let channel = mesh.flockChannel, let link = FlockInvite.link(for: channel) {
-            // A full free flock you started: Big Flock is offered first. Joiners
-            // and owners always share (ChirpCore `BigFlock.invite`).
-            if BigFlock.invite(birds: mesh.flockBirds, startedByMe: mesh.startedFlock, unlocked: store.unlocked) == .offerBigFlock {
-                Button { router.bigFlock = .invite } label: {
+            Text("Pretend birdhouse. Leave the demo to use your own.")
+        } else if let channel = mesh.birdhouseChannel, let link = BirdhouseInvite.link(for: channel) {
+            // A full free birdhouse you started: Big Birdhouse is offered first. Joiners
+            // and owners always share (ChirpCore `BigBirdhouse.invite`).
+            if BigBirdhouse.invite(birds: mesh.birdhouseBirds, startedByMe: mesh.startedBirdhouse, unlocked: store.unlocked) == .offerBigBirdhouse {
+                Button { router.bigBirdhouse = .invite } label: {
                     Label("Invite friends", systemImage: "person.badge.plus")
                 }
             } else {
                 ShareLink(item: link,
                           subject: Text("Join \(channel.name) on ChirpChirps"),
-                          message: Text("Join my flock on ChirpChirps, so we can talk with no signal. Open this link on your iPhone.")) {
+                          message: Text("Join my birdhouse on ChirpChirps, so we can talk with no signal. Open this link on your iPhone.")) {
                     Label("Invite friends", systemImage: "person.badge.plus")
                 }
             }
-            if mesh.startedFlock || store.unlocked {
-                Button { router.bigFlock = .menu } label: {
-                    Label(store.unlocked ? "Big Flock: yours" : "Big Flock", systemImage: "bird")
+            if mesh.startedBirdhouse || store.unlocked {
+                Button { router.bigBirdhouse = .menu } label: {
+                    Label(store.unlocked ? "Big Birdhouse: yours" : "Big Birdhouse", systemImage: "bird")
                 }
             }
             Button(role: .destructive) { confirmLeave = true } label: {
                 Label("Leave \(channel.name)", systemImage: "rectangle.portrait.and.arrow.right")
             }
         } else {
-            Button { router.flockSetup = .start } label: { Label("Start a flock", systemImage: "plus") }
-            Button { router.flockSetup = .join } label: { Label("Join a flock", systemImage: "link") }
+            Button { router.birdhouseSetup = .start } label: { Label("Start a birdhouse", systemImage: "plus") }
+            Button { router.birdhouseSetup = .join } label: { Label("Join a birdhouse", systemImage: "link") }
         }
     }
 
     private var statusRow: some View {
-        let n = flock.others.count
+        let n = birdhouse.others.count
         return HStack(spacing: 8) {
             if line == .you {
                 TalkDot(fill: Theme.coralHot, ring: Theme.coralSoft)
@@ -341,7 +341,7 @@ struct TalkView: View {
     private var card: CaptionCard { router.screenshotRun ? .captioning : captions.card }
 
     /// The talker's live caption; the design's words on screenshot runs and
-    /// for the demo flock's fixtures, which have no voice.
+    /// for the demo birdhouse's fixtures, which have no voice.
     private func listenCaption(_ talker: Person) -> String {
         if router.screenshotRun || talker.peer == nil { return TalkDemo.listenCaption }
         return voice.caption(of: talker) ?? "\u{2026}"
@@ -432,7 +432,7 @@ struct TalkView: View {
 
     private var talkArea: some View {
         VStack(spacing: 8) {
-            TalkButtonFace(talking: talking, palette: flock.you.palette)
+            TalkButtonFace(talking: talking, palette: birdhouse.you.palette)
                 .contentShape(Circle())
                 .gesture(holdGesture)
                 .accessibilityElement(children: .ignore)

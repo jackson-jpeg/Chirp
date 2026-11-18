@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import ChirpCore
 
-/// Check-in on the wire: only the flock sees it, only while sharing, never
+/// Check-in on the wire: only the birdhouse sees it, only while sharing, never
 /// longer than one check-in (site/privacy "Location sharing").
 @Suite struct CheckInShareTests {
     let sharing = CheckInState.sharing(until: at(CheckIn.duration))
@@ -20,7 +20,7 @@ import Testing
         #expect(CheckInMessage.accuracy(-1) == UInt16.max)   // Core Location's "invalid"
     }
 
-    @Test func aPositionReachesTheFlockWithTheCheckInsEnd() throws {
+    @Test func aPositionReachesTheBirdhouseWithTheCheckInsEnd() throws {
         let a = Phone("Maya"), b = Phone("Jon")
         let camp = Channel.newLocked(name: "Camp")
         a.befriend(b, on: camp)
@@ -59,7 +59,7 @@ import Testing
             }
             #expect(throws: Dispatch.MakeError.notLockedChannel) { try a.d.checkInStopped(on: id, now: t0) }
         }
-        #expect(a.d.flockChannels.count == 1)
+        #expect(a.d.birdhouseChannels.count == 1)
     }
 
     @Test func aHandMadeCheckInOnAnOpenChannelOrNearbyIsDropped() throws {
@@ -72,7 +72,7 @@ import Testing
         #expect(b.receive(try a.d.make(.checkIn, on: .nearby, body: body, now: t0)).events.isEmpty)
     }
 
-    @Test func someoneOutsideTheFlockCannotReadOrSendOne() throws {
+    @Test func someoneOutsideTheBirdhouseCannotReadOrSendOne() throws {
         let a = Phone("Maya"), b = Phone("Jon"), m = Phone("Mallory")
         let camp = Channel.newLocked(name: "Camp")
         a.befriend(b, on: camp)

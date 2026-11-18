@@ -3,10 +3,10 @@ import XCTest
 /// App Store screenshots from real use (HARD RULE part 3, docs/NEXT.md).
 ///
 /// A plain launch, never `-screen`: screenshot runs show the design's fixture
-/// flock and captions, which would make these mockups. Instead it walks Demo
+/// birdhouse and captions, which would make these mockups. Instead it walks Demo
 /// Mode the way App Review does, in by Welcome's "Try it with pretend friends",
-/// and keeps whatever the build really shows: Maya talking (DemoFlock's line
-/// at 4 s), Chat with your own text heard by the flock, Nearby's Find and Block
+/// and keeps whatever the build really shows: Maya talking (DemoBirdhouse's line
+/// at 4 s), Chat with your own text heard by the birdhouse, Nearby's Find and Block
 /// on a person, the check-in question, roll call answered, and Find's honest
 /// fallback (a simulator has no UWB).
 ///
@@ -68,7 +68,7 @@ final class AppStoreScreenshotsTests: XCTestCase {
         try shot("02-Talk-Maya-talking")
 
         // 03: Chat once Jon and Priya have written (16 s, 28 s), with my own
-        // text heard by the pretend flock (real acks through the receive path).
+        // text heard by the pretend birdhouse (real acks through the receive path).
         let wait = 30 - Date().timeIntervalSince(demoStart)
         if wait > 0 { Thread.sleep(forTimeInterval: wait) }
         app.buttons["Chat"].tap()
@@ -108,9 +108,9 @@ final class AppStoreScreenshotsTests: XCTestCase {
 
         // 06: Roll call, asked by me and answered by Maya and Jon.
         app.buttons["Talk"].tap()
-        app.buttons["talk.flockMenu"].tap()
+        app.buttons["talk.birdhouseMenu"].tap()
         let entry = app.buttons["Roll call: everyone OK?"]
-        XCTAssertTrue(entry.waitForExistence(timeout: 5), "Talk's flock menu has no roll call")
+        XCTAssertTrue(entry.waitForExistence(timeout: 5), "Talk's birdhouse menu has no roll call")
         entry.tap()
         let ask = app.buttons["rollCall.primary"]
         XCTAssertTrue(ask.waitForExistence(timeout: 5))

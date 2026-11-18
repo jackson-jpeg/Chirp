@@ -4,7 +4,7 @@ import Observation
 
 /// The app's side of dispatch: one ChirpCore `Dispatch`, fed every packet
 /// the transport hands over, with what it returns sent back out and its
-/// events applied to the flock.
+/// events applied to the birdhouse.
 ///
 /// - Relay copies go to every link but the one they came in on; acks to
 ///   every link; catch-up answers only to the phone that asked.
@@ -19,8 +19,8 @@ final class Mesh {
 
     private(set) var dispatch: Dispatch
     @ObservationIgnored private let transport: Transport
-    @ObservationIgnored private weak var flock: Flock?
-    /// Events the flock does not take (audio, floor, ping, Find, photos),
+    @ObservationIgnored private weak var birdhouse: Birdhouse?
+    /// Events the birdhouse does not take (audio, floor, ping, Find, photos),
     /// for the audio engine and the screens that use them.
     @ObservationIgnored var onEvent: ((Dispatch.Event) -> Void)?
     /// Someone not heard for a while went out of range (the floor lets go of them).
@@ -46,43 +46,43 @@ final class Mesh {
     /// Memory only.
     private(set) var checkIns = CheckInBoard()
 
-    /// The flock's roll call and anyone asking for help. Memory only.
+    /// The birdhouse's roll call and anyone asking for help. Memory only.
     private(set) var rollCalls = RollCallBoard()
     /// The last ping from a friend, for Talk's "Maya pinged you" line.
     private(set) var lastPing: (from: PeerID, at: Date)?
 
-    /// Your flock: the locked channel you started or joined by invite (one at
+    /// Your birdhouse: the locked channel you started or joined by invite (one at
     /// a time in 2.0). Its key is kept in the Keychain, as the invite link.
-    private(set) var flockChannel: Channel?
-    @ObservationIgnored private let flockStore: FlockStore?
+    private(set) var birdhouseChannel: Channel?
+    @ObservationIgnored private let birdhouseStore: BirdhouseStore?
 
-    /// The channel Talk and Chat are on: the demo flock while the demo runs,
-    /// else your flock, else Nearby.
+    /// The channel Talk and Chat are on: the demo birdhouse while the demo runs,
+    /// else your birdhouse, else Nearby.
     var talkChannel: ChannelID {
-        if inDemo { return DemoFlock.channel.id }
-        return flockChannel?.id ?? .nearby
+        if inDemo { return DemoBirdhouse.channel.id }
+        return birdhouseChannel?.id ?? .nearby
     }
 
-    /// You started your flock rather than joined it. Only the starter is
-    /// ever asked about Big Flock (joiners never see a price).
-    private(set) var startedFlock = false
-    private static let startedKey = "startedFlockID"
+    /// You started your birdhouse rather than joined it. Only the starter is
+    /// ever asked about Big Birdhouse (joiners never see a price).
+    private(set) var startedBirdhouse = false
+    private static let startedKey = "startedBirdhouseID"
 
-    /// Birds in your flock as this phone sees it: you plus everyone proved on
-    /// it, never anyone blocked (ChirpCore `BigFlock`).
-    var flockBirds: Int {
-        guard let id = flockChannel?.id else { return 1 }
-        return BigFlock.birds(members: (dispatch.members[id] ?? []).subtracting(dispatch.blocked).count)
+    /// Birds in your birdhouse as this phone sees it: you plus everyone proved on
+    /// it, never anyone blocked (ChirpCore `BigBirdhouse`).
+    var birdhouseBirds: Int {
+        guard let id = birdhouseChannel?.id else { return 1 }
+        return BigBirdhouse.birds(members: (dispatch.members[id] ?? []).subtracting(dispatch.blocked).count)
     }
 
-    /// Starts using `channel` as your flock (nil leaves it), and keeps it.
-    func setFlock(_ channel: Channel?, started: Bool = false) {
-        if let old = flockChannel, old.id != channel?.id { dispatch.leave(old.id) }
-        flockChannel = channel
+    /// Starts using `channel` as your birdhouse (nil leaves it), and keeps it.
+    func setBirdhouse(_ channel: Channel?, started: Bool = false) {
+        if let old = birdhouseChannel, old.id != channel?.id { dispatch.leave(old.id) }
+        birdhouseChannel = channel
         if let channel { dispatch.join(channel) }
-        flockStore?.save(channel)
-        startedFlock = channel != nil && started
-        guard flockStore != nil else { return }
+        birdhouseStore?.save(channel)
+        startedBirdhouse = channel != nil && started
+        guard birdhouseStore != nil else { return }
         if let channel, started {
             UserDefaults.standard.set(channel.id.uuid.uuidString, forKey: Self.startedKey)
         } else {
@@ -90,17 +90,17 @@ final class Mesh {
         }
     }
 
-    init(identity: LocalIdentity, flock: Flock, transport: Transport, flockStore: FlockStore? = nil) {
-        let you = flock.you
+    init(identity: LocalIdentity, birdhouse: Birdhouse, transport: Transport, birdhouseStore: BirdhouseStore? = nil) {
+        let you = birdhouse.you
         dispatch = Dispatch(identity: identity, name: you.name,
                             bird: Bird(palette: UInt8(you.palette.index), chirp: UInt8(you.chirp)) ?? .default)
         self.transport = transport
-        self.flock = flock
-        self.flockStore = flockStore
-        if let saved = flockStore?.load() {
-            flockChannel = saved
+        self.birdhouse = birdhouse
+        self.birdhouseStore = birdhouseStore
+        if let saved = birdhouseStore?.load() {
+            birdhouseChannel = saved
             dispatch.join(saved)
-            startedFlock = UserDefaults.standard.string(forKey: Self.startedKey) == saved.id.uuid.uuidString
+            startedBirdhouse = UserDefaults.standard.string(forKey: Self.startedKey) == saved.id.uuid.uuidString
         }
         transport.onPacket = { [weak self] packet, link in self?.receive(packet, from: link) }
         syncBlocked()
@@ -133,7 +133,7 @@ final class Mesh {
             } else if case .ping(let from) = e {
                 lastPing = (from, .now)
                 if !inBackground { ChirpPlayer.ping(dispatch.roster.person(from).map { Int($0.bird.chirp) } ?? 0) }
-            } else if flock?.apply(e) != true {
+            } else if birdhouse?.apply(e) != true {
                 onEvent?(e)
             }
         }
@@ -190,11 +190,11 @@ final class Mesh {
         dispatch.bird = Bird(palette: UInt8(you.palette.index), chirp: UInt8(you.chirp)) ?? dispatch.bird
     }
 
-    /// The flock owns the block list (and saves it); dispatch follows it, so a
+    /// The birdhouse owns the block list (and saves it); dispatch follows it, so a
     /// block applies to the router, relaying and catch-up from the next packet.
     private func syncBlocked() {
-        guard let flock else { return }
-        let wanted = Set(flock.blockedIDs.compactMap(PeerID.init(hex:)))
+        guard let birdhouse else { return }
+        let wanted = Set(birdhouse.blockedIDs.compactMap(PeerID.init(hex:)))
         if wanted != dispatch.blocked { dispatch.setBlocked(wanted) }
         for p in wanted where checkIns.entries[p] != nil { checkIns.forget(p) }
         for p in wanted where rollCalls.heardFrom.contains(p) || rollCalls.ask?.from == p { rollCalls.forget(p) }
@@ -202,19 +202,19 @@ final class Mesh {
 
     // MARK: Check-in
 
-    /// A check-in goes to the locked channels this phone is on (the flock),
+    /// A check-in goes to the locked channels this phone is on (the birdhouse),
     /// never Nearby or an open channel. With none, there is no one to share with.
-    var canCheckIn: Bool { !dispatch.flockChannels.isEmpty }
+    var canCheckIn: Bool { !dispatch.birdhouseChannels.isEmpty }
 
     func sendCheckIn(latitude: Double, longitude: Double, accuracy: Double, state: CheckInState) {
-        for channel in dispatch.flockChannels {
+        for channel in dispatch.birdhouseChannels {
             send { try $0.checkInPosition(latitude: latitude, longitude: longitude, accuracyMetres: accuracy,
                                           on: channel, state: state, now: .now) }
         }
     }
 
     func sendCheckInStopped() {
-        for channel in dispatch.flockChannels {
+        for channel in dispatch.birdhouseChannels {
             send { try $0.checkInStopped(on: channel, now: .now) }
         }
     }
@@ -226,10 +226,10 @@ final class Mesh {
 
     // MARK: Roll call and help
 
-    /// Roll call and help go to your flock (or the demo flock), never Nearby.
+    /// Roll call and help go to your birdhouse (or the demo birdhouse), never Nearby.
     var rollCallChannel: ChannelID? { talkChannel == .nearby ? nil : talkChannel }
 
-    /// "Everyone OK?" to the flock.
+    /// "Everyone OK?" to the birdhouse.
     func startRollCall() {
         guard let ch = rollCallChannel else { return }
         let r = rollCalls.start(me: dispatch.me, on: ch, now: .now)
@@ -243,7 +243,7 @@ final class Mesh {
         send { try $0.make(.rollCall, on: ch, body: r.encode(), now: .now) }
     }
 
-    /// "I need help" to the flock: its own packet kind, so relays send it first.
+    /// "I need help" to the birdhouse: its own packet kind, so relays send it first.
     func askForHelp() {
         guard let ch = rollCallChannel else { return }
         let h = rollCalls.askForHelp(me: dispatch.me, now: .now)
@@ -267,7 +267,7 @@ final class Mesh {
     func sendText(_ words: String, on channel: ChannelID = .nearby) -> Bool {
         guard let p = try? dispatch.text(words, on: channel, now: .now) else { return false }
         emit(p)
-        if let stored = dispatch.ledger.texts.last { flock?.texts.append(stored) }
+        if let stored = dispatch.ledger.texts.last { birdhouse?.texts.append(stored) }
         return true
     }
 
@@ -300,33 +300,33 @@ final class Mesh {
         // friends (ping, battery, Find) before anyone says anything.
         for p in dispatch.memberships(now: .now) { transport.send(p) }
         for gone in dispatch.prune(now: .now) {
-            flock?.left(gone)
+            birdhouse?.left(gone)
             onPeerGone?(gone)
         }
         if !checkIns.entries.isEmpty { checkIns.expire(now: .now) }
         rollCalls.expire(now: .now)
         // Started here, so only while the app is open and the radio is on.
-        if let flock {
-            liveCard.start(flock: flock.flockName, onLine: dispatch.roster.visible(excluding: dispatch.blocked).count)
+        if let birdhouse {
+            liveCard.start(birdhouse: birdhouse.birdhouseName, onLine: dispatch.roster.visible(excluding: dispatch.blocked).count)
         }
     }
 
     // MARK: Demo Mode (App Review 2.1(a))
 
-    @ObservationIgnored private var demo: DemoFlock?
+    @ObservationIgnored private var demo: DemoBirdhouse?
     @ObservationIgnored private var demoLoop: Task<Void, Never>?
     /// Stored (not derived from `demo`, which observation ignores) so Talk's
     /// demo banner appears and goes with it.
     private(set) var inDemo = false
 
-    /// Pretend friends on the demo flock, entering through `receive` like
+    /// Pretend friends on the demo birdhouse, entering through `receive` like
     /// packets off the air. The radio is sandboxed first, so nothing of the
     /// demo (or anything else) reaches a real phone while it runs.
     func startDemo() {
         guard demo == nil else { return }
         transport.sandboxed = true
-        dispatch.join(DemoFlock.channel)
-        demo = DemoFlock(now: .now)
+        dispatch.join(DemoBirdhouse.channel)
+        demo = DemoBirdhouse(now: .now)
         inDemo = true
         demoLoop = Task { [weak self] in
             while !Task.isCancelled {
@@ -341,7 +341,7 @@ final class Mesh {
         demoLoop = nil
         demo = nil
         inDemo = false
-        dispatch.leave(DemoFlock.channel.id)
+        dispatch.leave(DemoBirdhouse.channel.id)
         transport.sandboxed = false
     }
 

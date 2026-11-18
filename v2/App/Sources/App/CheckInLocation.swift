@@ -28,10 +28,10 @@ final class CheckInLocation: NSObject {
     /// Where this phone is, only while sharing.
     private(set) var here: CLLocation?
 
-    /// Out to the flock: latitude, longitude, accuracy in metres, and the state
+    /// Out to the birdhouse: latitude, longitude, accuracy in metres, and the state
     /// that allows it. Set by `ChirpApp` to the mesh.
     @ObservationIgnored var send: @MainActor (Double, Double, Double, CheckInState) -> Void = { _, _, _, _ in }
-    /// "Forget where I was", to the flock.
+    /// "Forget where I was", to the birdhouse.
     @ObservationIgnored var sendStopped: @MainActor () -> Void = {}
 
     @ObservationIgnored private var manager: CLLocationManager?

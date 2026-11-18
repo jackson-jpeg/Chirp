@@ -3,7 +3,7 @@ import XCTest
 /// Check-in's consent (App Review 5.1.1(iv) and 5.1.2(i); site/privacy
 /// "Location sharing"): nothing is asked until Share is tapped, our own
 /// question comes first and can be declined, and it is asked again every
-/// time. Outside a locked flock there is nobody to share with.
+/// time. Outside a locked birdhouse there is nobody to share with.
 ///
 /// The iOS location prompt itself is not driven here: it follows a yes on our
 /// question, which this test never gives.
@@ -18,7 +18,7 @@ final class CheckInTests: XCTestCase {
     @MainActor
     func testShareAsksEveryTimeAndCanBeDeclined() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-screen", "Nearby", "-demo"]   // the demo flock is a locked flock
+        app.launchArguments = ["-screen", "Nearby", "-demo"]   // the demo birdhouse is a locked birdhouse
         app.launch()
         let tab = app.buttons["Nearby"]
         XCTAssertTrue(tab.waitForExistence(timeout: 10))
@@ -46,15 +46,15 @@ final class CheckInTests: XCTestCase {
     }
 
     @MainActor
-    func testWithoutALockedFlockNothingIsAsked() throws {
+    func testWithoutALockedBirdhouseNothingIsAsked() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-screen", "Nearby"]
         app.launch()
         let share = app.buttons["Share"]
         XCTAssertTrue(share.waitForExistence(timeout: 10))
         share.tap()
-        let alert = app.alerts["Share with a locked flock"]
-        XCTAssertTrue(alert.waitForExistence(timeout: 5), "Share with no locked flock should explain, not ask")
+        let alert = app.alerts["Share with a locked birdhouse"]
+        XCTAssertTrue(alert.waitForExistence(timeout: 5), "Share with no locked birdhouse should explain, not ask")
         XCTAssertFalse(alert.buttons["Share for 15 minutes"].exists)
         alert.buttons["OK"].tap()
         app.terminate()

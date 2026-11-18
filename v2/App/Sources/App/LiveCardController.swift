@@ -24,12 +24,12 @@ final class LiveCardController {
     var isRunning: Bool { activity != nil }
 
     /// Idempotent: a second call while a card is up only refreshes the count.
-    func start(flock: String, onLine: Int) {
+    func start(birdhouse: String, onLine: Int) {
         if activity != nil { setOnLine(onLine); return }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
-        let first = LiveCard(flock: flock, onLine: onLine)
+        let first = LiveCard(birdhouse: birdhouse, onLine: onLine)
         do {
-            activity = try Activity.request(attributes: ChirpActivity(flockID: flock),
+            activity = try Activity.request(attributes: ChirpActivity(birdhouseID: birdhouse),
                                             content: content(first), pushType: nil)
             card = first
             _ = pacer.shouldPush(first, now: .now)

@@ -218,7 +218,7 @@ public struct Dispatch: Sendable {
         case .find:
             if let m = Find.Message.decode(body) { out.events.append(.find(m, from: packet.origin)) }
         case .checkIn:
-            // The flock only: a locked channel this phone joined. Nearby, open
+            // The birdhouse only: a locked channel this phone joined. Nearby, open
             // channels and whispers never carry a position.
             if channels[packet.channel]?.isLocked == true, let m = CheckInMessage.decode(body) {
                 out.events.append(.checkIn(m, from: packet.origin, channel: packet.channel))
@@ -350,7 +350,7 @@ public struct Dispatch: Sendable {
     }
 
     /// The locked channels I am on: where a check-in goes.
-    public var flockChannels: [ChannelID] {
+    public var birdhouseChannels: [ChannelID] {
         channels.values.filter(\.isLocked).map(\.id).sorted { $0.description < $1.description }
     }
 

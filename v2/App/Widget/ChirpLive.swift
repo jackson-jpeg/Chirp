@@ -31,7 +31,7 @@ struct ChirpLiveActivity: Widget {
                         if let line = card.line {
                             Text(line).font(.nunito(14, .bold)).foregroundStyle(.white.opacity(0.8)).lineLimit(2)
                         } else {
-                            Text("\(card.flock) \u{00B7} \(card.count)").font(.nunito(14, .bold)).foregroundStyle(.white.opacity(0.8))
+                            Text("\(card.birdhouse) \u{00B7} \(card.count)").font(.nunito(14, .bold)).foregroundStyle(.white.opacity(0.8))
                         }
                     }
                 }
@@ -44,7 +44,7 @@ struct ChirpLiveActivity: Widget {
                 if card.talking {
                     Wave().frame(width: 34, height: 14)
                 } else {
-                    Text(card.speaker ?? card.flock).font(.nunito(13, .black)).foregroundStyle(.white).lineLimit(1)
+                    Text(card.speaker ?? card.birdhouse).font(.nunito(13, .black)).foregroundStyle(.white).lineLimit(1)
                 }
             } minimal: {
                 Avatar(card: card, size: 24)
@@ -54,7 +54,7 @@ struct ChirpLiveActivity: Widget {
     }
 }
 
-/// The card on the Lock Screen: flock and count, the last speaker's bird,
+/// The card on the Lock Screen: birdhouse and count, the last speaker's bird,
 /// their words, and the Talk button.
 struct LockScreenCard: View {
     let card: LiveCard
@@ -64,7 +64,7 @@ struct LockScreenCard: View {
             HStack(spacing: 8) {
                 Circle().fill(Theme.sun).frame(width: 10, height: 10)
                     .overlay(Circle().stroke(Color.hex(0xFFF1C2), lineWidth: 3))
-                Text(card.flock).font(.nunito(13, .black))
+                Text(card.birdhouse).font(.nunito(13, .black))
                 Text("\u{00B7} \(card.count)").font(.nunito(13, .bold)).foregroundStyle(Color.hex(0x3D5170))
             }
             HStack(spacing: 12) {
@@ -89,7 +89,7 @@ struct LockScreenCard: View {
 }
 
 /// The speaker's bird in its round well, beak open while they talk; the
-/// flock's sun before anyone has spoken.
+/// birdhouse's sun before anyone has spoken.
 struct Avatar: View {
     let card: LiveCard
     let size: CGFloat

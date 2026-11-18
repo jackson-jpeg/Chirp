@@ -48,13 +48,13 @@ targets:
     # Universal links: a tapped invite (https://chirpchirps.com/join/#k=...) opens
     # the app straight away. The site serves the matching
     # /.well-known/apple-app-site-association (site/.well-known/, site-deploy).
-    # The flock key rides in the fragment, which never reaches a server, and
+    # The birdhouse key rides in the fragment, which never reaches a server, and
     # ChirpApp's onContinueUserActivity hands the full URL to Router.openInvite.
     # Two committed entitlements files, picked per config below (xcodegen's
     # `entitlements:` block set the path in a way a Release override could not
     # beat, so the first TestFlight archive still asked for Associated Domains).
     scheme:
-      # Big Flock, the one purchase, tested locally (docs/proposals/revenue-2.0.md).
+      # Big Birdhouse, the one purchase, tested locally (docs/proposals/revenue-2.0.md).
       storeKitConfiguration: App/StoreKit/Chirp.storekit
       testTargets:
       - ChirpAppTests
@@ -103,7 +103,7 @@ targets:
         NSBonjourServices:
         - _chirpchirps._tcp
         - _chirpchirps._udp
-        NSLocationWhenInUseUsageDescription: When you check in, your flock sees where you are for 15 minutes. You are asked every time.
+        NSLocationWhenInUseUsageDescription: When you check in, the birds in your birdhouse see where you are for 15 minutes. You are asked every time.
         NSSpeechRecognitionUsageDescription: Captions turn what your friends say into text. They are made on your phone, and your voice is never sent anywhere for them.
         NSSupportsLiveActivities: true
         CFBundleURLTypes:
