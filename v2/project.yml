@@ -45,6 +45,15 @@ targets:
     - package: Opus
       product: Opus
     - target: ChirpLive
+    # Universal links: a tapped invite (https://chirpchirps.com/join/#k=...) opens
+    # the app straight away. The site serves the matching
+    # /.well-known/apple-app-site-association (site/.well-known/, site-deploy).
+    # The flock key rides in the fragment, which never reaches a server, and
+    # ChirpApp's onContinueUserActivity hands the full URL to Router.openInvite.
+    entitlements:
+      path: App/Chirp.entitlements
+      properties:
+        com.apple.developer.associated-domains: ["applinks:chirpchirps.com"]
     scheme:
       testTargets:
       - ChirpUITests

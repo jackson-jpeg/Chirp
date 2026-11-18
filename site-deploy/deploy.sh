@@ -8,7 +8,8 @@
 #    and the old file goes back if the test fails. Reloaded under hub-lock prod-restart.
 # 4. site/ to /root/chirpchirps-site (rsync --delete; a tarball of the old tree is kept in
 #    /root/chirpchirps-site-backups/, newest 5).
-# 5. Live checks: the page, the signup answering, and no App Store link served.
+# 5. Live checks: the page, the signup answering, no App Store link served, and the
+#    universal-links association file served as JSON naming the app.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(dirname "$here")"
@@ -32,6 +33,18 @@ done
 grep -q '^Sitemap: https://chirpchirps.com/sitemap.xml$' "$site/robots.txt" ||
     { echo "REFUSED: site/robots.txt does not name the sitemap" >&2; exit 1; }
 python3 -I -c 'import sys, xml.dom.minidom as m; m.parse(sys.argv[1])' "$site/sitemap.xml"
+# Universal links: the association file is JSON and names the app v2/project.yml builds
+# (team + bundle ID), with /join/ in it. A wrong ID fails silently on the phone.
+aasa="$site/.well-known/apple-app-site-association"
+app_id="$(sed -n 's/^ *DEVELOPMENT_TEAM: *//p' "$repo/v2/project.yml" | head -1).com.jacksonmsanger.chirpchirp"
+grep -q 'PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp$' "$repo/v2/project.yml" ||
+    { echo "REFUSED: v2/project.yml's bundle ID changed; update the association file and this check" >&2; exit 1; }
+python3 -I - "$aasa" "$app_id" <<'PY' || { echo "REFUSED: $aasa is wrong (above)" >&2; exit 1; }
+import json, sys
+d = json.load(open(sys.argv[1]))["applinks"]["details"]
+ok = any(sys.argv[2] in x.get("appIDs", []) and any(c.get("/") == "/join/" for c in x.get("components", [])) for x in d)
+sys.exit(0 if ok else f"no detail with appID {sys.argv[2]} and component /join/")
+PY
 
 echo "▸ signup service"
 s="$here/signup"
@@ -80,4 +93,8 @@ www=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' https://www.chirpch
 [ "$www" = "301 https://chirpchirps.com/support/" ] || { echo "FAIL: www answered '$www' (want a 301 to chirpchirps.com)" >&2; exit 1; }
 curl -fsS https://chirpchirps.com/robots.txt | grep -q '^Sitemap: ' || { echo "FAIL: robots.txt not served" >&2; exit 1; }
 curl -fsS https://chirpchirps.com/sitemap.xml | grep -q '<urlset' || { echo "FAIL: sitemap.xml not served" >&2; exit 1; }
+ctype=$(curl -fsS -o /dev/null -w '%{http_code} %{content_type}' https://chirpchirps.com/.well-known/apple-app-site-association)
+[ "$ctype" = "200 application/json" ] || { echo "FAIL: association file answered '$ctype' (want 200 application/json)" >&2; exit 1; }
+curl -fsS https://chirpchirps.com/.well-known/apple-app-site-association | grep -qF "\"$app_id\"" ||
+    { echo "FAIL: live association file lacks $app_id" >&2; exit 1; }
 echo "deployed"

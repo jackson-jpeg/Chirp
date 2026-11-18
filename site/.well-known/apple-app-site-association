@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["2MU4PC84GZ.com.jacksonmsanger.chirpchirp"],
+        "components": [
+          { "/": "/join", "comment": "Flock invite, no trailing slash" },
+          { "/": "/join/", "comment": "Flock invite; the key is in the fragment" }
+        ]
+      }
+    ]
+  }
+}
