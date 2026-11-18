@@ -26,14 +26,19 @@ protocol AudioSessionPort: AnyObject {
 final class AudioSession {
     private(set) var inputs = AudioSessionInputs(foreground: false)
     /// What the real session is set to now.
-    private(set) var applied: AudioSessionNeed = .off
+    private(set) var applied: AudioSessionNeed = .off {
+        didSet { if applied != oldValue { onAppliedChange?(applied) } }
+    }
+    /// Told every time the real session changes (the voice engine follows it).
+    /// Called synchronously, inside `setFloor` when that is what moved it.
+    @ObservationIgnored var onAppliedChange: ((AudioSessionNeed) -> Void)?
     /// The last failure to move the session, for the screen to explain.
     private(set) var lastError: String?
 
     /// Called when the floor must be let go: an interruption began, or the
     /// microphone went away. The owner of the floor releases it, which feeds
     /// back here as a new floor state.
-    var onMustReleaseFloor: (() -> Void)?
+    @ObservationIgnored var onMustReleaseFloor: (() -> Void)?
 
     @ObservationIgnored private let port: AudioSessionPort
     @ObservationIgnored private let clock: () -> Date

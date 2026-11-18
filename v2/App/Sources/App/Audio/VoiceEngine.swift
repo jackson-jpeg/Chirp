@@ -44,6 +44,7 @@ final class VoiceEngine: @unchecked Sendable {
 
     // Main actor.
     private var engine: AVAudioEngine?
+    private var hasInput = false
     /// Set on main, read on the playback queue.
     private let playerLock = NSLock()
     private var _player: AVAudioPlayerNode?
@@ -79,20 +80,24 @@ final class VoiceEngine: @unchecked Sendable {
 
     // MARK: Engine
 
-    /// Builds and starts the engine. Call only with the session open.
+    /// Builds and starts the engine. Call only with the session open: `input`
+    /// only under the record session (the playback session has no microphone,
+    /// and an engine that touched `inputNode` there fails to start).
     @MainActor
-    func start() throws {
-        if let engine, engine.isRunning { return }
+    func start(input: Bool) throws {
+        if let engine, engine.isRunning, hasInput == input { return }
+        if engine != nil { stop() }
         let engine = AVAudioEngine()
         let player = AVAudioPlayerNode()
         engine.attach(player)
         engine.connect(player, to: engine.mainMixerNode, format: Self.playbackFormat)
-        _ = engine.inputNode   // before start, so the graph includes the input
+        if input { _ = engine.inputNode }   // before start, so the graph includes the input
         engine.prepare()
         try engine.start()
         player.play()
         self.engine = engine
         self.player = player
+        hasInput = input
         captureQueue.async { if self.encoder == nil { self.encoder = try? OpusCodec() } }
         playbackQueue.async { if self.decoder == nil { self.decoder = try? OpusCodec() } }
     }
@@ -105,6 +110,7 @@ final class VoiceEngine: @unchecked Sendable {
         engine?.stop()
         engine = nil
         player = nil
+        hasInput = false
         playbackQueue.async { self.endStream() }
     }
 
@@ -112,7 +118,7 @@ final class VoiceEngine: @unchecked Sendable {
 
     @MainActor
     func startCapture() {
-        guard let engine, engine.isRunning, !capturing else { return }
+        guard let engine, engine.isRunning, hasInput, !capturing else { return }
         capturing = true
         // The converter is rebuilt from whatever format the new tap delivers
         // (`format: nil`: the input node's reported format can be wrong, and a

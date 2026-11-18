@@ -10,6 +10,7 @@ struct TalkView: View {
     @Environment(LiveCaptions.self) private var captions
     @Environment(Transport.self) private var transport
     @Environment(Mesh.self) private var mesh
+    @Environment(Voice.self) private var voice
     @Environment(\.openURL) private var openURL
 
     @State private var holding = false
@@ -23,7 +24,9 @@ struct TalkView: View {
         case quiet
     }
 
-    private var talking: Bool { holding || router.forceTalking }
+    /// Your microphone is live: the floor is yours, not just your finger down
+    /// (a refused hold shows who has the line instead).
+    private var talking: Bool { voice.floor.microphoneIsOpen || router.forceTalking }
 
     private var line: Line {
         if talking { return .you }
@@ -167,12 +170,17 @@ struct TalkView: View {
                 switch line {
                 case .listening(let talker):
                     captionHeader(dot: TalkDot(fill: Theme.sun, ring: Theme.sunGlow), name: talker.name) {
-                        // TODO: the talker's live elapsed time from the floor.
-                        Text(TalkDemo.listenElapsed)
+                        if !router.screenshotRun, let start = voice.floor.speaker?.claimedAt {
+                            TimelineView(.periodic(from: start, by: 1)) { tl in
+                                Text(TalkDemo.clock(max(0, tl.date.timeIntervalSince(start))))
+                            }
+                        } else {
+                            Text(TalkDemo.listenElapsed)
+                        }
                     } meter: {
                         VoiceMeter()
                     }
-                    captionLine(TalkDemo.listenCaption)
+                    captionLine(listenCaption(talker))
                 case .you:
                     captionHeader(dot: TalkDot(fill: Theme.coralHot, ring: Theme.coralSoft), name: "You") {
                         if router.forceTalking || holdStart == nil {
@@ -220,6 +228,13 @@ struct TalkView: View {
     /// phone allows.
     private var card: CaptionCard { router.screenshotRun ? .captioning : captions.card }
 
+    /// The talker's live caption; the design's words on screenshot runs and
+    /// for the demo flock's fixtures, which have no voice.
+    private func listenCaption(_ talker: Person) -> String {
+        if router.screenshotRun || talker.peer == nil { return TalkDemo.listenCaption }
+        return voice.caption(of: talker) ?? "\u{2026}"
+    }
+
     private var noticeShown: Binding<Bool> {
         Binding(get: { captions.notice != nil }, set: { if !$0 { captions.notice = nil } })
     }
@@ -264,7 +279,7 @@ struct TalkView: View {
         let who: String
         let said: String
         switch line {
-        case .listening(let t): who = t.name; said = TalkDemo.listenCaption
+        case .listening(let t): who = t.name; said = listenCaption(t)
         case .you: who = "You"; said = TalkDemo.holdCaption
         case .quiet: return "The line is quiet."
         }
@@ -365,20 +380,23 @@ struct TalkView: View {
         holdStart = .now
         // The first hold is the tap that needs other phones: Local Network asks now.
         transport.start()
-        // TODO: open the floor: ask for the line and start the microphone.
+        // Asks for the line; the microphone opens only if it is free.
+        voice.press()
     }
 
     private func send() {
         holding = false
         holdStart = nil
-        // TODO: close the floor: stop the microphone and send what was said.
+        voice.release()
     }
 
     private func cancel() {
         holding = false
         holdStart = nil
         cancelled = true
-        // TODO: drop the recording and give the line back without sending.
+        // Live voice is already out, so a slide-away ends the turn like a
+        // release; what matters is that the microphone closes now.
+        voice.release()
     }
 }
 

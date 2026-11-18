@@ -6,9 +6,9 @@ struct ChirpApp: App {
     @State private var flock: Flock
     @State private var router = Router.fromLaunchArguments()
     /// Opens nothing until someone talks; closes on background (2.5.4).
-    @State private var audio = AudioSession()
+    @State private var audio: AudioSession
     /// Reads the speech status only; asks on the first tap of captions.
-    @State private var captions = LiveCaptions()
+    @State private var captions: LiveCaptions
     /// The radio. Starts on the first hold to talk, not at launch (5.1.1(iv)).
     @State private var transport: Transport
     /// Every packet in and out goes through ChirpCore's `Dispatch` here.
@@ -16,13 +16,21 @@ struct ChirpApp: App {
     @State private var mesh: Mesh
     /// Check-in: off at every launch, asked every time (5.1.2(i)).
     @State private var checkIn = CheckInLocation()
+    /// Talk's floor and live voice, between the mesh and the audio session.
+    @State private var voice: Voice
 
     init() {
         let flock = Flock.demo
         let transport = Transport(local: ChirpApp.identity.peerID)
+        let audio = AudioSession()
+        let captions = LiveCaptions()
+        let mesh = Mesh(identity: ChirpApp.identity, flock: flock, transport: transport)
         _flock = State(initialValue: flock)
         _transport = State(initialValue: transport)
-        _mesh = State(initialValue: Mesh(identity: ChirpApp.identity, flock: flock, transport: transport))
+        _audio = State(initialValue: audio)
+        _captions = State(initialValue: captions)
+        _mesh = State(initialValue: mesh)
+        _voice = State(initialValue: Voice(mesh: mesh, audio: audio, captions: captions, flock: flock))
     }
     /// Created on first launch and kept in the Keychain.
     static let identity: LocalIdentity = {
@@ -43,6 +51,7 @@ struct ChirpApp: App {
                 .environment(transport)
                 .environment(mesh)
                 .environment(checkIn)
+                .environment(voice)
                 .preferredColorScheme(router.forcedScheme)
                 .tint(Theme.ink)
                 // The Lock Screen card's Talk button (chirpchirps://talk).
@@ -69,6 +78,8 @@ struct ChirpApp: App {
             if !can { checkIn.stop() }
         }
         .onChange(of: scenePhase, initial: true) { _, phase in
+            // Off the screen, the turn ends (the session closes with it).
+            if phase != .active { voice.release() }
             audio.follow(phase)
             transport.follow(phase)
             mesh.inBackground = phase == .background
