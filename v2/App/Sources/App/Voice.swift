@@ -38,6 +38,8 @@ final class Voice {
     @ObservationIgnored private var ticker: Task<Void, Never>?
     @ObservationIgnored private var refusal: Task<Void, Never>?
     @ObservationIgnored private let tap = CaptionTap()
+    /// Your own caption's feed while the microphone is open.
+    @ObservationIgnored private let mine = OwnCaptionFeed()
     private static let log = Logger(subsystem: "com.jacksonmsanger.chirpchirp", category: "voice")
 
     init(mesh: Mesh, audio: AudioSession, captions: LiveCaptions, flock: Flock, engine: VoiceEngine = VoiceEngine()) {
@@ -64,6 +66,8 @@ final class Voice {
                 DispatchQueue.main.async { MainActor.assumeIsolated { self?.beginCaption(speaker) } }
             }
         }
+        let mine = self.mine
+        engine.onCaptured = { buffer in mine.append(buffer) }
         engine.onStreamEnded = { [weak self] speaker in
             tap.remove(speaker)
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.captions.end(speaker) } }
@@ -132,9 +136,12 @@ final class Voice {
     private func run(_ effect: FloorEffect) {
         switch effect {
         case .openMicrophone:
+            mine.set(captions.begin(me, format: OpusCodec.pcmFormat))
             engine.startCapture()
         case .closeMicrophone:
             engine.stopCapture()
+            mine.set(nil)
+            captions.end(me)
         case .send(let m):
             let ch = turnChannel ?? channel
             mesh.send { try $0.floor(m, on: ch, now: .now) }
@@ -199,6 +206,17 @@ final class Voice {
         tap.set(captions.begin(speaker, format: VoiceEngine.playbackFormat), for: speaker)
     }
 
+    /// Your stream's key: this phone's PeerID and launch epoch, as other
+    /// phones key your voice.
+    private var me: CaptionTrack.Speaker { .init(peer: mesh.dispatch.me, epoch: mesh.dispatch.epoch) }
+
+    /// What you are saying, live, while you hold (nil until words come, or
+    /// with captions off).
+    var myCaption: String? {
+        guard let c = captions.track.caption(for: me), !c.text.isEmpty else { return nil }
+        return c.text
+    }
+
     /// What `who` is saying, live, if captions are on.
     func caption(of who: Person) -> String? {
         guard let peer = who.peer, let c = captions.track.latest(from: peer) else { return nil }
@@ -237,5 +255,18 @@ private final class CaptionTap: @unchecked Sendable {
             feeds[speaker] = nil
             asked.remove(speaker)
         }
+    }
+}
+
+/// The capture queue's view of your own caption feed.
+private final class OwnCaptionFeed: @unchecked Sendable {
+    private let lock = NSLock()
+    private var feed: CaptionFeed?
+
+    /// Nil stops appending; the feed itself is ended through `LiveCaptions.end`.
+    func set(_ f: CaptionFeed?) { lock.withLock { feed = f } }
+
+    func append(_ buffer: AVAudioPCMBuffer) {
+        lock.withLock { feed }?.append(buffer)
     }
 }

@@ -128,6 +128,10 @@ public enum Captions {
 /// so far each time, so an update replaces; a final result closes the stream,
 /// and anything the recognizer sends after it is ignored. Holds at most `cap`
 /// streams, dropping the oldest.
+///
+/// A phone keeps one epoch for as long as the app runs, so the same speaker
+/// key comes back for every turn a person takes. `begin` opens a fresh
+/// caption for the new turn; updates go to the newest caption of a key.
 public struct CaptionTrack: Sendable, Equatable {
     public typealias Speaker = JitterBuffer.Speaker
 
@@ -143,8 +147,16 @@ public struct CaptionTrack: Sendable, Equatable {
 
     public init(cap: Int = 32) { self.cap = max(1, cap) }
 
+    /// A new turn from `speaker`: an empty, open caption, so the last turn's
+    /// words are not shown as this one's and its updates are not refused.
+    public mutating func begin(_ speaker: Speaker, at now: Date) {
+        if let i = captions.lastIndex(where: { $0.speaker == speaker }), !captions[i].final,
+           captions[i].text.isEmpty { return }   // already open and empty
+        append(Caption(speaker: speaker, text: "", final: false, updated: now))
+    }
+
     public mutating func update(_ speaker: Speaker, text: String, final: Bool, at now: Date) {
-        if let i = captions.firstIndex(where: { $0.speaker == speaker }) {
+        if let i = captions.lastIndex(where: { $0.speaker == speaker }) {
             guard !captions[i].final else { return }
             // A final with no words keeps the last partial text.
             if !(final && text.isEmpty) { captions[i].text = text }
@@ -152,7 +164,11 @@ public struct CaptionTrack: Sendable, Equatable {
             captions[i].updated = now
             return
         }
-        captions.append(Caption(speaker: speaker, text: text, final: final, updated: now))
+        append(Caption(speaker: speaker, text: text, final: final, updated: now))
+    }
+
+    private mutating func append(_ c: Caption) {
+        captions.append(c)
         if captions.count > cap { captions.removeFirst(captions.count - cap) }
     }
 

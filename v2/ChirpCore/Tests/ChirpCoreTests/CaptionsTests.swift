@@ -94,6 +94,31 @@ import Testing
         #expect(t.latest(from: peer(3)) == nil)
     }
 
+    @Test func theSameSpeakerKeyCaptionsEveryTurnAfterBegin() {
+        var t = CaptionTrack()
+        let a = JitterBuffer.Speaker(peer: peer(1), epoch: 7)   // one epoch for the whole launch
+        t.begin(a, at: t0)
+        t.update(a, text: "first turn", final: true, at: at(1))
+        t.begin(a, at: at(2))
+        // The new turn starts empty: last turn's words are not shown as this one's.
+        #expect(t.latest(from: peer(1))?.text == "")
+        #expect(t.latest(from: peer(1))?.final == false)
+        t.update(a, text: "second turn", final: false, at: at(3))
+        #expect(t.latest(from: peer(1))?.text == "second turn")
+        t.update(a, text: "", final: true, at: at(4))
+        t.update(a, text: "late", final: false, at: at(5))
+        #expect(t.latest(from: peer(1))?.text == "second turn")
+        #expect(t.captions.map(\.text) == ["first turn", "second turn"])
+    }
+
+    @Test func beginTwiceOnAnEmptyTurnOpensOne() {
+        var t = CaptionTrack()
+        let a = JitterBuffer.Speaker(peer: peer(1), epoch: 1)
+        t.begin(a, at: t0)
+        t.begin(a, at: at(1))
+        #expect(t.captions.count == 1)
+    }
+
     @Test func aTrackIsCapped() {
         var t = CaptionTrack(cap: 3)
         for i in 0..<5 { t.update(.init(peer: peer(1), epoch: UInt32(i)), text: "\(i)", final: true, at: at(Double(i))) }

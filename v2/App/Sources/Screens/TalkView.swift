@@ -193,8 +193,8 @@ struct TalkView: View {
                     } meter: {
                         VoiceMeter(heights: TalkDemo.holdMeter, played: TalkDemo.holdMeter.count, color: Theme.coralHot)
                     }
-                    // TODO: your live caption from `captions.track` once the audio engine feeds it.
-                    captionLine(TalkDemo.holdCaption)
+                    captionLine(router.screenshotRun || router.forceTalking
+                                ? TalkDemo.holdCaption : (voice.myCaption ?? "\u{2026}"))
                 case .quiet:
                     HStack(spacing: 8) {
                         TalkDot(fill: Theme.hairline, ring: Theme.quiet)

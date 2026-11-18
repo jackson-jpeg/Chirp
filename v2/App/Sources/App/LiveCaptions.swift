@@ -23,6 +23,9 @@ final class LiveCaptions {
     var notice: String?
 
     @ObservationIgnored private var feeds: [CaptionTrack.Speaker: CaptionFeed] = [:]
+    /// Which feed of a speaker key is current: a late result from the
+    /// previous turn's feed must not land on this turn's caption.
+    @ObservationIgnored private var generation: [CaptionTrack.Speaker: Int] = [:]
     @ObservationIgnored private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
@@ -76,8 +79,11 @@ final class LiveCaptions {
         guard Captions.captioning(settings), let recognizer = SFSpeechRecognizer(),
               recognizer.supportsOnDeviceRecognition else { return nil }
         feeds[speaker]?.end()
+        let gen = (generation[speaker] ?? 0) + 1
+        generation[speaker] = gen
+        track.begin(speaker, at: .now)
         let feed = CaptionFeed(recognizer: recognizer, format: format) { [weak self] text, final in
-            Task { @MainActor in self?.received(speaker, text: text, final: final) }
+            Task { @MainActor in self?.received(speaker, generation: gen, text: text, final: final) }
         }
         feeds[speaker] = feed
         return feed
@@ -92,7 +98,8 @@ final class LiveCaptions {
         feeds.removeAll()
     }
 
-    private func received(_ speaker: CaptionTrack.Speaker, text: String, final: Bool) {
+    private func received(_ speaker: CaptionTrack.Speaker, generation gen: Int, text: String, final: Bool) {
+        guard generation[speaker] == gen else { return }
         track.update(speaker, text: text, final: final, at: .now)
         if final { feeds.removeValue(forKey: speaker) }
     }

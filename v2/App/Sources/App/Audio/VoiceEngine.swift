@@ -24,6 +24,9 @@ final class VoiceEngine: @unchecked Sendable {
     /// Each played 20 ms frame (Float32, 16 kHz) and whose it is, on the
     /// playback queue: live captions read it.
     var onPlayed: (@Sendable (JitterBuffer.Speaker, AVAudioPCMBuffer) -> Void)?
+    /// Your own voice while capturing, as 16 kHz Int16 (`OpusCodec.pcmFormat`),
+    /// on the capture queue: your live caption reads it.
+    var onCaptured: (@Sendable (AVAudioPCMBuffer) -> Void)?
     /// A speaker's stream went quiet, on the playback queue.
     var onStreamEnded: (@Sendable (JitterBuffer.Speaker) -> Void)?
 
@@ -153,7 +156,9 @@ final class VoiceEngine: @unchecked Sendable {
 
         let target = OpusCodec.pcmFormat
         let fmt = buffer.format
-        if fmt.sampleRate == target.sampleRate, fmt.commonFormat == .pcmFormatInt16, let ch = buffer.int16ChannelData {
+        if fmt.sampleRate == target.sampleRate, fmt.commonFormat == .pcmFormatInt16, fmt.channelCount == 1,
+           let ch = buffer.int16ChannelData {
+            onCaptured?(buffer)
             accumulate(Array(UnsafeBufferPointer(start: ch[0], count: Int(buffer.frameLength))))
             return
         }
@@ -177,6 +182,7 @@ final class VoiceEngine: @unchecked Sendable {
             return nil
         }
         guard status != .error, error == nil, out.frameLength > 0, let ch = out.int16ChannelData else { return }
+        onCaptured?(out)
         accumulate(Array(UnsafeBufferPointer(start: ch[0], count: Int(out.frameLength))))
     }
 
