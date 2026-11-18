@@ -51,13 +51,28 @@ final class LiveCaptions {
     private func run(_ effect: CaptionEffect) {
         switch effect {
         case .requestPermission:
-            SFSpeechRecognizer.requestAuthorization { [weak self] status in
-                Task { @MainActor in self?.send(.permissionAnswered(granted: status == .authorized)) }
-            }
+            SFSpeechRecognizer.requestAuthorization(Self.authorizationHandler { [weak self] granted in
+                self?.send(.permissionAnswered(granted: granted))
+            })
         case .explainDenied:
             notice = "Captions need Speech Recognition. Turn it on for ChirpChirps in Settings."
         case .explainUnavailable:
             notice = "Captions are not available for your language on this phone yet."
+        }
+    }
+
+    /// The speech permission callback, which iOS calls on a background queue.
+    /// Written inline in `run` (a main-actor method) it would inherit main-actor
+    /// isolation and trap under Swift 6's runtime check, the same crash as the
+    /// microphone tap in 2.0.0 (202611172139). Built in a nonisolated static,
+    /// it carries no isolation and hops to main itself.
+    /// `VoiceEngineIsolationTests` calls it off main.
+    nonisolated static func authorizationHandler(
+        _ done: @escaping @MainActor (Bool) -> Void
+    ) -> @Sendable (SFSpeechRecognizerAuthorizationStatus) -> Void {
+        { status in
+            let granted = status == .authorized
+            Task { @MainActor in done(granted) }
         }
     }
 

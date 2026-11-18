@@ -55,6 +55,7 @@ targets:
     # beat, so the first TestFlight archive still asked for Associated Domains).
     scheme:
       testTargets:
+      - ChirpAppTests
       - ChirpUITests
       - package: ChirpCore/ChirpCoreTests
     settings:
@@ -156,6 +157,22 @@ targets:
         - Nunito.ttf
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+  # App-hosted unit tests for code that lives in the app, not ChirpCore:
+  # `VoiceEngineIsolationTests` calls the callbacks iOS runs off the main queue
+  # (the 2.0.0 hold-to-talk crash). `ios test chirp --only ChirpAppTests`.
+  ChirpAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+    - path: App/Tests
+    dependencies:
+    - target: Chirp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp.apptests
+        GENERATE_INFOPLIST_FILE: true
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Chirp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Chirp
+        BUNDLE_LOADER: $(TEST_HOST)
   # Build-vs-design screenshots (App/UITests/BuildVsDesignTests.swift), run
   # through `ios test chirp --only ChirpUITests --env SCREENSHOT_DIR=...`.
   ChirpUITests:

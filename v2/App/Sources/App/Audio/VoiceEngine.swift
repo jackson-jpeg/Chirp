@@ -127,9 +127,21 @@ final class VoiceEngine: @unchecked Sendable {
         // (`format: nil`: the input node's reported format can be wrong, and a
         // mismatched tap crashes).
         captureQueue.async { self.converter = nil; self.accumulator.removeAll() }
-        engine.inputNode.installTap(onBus: 0, bufferSize: 1024, format: nil) { [weak self] buffer, _ in
-            guard let self, self.capturing, let copy = CapturedFrames(copying: buffer) else { return }
-            self.captureQueue.async { if self.capturing { self.consume(copy) } }
+        engine.inputNode.installTap(onBus: 0, bufferSize: 1024, format: nil, block: Self.captureTap(for: self))
+    }
+
+    /// The microphone tap. AVAudio calls it on its own realtime messenger
+    /// queue, never on main, so it must not be written inside a `@MainActor`
+    /// method: under Swift 6 such a closure inherits main-actor isolation, the
+    /// compiler adds a runtime check that it runs on main, and the check traps
+    /// (EXC_BREAKPOINT in `dispatch_assert_queue_fail`) on the first buffer.
+    /// That was 2.0.0 (202611172139) crashing the moment you held Talk.
+    /// Built here, in a nonisolated static, it carries no isolation.
+    /// `VoiceEngineIsolationTests` calls it off main.
+    nonisolated static func captureTap(for engine: VoiceEngine) -> AVAudioNodeTapBlock {
+        { [weak engine] buffer, _ in
+            guard let engine, engine.capturing, let copy = CapturedFrames(copying: buffer) else { return }
+            engine.captureQueue.async { if engine.capturing { engine.consume(copy) } }
         }
     }
 
