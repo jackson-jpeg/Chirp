@@ -60,7 +60,11 @@ private final class DemoRun {
             default: break
             }
         }
-        #expect(talks == 1 && releases == 1 && meetups == 1 && rollCalls == 1)
+        // Roll call: Jon asks and Maya answers at once (two packets).
+        #expect(talks == 1)
+        #expect(releases == 1)
+        #expect(meetups == 1)
+        #expect(rollCalls == 2)
         #expect(texts == ["We got a table by the fire. Lodge, second floor, come up when you're done.",
                           "Lift 4 in 10?", "Grabbing the boards first, 15 min"])
     }
