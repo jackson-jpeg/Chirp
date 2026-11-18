@@ -54,6 +54,8 @@ targets:
     # `entitlements:` block set the path in a way a Release override could not
     # beat, so the first TestFlight archive still asked for Associated Domains).
     scheme:
+      # Big Flock, the one purchase, tested locally (docs/proposals/revenue-2.0.md).
+      storeKitConfiguration: App/StoreKit/Chirp.storekit
       testTargets:
       - ChirpAppTests
       - ChirpUITests

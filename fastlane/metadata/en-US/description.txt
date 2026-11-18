@@ -23,6 +23,10 @@ PRIVATE BY DESIGN
 • Your flock is locked with its own key. Only people you invite can hear it.
 • Block anyone nearby and they disappear from your app.
 
+BIG FLOCK
+• Free: joining any flock, and starting one for up to 4 people.
+• Big Flock, one purchase: flocks you start can grow past 4, plus more bird colors and chirps. Friends who join never pay.
+
 GOOD TO KNOW
 • Everyone needs ChirpChirps on their own iPhone, close by. Range depends on walls, crowds and terrain.
 • Talking works with the app open. With the phone locked, texts and alerts still arrive, and the Lock Screen card opens the app so you can reply.

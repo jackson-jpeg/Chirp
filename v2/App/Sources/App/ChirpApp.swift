@@ -18,6 +18,8 @@ struct ChirpApp: App {
     @State private var checkIn = CheckInLocation()
     /// Talk's floor and live voice, between the mesh and the audio session.
     @State private var voice: Voice
+    /// Big Flock, the one purchase. Reads what is owned; asks nothing.
+    @State private var store = Store()
 
     init() {
         // Screenshot runs show the design's flock; a real launch has only
@@ -57,6 +59,7 @@ struct ChirpApp: App {
                 .environment(mesh)
                 .environment(checkIn)
                 .environment(voice)
+                .environment(store)
                 .preferredColorScheme(router.forcedScheme)
                 .tint(Theme.ink)
                 .onOpenURL { url in
@@ -73,6 +76,7 @@ struct ChirpApp: App {
                 }
                 .task {
                     audio.observeSystem()
+                    store.start()
                     checkIn.send = { [mesh] lat, lon, accuracy, state in
                         mesh.sendCheckIn(latitude: lat, longitude: lon, accuracy: accuracy, state: state)
                     }
@@ -85,6 +89,18 @@ struct ChirpApp: App {
                 }
         }
         // Left the last locked flock (the demo's, say): nobody to share with.
+        .onChange(of: "\(flock.you.name)|\(flock.you.palette.index)|\(flock.you.chirp)") { _, _ in
+            mesh.youChanged(flock.you)
+        }
+        // A refund (or another Apple Account) takes Big Flock away: a bird
+        // never keeps a color or chirp it no longer owns. Only once the App
+        // Store has answered, so a launch never resets a paid choice.
+        .onChange(of: store.checked && !store.unlocked) { _, lost in
+            guard lost else { return }
+            let p = BigFlock.allowedPalette(flock.you.palette.index, unlocked: false)
+            if p != flock.you.palette.index { flock.you.palette = BirdPalette.all[p] }
+            flock.you.chirp = BigFlock.allowedChirp(flock.you.chirp, unlocked: false)
+        }
         .onChange(of: mesh.canCheckIn) { _, can in
             if !can { checkIn.stop() }
         }
@@ -145,6 +161,10 @@ final class Router {
 
     /// Start or join a flock from Talk's flock menu, once you are onboarded.
     var flockSetup: FlockSetup?
+    /// Big Flock's sheet (the one purchase), and why it opened.
+    var bigFlock: BigFlockReason?
+    /// Make your bird again, from Talk's "You and settings".
+    var editingBird = false
     enum FlockSetup: String, Identifiable { case start, join; var id: String { rawValue } }
 
     /// You started the flock you are making a bird for (Make your bird says
@@ -162,7 +182,7 @@ final class Router {
         let name = FlockInvite.cleanName(raw)
         guard !name.isEmpty else { return }
         startedFlock = true
-        use(Channel.newLocked(name: name), mesh: mesh, flock: flock)
+        use(Channel.newLocked(name: name), mesh: mesh, flock: flock, started: true)
     }
 
     /// A pasted invite or an opened link: join it, or ask first when it
@@ -208,9 +228,9 @@ final class Router {
     }
 
     @MainActor
-    private func use(_ channel: Channel, mesh: Mesh, flock: Flock) {
+    private func use(_ channel: Channel, mesh: Mesh, flock: Flock, started: Bool = false) {
         if mesh.inDemo { leaveDemo(mesh, flock: flock) }
-        mesh.setFlock(channel)
+        mesh.setFlock(channel, started: started)
         flock.flockName = channel.name
         flockSetup = nil
         if onboarded { goToTalk() } else { onboardingStep = .makeBird }
@@ -314,6 +334,13 @@ struct RootView: View {
             case .catchUp: CatchUpView()
             default: EmptyView()
             }
+        }
+        .sheet(item: $router.bigFlock) { reason in
+            BigFlockView(reason: reason)
+                .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $router.editingBird) {
+            MakeBirdView(editing: true)
         }
         .sheet(item: $router.flockSetup) { setup in
             switch setup {
