@@ -17,6 +17,11 @@ options:
 packages:
   ChirpCore:
     path: ChirpCore
+  # libopus (BSD) through swift-opus, as 1.0 shipped it. Exact version on
+  # purpose: a range lets a build change with no reviewable commit.
+  Opus:
+    url: https://github.com/alta/swift-opus
+    exactVersion: 0.0.2
 settings:
   base:
     SWIFT_VERSION: '6.0'
@@ -37,6 +42,8 @@ targets:
     dependencies:
     - package: ChirpCore
       product: ChirpCore
+    - package: Opus
+      product: Opus
     - target: ChirpLive
     scheme:
       testTargets:
@@ -49,6 +56,8 @@ targets:
         CURRENT_PROJECT_VERSION: '1'
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: false
+        # The Opus encoder controls (FEC, bitrate): App/Sources/App/Audio/opus_ctl_shim.c
+        SWIFT_OBJC_BRIDGING_HEADER: App/Sources/App/Audio/Chirp-Bridging-Header.h
     info:
       path: App/Info.plist
       properties:
