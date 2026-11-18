@@ -8,6 +8,7 @@ final class FlockJoinTests: XCTestCase {
     /// A locked flock's code built by hand: bytes 0 to 31 (ID, then key).
     private static let code = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"
 
+    @MainActor
     private func launchOnWelcome() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-screen", "Welcome"]
@@ -15,6 +16,7 @@ final class FlockJoinTests: XCTestCase {
         return app
     }
 
+    @MainActor
     private func label(containing s: String, in app: XCUIApplication) -> XCUIElement {
         app.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] %@", s)).firstMatch
     }

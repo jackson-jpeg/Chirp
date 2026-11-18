@@ -28,6 +28,7 @@ final class AppStoreScreenshotsTests: XCTestCase {
         continueAfterFailure = false
     }
 
+    @MainActor
     private func any(containing text: String) -> XCUIElement {
         app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
     }

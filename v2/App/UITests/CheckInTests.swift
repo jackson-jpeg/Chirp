@@ -10,6 +10,7 @@ import XCTest
 final class CheckInTests: XCTestCase {
     private static let emDash = "\u{2014}"
 
+    @MainActor
     private func element(_ app: XCUIApplication, containing text: String) -> XCUIElement {
         app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
     }
