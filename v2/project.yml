@@ -55,6 +55,8 @@ targets:
       properties:
         com.apple.developer.associated-domains: ["applinks:chirpchirps.com"]
     scheme:
+      # Big Flock, the one purchase, tested locally (docs/proposals/revenue-2.0.md).
+      storeKitConfiguration: App/StoreKit/Chirp.storekit
       testTargets:
       - ChirpUITests
       - package: ChirpCore/ChirpCoreTests

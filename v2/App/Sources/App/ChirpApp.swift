@@ -18,6 +18,8 @@ struct ChirpApp: App {
     @State private var checkIn = CheckInLocation()
     /// Talk's floor and live voice, between the mesh and the audio session.
     @State private var voice: Voice
+    /// Big Flock, the one purchase. Reads what is owned; asks nothing.
+    @State private var store = Store()
 
     init() {
         // Screenshot runs show the design's flock; a real launch has only
@@ -57,6 +59,7 @@ struct ChirpApp: App {
                 .environment(mesh)
                 .environment(checkIn)
                 .environment(voice)
+                .environment(store)
                 .preferredColorScheme(router.forcedScheme)
                 .tint(Theme.ink)
                 .onOpenURL { url in
@@ -73,6 +76,7 @@ struct ChirpApp: App {
                 }
                 .task {
                     audio.observeSystem()
+                    store.start()
                     checkIn.send = { [mesh] lat, lon, accuracy, state in
                         mesh.sendCheckIn(latitude: lat, longitude: lon, accuracy: accuracy, state: state)
                     }

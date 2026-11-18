@@ -1,0 +1,35 @@
+{
+  "identifier" : "C41F7B02",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "6761436950",
+      "localizations" : [
+        {
+          "description" : "Start private flocks your friends join for free.",
+          "displayName" : "Big Flock",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.jacksonmsanger.chirpchirp.bigflock",
+      "referenceName" : "Big Flock",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA"
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}
