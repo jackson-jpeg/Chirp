@@ -16,6 +16,8 @@ struct NearbyEntry: Identifiable {
     /// Where the scene draws them (the `<g>` translate) and their name label's baseline.
     var sceneCenter: CGPoint?
     var labelBaseline: CGFloat = 132
+    /// They are sharing where they are (a check-in to your flock).
+    var checkedIn = false
 
     var id: String { person.id }
 
@@ -25,10 +27,16 @@ struct NearbyEntry: Identifiable {
     }
 
     var statusText: String {
-        switch route {
+        let how: String = switch route {
         case .direct(let strength): "Direct · \(strength)"
         case .through(let p): "Through \(p.name)'s phone"
         }
+        return checkedIn ? how + " · sharing where they are" : how
+    }
+
+    /// A distance as the rows show it: "40 m", "1.2 km".
+    static func metres(_ m: Double) -> String {
+        m < 1000 ? "\(Int((m / 10).rounded() * 10)) m" : String(format: "%.1f km", m / 1000)
     }
 
     var accessibilitySummary: String {

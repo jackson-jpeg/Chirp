@@ -41,6 +41,8 @@ public struct Dispatch: Sendable {
         /// Someone proved they are on a locked channel I am on: they are now a
         /// friend (once per person and channel).
         case friend(PeerID, channel: ChannelID)
+        /// Someone on a locked channel I am on shared where they are, or stopped.
+        case checkIn(CheckInMessage, from: PeerID, channel: ChannelID)
     }
 
     /// What one received packet asks of the app.
@@ -215,6 +217,12 @@ public struct Dispatch: Sendable {
             }
         case .find:
             if let m = Find.Message.decode(body) { out.events.append(.find(m, from: packet.origin)) }
+        case .checkIn:
+            // The flock only: a locked channel this phone joined. Nearby, open
+            // channels and whispers never carry a position.
+            if channels[packet.channel]?.isLocked == true, let m = CheckInMessage.decode(body) {
+                out.events.append(.checkIn(m, from: packet.origin, channel: packet.channel))
+            }
         case .member, .audio, .text, .presence, .catchUp:
             break
         }
@@ -264,7 +272,7 @@ public struct Dispatch: Sendable {
 
     // MARK: Out
 
-    public enum MakeError: Error, Equatable { case notOnChannel, notFriend }
+    public enum MakeError: Error, Equatable { case notOnChannel, notFriend, notLockedChannel, notSharing }
 
     /// A packet of `kind` on `channel`, numbered, signed (all but audio and
     /// presence, which signs itself) and sealed for the channel.
@@ -321,6 +329,29 @@ public struct Dispatch: Sendable {
     public mutating func toFriend(_ kind: PacketKind, _ body: Data, peer: PeerID, now: Date) throws -> Packet {
         guard friends.contains(peer), !blocked.contains(peer) else { throw MakeError.notFriend }
         return try make(kind, on: whisperChannel(to: peer), body: body, now: now)
+    }
+
+    /// Where I am, to one locked channel I am on, only while `state` is
+    /// sharing (`CheckIn.maySend`). The position is good until the check-in
+    /// ends, never longer. The one way a position leaves this phone.
+    public mutating func checkInPosition(latitude: Double, longitude: Double, accuracyMetres: Double,
+                                         on channelID: ChannelID, state: CheckInState, now: Date) throws -> Packet {
+        guard channels[channelID]?.isLocked == true else { throw MakeError.notLockedChannel }
+        guard CheckIn.maySend(state, at: now), case .sharing(let until) = state else { throw MakeError.notSharing }
+        let m = CheckInMessage.at(latitude: latitude, longitude: longitude,
+                                  accuracy: CheckInMessage.accuracy(accuracyMetres), until: until)
+        return try make(.checkIn, on: channelID, body: m.encode(), now: now)
+    }
+
+    /// "Forget where I was", to one locked channel I am on.
+    public mutating func checkInStopped(on channelID: ChannelID, now: Date) throws -> Packet {
+        guard channels[channelID]?.isLocked == true else { throw MakeError.notLockedChannel }
+        return try make(.checkIn, on: channelID, body: CheckInMessage.stopped.encode(), now: now)
+    }
+
+    /// The locked channels I am on: where a check-in goes.
+    public var flockChannels: [ChannelID] {
+        channels.values.filter(\.isLocked).map(\.id).sorted { $0.description < $1.description }
     }
 
     /// "I am on this channel", once per `memberInterval` on each locked

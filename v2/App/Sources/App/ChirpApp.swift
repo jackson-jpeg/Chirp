@@ -14,6 +14,8 @@ struct ChirpApp: App {
     /// Every packet in and out goes through ChirpCore's `Dispatch` here.
     /// Making it starts nothing: the radio still waits for the first hold.
     @State private var mesh: Mesh
+    /// Check-in: off at every launch, asked every time (5.1.2(i)).
+    @State private var checkIn = CheckInLocation()
 
     init() {
         let flock = Flock.demo
@@ -40,6 +42,7 @@ struct ChirpApp: App {
                 .environment(captions)
                 .environment(transport)
                 .environment(mesh)
+                .environment(checkIn)
                 .preferredColorScheme(router.forcedScheme)
                 .tint(Theme.ink)
                 // The Lock Screen card's Talk button (chirpchirps://talk).
@@ -50,6 +53,10 @@ struct ChirpApp: App {
                 }
                 .task {
                     audio.observeSystem()
+                    checkIn.send = { [mesh] lat, lon, accuracy, state in
+                        mesh.sendCheckIn(latitude: lat, longitude: lon, accuracy: accuracy, state: state)
+                    }
+                    checkIn.sendStopped = { [mesh] in mesh.sendCheckInStopped() }
                     // Demo Mode by launch argument (UI tests). People and App Review
                     // come in by Welcome's "Try it with pretend friends".
                     if ProcessInfo.processInfo.arguments.contains("-demo") { router.enterDemo(mesh, flock: flock) }
@@ -57,10 +64,15 @@ struct ChirpApp: App {
                     mesh.startHeartbeat()
                 }
         }
+        // Left the last locked flock (the demo's, say): nobody to share with.
+        .onChange(of: mesh.canCheckIn) { _, can in
+            if !can { checkIn.stop() }
+        }
         .onChange(of: scenePhase, initial: true) { _, phase in
             audio.follow(phase)
             transport.follow(phase)
             mesh.inBackground = phase == .background
+            checkIn.follow(phase)
             if phase == .active { captions.refresh() }
         }
     }

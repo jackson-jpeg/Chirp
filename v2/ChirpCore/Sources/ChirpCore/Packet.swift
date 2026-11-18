@@ -65,6 +65,10 @@ public enum PacketKind: UInt8, Sendable, CaseIterable {
     /// the people on a locked channel become friends (`Dispatch.friends`)
     /// before they have said anything.
     case member = 14
+    /// Check-in: where I am, for 15 minutes, or "stopped". Only on a locked
+    /// channel I am on (the flock), never Nearby, an open channel or a
+    /// whisper; never held for catch up and never sent over Bluetooth.
+    case checkIn = 15
 
     /// How many links a new packet of this kind may cross. Floor control has
     /// the same reach as audio on purpose: a device that cannot hear a speaker
@@ -72,7 +76,7 @@ public enum PacketKind: UInt8, Sendable, CaseIterable {
     public var initialTTL: UInt8 {
         switch self {
         case .audio, .floor, .presence, .photo: return 2   // at most one relay
-        case .text, .ack, .rollCall, .help, .meetup, .ping, .battery, .find, .member: return 4
+        case .text, .ack, .rollCall, .help, .meetup, .ping, .battery, .find, .member, .checkIn: return 4
         case .catchUp: return 1   // between two phones in range, never relayed
         }
     }
@@ -94,7 +98,7 @@ public enum PacketKind: UInt8, Sendable, CaseIterable {
         case .floor: return 1
         case .audio: return 2
         case .rollCall, .ping, .find: return 3
-        case .text, .ack, .meetup: return 4
+        case .text, .ack, .meetup, .checkIn: return 4
         case .presence, .battery, .catchUp, .member: return 5
         case .photo: return 6
         }

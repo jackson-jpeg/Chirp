@@ -33,6 +33,9 @@ public enum CheckInEvent: Equatable, Sendable {
     case tappedStop
     case tick(Date)
     case enteredBackground
+    /// Location access changed in Settings (or Control Center) while not
+    /// waiting on our own request. Turned off ends a check-in at once.
+    case authorizationChanged(OSLocationAuthorization)
 }
 
 public enum CheckInEffect: Equatable, Sendable {
@@ -72,7 +75,13 @@ public enum CheckIn {
         case (.sharing(let until), .tick(let now)):
             return now >= until ? (.off, [.stopLocationUpdates]) : (state, [])
 
+        case (.sharing, .authorizationChanged(.denied)):
+            return (.off, [.stopLocationUpdates])
+
         case (.askingConsent, .enteredBackground), (.askingConsent, .tappedStop):
+            return (.off, [])
+
+        case (.awaitingSystemPermission, .authorizationChanged(.denied)):
             return (.off, [])
 
         case (.awaitingSystemPermission, .tappedStop):

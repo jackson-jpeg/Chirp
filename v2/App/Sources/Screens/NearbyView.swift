@@ -1,3 +1,4 @@
+import CoreLocation
 import SwiftUI
 
 /// Nearby, built to `v2/design/Nearby.dc.html`: who can hear you and how your
@@ -6,16 +7,29 @@ import SwiftUI
 struct NearbyView: View {
     @Environment(Flock.self) private var flock
     @Environment(Router.self) private var router
+    @Environment(Mesh.self) private var mesh
+    @Environment(Transport.self) private var transport
+    @Environment(CheckInLocation.self) private var checkIn
     @State private var chosen: NearbyEntry?
     @State private var toBlock: NearbyEntry?
-    @State private var askShare = false
-    @State private var sharing = false
+    @State private var noFlock = false
     @State private var askPing = false
     @State private var pinged: Person?
 
     private var entries: [NearbyEntry] {
         flock.others
             .map(NearbyEntry.demo(for:))
+            .map { e in
+                // A friend's check-in: what it says replaces the fixture's.
+                guard let c = mesh.checkIn(of: e.person) else { return e }
+                var e = e
+                e.checkedIn = true
+                e.direction = nil
+                e.distance = checkIn.here.map {
+                    NearbyEntry.metres($0.distance(from: CLLocation(latitude: c.latitude, longitude: c.longitude)))
+                }
+                return e
+            }
     }
 
     var body: some View {
@@ -170,21 +184,46 @@ struct NearbyView: View {
 
     // MARK: Share and Ping
 
+    /// Check-in: off until you tap Share, our own question every time, then
+    /// iOS's (the first time only), 15 minutes, then off by itself.
     private var shareCard: some View {
-        NearbyActionCard(
-            icon: NearbyIcons.pin,
-            title: "Share where you are",
-            subtitle: sharing ? "On · until you stop" : "Off · asks every time",
-            button: sharing ? "Stop" : "Share",
-            filled: true
-        ) {
-            if sharing { sharing = false } else { askShare = true }
+        @Bindable var checkIn = checkIn
+        return TimelineView(.periodic(from: .now, by: 15)) { context in
+            let left = checkIn.minutesLeft(at: context.date)
+            NearbyActionCard(
+                icon: NearbyIcons.pin,
+                title: "Share where you are",
+                subtitle: left.map { "On · \($0) min left" } ?? "Off · asks every time",
+                button: left == nil ? "Share" : "Stop",
+                filled: true
+            ) {
+                if left != nil { checkIn.stop() }
+                else if mesh.canCheckIn { checkIn.tapShare() }
+                else { noFlock = true }
+            }
         }
-        .alert("Share where you are with \(flock.flockName)?", isPresented: $askShare) {
-            Button("Share") { sharing = true }
+        .alert("Share where you are with \(flock.flockName)?", isPresented: $checkIn.askingConsent) {
+            Button("Share for 15 minutes") {
+                // The radio carries it; this tap is the one that needs other phones.
+                transport.start()
+                checkIn.answer(yes: true)
+            }
+            Button("Not now", role: .cancel) { checkIn.answer(yes: false) }
+        } message: {
+            Text("Only your flock sees it. It stops after 15 minutes, when you tap Stop, or when you leave the app. You're asked every time.")
+        }
+        .alert("Location is off for ChirpChirps", isPresented: $checkIn.showDenied) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+            }
             Button("Not now", role: .cancel) {}
         } message: {
-            Text("Your flock can find you until you stop sharing.")
+            Text("To share where you are, allow location While Using the App in Settings. Everything else works without it.")
+        }
+        .alert("Share with a locked flock", isPresented: $noFlock) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Where you are only goes to a locked flock you're in, never to everyone nearby.")
         }
     }
 

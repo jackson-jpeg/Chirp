@@ -67,7 +67,7 @@ targets:
         NSBonjourServices:
         - _chirpchirps._tcp
         - _chirpchirps._udp
-        NSLocationWhenInUseUsageDescription: When you check in, your friends see where you are for 15 minutes. You are asked every time.
+        NSLocationWhenInUseUsageDescription: When you check in, your flock sees where you are for 15 minutes. You are asked every time.
         NSSpeechRecognitionUsageDescription: Captions turn what your friends say into text. They are made on your phone, and your voice is never sent anywhere for them.
         NSSupportsLiveActivities: true
         CFBundleURLTypes:

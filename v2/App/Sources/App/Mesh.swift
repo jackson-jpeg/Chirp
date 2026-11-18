@@ -40,6 +40,10 @@ final class Mesh {
     @ObservationIgnored private var findingPeer: PeerID?
     @ObservationIgnored private var pendingFind: [PeerID: Find.Message] = [:]
 
+    /// Friends' check-ins: where each one is, until they stop or it runs out.
+    /// Memory only.
+    private(set) var checkIns = CheckInBoard()
+
     init(identity: LocalIdentity, flock: Flock, transport: Transport) {
         let you = flock.you
         dispatch = Dispatch(identity: identity, name: you.name,
@@ -68,6 +72,8 @@ final class Mesh {
             }
             if case .find(let m, let from) = e {
                 routeFind(m, from: from)
+            } else if case .checkIn(let m, let from, let channel) = e {
+                checkIns.apply(m, from: from, channel: channel, now: .now)
             } else if flock?.apply(e) != true {
                 onEvent?(e)
             }
@@ -131,6 +137,31 @@ final class Mesh {
         guard let flock else { return }
         let wanted = Set(flock.blockedIDs.compactMap(PeerID.init(hex:)))
         if wanted != dispatch.blocked { dispatch.setBlocked(wanted) }
+        for p in wanted where checkIns.entries[p] != nil { checkIns.forget(p) }
+    }
+
+    // MARK: Check-in
+
+    /// A check-in goes to the locked channels this phone is on (the flock),
+    /// never Nearby or an open channel. With none, there is no one to share with.
+    var canCheckIn: Bool { !dispatch.flockChannels.isEmpty }
+
+    func sendCheckIn(latitude: Double, longitude: Double, accuracy: Double, state: CheckInState) {
+        for channel in dispatch.flockChannels {
+            send { try $0.checkInPosition(latitude: latitude, longitude: longitude, accuracyMetres: accuracy,
+                                          on: channel, state: state, now: .now) }
+        }
+    }
+
+    func sendCheckInStopped() {
+        for channel in dispatch.flockChannels {
+            send { try $0.checkInStopped(on: channel, now: .now) }
+        }
+    }
+
+    /// A friend's check-in still running, by their `Person`.
+    func checkIn(of person: Person) -> CheckInBoard.Entry? {
+        person.peer.flatMap { checkIns.position(of: $0, now: .now) }
     }
 
     @discardableResult
@@ -170,6 +201,7 @@ final class Mesh {
         // friends (ping, battery, Find) before anyone says anything.
         for p in dispatch.memberships(now: .now) { transport.send(p) }
         for gone in dispatch.prune(now: .now) { flock?.left(gone) }
+        if !checkIns.entries.isEmpty { checkIns.expire(now: .now) }
         // Started here, so only while the app is open and the radio is on.
         if let flock {
             liveCard.start(flock: flock.flockName, onLine: dispatch.roster.visible(excluding: dispatch.blocked).count)
