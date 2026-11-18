@@ -117,6 +117,7 @@ struct MakeBirdView: View {
                 .submitLabel(.done)
                 .focused($nameFocused)
                 .onSubmit { nameFocused = false }
+                .accessibilityIdentifier("makeBird.name")
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .frame(minHeight: 46)

@@ -17,10 +17,7 @@ final class KeptBirdhousesTests: XCTestCase {
         name.tap()
         name.typeText("Camp")
         app.buttons["birdhouse.next"].tap()
-        let bird = app.textFields["Name"]
-        XCTAssertTrue(bird.waitForExistence(timeout: 5))
-        bird.tap()
-        bird.typeText("Sam")
+        app.nameBirdIfEmpty("Sam")
         app.buttons["Hop on the line"].tap()
         XCTAssertTrue(app.buttons["talk.birdhouseMenu"].waitForExistence(timeout: 5), "Did not land on Talk")
         return app

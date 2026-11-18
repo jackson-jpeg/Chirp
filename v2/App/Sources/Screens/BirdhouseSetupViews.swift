@@ -62,7 +62,13 @@ struct JoinBirdhouseView: View {
     init(back: @escaping () -> Void) { self.back = back }
 
     @State private var text = ""
-    @State private var refused = false
+    /// The text that was refused, trimmed. The plain line shows while the
+    /// field still holds it, and goes once the person edits. (A flag cleared
+    /// by onChange lost the refusal whenever the field wrote its text back
+    /// after the tap, as on the iOS 27 simulator in run 15.)
+    @State private var refusedText: String?
+    private var refused: Bool { refusedText != nil && refusedText == trimmed }
+    private var trimmed: String { text.trimmingCharacters(in: .whitespacesAndNewlines) }
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -102,12 +108,11 @@ struct JoinBirdhouseView: View {
                 .opacity(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.4 : 1)
                 .accessibilityIdentifier("birdhouse.join")
         }
-        .onChange(of: text) { _, _ in refused = false }
     }
 
     private func join() {
         guard let channel = BirdhouseInvite.parse(text) else {
-            refused = true
+            refusedText = trimmed
             UIAccessibility.post(notification: .announcement, argument: "That is not a ChirpChirps invite.")
             return
         }

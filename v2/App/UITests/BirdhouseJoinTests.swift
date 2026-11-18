@@ -35,9 +35,7 @@ final class BirdhouseJoinTests: XCTestCase {
         app.buttons["birdhouse.next"].tap()
 
         XCTAssertTrue(label(containing: "Starting Camp", in: app).waitForExistence(timeout: 5), "Make your bird does not name the new birdhouse")
-        let bird = app.textFields["Name"]
-        bird.tap()
-        bird.typeText("Sam")
+        app.nameBirdIfEmpty("Sam")
         app.buttons["Hop on the line"].tap()
 
         let menu = app.buttons["talk.birdhouseMenu"]
@@ -71,7 +69,10 @@ final class BirdhouseJoinTests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.tap()
         field.typeText("hello")
-        app.buttons["birdhouse.join"].tap()
+        let join = app.buttons["birdhouse.join"]
+        expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: join)
+        waitForExpectations(timeout: 5)
+        join.tap()
 
         let refused = app.staticTexts["birdhouse.refused"]
         XCTAssertTrue(refused.waitForExistence(timeout: 5), "Junk was not refused")
