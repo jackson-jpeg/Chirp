@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import ChirpCore
 
 /// Start a flock: name it, then make your bird. No design file covers this
@@ -10,6 +11,8 @@ struct NameFlockView: View {
     @Environment(Mesh.self) private var mesh
     @Environment(Flock.self) private var flock
     let back: () -> Void
+
+    init(back: @escaping () -> Void) { self.back = back }
 
     @State private var name = ""
     @FocusState private var focused: Bool
@@ -55,6 +58,8 @@ struct JoinFlockView: View {
     @Environment(Mesh.self) private var mesh
     @Environment(Flock.self) private var flock
     let back: () -> Void
+
+    init(back: @escaping () -> Void) { self.back = back }
 
     @State private var text = ""
     @State private var refused = false

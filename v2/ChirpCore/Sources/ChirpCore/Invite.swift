@@ -31,7 +31,8 @@ public enum FlockInvite {
         c.scheme = "https"
         c.host = host
         c.path = "/join/"
-        c.fragment = fragment(code: channel.inviteCode, name: cleanName(channel.name))
+        // Already percent-encoded: `fragment` would encode the % signs again.
+        c.percentEncodedFragment = fragment(code: channel.inviteCode, name: cleanName(channel.name))
         return c.url
     }
 
