@@ -33,6 +33,12 @@ done
 grep -q '^Sitemap: https://chirpchirps.com/sitemap.xml$' "$site/robots.txt" ||
     { echo "REFUSED: site/robots.txt does not name the sitemap" >&2; exit 1; }
 python3 -I -c 'import sys, xml.dom.minidom as m; m.parse(sys.argv[1])' "$site/sitemap.xml"
+# Claims: the pages people read before they get the app say only what the 2.0 build
+# does. Same list as the store copy (scripts/check_store_copy.py BANNED), plus Whisper
+# (core only: Find uses it, nobody can whisper). privacy/, terms/ and credits/ describe
+# the code and its data, so they are left out; join/ is where invite links land.
+python3 -I "$here/check_site_claims.py" "$site" "$repo/scripts/check_store_copy.py" ||
+    { echo "REFUSED: the site claims what the 2.0 build lacks (above)" >&2; exit 1; }
 # Universal links: the association file is JSON and names the app v2/project.yml builds
 # (team + bundle ID), with /join/ in it. A wrong ID fails silently on the phone.
 aasa="$site/.well-known/apple-app-site-association"
