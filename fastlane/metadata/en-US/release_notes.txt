@@ -1,1 +1,1 @@
-Initial release — push-to-talk voice with live transcription, mesh relay, encrypted channels, offline text and voice messages, photo sharing, and a peer map. No servers, no accounts.
+ChirpChirps 2.0 is rebuilt from the ground up. Start a flock and invite friends with a link, hold to talk, send texts with delivery ticks, read live captions, find a friend nearby, share where you are for 15 minutes (asked every time), and follow your flock from the Lock Screen.

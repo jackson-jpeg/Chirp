@@ -1,22 +1,27 @@
-ChirpChirps turns the iPhones around you into a private walkie-talkie mesh — no cell towers, no Wi-Fi network, no internet, no accounts.
+ChirpChirps is a walkie-talkie for your group when there is no signal. Phones talk straight to each other, so it works on a ski lift, at a festival, on a cruise ship or at a campsite with no bars.
 
-Hold to talk and your voice reaches everyone on your channel over Bluetooth and peer-to-peer Wi-Fi. Out of range of someone? Other ChirpChirps devices relay your message hop by hop across the mesh.
+Start a flock, give it a name, and send the invite link to your friends. Then hold the big button and talk. Everyone in your flock who is close by hears you.
 
 TALK
-• Push-to-talk voice with live on-device transcription of incoming audio
-• Channels keep groups separate — join General or create your own
-• AES-256-GCM encryption between channel members
+• Hold to talk, let go to listen. One person talks at a time, so nobody talks over anyone.
+• Live captions of what your friends say, made on your phone. When it is too loud to listen, switch to captions only.
+• Your own bird, in your colors, with its own chirp when you start talking.
 
-MESSAGES
-• Text chat that works with zero infrastructure
-• Voice messages with store-and-forward delivery — nearby devices carry a message until its recipient is reachable
-• Share photos directly, device to device
+TEXT
+• Texts to your flock, with ticks when they arrive.
+• With your phone locked, texts from your flock still come in over Bluetooth and show as notifications.
 
-MAP
-• See where the peers on your channel are — position is shared only with nearby peers, never uploaded
-• There is no server: everything you say and send stays on the devices involved
+FIND YOUR FRIENDS
+• Nearby shows who can hear you right now.
+• Find shows how far away a friend is, and which way to walk on iPhones that support it.
+• Share where you are with your flock for 15 minutes. It is off until you ask, and it asks every time.
 
-WHO IT'S FOR
-Hiking groups past the last bar of signal, festivals and stadiums with overloaded networks, ski trips, campuses, warehouses, disaster drills — anywhere people are near each other and the internet isn't.
+PRIVATE BY DESIGN
+• No account, no phone number, no servers. Nothing you say goes to the internet.
+• Your flock is locked with its own key. Only people you invite can hear it.
+• Block anyone nearby and they disappear from your app.
 
-ChirpChirps needs at least two devices with the app installed to communicate. Range depends on environment and grows with every device that joins the mesh. ChirpChirps is not a substitute for emergency services.
+GOOD TO KNOW
+• Everyone needs ChirpChirps on their own iPhone, close by. Range depends on walls, crowds and terrain.
+• Talking works with the app open. With the phone locked, texts and alerts still arrive, and the Lock Screen card opens the app so you can reply.
+• ChirpChirps is not a replacement for emergency services.

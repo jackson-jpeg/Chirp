@@ -1,1 +1,1 @@
-walkie talkie,mesh,offline,off grid,bluetooth,push to talk,ptt,no internet,festival,hiking,chat
+walkie talkie,push to talk,offline,no service,bluetooth,ski,festival,cruise,camping,group,intercom
