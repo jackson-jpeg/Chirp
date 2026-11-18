@@ -55,3 +55,23 @@ them on chirpchirps.com; `v2/App/UITests/DemoModeTests.swift` holds the demo cop
 
 No submission until `python3 /root/ios-toolkit/lib/app_review_check.py /root/Chirp/v2`
 passes on `docs/app-review/<version>.md` (HARD RULE in `docs/NEXT.md`).
+
+## Xcode tools over MCP (2026-11-18, the lead)
+
+Xcode 27 serves its own tools to agents: `xcrun mcpbridge`, wired user-wide as
+the MCP server `xcode` (`ssh macbook-tunnel xcrun mcpbridge`; the older
+xcodebuildmcp is kept as `xcodebuildmcp`). It can build, run all or some tests,
+render SwiftUI previews, run on a simulator or a device, read build logs and
+crash and performance reports from Xcode Organizer, and edit the project
+(targets, build settings, entitlements, Info.plist, string catalogs).
+
+- It works only on a project that is open in Xcode: call `XcodeOpenWorkspace`
+  with the Mac path (`/Users/jackson/<repo>/...xcodeproj`) first. The first
+  open by a new agent asks Jackson to approve it in Xcode's MCP menu.
+- The Mac rules still hold: run tests and anything that boots a simulator
+  under `mac-sim` (`hub-lock mac-sim -- ...`, or use `ios test`/`ios run`,
+  which take it), only on the four shared simulators ("Shared iPhone Pro Max
+  A", "Shared iPhone Pro Max B", "Shared iPhone Duo", "Shared iPad"). Never
+  create a simulator. Xcode Cloud first for builds and tests when it is set up.
+- The VPS stays the source of truth: edit files here, never through Xcode's
+  write tools; the Mac copy is replaced on every sync.
