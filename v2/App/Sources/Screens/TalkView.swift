@@ -192,7 +192,7 @@ struct TalkView: View {
                 .frame(minHeight: 44)
             }
             .buttonStyle(.plain)
-            .accessibilityHint(mesh.birdhouseChannel == nil ? "Start or join a birdhouse" : "Invite friends or leave the birdhouse")
+            .accessibilityHint(mesh.birdhouseChannel == nil ? "Start or join a birdhouse" : (mesh.otherBirdhouses.isEmpty ? "Invite friends or leave the birdhouse" : "Invite friends, switch birdhouses or leave"))
             .accessibilityIdentifier("talk.birdhouseMenu")
             .alert("Leave \(birdhouse.displayName)?", isPresented: $confirmLeave) {
                 Button("Leave", role: .destructive) { router.leaveBirdhouse(mesh: mesh, birdhouse: birdhouse) }
@@ -247,12 +247,38 @@ struct TalkView: View {
                     Label(store.unlocked ? "Big Birdhouse: yours" : "Big Birdhouse", systemImage: "bird")
                 }
             }
+            keptBirdhouses
+            if mesh.bigBirdhouse {
+                // Big Birdhouse keeps this one when you start or join another.
+                Button { router.birdhouseSetup = .start } label: { Label("Start another birdhouse", systemImage: "plus") }
+                    .accessibilityIdentifier("talk.startAnother")
+                Button { router.birdhouseSetup = .join } label: { Label("Join another birdhouse", systemImage: "link") }
+            }
             Button(role: .destructive) { confirmLeave = true } label: {
                 Label("Leave \(channel.name)", systemImage: "rectangle.portrait.and.arrow.right")
             }
         } else {
+            keptBirdhouses
             Button { router.birdhouseSetup = .start } label: { Label("Start a birdhouse", systemImage: "plus") }
             Button { router.birdhouseSetup = .join } label: { Label("Join a birdhouse", systemImage: "link") }
+        }
+    }
+
+    /// Big Birdhouse keeps the birdhouses you were in: switch back to one
+    /// (ChirpCore `SavedBirdhouses`). Nothing shows without it.
+    @ViewBuilder private var keptBirdhouses: some View {
+        let kept = mesh.otherBirdhouses
+        if !kept.isEmpty {
+            Section("Your other birdhouses") {
+                ForEach(kept, id: \.id) { other in
+                    Button {
+                        router.switchBirdhouse(to: other.id, mesh: mesh, birdhouse: birdhouse)
+                    } label: {
+                        Label("Switch to \(other.name)", systemImage: "arrow.left.arrow.right")
+                    }
+                    .accessibilityIdentifier("talk.switchBirdhouse")
+                }
+            }
         }
     }
 

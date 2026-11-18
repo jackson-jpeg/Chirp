@@ -25,7 +25,8 @@ private final class Alerts {
             let p = Packet(kind: kind, origin: peer, epoch: 1, sequence: 0, channel: .nearby, payload: Data([1]))
             let expected: Bool
             switch kind {
-            case .audio, .photo, .catchUp, .battery, .find: expected = false
+            // A check-in (a position) never goes over Bluetooth (CheckInShare).
+            case .audio, .photo, .catchUp, .battery, .find, .checkIn: expected = false
             default: expected = true
             }
             #expect(Bluetooth.carries(p) == expected, "\(kind)")

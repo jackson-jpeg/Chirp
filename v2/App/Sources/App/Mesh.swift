@@ -51,10 +51,18 @@ final class Mesh {
     /// The last ping from a friend, for Talk's "Maya pinged you" line.
     private(set) var lastPing: (from: PeerID, at: Date)?
 
-    /// Your birdhouse: the locked channel you started or joined by invite (one at
-    /// a time in 2.0). Its key is kept in the Keychain, as the invite link.
-    private(set) var birdhouseChannel: Channel?
+    /// Your birdhouses: the one Talk is on and, with Big Birdhouse, others kept
+    /// to switch back to (ChirpCore `SavedBirdhouses`). Only the current one is
+    /// joined on the radio. Their keys are kept in the Keychain, as invite links.
+    private(set) var saved = SavedBirdhouses()
     @ObservationIgnored private let birdhouseStore: BirdhouseStore?
+    /// Big Birdhouse is owned (kept in step with `Store.unlocked` by ChirpApp).
+    var bigBirdhouse = false
+
+    /// Your birdhouse: the locked channel you started or joined by invite.
+    var birdhouseChannel: Channel? { saved.current }
+    /// Kept birdhouses Talk's menu offers to switch to (none without Big Birdhouse).
+    var otherBirdhouses: [Channel] { saved.switchable(unlocked: bigBirdhouse) }
 
     /// The channel Talk and Chat are on: the demo birdhouse while the demo runs,
     /// else your birdhouse, else Nearby.
@@ -65,8 +73,10 @@ final class Mesh {
 
     /// You started your birdhouse rather than joined it. Only the starter is
     /// ever asked about Big Birdhouse (joiners never see a price).
-    private(set) var startedBirdhouse = false
-    private static let startedKey = "startedBirdhouseID"
+    var startedBirdhouse: Bool { saved.startedCurrent }
+    /// Builds up to 202611172156 kept one started ID; now a list.
+    private static let legacyStartedKey = "startedBirdhouseID"
+    private static let startedKey = "startedBirdhouseIDs"
 
     /// Birds in your birdhouse as this phone sees it: you plus everyone proved on
     /// it, never anyone blocked (ChirpCore `BigBirdhouse`).
@@ -75,19 +85,45 @@ final class Mesh {
         return BigBirdhouse.birds(members: (dispatch.members[id] ?? []).subtracting(dispatch.blocked).count)
     }
 
-    /// Starts using `channel` as your birdhouse (nil leaves it), and keeps it.
+    /// What starting or joining `channel` does now (free asks before leaving).
+    func joining(_ channel: Channel) -> SavedBirdhouses.Join { saved.join(channel, unlocked: bigBirdhouse) }
+
+    /// Starts using `channel` as your birdhouse (nil leaves the current one),
+    /// and keeps it. With Big Birdhouse the one you were on is kept too.
     func setBirdhouse(_ channel: Channel?, started: Bool = false) {
-        if let old = birdhouseChannel, old.id != channel?.id { dispatch.leave(old.id) }
-        birdhouseChannel = channel
-        if let channel { dispatch.join(channel) }
-        birdhouseStore?.save(channel)
-        startedBirdhouse = channel != nil && started
-        guard birdhouseStore != nil else { return }
-        if let channel, started {
-            UserDefaults.standard.set(channel.id.uuid.uuidString, forKey: Self.startedKey)
+        let old = saved
+        if let channel {
+            saved.use(channel, started: started, unlocked: bigBirdhouse)
         } else {
-            UserDefaults.standard.removeObject(forKey: Self.startedKey)
+            saved.leaveCurrent()
         }
+        applyBirdhouse(from: old)
+    }
+
+    /// Talk's menu: back onto a kept birdhouse.
+    func switchBirdhouse(to id: ChannelID) {
+        let old = saved
+        guard saved.switchTo(id, unlocked: bigBirdhouse) != nil else { return }
+        applyBirdhouse(from: old)
+    }
+
+    /// Joins the current birdhouse on the radio (leaving the one before) and
+    /// keeps the list.
+    private func applyBirdhouse(from old: SavedBirdhouses) {
+        if let was = old.current, was.id != saved.current?.id { dispatch.leave(was.id) }
+        if let now = saved.current, now.id != old.current?.id { dispatch.join(now) }
+        guard let birdhouseStore else { return }
+        birdhouseStore.save(saved.current)
+        birdhouseStore.saveOthers(saved.others)
+        UserDefaults.standard.removeObject(forKey: Self.legacyStartedKey)
+        UserDefaults.standard.set(saved.started.map(\.uuid.uuidString).sorted(), forKey: Self.startedKey)
+    }
+
+    private static func loadStarted() -> Set<ChannelID> {
+        let d = UserDefaults.standard
+        var ids = d.stringArray(forKey: startedKey) ?? []
+        if let one = d.string(forKey: legacyStartedKey) { ids.append(one) }
+        return Set(ids.compactMap(UUID.init(uuidString:)).map(ChannelID.init))
     }
 
     init(identity: LocalIdentity, birdhouse: Birdhouse, transport: Transport, birdhouseStore: BirdhouseStore? = nil) {
@@ -97,10 +133,10 @@ final class Mesh {
         self.transport = transport
         self.birdhouse = birdhouse
         self.birdhouseStore = birdhouseStore
-        if let saved = birdhouseStore?.load() {
-            birdhouseChannel = saved
-            dispatch.join(saved)
-            startedBirdhouse = UserDefaults.standard.string(forKey: Self.startedKey) == saved.id.uuid.uuidString
+        if let birdhouseStore {
+            saved = SavedBirdhouses(current: birdhouseStore.load(), others: birdhouseStore.loadOthers(),
+                                    started: Self.loadStarted())
+            if let current = saved.current { dispatch.join(current) }
         }
         transport.onPacket = { [weak self] packet, link in self?.receive(packet, from: link) }
         syncBlocked()

@@ -191,5 +191,10 @@ private struct SetupField: View {
                 .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(focused.wrappedValue ? Theme.solid : Theme.hairline, lineWidth: 2))
         }
+        // A tap anywhere on the label or the box's padding focuses the field
+        // (the TextField alone answers only on its text line; run 13's UI
+        // tests tapped the middle of the block and typed into nothing).
+        .contentShape(Rectangle())
+        .onTapGesture { focused.wrappedValue = true }
     }
 }

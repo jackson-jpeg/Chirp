@@ -35,6 +35,7 @@ struct BigBirdhouseView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     line("person.3", "Birdhouses you start grow past \(BigBirdhouse.freeBirds) birds")
                     line("paintpalette", "Every bird color and every chirp")
+                    line("square.stack", "Keep more than one birdhouse and switch between them")
                     line("gift", "Friends who join your birdhouse never pay")
                 }
                 .padding(16)

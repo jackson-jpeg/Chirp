@@ -101,6 +101,10 @@ struct ChirpApp: App {
             if p != birdhouse.you.palette.index { birdhouse.you.palette = BirdPalette.all[p] }
             birdhouse.you.chirp = BigBirdhouse.allowedChirp(birdhouse.you.chirp, unlocked: false)
         }
+        // Kept birdhouses are offered only while Big Birdhouse is owned.
+        .onChange(of: store.unlocked, initial: true) { _, owned in
+            mesh.bigBirdhouse = owned
+        }
         .onChange(of: mesh.canCheckIn) { _, can in
             if !can { checkIn.stop() }
         }
@@ -189,13 +193,21 @@ final class Router {
     /// would leave the birdhouse you are in.
     @MainActor
     func join(_ channel: Channel, mesh: Mesh, birdhouse: Birdhouse) {
-        if let current = mesh.birdhouseChannel {
-            if current.id == channel.id { goToTalk(); return }
-            pendingInvite = channel
-            return
+        switch mesh.joining(channel) {
+        case .alreadyIn: goToTalk()
+        case .askToLeave: pendingInvite = channel
+        case .use:
+            startedBirdhouse = false
+            use(channel, mesh: mesh, birdhouse: birdhouse)
         }
-        startedBirdhouse = false
-        use(channel, mesh: mesh, birdhouse: birdhouse)
+    }
+
+    /// Talk's birdhouse menu, with Big Birdhouse: back onto a kept birdhouse.
+    @MainActor
+    func switchBirdhouse(to id: ChannelID, mesh: Mesh, birdhouse: Birdhouse) {
+        mesh.switchBirdhouse(to: id)
+        if let now = mesh.birdhouseChannel, now.id == id { birdhouse.birdhouseName = now.name }
+        goToTalk()
     }
 
     /// The answer to "Leave X and join Y?".
