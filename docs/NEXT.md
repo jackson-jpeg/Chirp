@@ -204,7 +204,11 @@ it as soon as a simulator exists, and correct the core if it disproves anything.
 - [ ] 3) v2.0 scope on that core: hold to talk to friends nearby, channels, texts with delivery ticks, who is nearby, block a person, location off by default and asked every time, demo mode for App Review; answers 5.1.1(iv), 2.1(a), 5.1.2(i) and 2.5.4
 - [x] 4) Design directions: skipped by the mandate update; the lead's three routes (Dawn Chorus, Night Wire, Trail Signal) are with Jackson
 
-## Needs Jackson
+## Future ideas (Jackson's, jotted down; not queued, not for 2.0)
+
+Plain notes, no checkboxes, so the foreman never sends them. Move one into the Queue only when Jackson says to build it.
+
+- Unlockable birds for the pro version (Jackson via Sessions, 2026-11-18, word for word): "unlockable birds for pro version like flamingo, pelican, eagle, kiwi, any publicly available/copyright expired famous birds, etc". Session's notes for when it is picked up: each would be a new bird shape drawn in Dawn Chorus's style (today every bird shares one body, `BirdPaths.swift`, recolored by `BirdPalette`), so a species is new paths plus the per-person choice in the signed presence (ChirpCore `Bird.swift`, a fixed index set). Natural home is Big Birdhouse's extras (store copy, sheet, review notes, `check_store_copy.py` only once built). "Famous" birds: check each one's copyright and trademark separately (a character can be in the public domain in one form and trademarked in another); real species drawn from scratch carry no such question
 
 - [x] Big Birdhouse price: SET 2026-11-18 ~04:10 UTC on Jackson's Inbox approval (6dc96a08): price schedule for 6836146019, base territory USA, $4.99 (proceeds 4.24), from today; other territories by Apple's equalization. State still MISSING_METADATA: the review screenshot, from the real sheet on a shared simulator (Queue). Was: Jackson wrote "$4.99 sounds good"; one-tap Inbox `chirp-bigbirdhouse-price` (Approve = set $4.99 by API on 6836146019). Then the review screenshot from the real sheet. Old note: Big Flock price in App Store Connect (Jackson to confirm $4.99; created by API 2026-11-18 as id 6836146019, non-consumable, en-US name and description, review note, no price, no review screenshot yet: take it from the real sheet once `v2/big-flock` builds and runs). Was: non-consumable `com.jacksonmsanger.chirpchirp.bigflock`, name "Big Flock", his price ($4.99 suggested), attached to 2.0.0. Inbox `chirp-2-0-bigflock-product`
 
