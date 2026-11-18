@@ -11,6 +11,10 @@ struct TalkView: View {
     @Environment(Transport.self) private var transport
     @Environment(Mesh.self) private var mesh
     @Environment(Voice.self) private var voice
+    @Environment(Store.self) private var store
+    /// The flock size at which the starter last opened Big Flock's card: it
+    /// comes back only when the flock grows again.
+    @AppStorage("bigFlockCardSeenAt") private var bigFlockCardSeenAt = 0
     @Environment(\.openURL) private var openURL
 
     @State private var holding = false
@@ -127,6 +131,15 @@ struct TalkView: View {
                                ink: Theme.okText, id: "talk.pingAlert") {}
                 }
             }
+        } else if !mesh.inDemo, BigFlock.showsCard(birds: mesh.flockBirds, startedByMe: mesh.startedFlock,
+                                                   unlocked: store.unlocked,
+                                                   dismissedAt: bigFlockCardSeenAt == 0 ? nil : bigFlockCardSeenAt) {
+            let n = mesh.flockBirds
+            alertStrip(text: "\(flock.displayName) has \(n) birds. Big Flock lets it grow.", action: "See",
+                       fill: Theme.sunGlow, ink: Theme.turnText, id: "talk.bigFlockCard") {
+                bigFlockCardSeenAt = n
+                router.bigFlock = .grew(birds: n)
+            }
         }
     }
 
@@ -191,7 +204,7 @@ struct TalkView: View {
             Spacer(minLength: 12)
 
             Button {
-                // TODO: open You and settings.
+                router.editingBird = true
             } label: {
                 BirdAvatar(palette: flock.you.palette, size: 44)
             }
@@ -216,10 +229,23 @@ struct TalkView: View {
         if mesh.inDemo {
             Text("Pretend flock. Leave the demo to use your own.")
         } else if let channel = mesh.flockChannel, let link = FlockInvite.link(for: channel) {
-            ShareLink(item: link,
-                      subject: Text("Join \(channel.name) on ChirpChirps"),
-                      message: Text("Join my flock on ChirpChirps, so we can talk with no signal. Open this link on your iPhone.")) {
-                Label("Invite friends", systemImage: "person.badge.plus")
+            // A full free flock you started: Big Flock is offered first. Joiners
+            // and owners always share (ChirpCore `BigFlock.invite`).
+            if BigFlock.invite(birds: mesh.flockBirds, startedByMe: mesh.startedFlock, unlocked: store.unlocked) == .offerBigFlock {
+                Button { router.bigFlock = .invite } label: {
+                    Label("Invite friends", systemImage: "person.badge.plus")
+                }
+            } else {
+                ShareLink(item: link,
+                          subject: Text("Join \(channel.name) on ChirpChirps"),
+                          message: Text("Join my flock on ChirpChirps, so we can talk with no signal. Open this link on your iPhone.")) {
+                    Label("Invite friends", systemImage: "person.badge.plus")
+                }
+            }
+            if mesh.startedFlock || store.unlocked {
+                Button { router.bigFlock = .menu } label: {
+                    Label(store.unlocked ? "Big Flock: yours" : "Big Flock", systemImage: "bird")
+                }
             }
             Button(role: .destructive) { confirmLeave = true } label: {
                 Label("Leave \(channel.name)", systemImage: "rectangle.portrait.and.arrow.right")

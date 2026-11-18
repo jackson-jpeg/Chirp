@@ -63,12 +63,31 @@ final class Mesh {
         return flockChannel?.id ?? .nearby
     }
 
+    /// You started your flock rather than joined it. Only the starter is
+    /// ever asked about Big Flock (joiners never see a price).
+    private(set) var startedFlock = false
+    private static let startedKey = "startedFlockID"
+
+    /// Birds in your flock as this phone sees it: you plus everyone proved on
+    /// it, never anyone blocked (ChirpCore `BigFlock`).
+    var flockBirds: Int {
+        guard let id = flockChannel?.id else { return 1 }
+        return BigFlock.birds(members: (dispatch.members[id] ?? []).subtracting(dispatch.blocked).count)
+    }
+
     /// Starts using `channel` as your flock (nil leaves it), and keeps it.
-    func setFlock(_ channel: Channel?) {
+    func setFlock(_ channel: Channel?, started: Bool = false) {
         if let old = flockChannel, old.id != channel?.id { dispatch.leave(old.id) }
         flockChannel = channel
         if let channel { dispatch.join(channel) }
         flockStore?.save(channel)
+        startedFlock = channel != nil && started
+        guard flockStore != nil else { return }
+        if let channel, started {
+            UserDefaults.standard.set(channel.id.uuid.uuidString, forKey: Self.startedKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: Self.startedKey)
+        }
     }
 
     init(identity: LocalIdentity, flock: Flock, transport: Transport, flockStore: FlockStore? = nil) {
@@ -81,6 +100,7 @@ final class Mesh {
         if let saved = flockStore?.load() {
             flockChannel = saved
             dispatch.join(saved)
+            startedFlock = UserDefaults.standard.string(forKey: Self.startedKey) == saved.id.uuid.uuidString
         }
         transport.onPacket = { [weak self] packet, link in self?.receive(packet, from: link) }
         syncBlocked()

@@ -2,10 +2,11 @@ import Observation
 import StoreKit
 import UIKit
 
-/// The one purchase: Big Flock, bought once, restorable (Jackson picked option A,
-/// Inbox chirp-2-0-revenue; docs/proposals/revenue-2.0.md). What it unlocks is
-/// settled in Inbox chirp-2-0-revenue-shape; nothing reads `unlocked` until then.
-/// Joiners never pay, and relaying for others is free for everyone.
+/// The one purchase: Big Flock, bought once, restorable (Jackson: option A,
+/// Inbox chirp-2-0-revenue, then "softer", chirp-2-0-revenue-shape;
+/// docs/proposals/revenue-2.0.md). What it adds is ChirpCore `BigFlock`:
+/// flocks you start past 4 birds, and every bird color and chirp. Joiners
+/// never pay, and carrying others' messages is free for everyone.
 ///
 /// Ported from Crease Cracker's Store (the studio's shape for one unlock).
 @MainActor
@@ -29,6 +30,8 @@ final class Store {
     private(set) var product: Product?
     private(set) var owns = false
     private(set) var status: Status = .idle
+    /// The App Store has answered at least once (owned or not).
+    private(set) var checked = false
     /// `-bigFlock` pretends the purchase is made (UI tests and screenshots).
     @ObservationIgnored var forceOwned = ProcessInfo.processInfo.arguments.contains("-bigFlock")
 
@@ -123,5 +126,6 @@ final class Store {
             found = true
         }
         owns = found
+        checked = true
     }
 }

@@ -4,9 +4,17 @@ import SwiftUI
 /// Make your bird (`v2/design/MakeBird`): your bird on the wire in the colors
 /// you pick, your name, your feathers and your chirp, then onto the line.
 struct MakeBirdView: View {
+    /// Opened again from Talk's "You and settings" (a sheet): "Done" instead
+    /// of "Hop on the line".
+    var editing = false
     @Environment(Flock.self) private var flock
     @Environment(Router.self) private var router
+    @Environment(Store.self) private var store
+    @Environment(\.dismiss) private var dismiss
     @FocusState private var nameFocused: Bool
+    /// Its own sheet: Make your bird may itself be a sheet (editing), and one
+    /// view cannot present two.
+    @State private var bigFlockSheet: BigFlockReason?
 
     private static let chirps = ChirpSound.names
     private static let maxNameLength = 24
@@ -41,7 +49,7 @@ struct MakeBirdView: View {
         .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            Button("Hop on the line", action: hop)
+            Button(editing ? "Done" : "Hop on the line", action: hop)
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(!canHop)
                 .opacity(canHop ? 1 : 0.4)
@@ -52,6 +60,9 @@ struct MakeBirdView: View {
                 .background(Theme.morning.ignoresSafeArea())
         }
         .screenBackground()
+        .sheet(item: $bigFlockSheet) { reason in
+            BigFlockView(reason: reason).presentationDetents([.medium, .large])
+        }
         .onChange(of: flock.you.name) { _, new in
             if new.count > Self.maxNameLength { flock.you.name = String(new.prefix(Self.maxNameLength)) }
         }
@@ -72,7 +83,7 @@ struct MakeBirdView: View {
     }
 
     private var eyebrow: String {
-        if flock.flockName.isEmpty { return "Your bird" }
+        if editing || flock.flockName.isEmpty { return "Your bird" }
         return router.startedFlock ? "Starting \(flock.flockName)" : "Joining \(flock.flockName)"
     }
 
@@ -129,7 +140,10 @@ struct MakeBirdView: View {
 
     private func swatch(_ palette: BirdPalette) -> some View {
         let selected = flock.you.palette == palette
+        // Big Flock colors show with a lock and open its sheet (ChirpCore `BigFlock`).
+        let locked = !store.unlocked && !BigFlock.paletteIsFree(palette.index)
         return Button {
+            if locked { bigFlockSheet = .bird; return }
             withAnimation(.snappy(duration: 0.2)) { flock.you.palette = palette }
         } label: {
             Circle()
@@ -143,10 +157,18 @@ struct MakeBirdView: View {
                     }
                     .opacity(selected ? 1 : 0)
                 }
+                .overlay {
+                    if locked {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 13, weight: .black))
+                            .foregroundStyle(.white)
+                            .shadow(color: .black.opacity(0.35), radius: 1)
+                    }
+                }
                 .contentShape(Circle().inset(by: -5))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(palette.name)
+        .accessibilityLabel(locked ? "\(palette.name), comes with Big Flock" : palette.name)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
@@ -164,12 +186,15 @@ struct MakeBirdView: View {
 
     @ViewBuilder private var chirpPills: some View {
         ForEach(Self.chirps.indices, id: \.self) { i in
-            ChoicePill(title: Self.chirps[i], systemImage: "play.fill", selected: flock.you.chirp == i) {
-                flock.you.chirp = i
+            let locked = !store.unlocked && !BigFlock.chirpIsFree(i)
+            ChoicePill(title: Self.chirps[i], systemImage: locked ? "lock.fill" : "play.fill", selected: flock.you.chirp == i) {
+                // A locked chirp still plays, so you hear what Big Flock adds.
                 ChirpPlayer.play(i)
+                if locked { bigFlockSheet = .bird; return }
+                flock.you.chirp = i
             }
             .fixedSize(horizontal: false, vertical: true)
-            .accessibilityHint("Plays this chirp")
+            .accessibilityHint(locked ? "Plays this chirp. It comes with Big Flock" : "Plays this chirp")
         }
     }
 
@@ -178,6 +203,7 @@ struct MakeBirdView: View {
     private func hop() {
         guard canHop else { return }
         flock.you.name = trimmedName
+        if editing { dismiss(); return }
         UserDefaults.standard.set(true, forKey: "onboarded")
         router.onboarded = true
     }
