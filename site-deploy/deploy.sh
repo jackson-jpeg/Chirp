@@ -22,8 +22,10 @@ if grep -rlnE 'apps\.apple\.com|itunes\.apple\.com' --include=*.html "$site"; th
     echo "REFUSED: App Store link in the pages above (nothing is on sale yet)" >&2; exit 1
 fi
 # Every page folder (<name>/index.html) is in the sitemap, and robots.txt points at it.
+# join/ is the exception: where invite links land, noindex, never in the sitemap.
 for page in "$site"/*/index.html; do
     name="$(basename "$(dirname "$page")")"
+    [[ "$name" == join ]] && { grep -q 'name="robots" content="noindex"' "$page" || { echo "REFUSED: /join/ must be noindex" >&2; exit 1; }; continue; }
     grep -q "<loc>https://chirpchirps.com/$name/</loc>" "$site/sitemap.xml" ||
         { echo "REFUSED: /$name/ is missing from site/sitemap.xml" >&2; exit 1; }
 done

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Where a flock invite link lands when the app does not open it. The flock's key is
+         after the # in the link: browsers never send that part to this server, and this page
+         has no analytics script, so nothing here can send it on either. It stays on the phone.
+         Left out of the sitemap on purpose (noindex), like thanks.html. -->
+    <meta name="robots" content="noindex">
+    <meta name="referrer" content="no-referrer">
+    <title>Join a flock | ChirpChirps</title>
+    <meta name="description" content="A friend invited you to their flock on ChirpChirps.">
+    <meta name="theme-color" content="#EAF6FC" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0D182B" media="(prefers-color-scheme: dark)">
+    <link rel="stylesheet" href="/fonts/fonts.css?v=6">
+    <link rel="stylesheet" href="/brand.css?v=6">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+</head>
+<body>
+
+<nav class="nav">
+    <div class="nav-in">
+        <a href="/" class="nav-brand"><span class="pip"></span>ChirpChirps</a>
+    </div>
+</nav>
+
+<main class="prose">
+        <h1 id="title">You're invited to a flock</h1>
+        <p class="subtitle">A friend wants you on their flock in ChirpChirps, so you can talk with no signal.</p>
+        <div class="card">
+        <h3>Have the app?</h3>
+        <p><a id="open" class="btn btn-primary" href="/">Open in ChirpChirps</a></p>
+        <p>If that does nothing, copy this page's address, open ChirpChirps, choose Join a flock and paste it.</p>
+        </div>
+        <div class="card">
+        <h3>No app yet?</h3>
+        <p>ChirpChirps is coming to iPhone. <a href="/#notify">Get one email when it is out</a>, then come back to this link.</p>
+        </div>
+        <p id="broken" hidden>This link looks incomplete. Ask your friend to send it again.</p>
+        <p class="small-print">Keep this link to the people you mean to invite: anyone with it can hear the flock.</p>
+</main>
+
+<footer class="foot">
+    <div class="foot-in">
+        <div class="foot-links">
+            <a href="/">Home</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/support">Support</a>
+        </div>
+        <small>&copy; 2026 ChirpChirps</small>
+    </div>
+</footer>
+
+<script>
+(function () {
+    var hash = location.hash.slice(1);
+    var params = new URLSearchParams(hash);
+    var code = params.get("k") || "";
+    if (!/^[A-Za-z0-9_-]{43}$/.test(code)) {
+        document.getElementById("broken").hidden = false;
+        document.getElementById("open").hidden = true;
+        return;
+    }
+    var name = (params.get("n") || "").trim().slice(0, 32);
+    if (name) document.getElementById("title").textContent = "You're invited to " + name;
+    document.getElementById("open").href = "chirpchirps://join#" + hash;
+})();
+</script>
+</body>
+</html>

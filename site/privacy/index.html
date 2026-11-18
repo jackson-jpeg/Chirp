@@ -42,7 +42,8 @@
         <ul>
         <li><strong>Your name, your bird and your public keys</strong> are sent every few seconds to every phone in range running ChirpChirps, so they can show you on their Nearby screen and check that messages from you are really yours. Your private keys never leave your phone.</li>
         <li><strong>The Nearby line is open.</strong> Talk and texts on it can be heard and read by anyone in range running ChirpChirps, like a walkie-talkie.</li>
-        <li><strong>Locked flocks and whispers are sealed.</strong> A flock locked with a code is encrypted with AES-256-GCM, and only phones with the code can hear or read it. A whisper is encrypted for its one recipient. Phones that pass a sealed message along cannot open it.</li>
+        <li><strong>Locked flocks and whispers are sealed.</strong> A locked flock is encrypted with AES-256-GCM, and only phones that joined with its invite link can hear or read it. A whisper is encrypted for its one recipient. Phones that pass a sealed message along cannot open it.</li>
+        <li><strong>An invite link holds your flock's key.</strong> Anyone who has the link can hear the flock, so send it only to the people you mean to invite. The key sits after the "#" in the link, which browsers never send to our server, and the page it opens has no analytics, so the key goes only where you send it.</li>
         <li><strong>Friends' phones hold messages for you.</strong> If you are out of range, phones in your flock keep the texts, roll calls, meet-ups and help calls you missed (still sealed, for at most 24 hours) and hand them over when you are back.</li>
         <li><strong>Battery level and Find go to friends only</strong>: people in a locked flock with you, never strangers nearby.</li>
         </ul>
