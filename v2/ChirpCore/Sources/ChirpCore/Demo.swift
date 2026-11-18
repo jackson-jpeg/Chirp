@@ -118,10 +118,18 @@ public struct DemoFlock: Sendable {
             let spot = Meetup.spot(id: UUID(), place: place, latitude: nil, longitude: nil, at: now.addingTimeInterval(minutes * 60))
             out.append(try? d.make(.meetup, on: ch, body: spot.encode(), now: now))
         case .rollCall:
-            out.append(try? d.make(.rollCall, on: ch, body: RollCall.ask(id: UUID(), at: now).encode(), now: now))
+            let id = UUID()
+            out.append(try? d.make(.rollCall, on: ch, body: RollCall.ask(id: id, at: now).encode(), now: now))
+            // Maya answers at once; Priya is out of range, as on the design's screen.
+            if line.who != 0 {
+                out.append(try? people[0].make(.rollCall, on: ch, body: RollCall.answer(id: id, ok: true).encode(), now: now))
+            }
         }
         return out.compactMap { $0 }
     }
+
+    /// Who answers a roll call the real phone starts: everyone but Priya.
+    static let answersRollCall = [0, 1]
 
     /// A packet from the real phone. Each pretend friend takes it as from the
     /// air; what they answer (acks for its texts) goes back to the phone.
@@ -130,6 +138,11 @@ public struct DemoFlock: Sendable {
         for i in people.indices {
             let o = people[i].receive(packet, from: packet.origin, now: now)
             out += o.broadcast
+            for case .rollCall(.ask(let id, _), _, let channel) in o.events where Self.answersRollCall.contains(i) {
+                if let a = try? people[i].make(.rollCall, on: channel, body: RollCall.answer(id: id, ok: true).encode(), now: now) {
+                    out.append(a)
+                }
+            }
         }
         return out
     }

@@ -15,6 +15,8 @@ FIND YOUR FRIENDS
 • Nearby shows who can hear you right now.
 • Find shows how far away a friend is, and which way to walk on iPhones that support it.
 • Share where you are with your flock for 15 minutes. It is off until you ask, and it asks every time.
+• Roll call asks everyone in your flock if they are OK, and anyone can say "I need help".
+• Ping a friend and their phone chirps, so you can find each other in a crowd.
 
 PRIVATE BY DESIGN
 • No account, no phone number, no servers. Nothing you say goes to the internet.

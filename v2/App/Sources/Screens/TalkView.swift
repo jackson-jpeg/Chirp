@@ -50,6 +50,7 @@ struct TalkView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     if mesh.inDemo { demoBanner }
+                    if !router.screenshotRun || mesh.inDemo { flockAlert }
                     header
                     statusRow
                         .padding(.top, 2)
@@ -106,6 +107,57 @@ struct TalkView: View {
         .accessibilityIdentifier("talk.demoBanner")
     }
 
+    // MARK: Flock alert
+
+    /// One line under the header, most urgent first: someone asked for help,
+    /// a roll call is waiting on you, or a friend just pinged you.
+    @ViewBuilder private var flockAlert: some View {
+        let me = mesh.dispatch.me
+        let board = mesh.rollCalls
+        if let first = board.needingHelp(except: me).first {
+            alertStrip(text: "\(personName(first)) needs help", action: "See", fill: Theme.dangerSoft,
+                       ink: Theme.danger, id: "talk.helpAlert") { router.overlay = .rollCall }
+        } else if board.waitingOn(me), let ask = board.ask {
+            alertStrip(text: "\(personName(ask.from)) asked: everyone OK?", action: "Answer", fill: Theme.sunGlow,
+                       ink: Theme.turnText, id: "talk.rollCallAlert") { router.overlay = .rollCall }
+        } else if let ping = mesh.lastPing {
+            TimelineView(.periodic(from: .now, by: 5)) { context in
+                if context.date.timeIntervalSince(ping.at) < 20 {
+                    alertStrip(text: "\(personName(ping.from)) pinged you", action: nil, fill: Theme.signalSoft,
+                               ink: Theme.okText, id: "talk.pingAlert") {}
+                }
+            }
+        }
+    }
+
+    private func personName(_ peer: PeerID) -> String {
+        flock.others.first { $0.peer == peer }?.name ?? mesh.dispatch.roster.person(peer)?.name ?? "Someone"
+    }
+
+    private func alertStrip(text: String, action: String?, fill: Color, ink: Color, id: String,
+                            perform: @escaping () -> Void) -> some View {
+        HStack(spacing: 8) {
+            Text(text)
+                .font(.nunito(14, .black, relativeTo: .subheadline))
+                .foregroundStyle(ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if let action {
+                Button(action, action: perform)
+                    .font(.nunito(14, .black, relativeTo: .subheadline))
+                    .foregroundStyle(Theme.ink)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                    .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 20)
+        .frame(minHeight: 44)
+        .background(fill)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(id)
+    }
+
     // MARK: Header
 
     private var header: some View {
@@ -156,6 +208,11 @@ struct TalkView: View {
     /// (the link carries the flock's key) and leave; with no flock, start
     /// or join one. Nothing to change while the demo runs.
     @ViewBuilder private var flockMenu: some View {
+        if mesh.rollCallChannel != nil {
+            Button { router.overlay = .rollCall } label: {
+                Label("Roll call: everyone OK?", systemImage: "person.3")
+            }
+        }
         if mesh.inDemo {
             Text("Pretend flock. Leave the demo to use your own.")
         } else if let channel = mesh.flockChannel, let link = FlockInvite.link(for: channel) {

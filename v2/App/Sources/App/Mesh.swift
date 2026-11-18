@@ -46,6 +46,11 @@ final class Mesh {
     /// Memory only.
     private(set) var checkIns = CheckInBoard()
 
+    /// The flock's roll call and anyone asking for help. Memory only.
+    private(set) var rollCalls = RollCallBoard()
+    /// The last ping from a friend, for Talk's "Maya pinged you" line.
+    private(set) var lastPing: (from: PeerID, at: Date)?
+
     /// Your flock: the locked channel you started or joined by invite (one at
     /// a time in 2.0). Its key is kept in the Keychain, as the invite link.
     private(set) var flockChannel: Channel?
@@ -101,6 +106,13 @@ final class Mesh {
                 routeFind(m, from: from)
             } else if case .checkIn(let m, let from, let channel) = e {
                 checkIns.apply(m, from: from, channel: channel, now: .now)
+            } else if case .rollCall(let r, let from, let channel) = e {
+                rollCalls.apply(r, from: from, channel: channel, now: .now)
+            } else if case .help(let h, let from, _) = e {
+                rollCalls.apply(h, from: from)
+            } else if case .ping(let from) = e {
+                lastPing = (from, .now)
+                if !inBackground { ChirpPlayer.ping(dispatch.roster.person(from).map { Int($0.bird.chirp) } ?? 0) }
             } else if flock?.apply(e) != true {
                 onEvent?(e)
             }
@@ -165,6 +177,7 @@ final class Mesh {
         let wanted = Set(flock.blockedIDs.compactMap(PeerID.init(hex:)))
         if wanted != dispatch.blocked { dispatch.setBlocked(wanted) }
         for p in wanted where checkIns.entries[p] != nil { checkIns.forget(p) }
+        for p in wanted where rollCalls.heardFrom.contains(p) || rollCalls.ask?.from == p { rollCalls.forget(p) }
     }
 
     // MARK: Check-in
@@ -189,6 +202,45 @@ final class Mesh {
     /// A friend's check-in still running, by their `Person`.
     func checkIn(of person: Person) -> CheckInBoard.Entry? {
         person.peer.flatMap { checkIns.position(of: $0, now: .now) }
+    }
+
+    // MARK: Roll call and help
+
+    /// Roll call and help go to your flock (or the demo flock), never Nearby.
+    var rollCallChannel: ChannelID? { talkChannel == .nearby ? nil : talkChannel }
+
+    /// "Everyone OK?" to the flock.
+    func startRollCall() {
+        guard let ch = rollCallChannel else { return }
+        let r = rollCalls.start(me: dispatch.me, on: ch, now: .now)
+        send { try $0.make(.rollCall, on: ch, body: r.encode(), now: .now) }
+    }
+
+    /// Your answer to the roll call on screen.
+    func answerRollCall(ok: Bool) {
+        guard let r = rollCalls.answer(me: dispatch.me, ok: ok, now: .now),
+              let ch = rollCalls.ask?.channel else { return }
+        send { try $0.make(.rollCall, on: ch, body: r.encode(), now: .now) }
+    }
+
+    /// "I need help" to the flock: its own packet kind, so relays send it first.
+    func askForHelp() {
+        guard let ch = rollCallChannel else { return }
+        let h = rollCalls.askForHelp(me: dispatch.me, now: .now)
+        send { try $0.make(.help, on: ch, body: h.encode(), now: .now) }
+        if rollCalls.ask != nil { answerRollCall(ok: false) }
+    }
+
+    /// Help no longer needed: said as "I'm OK", which clears it everywhere.
+    func cancelHelp() {
+        if rollCalls.ask == nil, let ch = rollCallChannel {
+            // No roll call to answer: start one, which counts you as OK and
+            // asks the others at the same time.
+            let r = rollCalls.start(me: dispatch.me, on: ch, now: .now)
+            send { try $0.make(.rollCall, on: ch, body: r.encode(), now: .now) }
+        } else {
+            answerRollCall(ok: true)
+        }
     }
 
     @discardableResult
@@ -232,6 +284,7 @@ final class Mesh {
             onPeerGone?(gone)
         }
         if !checkIns.entries.isEmpty { checkIns.expire(now: .now) }
+        rollCalls.expire(now: .now)
         // Started here, so only while the app is open and the radio is on.
         if let flock {
             liveCard.start(flock: flock.flockName, onLine: dispatch.roster.visible(excluding: dispatch.blocked).count)

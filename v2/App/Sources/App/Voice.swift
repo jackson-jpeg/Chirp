@@ -129,7 +129,16 @@ final class Voice {
         audio.setFloor(out.state)
         for effect in out.effects { run(effect) }
         if out.state == .idle { turnChannel = nil }
-        if floor.speaker?.peer != speakerBefore { showTalker() }
+        if floor.speaker?.peer != speakerBefore {
+            showTalker()
+            // A friend starts talking: their chirp ("plays when you start
+            // talking", Make your bird). Never your own, so it is not sent
+            // back out through your microphone.
+            if let s = floor.speaker?.peer, s != mesh.dispatch.me,
+               let who = flock.others.first(where: { $0.peer == s }) {
+                ChirpPlayer.play(who.chirp)
+            }
+        }
         keepTicking()
     }
 

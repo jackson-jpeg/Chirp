@@ -1,3 +1,4 @@
+import ChirpCore
 import SwiftUI
 
 /// Make your bird (`v2/design/MakeBird`): your bird on the wire in the colors
@@ -7,7 +8,7 @@ struct MakeBirdView: View {
     @Environment(Router.self) private var router
     @FocusState private var nameFocused: Bool
 
-    private static let chirps = ["Finch", "Robin", "Wren"]
+    private static let chirps = ChirpSound.names
     private static let maxNameLength = 24
 
     private var trimmedName: String { flock.you.name.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -165,7 +166,7 @@ struct MakeBirdView: View {
         ForEach(Self.chirps.indices, id: \.self) { i in
             ChoicePill(title: Self.chirps[i], systemImage: "play.fill", selected: flock.you.chirp == i) {
                 flock.you.chirp = i
-                // TODO: play chirp
+                ChirpPlayer.play(i)
             }
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityHint("Plays this chirp")

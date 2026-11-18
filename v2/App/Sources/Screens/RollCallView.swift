@@ -1,3 +1,4 @@
+import ChirpCore
 import SwiftUI
 
 /// Your own answer to a roll call.
@@ -12,7 +13,67 @@ enum RollCallAnswer: Equatable {
 struct RollCallView: View {
     @Environment(Router.self) private var router
     @Environment(Flock.self) private var flock
+    @Environment(Mesh.self) private var mesh
+    /// Screenshot runs only: the design's answer, kept on this screen.
     @State private var answer: RollCallAnswer = .notYet
+
+    /// Real use, or the demo flock (even in a UI test launched with `-screen`).
+    private var live: Bool { !router.screenshotRun || mesh.inDemo }
+    private var me: PeerID { mesh.dispatch.me }
+    private var board: RollCallBoard { mesh.rollCalls }
+
+    /// Your answer: the board's in real use, this screen's in screenshot runs.
+    private var yourAnswer: RollCallAnswer {
+        guard live else { return answer }
+        if board.help[me] != nil { return .needHelp }
+        switch board.status(of: me) {
+        case .ok(let at): return board.ask == nil ? .notYet : .ok(at: at)
+        case .needsHelp: return .needHelp
+        case .noAnswer: return .notYet
+        }
+    }
+
+    private var eyebrow: String {
+        guard live else { return RollCallDemo.eyebrow }
+        guard let ask = board.ask else { return "\(flock.displayName) · No roll call yet" }
+        let who = ask.from == me ? "You" : (name(of: ask.from) ?? "Someone")
+        let mins = max(0, Int(Date.now.timeIntervalSince(ask.at) / 60))
+        return "\(flock.displayName) · \(who) asked " + (mins == 0 ? "just now" : "\(mins) min ago")
+    }
+
+    private func name(of peer: PeerID) -> String? {
+        flock.others.first { $0.peer == peer }?.name ?? mesh.dispatch.roster.person(peer)?.name
+    }
+
+    private var tiles: [RollCallDemo.Tile] {
+        guard live else { return RollCallDemo.tiles(you: flock.you, yourAnswer: answer) }
+        let friends = mesh.dispatch.friends
+        let heard = board.heardFrom
+        let people = flock.others.filter { $0.peer.map { friends.contains($0) || heard.contains($0) } ?? false }
+        let f = DateFormatter()
+        f.dateFormat = "h:mm"
+        var out = people.map { p -> RollCallDemo.Tile in
+            let status: RollCallDemo.Status
+            if let peer = p.peer, board.help[peer] != nil {
+                status = .help
+            } else {
+                switch p.peer.map(board.status(of:)) ?? .noAnswer {
+                case .ok(let at): status = .ok(f.string(from: at))
+                case .needsHelp: status = .help
+                case .noAnswer: status = .noAnswer
+                }
+            }
+            return RollCallDemo.Tile(id: p.id, name: p.name, palette: p.palette, status: status)
+        }
+        let mine: RollCallDemo.Status
+        switch yourAnswer {
+        case .needHelp: mine = .help
+        case .ok(let at): mine = .ok(f.string(from: at))
+        case .notYet: mine = board.waitingOn(me) ? .yourTurn : .noAnswer
+        }
+        out.append(RollCallDemo.Tile(id: flock.you.id, name: "You", palette: flock.you.palette, status: mine, isYou: true))
+        return out
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -46,7 +107,7 @@ struct RollCallView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .center) {
-                Text(RollCallDemo.eyebrow.uppercased())
+                Text(eyebrow.uppercased())
                     .font(.nunito(13, .black, relativeTo: .caption))
                     .tracking(1.3)
                     .foregroundStyle(Theme.inkSecondary)
@@ -69,7 +130,7 @@ struct RollCallView: View {
 
     private var grid: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-            ForEach(RollCallDemo.tiles(you: flock.you, yourAnswer: answer)) { tile in
+            ForEach(tiles) { tile in
                 tileView(tile)
             }
         }
@@ -127,9 +188,9 @@ struct RollCallView: View {
 
     private var note: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(RollCallDemo.note)
-            if answer == .needHelp {
-                Text("Everyone on \(flock.displayName) can see you asked for help, and where you were last heard.")
+            if let line = noteLine { Text(line) }
+            if yourAnswer == .needHelp {
+                Text("Everyone on \(flock.displayName) who is close by can see you asked for help.")
                     .foregroundStyle(Theme.danger)
             }
         }
@@ -141,43 +202,62 @@ struct RollCallView: View {
 
     // MARK: Buttons
 
+    /// The design's note in screenshot runs; in real use, who asked for help.
+    private var noteLine: String? {
+        guard live else { return RollCallDemo.note }
+        let asking = board.needingHelp(except: me).compactMap(name(of:))
+        if !asking.isEmpty {
+            return asking.count == 1 ? "\(asking[0]) asked for help." : "\(asking.joined(separator: ", ")) asked for help."
+        }
+        if board.ask == nil { return "Ask everyone on \(flock.displayName) if they are OK. Answers come in as their phones hear it." }
+        return "Answers come in as each phone hears the roll call."
+    }
+
     private var isOK: Bool {
-        if case .ok = answer { return true }
+        if case .ok = yourAnswer { return true }
         return false
     }
+
+    /// No roll call to answer (or it is yours): the first button asks everyone.
+    private var asks: Bool { live && (board.ask == nil || board.ask?.from == me) }
 
     private var buttons: some View {
         VStack(spacing: 10) {
             Button {
-                answer = .ok(at: .now)
-                // TODO: send the roll call answer (OK) through ChirpCore.
+                if !live { answer = .ok(at: .now) }
+                else if asks { mesh.startRollCall() }
+                else { mesh.answerRollCall(ok: true) }
             } label: {
                 HStack(spacing: 10) {
-                    Image(systemName: "checkmark")
+                    Image(systemName: asks ? "person.3.fill" : "checkmark")
                         .font(.system(size: 18, weight: .black))
-                    Text(isOK ? "Sent: I'm OK" : "I'm OK")
+                    Text(asks ? (board.ask == nil ? "Ask everyone" : "Ask again")
+                         : (isOK ? "Sent: I'm OK" : "I'm OK"))
                 }
                 .font(.nunito(19, .black, relativeTo: .headline))
-                .foregroundStyle(isOK ? Theme.signal : Theme.onSolid)
+                .foregroundStyle(isOK && !asks ? Theme.signal : Theme.onSolid)
                 .frame(maxWidth: .infinity, minHeight: 60)
-                .background(isOK ? Theme.signalSoft : Theme.solid, in: Capsule())
+                .background(isOK && !asks ? Theme.signalSoft : Theme.solid, in: Capsule())
             }
             .buttonStyle(.plain)
-            .disabled(isOK)
+            .disabled((isOK && !asks) || (live && mesh.rollCallChannel == nil))
+            .accessibilityIdentifier("rollCall.primary")
 
             Button {
-                answer = answer == .needHelp ? .notYet : .needHelp
-                // TODO: send (or cancel) the help call through ChirpCore; it
-                // goes to everyone in range with your last known place.
+                if !live { answer = answer == .needHelp ? .notYet : .needHelp }
+                else if yourAnswer == .needHelp { mesh.cancelHelp() }
+                else { mesh.askForHelp() }
             } label: {
-                Text(answer == .needHelp ? "Help asked. Tap to cancel" : "I need help")
+                Text(yourAnswer == .needHelp ? "Help asked. Tap to cancel" : "I need help")
                     .font(.nunito(17, .black, relativeTo: .headline))
-                    .foregroundStyle(answer == .needHelp ? Theme.onSolid : Theme.danger)
+                    .foregroundStyle(yourAnswer == .needHelp ? Theme.onSolid : Theme.danger)
                     .frame(maxWidth: .infinity, minHeight: 56)
-                    .background(answer == .needHelp ? Theme.danger : Theme.card, in: Capsule())
+                    .background(yourAnswer == .needHelp ? Theme.danger : Theme.card, in: Capsule())
                     .overlay(Capsule().strokeBorder(Theme.danger, lineWidth: 2))
             }
             .buttonStyle(.plain)
+            .disabled(live && mesh.rollCallChannel == nil)
+            .accessibilityIdentifier("rollCall.help")
         }
     }
 }

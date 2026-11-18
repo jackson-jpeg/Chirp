@@ -79,4 +79,33 @@ private final class DemoRun {
         let mine = run.me.ledger.texts.last
         #expect(mine?.outgoing == true && mine?.deliveredTo.count == 3)
     }
+
+    @Test func jonAsksForARollCallAndMayaAnswers() {
+        let run = DemoRun()
+        run.play(to: 51)
+        var asks: [UUID] = [], answers: [UUID] = []
+        for e in run.events {
+            if case .rollCall(.ask(let id, _), _, _) = e { asks.append(id) }
+            if case .rollCall(.answer(let id, true), _, _) = e { answers.append(id) }
+        }
+        #expect(asks.count == 1)
+        #expect(answers == asks)
+    }
+
+    @Test func thePretendFriendsAnswerMyRollCallButPriya() {
+        let run = DemoRun()
+        run.play(to: 5)
+        let id = UUID()
+        guard let ask = try? run.me.make(.rollCall, on: DemoFlock.channel.id,
+                                         body: RollCall.ask(id: id, at: at(6)).encode(), now: at(6)) else {
+            Issue.record("could not make the roll call"); return
+        }
+        let back = run.demo.receive(ask, now: at(6))
+        for p in back { run.take(p, now: at(6)) }
+        let answered = run.events.compactMap { e -> PeerID? in
+            if case .rollCall(.answer(id, true), let from, _) = e { return from }
+            return nil
+        }
+        #expect(Set(answered) == Set([run.demo.ids[0], run.demo.ids[1]]))
+    }
 }
