@@ -67,6 +67,17 @@ targets:
         GENERATE_INFOPLIST_FILE: false
         # The Opus encoder controls (FEC, bitrate): App/Sources/App/Audio/opus_ctl_shim.c
         SWIFT_OBJC_BRIDGING_HEADER: App/Sources/App/Audio/Chirp-Bridging-Header.h
+      # TestFlight and App Store archives (`ios ship chirp`, v2/fastlane): signed
+      # with the match AppStore profiles, as 1.0 was (no Xcode account on the Mac).
+      # Those profiles have no Associated Domains, so Release uses an entitlements
+      # file without it until the App ID gains the capability and match renews the
+      # profile (docs/NEXT.md, universal links). Debug keeps applinks.
+      configs:
+        Release:
+          CODE_SIGN_STYLE: Manual
+          "CODE_SIGN_IDENTITY[sdk=iphoneos*]": Apple Distribution
+          "PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]": match AppStore com.jacksonmsanger.chirpchirp
+          CODE_SIGN_ENTITLEMENTS: App/Chirp-Release.entitlements
     info:
       path: App/Info.plist
       properties:
@@ -118,11 +129,18 @@ targets:
     - sdk: SwiftUI.framework
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp.live
+        # The App ID registered for 1.0's Live Activity, which has a match
+        # AppStore profile (".live" has neither).
+        PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp.live-activity
         MARKETING_VERSION: 2.0.0
         CURRENT_PROJECT_VERSION: '1'
         GENERATE_INFOPLIST_FILE: false
         SKIP_INSTALL: true
+      configs:
+        Release:
+          CODE_SIGN_STYLE: Manual
+          "CODE_SIGN_IDENTITY[sdk=iphoneos*]": Apple Distribution
+          "PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]": match AppStore com.jacksonmsanger.chirpchirp.live-activity
     info:
       path: App/Widget/Info.plist
       properties:

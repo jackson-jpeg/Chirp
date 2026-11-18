@@ -1,0 +1,11 @@
+# ChirpChirps 2.0: every bundle ID that ships (the app and the Live Activity
+# widget), so `fastlane match` fetches their AppStore profiles.
+git_url(ENV["MATCH_GIT_URL"] || "https://github.com/jackson-jpeg/jackson-ios-certs.git")
+storage_mode("git")
+type("appstore")
+app_identifier([
+  "com.jacksonmsanger.chirpchirp",
+  "com.jacksonmsanger.chirpchirp.live-activity",
+])
+team_id(ENV["MATCH_TEAM_ID"] || "2MU4PC84GZ")
+keychain_name("sanger-ci.keychain-db")
