@@ -60,6 +60,10 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp
+        # iPhone only, here and not just project-wide: xcodegen's per-target
+        # default (1,2) won, and App Store Connect refused the first 2.0 upload
+        # (90474, iPad multitasking needs every orientation).
+        TARGETED_DEVICE_FAMILY: '1'
         MARKETING_VERSION: 2.0.0
         CURRENT_PROJECT_VERSION: '1'
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -132,6 +136,7 @@ targets:
         # The App ID registered for 1.0's Live Activity, which has a match
         # AppStore profile (".live" has neither).
         PRODUCT_BUNDLE_IDENTIFIER: com.jacksonmsanger.chirpchirp.live-activity
+        TARGETED_DEVICE_FAMILY: '1'
         MARKETING_VERSION: 2.0.0
         CURRENT_PROJECT_VERSION: '1'
         GENERATE_INFOPLIST_FILE: false
