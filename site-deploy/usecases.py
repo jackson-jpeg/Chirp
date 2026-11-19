@@ -124,7 +124,7 @@ FOOT = """<footer class="foot">
             <a href="/terms">Terms</a>
             <a href="/credits">Credits</a>
         </div>
-        <small>&copy; 2026 ChirpChirps</small>
+        <small>&copy; 2026 Unpossible Studio LLC</small>
     </div>
 </footer>"""
 

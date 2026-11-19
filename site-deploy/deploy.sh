@@ -30,6 +30,12 @@ for page in "$site"/*/index.html; do
     grep -q "<loc>https://chirpchirps.com/$name/</loc>" "$site/sitemap.xml" ||
         { echo "REFUSED: /$name/ is missing from site/sitemap.xml" >&2; exit 1; }
 done
+# Every page with the shared footer names the company that owns the site (Unpossible
+# Studio LLC, live since 2026-11-18; Jackson, Inbox 2026-11-19).
+for page in $(grep -rl '<footer class="foot">' --include=*.html "$site"); do
+    grep -q '<small>&copy; 2026 Unpossible Studio LLC</small>' "$page" ||
+        { echo "REFUSED: $page footer lacks '(c) 2026 Unpossible Studio LLC'" >&2; exit 1; }
+done
 grep -q '^Sitemap: https://chirpchirps.com/sitemap.xml$' "$site/robots.txt" ||
     { echo "REFUSED: site/robots.txt does not name the sitemap" >&2; exit 1; }
 python3 -I -c 'import sys, xml.dom.minidom as m; m.parse(sys.argv[1])' "$site/sitemap.xml"
@@ -87,6 +93,7 @@ rsync -a --delete "$site/" "$live/"
 echo "▸ live checks"
 page=$(curl -fsS https://chirpchirps.com/)
 grep -q 'Coming to iPhone' <<<"$page" || { echo "FAIL: live page lacks the new CTA" >&2; exit 1; }
+grep -q 'Unpossible Studio LLC' <<<"$page" || { echo "FAIL: live page footer lacks Unpossible Studio LLC" >&2; exit 1; }
 if grep -qE 'apps\.apple\.com' <<<"$page"; then echo "FAIL: live page still links the App Store" >&2; exit 1; fi
 # A reload swaps nginx's workers in the background: give it a few seconds.
 for _ in 1 2 3 4 5 6 7 8 9 10; do
